@@ -223,19 +223,19 @@ export function Orders() {
         }
       />
 
-      <div className="p-8">
+      <div className="p-4 lg:p-8">
         {/* Filters */}
-        <Card className="mb-6">
-          <div className="flex flex-wrap gap-4 items-end">
-            <div className="flex-1 min-w-[200px]">
+        <Card className="mb-4 lg:mb-6">
+          <div className="flex flex-col lg:flex-row flex-wrap gap-3 lg:gap-4">
+            <div className="flex-1 w-full lg:w-auto lg:min-w-[200px]">
               <Input
-                placeholder="Search by order #, customer name, or phone"
+                placeholder="Search orders..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 leftIcon={<Search className="h-4 w-4" />}
               />
             </div>
-            <div className="w-48">
+            <div className="w-full lg:w-48">
               <Select
                 options={statusOptions}
                 value={statusFilter}
@@ -243,27 +243,29 @@ export function Orders() {
                 placeholder="Filter by status"
               />
             </div>
-            <div className="w-40">
-              <Input
-                type="date"
-                label="From"
-                value={dateFilter.start}
-                onChange={(e) => setDateFilter({ ...dateFilter, start: e.target.value })}
-              />
-            </div>
-            <div className="w-40">
-              <Input
-                type="date"
-                label="To"
-                value={dateFilter.end}
-                onChange={(e) => setDateFilter({ ...dateFilter, end: e.target.value })}
-              />
+            <div className="grid grid-cols-2 gap-3 w-full lg:w-auto lg:flex lg:gap-4">
+              <div className="w-full lg:w-40">
+                <Input
+                  type="date"
+                  label="From"
+                  value={dateFilter.start}
+                  onChange={(e) => setDateFilter({ ...dateFilter, start: e.target.value })}
+                />
+              </div>
+              <div className="w-full lg:w-40">
+                <Input
+                  type="date"
+                  label="To"
+                  value={dateFilter.end}
+                  onChange={(e) => setDateFilter({ ...dateFilter, end: e.target.value })}
+                />
+              </div>
             </div>
           </div>
         </Card>
 
-        {/* Orders Table */}
-        <Card padding="none">
+        {/* Orders Table - Desktop */}
+        <Card padding="none" className="hidden lg:block">
           <Table>
             <TableHead>
               <TableRow>
@@ -336,6 +338,80 @@ export function Orders() {
             </TableBody>
           </Table>
         </Card>
+
+        {/* Orders Cards - Mobile */}
+        <div className="lg:hidden space-y-3">
+          {filteredOrders.length === 0 ? (
+            <Card className="text-center py-8">
+              <p className="text-gray-500">No orders found</p>
+            </Card>
+          ) : (
+            filteredOrders.map((order) => (
+              <Card key={order.id} padding="sm" className="space-y-3">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="font-semibold text-indigo-600">{order.order_number}</p>
+                    <p className="text-sm font-medium text-gray-900 mt-0.5">{order.customer_name}</p>
+                  </div>
+                  <Badge variant={getStatusBadgeVariant(order.status)}>
+                    {getStatusLabel(order.status)}
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <p className="text-gray-500">Phone</p>
+                    <p className="font-medium">{order.customer_phone}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Courier</p>
+                    <p className="font-medium">{order.courier_name || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Total Fee</p>
+                    <p className="font-medium">{formatCurrency(order.total_fee)}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Created</p>
+                    <p className="font-medium">{format(new Date(order.created_at), 'MMM dd, HH:mm')}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+                  <button
+                    onClick={() => {
+                      setSelectedOrder(order);
+                      setIsDetailModalOpen(true);
+                    }}
+                    className="flex-1 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                  >
+                    View Details
+                  </button>
+                  {order.status === 'pending' && (
+                    <button
+                      onClick={() => {
+                        setSelectedOrder(order);
+                        setIsAssignModalOpen(true);
+                      }}
+                      className="flex-1 px-3 py-2 text-sm font-medium text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors"
+                    >
+                      Assign
+                    </button>
+                  )}
+                  {order.status !== 'delivered' && order.status !== 'cancelled' && (
+                    <button
+                      onClick={() => {
+                        setSelectedOrder(order);
+                        setIsCancelModalOpen(true);
+                      }}
+                      className="px-3 py-2 text-sm font-medium text-red-700 bg-red-100 hover:bg-red-200 rounded-lg transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              </Card>
+            ))
+          )}
+        </div>
       </div>
 
       {/* Create Order Modal */}

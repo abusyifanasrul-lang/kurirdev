@@ -20,6 +20,7 @@ import {
   Pie,
   Cell,
 } from 'recharts';
+import { Link } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
 import { Card, StatCard } from '@/components/ui/Card';
 import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
@@ -69,9 +70,9 @@ export function Dashboard() {
         onRefresh={handleRefresh}
       />
 
-      <div className="p-8 space-y-8">
+      <div className="p-4 lg:p-8 space-y-6 lg:space-y-8">
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6">
           <StatCard
             title="Orders Today"
             value={analytics.total_orders_today}
@@ -99,7 +100,7 @@ export function Dashboard() {
         </div>
 
         {/* Charts Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
           {/* Revenue Chart */}
           <Card className="lg:col-span-2">
             <div className="flex items-center justify-between mb-6">
@@ -179,7 +180,7 @@ export function Dashboard() {
         </div>
 
         {/* Orders Chart & Recent Orders */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
           {/* Daily Orders Chart */}
           <Card>
             <h3 className="text-lg font-semibold text-gray-900 mb-6">Daily Orders</h3>
@@ -206,9 +207,9 @@ export function Dashboard() {
           <Card>
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-semibold text-gray-900">Recent Orders</h3>
-              <a href="/orders" className="text-sm text-indigo-600 hover:text-indigo-700 font-medium">
+              <Link to="/admin/orders" className="text-sm text-indigo-600 hover:text-indigo-700 font-medium">
                 View all →
-              </a>
+              </Link>
             </div>
             <div className="space-y-4">
               {recentOrders.map((order) => (
