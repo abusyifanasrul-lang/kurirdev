@@ -1,0 +1,20 @@
+{
+  "name": "Delivery Management Portal",
+  "short_name": "Delivery Portal",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgdmlld0JveD0iMCAwIDE5MiAxOTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjE5MiIgaGVpZ2h0PSIxOTIiIHJ4PSI0MCIgZmlsbD0iIzRmNDZlNSIvPjxwYXRoIGQ9Ik01NiA2OGg4MHY1Nkg1NlY2OHoiIGZpbGw9IndoaXRlIi8+PHBhdGggZD0iTTQ4IDEyOGg5NnYxNkg0OHYtMTZ6IiBmaWxsPSIjZTJlOGYwIi8+PHBhdGggZD0iTTc4IDY4aDM2djU2SDc4VjY4eiIgZmlsbD0iI2U5ZGVmZiIvPjwvc3ZnPg==",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjUxMiIgaGVpZ2h0PSI1MTIiIHJ4PSI5NiIgZmlsbD0iIzRmNDZlNSIvPjxwYXRoIGQ9Ik0xMzYgMTc2aDI0MHYxNjhIMTM2VjE3NnoiIGZpbGw9IndoaXRlIi8+PHBhdGggZD0iTTExMiAzNDRoMjg4djQwSDExMnYtNDB6IiBmaWxsPSIjZTJlOGYwIi8+PHBhdGggZD0iTTIwNCAxNzZoMTA0djE2OEgyMDRWMTc2eiIgZmlsbD0iI2U5ZGVmZiIvPjwvc3ZnPg==",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}
