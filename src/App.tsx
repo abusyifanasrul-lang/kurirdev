@@ -21,6 +21,7 @@ import { CourierOrderDetail } from '@/pages/courier/CourierOrderDetail';
 import { CourierHistory } from '@/pages/courier/CourierHistory';
 import { CourierEarnings } from '@/pages/courier/CourierEarnings';
 import { CourierProfile } from '@/pages/courier/CourierProfile';
+import { CourierNotifications } from '@/pages/courier/CourierNotifications';
 
 // Protected Route Component
 function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles: string[] }) {
@@ -103,6 +104,7 @@ export function App() {
             <Route index element={<CourierDashboard />} />
             <Route path="orders" element={<CourierOrders />} />
             <Route path="orders/:id" element={<CourierOrderDetail />} />
+            <Route path="notifications" element={<CourierNotifications />} />
             <Route path="history" element={<CourierHistory />} />
             <Route path="earnings" element={<CourierEarnings />} />
             <Route path="profile" element={<CourierProfile />} />

@@ -1,13 +1,15 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { cn } from '@/utils/cn';
 
 interface CardProps {
   children: React.ReactNode;
   className?: string;
   padding?: 'none' | 'sm' | 'md' | 'lg';
+  onClick?: () => void;
 }
 
-export function Card({ children, className, padding = 'md' }: CardProps) {
+export function Card({ children, className, padding = 'md', onClick }: CardProps) {
   const paddings = {
     none: '',
     sm: 'p-4',
@@ -16,7 +18,15 @@ export function Card({ children, className, padding = 'md' }: CardProps) {
   };
 
   return (
-    <div className={cn('bg-white rounded-xl shadow-sm border border-gray-200', paddings[padding], className)}>
+    <div
+      className={cn(
+        'bg-white rounded-xl shadow-sm border border-gray-200',
+        paddings[padding],
+        onClick && 'cursor-pointer hover:shadow-md transition-shadow',
+        className
+      )}
+      onClick={onClick}
+    >
       {children}
     </div>
   );
@@ -32,11 +42,13 @@ interface StatCardProps {
   };
   subtitle?: string;
   className?: string;
+  to?: string; // Add link support
+  onClick?: () => void;
 }
 
-export function StatCard({ title, value, icon, trend, subtitle, className }: StatCardProps) {
-  return (
-    <Card className={cn('', className)} padding="sm">
+export function StatCard({ title, value, icon, trend, subtitle, className, to, onClick }: StatCardProps) {
+  const Content = (
+    <Card className={cn('h-full', className)} padding="sm" onClick={onClick}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className="text-xs lg:text-sm font-medium text-gray-500 truncate">{title}</p>
@@ -59,4 +71,10 @@ export function StatCard({ title, value, icon, trend, subtitle, className }: Sta
       </div>
     </Card>
   );
+
+  if (to) {
+    return <Link to={to} className="block h-full">{Content}</Link>;
+  }
+
+  return Content;
 }

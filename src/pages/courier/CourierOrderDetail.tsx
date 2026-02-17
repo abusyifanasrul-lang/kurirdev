@@ -1,57 +1,38 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  ArrowLeft, 
-  Phone, 
-  MapPin, 
-  Package, 
-  CheckCircle, 
-  Truck, 
+import {
+  ArrowLeft,
+  Phone,
+  MapPin,
+  Package,
+  CheckCircle,
+  Truck,
   Clock,
   Navigation
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { cn } from '@/utils/cn';
 import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
-
-type OrderStatus = 'assigned' | 'picked_up' | 'in_transit' | 'delivered';
-
-interface OrderDetail {
-  id: number;
-  order_number: string;
-  customer_name: string;
-  customer_phone: string;
-  customer_address: string;
-  status: OrderStatus;
-  total_fee: number;
-  created_at: string;
-  estimated_delivery_time?: string;
-  notes?: string;
-}
+import { useOrderStore } from '@/stores/useOrderStore';
+import { OrderStatus } from '@/types';
 
 export function CourierOrderDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { orders, updateOrderStatus } = useOrderStore();
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const [order, setOrder] = useState<OrderDetail>({
-    id: Number(id),
-    order_number: 'ORD-20240215-0001',
-    customer_name: 'John Doe',
-    customer_phone: '+62812345678',
-    customer_address: 'Jl. Sudirman No. 123, Gedung ABC Lt. 5, Jakarta Selatan 12190',
-    status: 'assigned',
-    total_fee: 8000,
-    created_at: new Date().toISOString(),
-    estimated_delivery_time: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
-    notes: 'Please call before arriving. Gate code: 1234',
-  });
+  const order = useMemo(() => orders.find(o => o.id === Number(id)), [orders, id]);
+
+  if (!order) {
+    return <div className="p-8 text-center">Order not found</div>;
+  }
 
   const statusFlow: OrderStatus[] = ['assigned', 'picked_up', 'in_transit', 'delivered'];
 
   const getNextStatus = (): OrderStatus | null => {
     const currentIndex = statusFlow.indexOf(order.status);
-    if (currentIndex < statusFlow.length - 1) {
+    if (currentIndex !== -1 && currentIndex < statusFlow.length - 1) {
       return statusFlow[currentIndex + 1];
     }
     return null;
@@ -67,7 +48,7 @@ export function CourierOrderDetail() {
       case 'delivered':
         return { label: 'Mark as Delivered', color: 'bg-green-600 hover:bg-green-700' };
       default:
-        return null;
+        return null; // No action for other statuses or if finished
     }
   };
 
@@ -76,14 +57,13 @@ export function CourierOrderDetail() {
     if (!nextStatus) return;
 
     setIsUpdating(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    setOrder({ ...order, status: nextStatus });
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    updateOrderStatus(order.id, nextStatus);
     setIsUpdating(false);
 
     if (nextStatus === 'delivered') {
-      // Show success and navigate back after delay
       setTimeout(() => {
         navigate('/courier/orders');
       }, 1500);
@@ -108,7 +88,22 @@ export function CourierOrderDetail() {
     { status: 'delivered', label: 'Delivered', icon: CheckCircle },
   ];
 
+  // We need to map order status to these steps index
+  // Note: 'pending' or 'cancelled' might be edge cases, but for Courier view, it usually starts at 'assigned'.
+  // If cancelled, show cancelled state?
   const currentStepIndex = statusFlow.indexOf(order.status);
+
+  if (order.status === 'cancelled') {
+    return (
+      <div className="p-4 space-y-4">
+        <div className="bg-red-50 border border-red-200 p-4 rounded-xl text-center">
+          <h1 className="text-red-700 font-bold text-lg">Order Cancelled</h1>
+          <p className="text-red-600 mt-2">{order.cancellation_reason || 'This order has been cancelled.'}</p>
+          <button onClick={() => navigate(-1)} className="mt-4 text-sm font-medium underline">Back</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 -mx-4 -mt-6">
@@ -126,8 +121,8 @@ export function CourierOrderDetail() {
             <p className="text-green-100 text-sm">Order Number</p>
             <h1 className="text-xl font-bold">{order.order_number}</h1>
           </div>
-          <Badge 
-            variant={getStatusBadgeVariant(order.status)} 
+          <Badge
+            variant={getStatusBadgeVariant(order.status)}
             size="md"
             className="bg-white/20 text-white"
           >
@@ -145,15 +140,15 @@ export function CourierOrderDetail() {
               const StepIcon = step.icon;
               const isCompleted = index <= currentStepIndex;
               const isCurrent = index === currentStepIndex;
-              
+
               return (
                 <div key={step.status} className="flex flex-col items-center flex-1">
                   <div
                     className={cn(
                       "w-10 h-10 rounded-full flex items-center justify-center mb-2 transition-colors",
-                      isCompleted 
-                        ? isCurrent 
-                          ? "bg-green-600 text-white" 
+                      isCompleted
+                        ? isCurrent
+                          ? "bg-green-600 text-white"
                           : "bg-green-100 text-green-600"
                         : "bg-gray-100 text-gray-400"
                     )}
@@ -181,7 +176,7 @@ export function CourierOrderDetail() {
         {/* Customer Info */}
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
           <h3 className="font-semibold text-gray-900 mb-4">Customer Information</h3>
-          
+
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
@@ -223,24 +218,24 @@ export function CourierOrderDetail() {
         {/* Order Details */}
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
           <h3 className="font-semibold text-gray-900 mb-4">Order Details</h3>
-          
+
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-500">Order Fee</span>
               <span className="font-semibold text-gray-900">
-                Rp {order.total_fee.toLocaleString()}
+                Rp {order.total_fee?.toLocaleString()}
               </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-500">Your Earnings (80%)</span>
               <span className="font-semibold text-green-600">
-                Rp {(order.total_fee * 0.8).toLocaleString()}
+                Rp {((order.total_fee || 0) * 0.8).toLocaleString()}
               </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-500">Order Time</span>
               <span className="text-sm text-gray-900">
-                {format(new Date(order.created_at), 'MMM dd, HH:mm')}
+                {order.created_at ? format(parseISO(order.created_at), 'MMM dd, HH:mm') : '-'}
               </span>
             </div>
             {order.estimated_delivery_time && (
@@ -248,20 +243,28 @@ export function CourierOrderDetail() {
                 <span className="text-sm text-gray-500">Est. Delivery</span>
                 <span className="text-sm text-gray-900 flex items-center gap-1">
                   <Clock className="h-4 w-4" />
-                  {format(new Date(order.estimated_delivery_time), 'HH:mm')}
+                  {format(parseISO(order.estimated_delivery_time), 'HH:mm')}
                 </span>
               </div>
             )}
           </div>
 
-          {order.notes && (
-            <div className="mt-4 pt-4 border-t border-gray-100">
-              <p className="text-sm text-gray-500 mb-1">Notes</p>
-              <p className="text-sm text-gray-900 bg-yellow-50 p-3 rounded-lg">
-                {order.notes}
-              </p>
-            </div>
-          )}
+          {/* Notes field not available in Order type yet? Assuming it is or I should modify types if needed.
+              Current Order type doesn't have notes. I will omit or assume I should add it.
+              For now I'll comment it out or show empty if I don't see it in type definition.
+              Looking at useOrderStore mock data, there is no notes field.
+              I will assume no notes for now.
+           */}
+          {/* 
+            {order.notes && (
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                <p className="text-sm text-gray-500 mb-1">Notes</p>
+                <p className="text-sm text-gray-900 bg-yellow-50 p-3 rounded-lg">
+                    {order.notes}
+                </p>
+                </div>
+            )}
+            */}
         </div>
 
         {/* Action Button */}
@@ -294,7 +297,7 @@ export function CourierOrderDetail() {
             <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-2" />
             <p className="font-semibold text-green-800">Order Delivered!</p>
             <p className="text-sm text-green-600 mt-1">
-              Great job! You earned Rp {(order.total_fee * 0.8).toLocaleString()}
+              Great job! You earned Rp {((order.total_fee || 0) * 0.8).toLocaleString()}
             </p>
           </div>
         )}

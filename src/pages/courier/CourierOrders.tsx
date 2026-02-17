@@ -1,81 +1,51 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Package, ChevronRight, Search } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
-
-interface CourierOrder {
-  id: number;
-  order_number: string;
-  customer_name: string;
-  customer_phone: string;
-  customer_address: string;
-  status: 'assigned' | 'picked_up' | 'in_transit';
-  total_fee: number;
-  created_at: string;
-}
+import { useOrderStore } from '@/stores/useOrderStore';
+import { useUserStore } from '@/stores/useUserStore';
 
 export function CourierOrders() {
   const navigate = useNavigate();
+  const { user } = useUserStore();
+  const { orders } = useOrderStore(); // Global orders
+
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<string>('all');
 
-  const [orders] = useState<CourierOrder[]>([
-    {
-      id: 1,
-      order_number: 'ORD-20240215-0001',
-      customer_name: 'John Doe',
-      customer_phone: '+62812345678',
-      customer_address: 'Jl. Sudirman No. 123, Jakarta Selatan',
-      status: 'assigned',
-      total_fee: 8000,
-      created_at: new Date().toISOString(),
-    },
-    {
-      id: 2,
-      order_number: 'ORD-20240215-0002',
-      customer_name: 'Jane Smith',
-      customer_phone: '+62898765432',
-      customer_address: 'Jl. Gatot Subroto No. 45, Jakarta Pusat',
-      status: 'picked_up',
-      total_fee: 8000,
-      created_at: new Date().toISOString(),
-    },
-    {
-      id: 3,
-      order_number: 'ORD-20240215-0003',
-      customer_name: 'Bob Wilson',
-      customer_phone: '+62811223344',
-      customer_address: 'Jl. Kemang Raya No. 78, Jakarta Selatan',
-      status: 'in_transit',
-      total_fee: 8000,
-      created_at: new Date().toISOString(),
-    },
-    {
-      id: 4,
-      order_number: 'ORD-20240215-0004',
-      customer_name: 'Alice Brown',
-      customer_phone: '+62855667788',
-      customer_address: 'Jl. Senopati No. 90, Jakarta Selatan',
-      status: 'assigned',
-      total_fee: 8000,
-      created_at: new Date().toISOString(),
-    },
-  ]);
+  // Filter orders for THIS courier
+  const myOrders = orders.filter(o => o.courier_id === user?.id);
 
-  const filteredOrders = orders.filter((order) => {
+  // Active orders typically exclude delivered/cancelled for the "Orders" tab? 
+  // Or maybe show all but filter by status tab?
+  // Let's keep logic similar to before but allow filtering.
+  // Actually, usually "History" has delivered/cancelled. "Orders" has active.
+  // But let's follow the existing UI tabs: "All", "Assigned", "Picked Up", "In Transit".
+
+  const filteredOrders = myOrders.filter((order) => {
+    // Search
     const matchesSearch =
       !searchQuery ||
       order.order_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.customer_name.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesFilter = activeFilter === 'all' || order.status === activeFilter;
-    
+
+    // Filter Tab
+    let matchesFilter = true;
+    if (activeFilter !== 'all') {
+      matchesFilter = order.status === activeFilter;
+    } else {
+      // If "All" in Orders tab, maybe hide delivered/cancelled?
+      // Let's hide delivered/cancelled from "Orders" tab generally, as they go to History.
+      // But the previous code had them. Let's stick to active statuses for this view.
+      matchesFilter = ['assigned', 'picked_up', 'in_transit'].includes(order.status);
+    }
+
     return matchesSearch && matchesFilter;
   });
 
   const filters = [
-    { key: 'all', label: 'All' },
+    { key: 'all', label: 'Active' },
     { key: 'assigned', label: 'Assigned' },
     { key: 'picked_up', label: 'Picked Up' },
     { key: 'in_transit', label: 'In Transit' },
@@ -101,11 +71,10 @@ export function CourierOrders() {
           <button
             key={filter.key}
             onClick={() => setActiveFilter(filter.key)}
-            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-              activeFilter === filter.key
+            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${activeFilter === filter.key
                 ? 'bg-green-600 text-white'
                 : 'bg-white text-gray-600 border border-gray-200'
-            }`}
+              }`}
           >
             {filter.label}
           </button>
@@ -116,7 +85,7 @@ export function CourierOrders() {
       {filteredOrders.length === 0 ? (
         <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 text-center">
           <Package className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500">No orders found</p>
+          <p className="text-gray-500">No active orders</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -138,10 +107,10 @@ export function CourierOrders() {
                   <p className="text-sm text-gray-500 truncate">{order.customer_address}</p>
                   <div className="flex items-center justify-between mt-2">
                     <p className="text-xs text-gray-400">
-                      {format(new Date(order.created_at), 'MMM dd, HH:mm')}
+                      {order.created_at ? format(parseISO(order.created_at), 'MMM dd, HH:mm') : '-'}
                     </p>
                     <p className="text-sm font-medium text-green-600">
-                      Rp {order.total_fee.toLocaleString()}
+                      Rp {(order.total_fee || 0).toLocaleString()}
                     </p>
                   </div>
                 </div>

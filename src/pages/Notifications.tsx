@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Send, Bell, CheckCircle, Clock } from 'lucide-react';
-import { format } from 'date-fns';
+import { Send, Bell, CheckCircle, Clock, AlertTriangle, Info, Smile } from 'lucide-react';
+import { format, isSameDay, parseISO } from 'date-fns';
 import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -8,48 +8,62 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
 import { Badge } from '@/components/ui/Badge';
-import { mockCouriers, mockNotifications } from '@/services/mockData';
-import type { Notification as NotificationType } from '@/types';
+import { useAuth } from '@/context/AuthContext'; // To know who is sending
+import { useUserStore } from '@/stores/useUserStore';
+import { useNotificationStore } from '@/stores/useNotificationStore';
+import { useCourierStore } from '@/stores/useCourierStore';
+
+// Stores
 
 export function Notifications() {
-  const [notifications, setNotifications] = useState<NotificationType[]>(mockNotifications);
+  const { user } = useUserStore(); // Current admin
+  const { couriers } = useCourierStore(); // To select recipient
+  const { notifications, addNotification } = useNotificationStore();
+
   const [selectedCourierId, setSelectedCourierId] = useState('');
   const [notificationTitle, setNotificationTitle] = useState('');
   const [notificationBody, setNotificationBody] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
-  const activeCouriers = mockCouriers.filter((c) => c.is_active);
+  const activeCouriers = couriers.filter((c) => c.is_active);
+
+  // Filter notifications to show history of what ADMIN sent (or all if we want transparency)
+  // Let's show all for now to monitor system.
+  // Sort by newest first
+  const sortedNotifications = [...notifications].sort(
+    (a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime()
+  );
 
   const handleSendNotification = async () => {
     if (!selectedCourierId || !notificationTitle || !notificationBody) return;
 
     setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 800)); // Simulate net delay
 
     const courier = activeCouriers.find((c) => c.id === parseInt(selectedCourierId));
-    const newNotification: NotificationType = {
-      id: notifications.length + 1,
-      user_id: parseInt(selectedCourierId),
-      user_name: courier?.name,
-      title: notificationTitle,
-      body: notificationBody,
-      is_read: false,
-      sent_at: new Date().toISOString(),
-    };
 
-    setNotifications([newNotification, ...notifications]);
-    setSelectedCourierId('');
-    setNotificationTitle('');
-    setNotificationBody('');
-    setSuccessMessage('Notification sent successfully!');
+    if (courier) {
+      addNotification({
+        user_id: courier.id,
+        user_name: courier.name,
+        title: notificationTitle,
+        body: notificationBody,
+        data: { type: 'manual_alert', sender_id: user?.id },
+      });
+
+      setSelectedCourierId('');
+      setNotificationTitle('');
+      setNotificationBody('');
+      setSuccessMessage('Notification sent successfully!');
+
+      setTimeout(() => setSuccessMessage(''), 3000);
+    }
     setIsLoading(false);
-
-    setTimeout(() => setSuccessMessage(''), 3000);
   };
 
   const sentToday = notifications.filter(
-    (n) => new Date(n.sent_at).toDateString() === new Date().toDateString()
+    (n) => isSameDay(parseISO(n.sent_at), new Date())
   ).length;
 
   const readCount = notifications.filter((n) => n.is_read).length;
@@ -58,7 +72,7 @@ export function Notifications() {
     <div className="min-h-screen">
       <Header title="Notifications" subtitle="Send push notifications to couriers" />
 
-      <div className="p-8 space-y-6">
+      <div className="p-4 lg:p-8 space-y-6">
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card className="flex items-center gap-4">
@@ -142,34 +156,49 @@ export function Notifications() {
               <h4 className="text-sm font-medium text-gray-700 mb-3">Quick Templates</h4>
               <div className="space-y-2">
                 <button
-                  className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm transition-colors"
+                  className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm transition-colors flex items-start gap-3"
                   onClick={() => {
                     setNotificationTitle('New Order Reminder');
                     setNotificationBody('You have pending orders waiting for pickup. Please check your app.');
                   }}
                 >
-                  <p className="font-medium">New Order Reminder</p>
-                  <p className="text-gray-500 text-xs mt-1">Remind courier about pending orders</p>
+                  <div className="p-1.5 bg-blue-100 rounded-md text-blue-600 mt-0.5">
+                    <Info className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="font-medium">New Order Reminder</p>
+                    <p className="text-gray-500 text-xs mt-1">Remind courier about pending orders</p>
+                  </div>
                 </button>
                 <button
-                  className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm transition-colors"
+                  className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm transition-colors flex items-start gap-3"
                   onClick={() => {
                     setNotificationTitle('Urgent: High Priority Order');
                     setNotificationBody('You have a high priority order. Please deliver as soon as possible.');
                   }}
                 >
-                  <p className="font-medium">High Priority Alert</p>
-                  <p className="text-gray-500 text-xs mt-1">Alert for urgent deliveries</p>
+                  <div className="p-1.5 bg-red-100 rounded-md text-red-600 mt-0.5">
+                    <AlertTriangle className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="font-medium">High Priority Alert</p>
+                    <p className="text-gray-500 text-xs mt-1">Alert for urgent deliveries</p>
+                  </div>
                 </button>
                 <button
-                  className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm transition-colors"
+                  className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm transition-colors flex items-start gap-3"
                   onClick={() => {
                     setNotificationTitle('Great Job Today!');
                     setNotificationBody('Thank you for your hard work today. Keep up the excellent service!');
                   }}
                 >
-                  <p className="font-medium">Appreciation Message</p>
-                  <p className="text-gray-500 text-xs mt-1">Send thank you message</p>
+                  <div className="p-1.5 bg-yellow-100 rounded-md text-yellow-600 mt-0.5">
+                    <Smile className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="font-medium">Appreciation Message</p>
+                    <p className="text-gray-500 text-xs mt-1">Send thank you message</p>
+                  </div>
                 </button>
               </div>
             </div>
@@ -179,14 +208,14 @@ export function Notifications() {
           <Card>
             <h3 className="text-lg font-semibold text-gray-900 mb-6">Notification History</h3>
 
-            <div className="space-y-4 max-h-[600px] overflow-y-auto">
-              {notifications.length === 0 ? (
+            <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+              {sortedNotifications.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   <Bell className="h-12 w-12 mx-auto mb-3 opacity-50" />
                   <p>No notifications sent yet</p>
                 </div>
               ) : (
-                notifications.map((notification) => (
+                sortedNotifications.map((notification) => (
                   <div
                     key={notification.id}
                     className="p-4 bg-gray-50 rounded-lg border border-gray-100"
@@ -203,7 +232,7 @@ export function Notifications() {
                         <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
                           <span>To: {notification.user_name}</span>
                           <span>•</span>
-                          <span>{format(new Date(notification.sent_at), 'MMM dd, HH:mm')}</span>
+                          <span>{format(parseISO(notification.sent_at), 'MMM dd, HH:mm')}</span>
                         </div>
                       </div>
                     </div>

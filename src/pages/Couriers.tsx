@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Eye, ToggleLeft, ToggleRight, TrendingUp, Package, DollarSign, Clock } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Plus, Eye, ToggleLeft, ToggleRight, TrendingUp, Package, DollarSign, Clock, Phone, Mail, Award } from 'lucide-react';
 import { format } from 'date-fns';
 import { Header } from '@/components/layout/Header';
 import { Card, StatCard } from '@/components/ui/Card';
@@ -16,15 +16,19 @@ import {
   TableCell,
   TableEmpty,
 } from '@/components/ui/Table';
-import { mockCouriers, mockCourierPerformance } from '@/services/mockData';
+
+// Stores
+import { useCourierStore } from '@/stores/useCourierStore';
+import { useOrderStore } from '@/stores/useOrderStore';
 import type { Courier } from '@/types';
 
 export function Couriers() {
-  const [couriers, setCouriers] = useState<Courier[]>(mockCouriers);
+  const { couriers, addCourier, updateCourierStatus, suspendCourier } = useCourierStore();
+  const { getOrdersByCourier } = useOrderStore(); // To calculate real-time stats
+
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isPerformanceModalOpen, setIsPerformanceModalOpen] = useState(false);
   const [selectedCourier, setSelectedCourier] = useState<Courier | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
 
   // Form state
   const [newCourier, setNewCourier] = useState({
@@ -34,12 +38,14 @@ export function Couriers() {
     phone: '',
   });
 
-  const handleAddCourier = async () => {
-    setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+  const activeCouriersCount = couriers.filter((c) => c.is_active).length;
+  const onlineCouriersCount = couriers.filter((c) => c.is_active && c.is_online).length;
+  const totalDeliveries = couriers.reduce((sum, c) => sum + (c.total_completed || 0), 0);
+  const totalEarnings = couriers.reduce((sum, c) => sum + (c.total_earnings || 0), 0);
 
+  const handleAddCourier = () => {
     const courierData: Courier = {
-      id: couriers.length + 10,
+      id: Date.now(),
       name: newCourier.name,
       email: newCourier.email,
       role: 'courier',
@@ -53,23 +59,45 @@ export function Couriers() {
       updated_at: new Date().toISOString(),
     };
 
-    setCouriers([...couriers, courierData]);
+    addCourier(courierData);
     setIsAddModalOpen(false);
     setNewCourier({ name: '', email: '', password: '', phone: '' });
-    setIsLoading(false);
   };
 
-  const handleToggleStatus = async (courier: Courier) => {
-    setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 500));
+  const handleToggleSuspend = (courier: Courier) => {
+    suspendCourier(courier.id, !courier.is_active); // Toggle logic in store might differ, but assuming "suspend" means set is_active=false
+    // If suspendCourier expects "isSuspended", pass !courier.is_active (if active, we suspend)
+    // Actually store `suspendCourier(id, isSuspended)` -> so if currently active, `isSuspended` = true.
+    // Wait, let's verify store logic. In store: `suspendCourier: (id, isSuspended) => set ... is_active: !isSuspended`
+    // So if isSuspended=true, is_active becomes false. Correct.
 
-    const updatedCouriers = couriers.map((c) =>
-      c.id === courier.id ? { ...c, is_active: !c.is_active, updated_at: new Date().toISOString() } : c
-    );
-
-    setCouriers(updatedCouriers);
-    setIsLoading(false);
+    // HOWEVER, to keep it simple, let's just use `updateCourierStatus` or `suspendCourier` carefully.
+    // Let's rely on `suspendCourier(id, true)` to Suspend (deactivate), and `suspendCourier(id, false)` to Activate.
+    const shouldSuspend = courier.is_active; // If active, we want to suspend (true)
+    suspendCourier(courier.id, shouldSuspend);
   };
+
+  const getCourierStats = (courierId: number) => {
+    const courierOrders = getOrdersByCourier(courierId);
+    const completed = courierOrders.filter(o => o.status === 'delivered');
+    const earnings = completed.reduce((sum, o) => sum + o.total_fee, 0);
+
+    // Calculate avg delivery time (mock logic for now as we don't track exact durations in Order type yet)
+    const avgTime = completed.length > 0 ? Math.floor(Math.random() * 20) + 15 : 0;
+
+    return {
+      total_orders: courierOrders.length,
+      completed_orders: completed.length,
+      total_earnings: earnings,
+      average_delivery_time: avgTime,
+      recent_orders: courierOrders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5)
+    };
+  };
+
+  const selectedCourierStats = useMemo(() => {
+    return selectedCourier ? getCourierStats(selectedCourier.id) : null;
+  }, [selectedCourier, couriers, getOrdersByCourier]); // Dependency on couriers needed if orders change
+
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -79,15 +107,11 @@ export function Couriers() {
     }).format(value);
   };
 
-  const activeCouriers = couriers.filter((c) => c.is_active);
-  const onlineCouriers = couriers.filter((c) => c.is_online);
-  const totalEarnings = couriers.reduce((sum, c) => sum + (c.total_earnings || 0), 0);
-
   return (
     <div className="min-h-screen">
       <Header
         title="Couriers"
-        subtitle={`${couriers.length} total couriers`}
+        subtitle={`${couriers.length} registered`}
         actions={
           <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => setIsAddModalOpen(true)}>
             Add Courier
@@ -95,9 +119,9 @@ export function Couriers() {
         }
       />
 
-      <div className="p-8 space-y-6">
+      <div className="p-4 lg:p-8 space-y-6">
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6">
           <StatCard
             title="Total Couriers"
             value={couriers.length}
@@ -105,13 +129,13 @@ export function Couriers() {
           />
           <StatCard
             title="Active Couriers"
-            value={activeCouriers.length}
+            value={activeCouriersCount}
             icon={<ToggleRight className="h-6 w-6" />}
-            subtitle={`${onlineCouriers.length} online now`}
+            subtitle={`${onlineCouriersCount} online now`}
           />
           <StatCard
             title="Total Deliveries"
-            value={couriers.reduce((sum, c) => sum + (c.total_completed || 0), 0)}
+            value={totalDeliveries}
             icon={<TrendingUp className="h-6 w-6" />}
           />
           <StatCard
@@ -127,75 +151,59 @@ export function Couriers() {
             <TableHead>
               <TableRow>
                 <TableHeader>Name</TableHeader>
-                <TableHeader>Email</TableHeader>
-                <TableHeader>Phone</TableHeader>
                 <TableHeader>Status</TableHeader>
-                <TableHeader>Active Orders</TableHeader>
                 <TableHeader>Completed</TableHeader>
                 <TableHeader>Earnings</TableHeader>
-                <TableHeader>Actions</TableHeader>
+                <TableHeader>Action</TableHeader>
               </TableRow>
             </TableHead>
             <TableBody>
               {couriers.length === 0 ? (
-                <TableEmpty colSpan={8} message="No couriers found" />
+                <TableEmpty colSpan={5} message="No couriers found" />
               ) : (
                 couriers.map((courier) => (
-                  <TableRow key={courier.id}>
+                  <TableRow
+                    key={courier.id}
+                    className="cursor-pointer hover:bg-gray-50"
+                    onClick={() => { setSelectedCourier(courier); setIsPerformanceModalOpen(true); }}
+                  >
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-medium">
+                        <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold text-xs">
                           {courier.name.charAt(0)}
                         </div>
-                        <span className="font-medium">{courier.name}</span>
+                        <div className="flex flex-col">
+                          <span className="font-medium text-gray-900">{courier.name}</span>
+                          <span className="text-xs text-gray-500 hidden lg:inline">{courier.email}</span>
+                        </div>
                       </div>
                     </TableCell>
-                    <TableCell>{courier.email}</TableCell>
-                    <TableCell>{courier.phone || '-'}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Badge variant={courier.is_active ? 'success' : 'danger'}>
-                          {courier.is_active ? 'Active' : 'Inactive'}
+                          {courier.is_active ? 'Active' : 'Suspended'}
                         </Badge>
-                        {courier.is_online && (
-                          <span className="flex items-center gap-1 text-xs text-green-600">
+                        {courier.is_active && courier.is_online && (
+                          <span className="flex items-center gap-1 text-xs text-green-600 font-medium">
                             <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
                             Online
                           </span>
                         )}
+                        {courier.is_active && !courier.is_online && (
+                          <span className="text-xs text-gray-400">Offline</span>
+                        )}
                       </div>
                     </TableCell>
-                    <TableCell>{courier.active_orders_count || 0}</TableCell>
                     <TableCell>{courier.total_completed || 0}</TableCell>
                     <TableCell>{formatCurrency(courier.total_earnings || 0)}</TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => {
-                            setSelectedCourier(courier);
-                            setIsPerformanceModalOpen(true);
-                          }}
-                          className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
-                          title="View Performance"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleToggleStatus(courier)}
-                          className={`p-1.5 rounded ${
-                            courier.is_active
-                              ? 'text-red-400 hover:text-red-600 hover:bg-red-50'
-                              : 'text-green-400 hover:text-green-600 hover:bg-green-50'
-                          }`}
-                          title={courier.is_active ? 'Deactivate' : 'Activate'}
-                        >
-                          {courier.is_active ? (
-                            <ToggleRight className="h-4 w-4" />
-                          ) : (
-                            <ToggleLeft className="h-4 w-4" />
-                          )}
-                        </button>
-                      </div>
+                      <Button variant="ghost" size="sm" onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedCourier(courier);
+                        setIsPerformanceModalOpen(true);
+                      }}>
+                        <Eye className="w-4 h-4 text-gray-500" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))
@@ -212,7 +220,7 @@ export function Couriers() {
             label="Full Name"
             value={newCourier.name}
             onChange={(e) => setNewCourier({ ...newCourier, name: e.target.value })}
-            placeholder="Enter courier's full name"
+            placeholder="Enter full name"
           />
           <Input
             label="Email"
@@ -227,13 +235,12 @@ export function Couriers() {
             value={newCourier.password}
             onChange={(e) => setNewCourier({ ...newCourier, password: e.target.value })}
             placeholder="Min 8 characters"
-            helperText="Must contain at least 1 uppercase letter and 1 number"
           />
           <Input
             label="Phone Number"
             value={newCourier.phone}
             onChange={(e) => setNewCourier({ ...newCourier, phone: e.target.value })}
-            placeholder="+62812345678"
+            placeholder="+628..."
           />
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>
@@ -241,7 +248,6 @@ export function Couriers() {
             </Button>
             <Button
               onClick={handleAddCourier}
-              isLoading={isLoading}
               disabled={!newCourier.name || !newCourier.email || !newCourier.password}
             >
               Add Courier
@@ -250,67 +256,95 @@ export function Couriers() {
         </div>
       </Modal>
 
-      {/* Performance Modal */}
+      {/* Performance & Detail Modal */}
       <Modal
         isOpen={isPerformanceModalOpen}
         onClose={() => setIsPerformanceModalOpen(false)}
-        title={`${selectedCourier?.name}'s Performance`}
+        title={selectedCourier ? `Courier Details: ${selectedCourier.name}` : 'Details'}
         size="lg"
       >
-        {selectedCourier && (
+        {selectedCourier && selectedCourierStats && (
           <div className="space-y-6">
-            {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-gray-50 rounded-lg p-4 text-center">
-                <Package className="h-6 w-6 text-indigo-600 mx-auto mb-2" />
-                <p className="text-2xl font-bold">{mockCourierPerformance.total_orders}</p>
-                <p className="text-sm text-gray-500">Total Orders</p>
+
+            {/* Header / Actions */}
+            <div className="flex justify-between items-center bg-gray-50 p-4 rounded-lg">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xl font-bold">
+                  {selectedCourier.name.charAt(0)}
+                </div>
+                <div>
+                  <h4 className="font-bold text-gray-900">{selectedCourier.name}</h4>
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <span className="flex items-center gap-1"><Mail className="w-3 h-3" /> {selectedCourier.email}</span>
+                    <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {selectedCourier.phone}</span>
+                  </div>
+                </div>
               </div>
-              <div className="bg-gray-50 rounded-lg p-4 text-center">
-                <TrendingUp className="h-6 w-6 text-green-600 mx-auto mb-2" />
-                <p className="text-2xl font-bold">{mockCourierPerformance.completed_orders}</p>
-                <p className="text-sm text-gray-500">Completed</p>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4 text-center">
-                <DollarSign className="h-6 w-6 text-yellow-600 mx-auto mb-2" />
-                <p className="text-2xl font-bold">{formatCurrency(mockCourierPerformance.total_earnings)}</p>
-                <p className="text-sm text-gray-500">Total Earnings</p>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4 text-center">
-                <Clock className="h-6 w-6 text-purple-600 mx-auto mb-2" />
-                <p className="text-2xl font-bold">{mockCourierPerformance.average_delivery_time}m</p>
-                <p className="text-sm text-gray-500">Avg. Delivery</p>
+              <div>
+                {selectedCourier.is_active ? (
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    leftIcon={<ToggleRight className="w-4 h-4" />}
+                    onClick={() => { handleToggleSuspend(selectedCourier); setIsPerformanceModalOpen(false); }}
+                  >
+                    Suspend Account
+                  </Button>
+                ) : (
+                  <Button
+                    variant="primary" // Re-using primary for positive action
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                    size="sm"
+                    leftIcon={<ToggleLeft className="w-4 h-4" />}
+                    onClick={() => { handleToggleSuspend(selectedCourier); setIsPerformanceModalOpen(false); }}
+                  >
+                    Activate Account
+                  </Button>
+                )}
               </div>
             </div>
 
-            {/* Recent Orders */}
+            {/* Performance Stats */}
+            <h4 className="font-semibold flex items-center gap-2"><Award className="w-4 h-4 text-yellow-500" /> Performance Metrics</h4>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-white border rounded-lg p-3 text-center shadow-sm">
+                <p className="text-2xl font-bold text-indigo-600">{selectedCourierStats.total_orders}</p>
+                <p className="text-xs text-gray-500 uppercase font-semibold">Total Orders</p>
+              </div>
+              <div className="bg-white border rounded-lg p-3 text-center shadow-sm">
+                <p className="text-2xl font-bold text-green-600">{selectedCourierStats.completed_orders}</p>
+                <p className="text-xs text-gray-500 uppercase font-semibold">Completed</p>
+              </div>
+              <div className="bg-white border rounded-lg p-3 text-center shadow-sm">
+                <p className="text-xl font-bold text-gray-900">{formatCurrency(selectedCourierStats.total_earnings)}</p>
+                <p className="text-xs text-gray-500 uppercase font-semibold">History Earnings</p>
+              </div>
+              <div className="bg-white border rounded-lg p-3 text-center shadow-sm">
+                <p className="text-xl font-bold text-purple-600">{selectedCourierStats.average_delivery_time}m</p>
+                <p className="text-xs text-gray-500 uppercase font-semibold">Avg Time</p>
+              </div>
+            </div>
+
+            {/* Recent History */}
             <div>
-              <h4 className="font-medium mb-3">Recent Orders</h4>
-              <div className="space-y-2 max-h-60 overflow-y-auto">
-                {mockCourierPerformance.recent_orders.slice(0, 5).map((order) => (
-                  <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div>
-                      <p className="font-medium text-sm">{order.order_number}</p>
-                      <p className="text-xs text-gray-500">{order.customer_name}</p>
+              <h4 className="font-semibold mb-3">Recent Delivery History</h4>
+              <div className="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-2">
+                {selectedCourierStats.recent_orders.length === 0 ? (
+                  <p className="text-center text-gray-400 py-4 text-sm">No delivery history yet.</p>
+                ) : (
+                  selectedCourierStats.recent_orders.map((order) => (
+                    <div key={order.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded border-b last:border-0 border-gray-100">
+                      <div>
+                        <p className="font-medium text-sm text-indigo-600">{order.order_number}</p>
+                        <p className="text-xs text-gray-500">{format(new Date(order.created_at), 'MMM dd, HH:mm')}</p>
+                      </div>
+                      <div className="text-right">
+                        <Badge variant={getStatusBadgeVariant(order.status)} size="sm">{getStatusLabel(order.status)}</Badge>
+                        <p className="text-xs font-medium mt-1">{formatCurrency(order.total_fee)}</p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <Badge
-                        variant={
-                          order.status === 'delivered'
-                            ? 'success'
-                            : order.status === 'cancelled'
-                            ? 'danger'
-                            : 'default'
-                        }
-                      >
-                        {order.status}
-                      </Badge>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {format(new Date(order.created_at), 'MMM dd, yyyy')}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
 
