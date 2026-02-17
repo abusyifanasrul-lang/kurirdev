@@ -90,6 +90,7 @@ export const useCourierStore = create<CourierState>()(
                         id: courier.id,
                         name: courier.name,
                         email: courier.email,
+                        password: courier.password,
                         role: 'courier',
                         phone: courier.phone,
                         is_active: true,

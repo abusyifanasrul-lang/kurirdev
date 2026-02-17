@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Order, OrderStatus, OrderStatusHistory } from '@/types';
+import { useNotificationStore } from './useNotificationStore';
 
 interface OrderState {
     orders: Order[];
@@ -100,9 +101,19 @@ export const useOrderStore = create<OrderState>()(
 
             assignCourier: (orderId, courierId, courierName, userId, userName) => {
                 get().updateOrderStatus(orderId, 'assigned', userId, userName, `Assigned to ${courierName}`);
-                set((state) => ({
-                    orders: state.orders.map(o => o.id === orderId ? { ...o, courier_id: courierId, courier_name: courierName } : o)
-                }));
+                set((state) => {
+                    const updatedOrders = state.orders.map(o => o.id === orderId ? { ...o, courier_id: courierId, courier_name: courierName, assigned_at: new Date().toISOString() } : o);
+
+                    // Trigger Notification
+                    useNotificationStore.getState().addNotification({
+                        user_id: courierId,
+                        title: 'New Order Assigned',
+                        body: `Order ${state.orders.find(o => o.id === orderId)?.order_number} has been assigned to you.`,
+                        data: { orderId }
+                    });
+
+                    return { orders: updatedOrders };
+                });
             },
 
             cancelOrder: (orderId, reason, userId, userName) => {

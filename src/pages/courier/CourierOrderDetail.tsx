@@ -14,12 +14,14 @@ import { format, parseISO } from 'date-fns';
 import { cn } from '@/utils/cn';
 import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
 import { useOrderStore } from '@/stores/useOrderStore';
+import { useUserStore } from '@/stores/useUserStore';
 import { OrderStatus } from '@/types';
 
 export function CourierOrderDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { orders, updateOrderStatus } = useOrderStore();
+  const { user } = useUserStore();
   const [isUpdating, setIsUpdating] = useState(false);
 
   const order = useMemo(() => orders.find(o => o.id === Number(id)), [orders, id]);
@@ -60,7 +62,7 @@ export function CourierOrderDetail() {
     // Simulate API call delay
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    updateOrderStatus(order.id, nextStatus);
+    updateOrderStatus(order.id, nextStatus, user?.id || 0, user?.name || 'Courier');
     setIsUpdating(false);
 
     if (nextStatus === 'delivered') {
@@ -223,13 +225,13 @@ export function CourierOrderDetail() {
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-500">Order Fee</span>
               <span className="font-semibold text-gray-900">
-                Rp {order.total_fee?.toLocaleString()}
+                Rp {(order.total_fee || 0).toLocaleString('id-ID')}
               </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-500">Your Earnings (80%)</span>
               <span className="font-semibold text-green-600">
-                Rp {((order.total_fee || 0) * 0.8).toLocaleString()}
+                Rp {((order.total_fee || 0) * 0.8).toLocaleString('id-ID')}
               </span>
             </div>
             <div className="flex items-center justify-between">
@@ -297,7 +299,7 @@ export function CourierOrderDetail() {
             <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-2" />
             <p className="font-semibold text-green-800">Order Delivered!</p>
             <p className="text-sm text-green-600 mt-1">
-              Great job! You earned Rp {((order.total_fee || 0) * 0.8).toLocaleString()}
+              Great job! You earned Rp {((order.total_fee || 0) * 0.8).toLocaleString('id-ID')}
             </p>
           </div>
         )}

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Eye, ToggleLeft, ToggleRight, TrendingUp, Package, DollarSign, Clock, Phone, Mail, Award } from 'lucide-react';
+import { Plus, Eye, ToggleLeft, ToggleRight, TrendingUp, Package, DollarSign, Phone, Mail, Award } from 'lucide-react';
 import { format } from 'date-fns';
 import { Header } from '@/components/layout/Header';
 import { Card, StatCard } from '@/components/ui/Card';
@@ -23,7 +23,7 @@ import { useOrderStore } from '@/stores/useOrderStore';
 import type { Courier } from '@/types';
 
 export function Couriers() {
-  const { couriers, addCourier, updateCourierStatus, suspendCourier } = useCourierStore();
+  const { couriers, addCourier, suspendCourier } = useCourierStore();
   const { getOrdersByCourier } = useOrderStore(); // To calculate real-time stats
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -48,6 +48,7 @@ export function Couriers() {
       id: Date.now(),
       name: newCourier.name,
       email: newCourier.email,
+      password: newCourier.password,
       role: 'courier',
       phone: newCourier.phone,
       is_active: true,

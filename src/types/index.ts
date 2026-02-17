@@ -4,6 +4,7 @@ export interface User {
   name: string;
   email: string;
   role: 'admin' | 'courier';
+  password?: string;
   phone?: string;
   is_active: boolean;
   is_online?: boolean;

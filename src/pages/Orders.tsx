@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Download, Search, User, MapPin, Phone, DollarSign, Calendar, Truck, XCircle, CheckCircle } from 'lucide-react';
+import { Plus, Download, Search, User, MapPin, Truck } from 'lucide-react';
 import { format } from 'date-fns';
 import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/Card';
@@ -36,7 +36,7 @@ const statusOptions = [
 ];
 
 export function Orders() {
-  const { orders, addOrder, updateOrderStatus, assignCourier, cancelOrder, generateOrderId } = useOrderStore();
+  const { orders, addOrder, assignCourier, cancelOrder, generateOrderId } = useOrderStore();
   const { getAvailableCouriers, rotateQueue } = useCourierStore();
   const { user } = useUserStore(); // Current admin user
 
@@ -93,6 +93,7 @@ export function Orders() {
       id: Date.now(),
       order_number: generateOrderId(),
       ...newOrder,
+      total_fee: newOrder.total_fee || 15000,
       status: 'pending',
       payment_status: 'unpaid',
       created_at: new Date().toISOString(),
@@ -219,7 +220,7 @@ export function Orders() {
                   <TableRow
                     key={order.id}
                     className="cursor-pointer hover:bg-gray-50 transition-colors"
-                    onClick={() => setSelectedOrder(order) || setIsDetailModalOpen(true)}
+                    onClick={() => { setSelectedOrder(order); setIsDetailModalOpen(true); }}
                   >
                     <TableCell className="font-medium text-indigo-600">{order.order_number}</TableCell>
                     <TableCell>
@@ -244,7 +245,7 @@ export function Orders() {
         {/* Mobile List Info */}
         <div className="lg:hidden space-y-3">
           {filteredOrders.map(order => (
-            <Card key={order.id} padding="sm" onClick={() => setSelectedOrder(order) || setIsDetailModalOpen(true)}>
+            <Card key={order.id} padding="sm" onClick={() => { setSelectedOrder(order); setIsDetailModalOpen(true); }}>
               <div className="flex justify-between items-start mb-2">
                 <div>
                   <p className="font-bold text-indigo-600">{order.order_number}</p>
@@ -269,6 +270,12 @@ export function Orders() {
           <Textarea label="Address" value={newOrder.customer_address} onChange={e => setNewOrder({ ...newOrder, customer_address: e.target.value })} />
           <div className="grid grid-cols-2 gap-4">
             <Input label="Fee (IDR)" type="number" value={newOrder.total_fee} onChange={e => setNewOrder({ ...newOrder, total_fee: Number(e.target.value) })} />
+            <Input
+              label="Estimated Delivery Time"
+              type="datetime-local"
+              value={newOrder.estimated_delivery_time}
+              onChange={e => setNewOrder({ ...newOrder, estimated_delivery_time: e.target.value })}
+            />
           </div>
           <div className="flex justify-end gap-2 pt-4">
             <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>Cancel</Button>
@@ -287,7 +294,7 @@ export function Orders() {
                 <h3 className="text-xl font-bold text-gray-900">{selectedOrder.order_number}</h3>
                 <p className="text-sm text-gray-500">Created {format(new Date(selectedOrder.created_at), 'PPp')}</p>
               </div>
-              <Badge variant={getStatusBadgeVariant(selectedOrder.status)} size="lg">{getStatusLabel(selectedOrder.status)}</Badge>
+              <Badge variant={getStatusBadgeVariant(selectedOrder.status)} size="md">{getStatusLabel(selectedOrder.status)}</Badge>
             </div>
 
             {/* Customer Info */}
