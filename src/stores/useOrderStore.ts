@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Order, OrderStatus, OrderStatusHistory } from '@/types';
 import { useNotificationStore } from './useNotificationStore';
+import { sendMockNotification } from '@/utils/notification';
 
 interface OrderState {
     orders: Order[];
@@ -74,7 +75,16 @@ export const useOrderStore = create<OrderState>()(
                 // Logic to maybe fetch or re-validate if needed
             },
 
-            addOrder: (order) => set((state) => ({ orders: [order, ...state.orders] })),
+            addOrder: (order) => {
+                set((state) => ({ orders: [order, ...state.orders] }));
+
+                // Simulate PWA Push Notification for "Wow" factor
+                sendMockNotification(
+                    'Order Baru Masuk!',
+                    `Order ${order.order_number} sebesar Rp ${order.total_fee.toLocaleString('id-ID')} menunggumu!`,
+                    { orderId: order.id }
+                );
+            },
 
             updateOrderStatus: (orderId, status, userId, userName, notes) =>
                 set((state) => {

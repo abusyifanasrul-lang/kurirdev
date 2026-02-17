@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Plus, Download, Search, User, MapPin, Truck } from 'lucide-react';
+import { Plus, Download, Search, User, MapPin, Truck, Bell } from 'lucide-react';
 import { format } from 'date-fns';
+import { requestNotificationPermission, sendMockNotification } from '@/utils/notification';
 import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -189,6 +190,14 @@ export function Orders() {
         subtitle={`${filteredOrders.length} records found`}
         actions={
           <div className="flex gap-2">
+            <Button variant="outline" leftIcon={<Bell className="h-4 w-4" />} onClick={async () => {
+              const granted = await requestNotificationPermission();
+              if (granted) {
+                sendMockNotification('Test Notification', 'This is a test notification with sound and vibration!', { orderId: 123 });
+              }
+            }}>
+              Test Notify
+            </Button>
             <Button variant="outline" leftIcon={<Download className="h-4 w-4" />} onClick={handleExportCSV}>
               Export CSV
             </Button>

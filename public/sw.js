@@ -1,105 +1,62 @@
-// DeliveryPro Service Worker
-const CACHE_NAME = 'deliverypro-v1';
-const urlsToCache = [
-  '/',
-  '/index.html',
-  '/manifest.json'
-];
-
-// Install event
+// public/sw.js
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('Opened cache');
-        return cache.addAll(urlsToCache);
-      })
-  );
   self.skipWaiting();
 });
 
-// Fetch event
-self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Return cached version or fetch from network
-        if (response) {
-          return response;
-        }
-        return fetch(event.request)
-          .then((response) => {
-            // Don't cache non-successful responses
-            if (!response || response.status !== 200 || response.type !== 'basic') {
-              return response;
-            }
-            
-            // Clone the response
-            const responseToCache = response.clone();
-            
-            caches.open(CACHE_NAME)
-              .then((cache) => {
-                cache.put(event.request, responseToCache);
-              });
-            
-            return response;
-          })
-          .catch(() => {
-            // Return offline fallback for navigation requests
-            if (event.request.mode === 'navigate') {
-              return caches.match('/');
-            }
-          });
-      })
-  );
-});
-
-// Activate event
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            console.log('Deleting old cache:', cacheName);
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
-  );
-  self.clients.claim();
+  event.waitUntil(self.clients.claim());
 });
 
-// Push notification event
 self.addEventListener('push', (event) => {
+  const data = event.data ? event.data.json() : {};
+  const title = data.title || 'KurirDev';
   const options = {
-    body: event.data ? event.data.text() : 'New notification',
-    icon: '/icons/icon-192.png',
-    badge: '/icons/icon-72.png',
-    vibrate: [100, 50, 100],
+    body: data.body || 'Ada orderan baru! Segera ambil sebelum diambil kurir lain.',
+    icon: '/icons/icon-192.png', // Ensure this exists or use a default
+    badge: '/icons/icon-96.png', // Monochrome badge if available
+    vibrate: [500, 110, 500, 110, 450, 110, 200, 110, 170, 40, 450],
     data: {
-      dateOfArrival: Date.now(),
-      primaryKey: 1
+      url: data.url || '/',
+      orderId: data.orderId
     },
     actions: [
-      { action: 'view', title: 'View' },
-      { action: 'close', title: 'Close' }
+      {
+        action: 'view-detail',
+        title: 'LIHAT DETAIL'
+      }
     ]
   };
 
-  event.waitUntil(
-    self.registration.showNotification('DeliveryPro', options)
-  );
+  // Notify clients for foreground audio/effects
+  self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
+    clients.forEach(client => {
+      client.postMessage({
+        type: 'PUSH_NOTIFICATION',
+        payload: data
+      });
+    });
+  });
+
+  event.waitUntil(self.registration.showNotification(title, options));
 });
 
-// Notification click event
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
-  if (event.action === 'view') {
-    event.waitUntil(
-      clients.openWindow('/')
-    );
-  }
+  const urlToOpen = event.notification.data.url;
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // If a window is already open, focus it and navigate
+      for (constclient of clientList) {
+        if (client.url === urlToOpen && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // Otherwise open a new window
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
+    })
+  );
 });
