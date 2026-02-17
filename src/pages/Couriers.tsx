@@ -337,10 +337,10 @@ export function Couriers() {
             <div>
               <h4 className="font-semibold mb-3">Recent Delivery History</h4>
               <div className="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-2">
-                {selectedCourierStats.recent_orders.length === 0 ? (
+                {selectedCourierStats.recent_orders?.length === 0 ? (
                   <p className="text-center text-gray-400 py-4 text-sm">No delivery history yet.</p>
                 ) : (
-                  selectedCourierStats.recent_orders.map((order) => (
+                  selectedCourierStats.recent_orders?.map((order) => (
                     <div key={order.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded border-b last:border-0 border-gray-100">
                       <div>
                         <p className="font-medium text-sm text-indigo-600">{order.order_number}</p>
