@@ -46,14 +46,16 @@ export function Login() {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // 1. Find user by email and role (case-insensitive)
       const foundUser = users.find(u =>
-        u.email.toLowerCase() === email.toLowerCase() &&
+        u.email.toLowerCase().trim() === email.toLowerCase().trim() &&
         u.role === selectedRole
       );
 
-      // 2. Validate (Mock Password check: accept any >= 6 chars for demo)
-      const isValidPassword = password.length >= 6;
+      // 2. Validate Password
+      // Check against stored password if available, otherwise fallback to demo rule (>= 6 chars)
+      const isValidPassword = foundUser && foundUser.password
+        ? foundUser.password === password
+        : password.length >= 6;
 
       if (foundUser && isValidPassword) {
         // Store auth data using the Store action

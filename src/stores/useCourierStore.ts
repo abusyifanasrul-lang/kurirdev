@@ -83,28 +83,30 @@ export const useCourierStore = create<CourierState>()(
                 }
             },
 
-            addCourier: (courier) =>
-                set((state) => {
-                    // Sync with UserStore
-                    useUserStore.getState().addUser({
-                        id: courier.id,
-                        name: courier.name,
-                        email: courier.email,
-                        password: courier.password,
-                        role: 'courier',
-                        phone: courier.phone,
-                        is_active: true,
-                        created_at: courier.created_at,
-                        updated_at: courier.updated_at,
-                    });
+            addCourier: (courier) => {
+                // Sync with UserStore (Side Effect outside set)
+                useUserStore.getState().addUser({
+                    id: courier.id,
+                    name: courier.name,
+                    email: courier.email,
+                    password: courier.password,
+                    role: 'courier',
+                    phone: courier.phone,
+                    is_active: true,
+                    created_at: courier.created_at,
+                    updated_at: courier.updated_at,
+                });
 
-                    return {
-                        couriers: [...state.couriers, courier],
-                        queue: [...state.queue, courier],
-                    };
-                }),
+                set((state) => ({
+                    couriers: [...state.couriers, courier],
+                    queue: [...state.queue, courier],
+                }));
+            },
 
-            updateCourierStatus: (id, status) =>
+            updateCourierStatus: (id, status) => {
+                // Sync with UserStore
+                useUserStore.getState().updateUser(id, status);
+
                 set((state) => {
                     const updatedCouriers = state.couriers.map((c) => (c.id === id ? { ...c, ...status } : c));
 
@@ -119,21 +121,20 @@ export const useCourierStore = create<CourierState>()(
                         }
                     }
 
-                    // Sync with UserStore
-                    useUserStore.getState().updateUser(id, status);
-
                     return { couriers: updatedCouriers, queue: updatedQueue };
-                }),
+                });
+            },
 
-            suspendCourier: (id, isSuspended) =>
+            suspendCourier: (id, isSuspended) => {
+                // Sync with UserStore
+                useUserStore.getState().updateUser(id, { is_active: !isSuspended });
+
                 set((state) => {
-                    // Sync with UserStore
-                    useUserStore.getState().updateUser(id, { is_active: !isSuspended });
-
                     return {
                         couriers: state.couriers.map((c) => (c.id === id ? { ...c, is_active: !isSuspended } : c)),
                     };
-                }),
+                });
+            },
 
             rotateQueue: (courierId) =>
                 set((state) => {
