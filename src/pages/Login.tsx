@@ -25,7 +25,7 @@ export function Login() {
       setEmail('admin@delivery.com');
       setPassword('admin123');
     } else if (role === 'courier') {
-      setEmail('ahmad@delivery.com');
+      setEmail('siti@courier.com');
       setPassword('courier123');
     }
   };
@@ -46,14 +46,14 @@ export function Login() {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // 1. Find user by email and role
-      const foundUser = users.find(u => u.email === email && u.role === selectedRole);
+      // 1. Find user by email and role (case-insensitive)
+      const foundUser = users.find(u =>
+        u.email.toLowerCase() === email.toLowerCase() &&
+        u.role === selectedRole
+      );
 
-      // 2. Validate (Mock Password check: accept any for demo, or specific string)
-      // For this demo, we'll accept the hardcoded ones OR if the user exists and password is '12345678'
-      // To strictly follow the "siti@courier.com" request, we just need the user to exist.
-      // Let's enforce a simple password check for security simulation.
-      const isValidPassword = password.length >= 6; // Simple check
+      // 2. Validate (Mock Password check: accept any >= 6 chars for demo)
+      const isValidPassword = password.length >= 6;
 
       if (foundUser && isValidPassword) {
         // Store auth data using the Store action
@@ -69,7 +69,11 @@ export function Login() {
           navigate('/courier');
         }
       } else {
-        setError('Invalid email or password (try password "12345678")');
+        if (!foundUser) {
+          setError(`User with this email not found as ${selectedRole}.`);
+        } else {
+          setError('Invalid password (must be at least 6 characters for demo).');
+        }
       }
     } catch (err) {
       console.error(err);
@@ -167,7 +171,7 @@ export function Login() {
                   </div>
                   <div className="text-center">
                     <p className="font-medium text-gray-700">Courier</p>
-                    <p className="text-gray-500">ahmad@delivery.com</p>
+                    <p className="text-gray-500">siti@courier.com</p>
                     <p className="text-gray-500">courier123</p>
                   </div>
                 </div>

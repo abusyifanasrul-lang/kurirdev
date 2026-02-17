@@ -6,7 +6,7 @@ import { Card, StatCard } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
-import { Badge } from '@/components/ui/Badge';
+import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
 import {
   Table,
   TableHead,
