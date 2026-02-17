@@ -92,7 +92,17 @@ export const useCourierStore = create<CourierState>()(
             updateCourierStatus: (id, status) =>
                 set((state) => {
                     const updatedCouriers = state.couriers.map((c) => (c.id === id ? { ...c, ...status } : c));
-                    const updatedQueue = state.queue.map(c => (c.id === id ? { ...c, ...status } : c));
+
+                    let updatedQueue = state.queue.map(c => (c.id === id ? { ...c, ...status } : c));
+
+                    // If turning Online, move to back of queue
+                    if (status.is_online === true) {
+                        const courierInQueue = updatedQueue.find(c => c.id === id);
+                        if (courierInQueue) {
+                            updatedQueue = updatedQueue.filter(c => c.id !== id);
+                            updatedQueue.push(courierInQueue);
+                        }
+                    }
 
                     // Sync with UserStore (Optional but good practice)
                     // useUserStore.getState().updateUser(id, status); 

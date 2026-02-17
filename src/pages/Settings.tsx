@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { User, Lock, Users, Plus, Trash2, CheckCircle, AlertCircle, Shield } from 'lucide-react';
+import { User, Lock, Users, Plus, Trash2, CheckCircle, AlertCircle, Shield, Edit2 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -33,7 +33,11 @@ export function Settings() {
 
   // User management state
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
+  const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false);
+  const [selectedUserToEdit, setSelectedUserToEdit] = useState<UserType | null>(null);
+
   const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'admin', phone: '' });
+  const [editUserForm, setEditUserForm] = useState({ name: '', email: '', phone: '', password: '' });
 
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -90,6 +94,40 @@ export function Settings() {
     showMessage('success', 'User added successfully!');
   };
 
+  const openEditModal = (u: UserType) => {
+    setSelectedUserToEdit(u);
+    setEditUserForm({
+      name: u.name,
+      email: u.email,
+      phone: u.phone,
+      password: '' // Default empty, only update if filled
+    });
+    setIsEditUserModalOpen(true);
+  };
+
+  const handleSaveEditUser = () => {
+    if (!selectedUserToEdit) return;
+
+    const updates: Partial<UserType> & { password?: string } = {
+      name: editUserForm.name,
+      email: editUserForm.email,
+      phone: editUserForm.phone
+    };
+
+    if (editUserForm.password) {
+      // Logic to update password would technically be separate or handled here
+      // For now we just pretend to update it in the User object, 
+      // though typically password isn't stored in plain text.
+      // The mock store doesn't check password anyway, so this is symbolic.
+      updates.password = editUserForm.password;
+    }
+
+    updateUser(selectedUserToEdit.id, updates);
+    setIsEditUserModalOpen(false);
+    setSelectedUserToEdit(null);
+    showMessage('success', 'User updated successfully!');
+  };
+
   const handleRemoveUser = (userId: number) => {
     if (userId === user?.id) {
       showMessage('error', 'You cannot remove yourself!');
@@ -121,8 +159,8 @@ export function Settings() {
           {message && (
             <div
               className={`mb-6 p-4 rounded-lg flex items-center gap-3 ${message.type === 'success'
-                  ? 'bg-green-50 border border-green-200 text-green-700'
-                  : 'bg-red-50 border border-red-200 text-red-700'
+                ? 'bg-green-50 border border-green-200 text-green-700'
+                : 'bg-red-50 border border-red-200 text-red-700'
                 }`}
             >
               {message.type === 'success' ? (
@@ -141,8 +179,8 @@ export function Settings() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === tab.id
-                    ? 'border-indigo-600 text-indigo-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                  ? 'border-indigo-600 text-indigo-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
                   }`}
               >
                 <tab.icon className="h-4 w-4" />
@@ -250,7 +288,8 @@ export function Settings() {
                 {users.map((u) => (
                   <div
                     key={u.id}
-                    className="flex flex-col sm:flex-row items-center justify-between p-4 bg-gray-50 rounded-lg gap-4"
+                    className="flex flex-col sm:flex-row items-center justify-between p-4 bg-gray-50 rounded-lg gap-4 hover:bg-gray-100 transition-colors cursor-pointer"
+                    onClick={() => openEditModal(u)}
                   >
                     <div className="flex items-center gap-4 w-full sm:w-auto">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center font-medium ${u.role === 'admin' ? 'bg-indigo-100 text-indigo-600' : 'bg-orange-100 text-orange-600'
@@ -271,10 +310,19 @@ export function Settings() {
                         {u.role.replace('_', ' ')}
                       </Badge>
 
+                      {/* Edit Button (Visible) */}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); openEditModal(u); }}
+                        className="p-2 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                        title="Edit User"
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </button>
+
                       {/* Delete Action - RBAC Protected */}
                       {user?.id === 1 && u.id !== 1 && u.id !== user.id && (
                         <button
-                          onClick={() => handleRemoveUser(u.id)}
+                          onClick={(e) => { e.stopPropagation(); handleRemoveUser(u.id); }}
                           className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                           title="Remove User"
                         >
@@ -344,6 +392,51 @@ export function Settings() {
               disabled={!newUser.name || !newUser.email || !newUser.password}
             >
               Add User
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit User Modal */}
+      <Modal
+        isOpen={isEditUserModalOpen}
+        onClose={() => setIsEditUserModalOpen(false)}
+        title={`Edit User: ${selectedUserToEdit?.name}`}
+      >
+        <div className="space-y-4">
+          <Input
+            label="Full Name"
+            value={editUserForm.name}
+            onChange={(e) => setEditUserForm({ ...editUserForm, name: e.target.value })}
+          />
+          <Input
+            label="Email Address"
+            type="email"
+            value={editUserForm.email}
+            onChange={(e) => setEditUserForm({ ...editUserForm, email: e.target.value })}
+          />
+          <Input
+            label="Phone"
+            value={editUserForm.phone}
+            onChange={(e) => setEditUserForm({ ...editUserForm, phone: e.target.value })}
+          />
+          <div className="pt-2 border-t mt-2">
+            <h4 className="text-sm font-medium text-gray-900 mb-2">Reset Password</h4>
+            <Input
+              label="New Password"
+              type="password"
+              placeholder="Leave blank to keep current"
+              value={editUserForm.password}
+              onChange={(e) => setEditUserForm({ ...editUserForm, password: e.target.value })}
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button variant="outline" onClick={() => setIsEditUserModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveEditUser}>
+              Save Changes
             </Button>
           </div>
         </div>

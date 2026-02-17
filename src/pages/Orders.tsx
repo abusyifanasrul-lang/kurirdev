@@ -321,7 +321,7 @@ export function Orders() {
                       onChange={e => setAssignCourierId(e.target.value)}
                       options={availableCouriers.map(c => ({
                         value: c.id,
-                        label: `${c.name} (${c.status})` // Could add queue position if relevant
+                        label: `${c.name} (${c.is_online ? 'Online' : 'Offline'})` // Queue position implicit by order
                       }))}
                     />
                     <Button disabled={!assignCourierId} onClick={handleAssign}>Assign</Button>

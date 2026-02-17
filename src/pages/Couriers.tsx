@@ -65,24 +65,20 @@ export function Couriers() {
   };
 
   const handleToggleSuspend = (courier: Courier) => {
-    suspendCourier(courier.id, !courier.is_active); // Toggle logic in store might differ, but assuming "suspend" means set is_active=false
-    // If suspendCourier expects "isSuspended", pass !courier.is_active (if active, we suspend)
-    // Actually store `suspendCourier(id, isSuspended)` -> so if currently active, `isSuspended` = true.
-    // Wait, let's verify store logic. In store: `suspendCourier: (id, isSuspended) => set ... is_active: !isSuspended`
-    // So if isSuspended=true, is_active becomes false. Correct.
-
-    // HOWEVER, to keep it simple, let's just use `updateCourierStatus` or `suspendCourier` carefully.
-    // Let's rely on `suspendCourier(id, true)` to Suspend (deactivate), and `suspendCourier(id, false)` to Activate.
-    const shouldSuspend = courier.is_active; // If active, we want to suspend (true)
+    // If currently active (is_active=true), we want to suspend (isSuspended=true)
+    const shouldSuspend = courier.is_active;
     suspendCourier(courier.id, shouldSuspend);
   };
 
   const getCourierStats = (courierId: number) => {
-    const courierOrders = getOrdersByCourier(courierId);
-    const completed = courierOrders.filter(o => o.status === 'delivered');
-    const earnings = completed.reduce((sum, o) => sum + o.total_fee, 0);
+    // Safety check for getOrdersByCourier
+    if (!getOrdersByCourier) return null;
 
-    // Calculate avg delivery time (mock logic for now as we don't track exact durations in Order type yet)
+    const courierOrders = getOrdersByCourier(courierId) || [];
+    const completed = courierOrders.filter(o => o.status === 'delivered');
+    const earnings = completed.reduce((sum, o) => sum + (o.total_fee || 0), 0);
+
+    // Calculate avg delivery time (mock logic for now)
     const avgTime = completed.length > 0 ? Math.floor(Math.random() * 20) + 15 : 0;
 
     return {
@@ -95,8 +91,20 @@ export function Couriers() {
   };
 
   const selectedCourierStats = useMemo(() => {
-    return selectedCourier ? getCourierStats(selectedCourier.id) : null;
-  }, [selectedCourier, couriers, getOrdersByCourier]); // Dependency on couriers needed if orders change
+    if (!selectedCourier) return null;
+    try {
+      return getCourierStats(selectedCourier.id);
+    } catch (error) {
+      console.error("Error calculating stats:", error);
+      return {
+        total_orders: 0,
+        completed_orders: 0,
+        total_earnings: 0,
+        average_delivery_time: 0,
+        recent_orders: []
+      };
+    }
+  }, [selectedCourier, couriers, getOrdersByCourier]);
 
 
   const formatCurrency = (value: number) => {
@@ -263,7 +271,7 @@ export function Couriers() {
         title={selectedCourier ? `Courier Details: ${selectedCourier.name}` : 'Details'}
         size="lg"
       >
-        {selectedCourier && selectedCourierStats && (
+        {selectedCourier && selectedCourierStats ? (
           <div className="space-y-6">
 
             {/* Header / Actions */}
@@ -292,7 +300,7 @@ export function Couriers() {
                   </Button>
                 ) : (
                   <Button
-                    variant="primary" // Re-using primary for positive action
+                    variant="primary" // Re-using primary for positive action (custom styling below)
                     className="bg-green-600 hover:bg-green-700 text-white"
                     size="sm"
                     leftIcon={<ToggleLeft className="w-4 h-4" />}
@@ -340,7 +348,7 @@ export function Couriers() {
                       </div>
                       <div className="text-right">
                         <Badge variant={getStatusBadgeVariant(order.status)} size="sm">{getStatusLabel(order.status)}</Badge>
-                        <p className="text-xs font-medium mt-1">{formatCurrency(order.total_fee)}</p>
+                        <p className="text-xs font-medium mt-1">{formatCurrency(order.total_fee || 0)}</p>
                       </div>
                     </div>
                   ))
@@ -353,6 +361,11 @@ export function Couriers() {
                 Close
               </Button>
             </div>
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <p>Loading details...</p>
+            {/* Fallback if stats fail to load, though we have try-catch now */}
           </div>
         )}
       </Modal>

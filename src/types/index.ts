@@ -65,6 +65,7 @@ export interface CreateOrderPayload {
 
 // Courier types
 export interface Courier extends User {
+  vehicle_type?: 'motorcycle' | 'car' | 'bicycle' | 'van'; // Added vehicle_type
   active_orders_count?: number;
   total_completed?: number;
   total_earnings?: number;
@@ -73,6 +74,7 @@ export interface Courier extends User {
 export interface CourierPerformance {
   total_orders: number;
   completed_orders: number;
+  total_deliveries?: number; // Added for compatibility if needed
   cancelled_orders: number;
   total_earnings: number;
   average_delivery_time?: number;

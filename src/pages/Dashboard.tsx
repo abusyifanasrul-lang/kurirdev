@@ -250,10 +250,10 @@ export function Dashboard() {
                 <Badge variant="info">FIFO</Badge>
               </div>
               <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
-                {queue.length === 0 ? (
-                  <p className="text-sm text-gray-500 text-center py-4">No couriers in queue</p>
+                {queue.filter(c => c.is_active && c.is_online).length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center py-4">No online couriers in queue</p>
                 ) : (
-                  queue.map((courier, index) => (
+                  queue.filter(c => c.is_active && c.is_online).map((courier, index) => (
                     <div key={courier.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
                       <div className="flex items-center gap-3">
                         <div className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 font-bold text-xs">
