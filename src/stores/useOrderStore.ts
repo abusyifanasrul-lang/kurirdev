@@ -12,6 +12,7 @@ interface OrderState {
     updateOrderStatus: (orderId: number, status: OrderStatus, userId: number, userName: string, notes?: string) => void;
     assignCourier: (orderId: number, courierId: number, courierName: string, userId: number, userName: string) => void;
     cancelOrder: (orderId: number, reason: string, userId: number, userName: string) => void;
+    updateOrder: (orderId: number, updates: Partial<Order>) => void;
 
     // Helpers
     generateOrderId: () => string;
@@ -122,6 +123,12 @@ export const useOrderStore = create<OrderState>()(
                     orders: state.orders.map(o => o.id === orderId ? { ...o, cancellation_reason: reason } : o)
                 }));
             },
+
+            updateOrder: (orderId, updates) => set((state) => ({
+                orders: state.orders.map((o) =>
+                    o.id === orderId ? { ...o, ...updates, updated_at: new Date().toISOString() } : o
+                ),
+            })),
 
             generateOrderId: () => {
                 const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');

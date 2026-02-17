@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Plus, Download, Search, User, MapPin, Truck } from 'lucide-react';
 import { format } from 'date-fns';
 import { Header } from '@/components/layout/Header';
@@ -36,7 +36,7 @@ const statusOptions = [
 ];
 
 export function Orders() {
-  const { orders, addOrder, assignCourier, cancelOrder, generateOrderId } = useOrderStore();
+  const { orders, addOrder, assignCourier, cancelOrder, generateOrderId, updateOrder } = useOrderStore();
   const { getAvailableCouriers, rotateQueue } = useCourierStore();
   const { user } = useUserStore(); // Current admin user
 
@@ -60,6 +60,15 @@ export function Orders() {
     total_fee: 15000,
     estimated_delivery_time: '',
   });
+
+  // Edit Form State
+  const [editForm, setEditForm] = useState({
+    customer_name: '',
+    customer_phone: '',
+    customer_address: '',
+    total_fee: 0,
+  });
+
   const [cancelReason, setCancelReason] = useState('');
 
   // Derived State
@@ -86,6 +95,18 @@ export function Orders() {
   }, [orders, searchQuery, statusFilter, dateFilter]);
 
   const availableCouriers = useMemo(() => getAvailableCouriers(), [getAvailableCouriers]);
+
+  // Sync edit form when order selected
+  useEffect(() => {
+    if (selectedOrder) {
+      setEditForm({
+        customer_name: selectedOrder.customer_name,
+        customer_phone: selectedOrder.customer_phone,
+        customer_address: selectedOrder.customer_address,
+        total_fee: selectedOrder.total_fee,
+      });
+    }
+  }, [selectedOrder]);
 
   // Handlers
   const handleCreateOrder = () => {
@@ -130,6 +151,12 @@ export function Orders() {
     setIsCancelModalOpen(false);
     setIsDetailModalOpen(false);
     setCancelReason('');
+  };
+
+  const handleSaveChanges = () => {
+    if (!selectedOrder) return;
+    updateOrder(selectedOrder.id, editForm);
+    setSelectedOrder({ ...selectedOrder, ...editForm });
   };
 
   const handleExportCSV = () => {
@@ -308,18 +335,63 @@ export function Orders() {
 
             {/* Customer Info */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-3">
-                <h4 className="font-semibold flex items-center gap-2"><User className="w-4 h-4" /> Customer</h4>
-                <div className="pl-6 text-sm space-y-1">
-                  <p><span className="text-gray-500 block">Name:</span> {selectedOrder.customer_name}</p>
-                  <p><span className="text-gray-500 block">Phone:</span> {selectedOrder.customer_phone}</p>
+              <div className="space-y-4">
+                <div className="space-y-3">
+                  <h4 className="font-semibold flex items-center gap-2"><User className="w-4 h-4" /> Customer</h4>
+                  {selectedOrder.status === 'pending' ? (
+                    <div className="space-y-2">
+                      <Input
+                        label="Name"
+                        value={editForm.customer_name}
+                        onChange={e => setEditForm(prev => ({ ...prev, customer_name: e.target.value }))}
+                      />
+                      <Input
+                        label="Phone"
+                        value={editForm.customer_phone}
+                        onChange={e => setEditForm(prev => ({ ...prev, customer_phone: e.target.value }))}
+                      />
+                    </div>
+                  ) : (
+                    <div className="pl-6 text-sm space-y-1">
+                      <p><span className="text-gray-500 block">Name:</span> {selectedOrder.customer_name}</p>
+                      <p><span className="text-gray-500 block">Phone:</span> {selectedOrder.customer_phone}</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="font-semibold flex items-center gap-2 text-sm text-gray-700">Payment</h4>
+                  {selectedOrder.status === 'pending' ? (
+                    <Input
+                      label="Total Fee"
+                      value={editForm.total_fee ? `Rp ${editForm.total_fee.toLocaleString('id-ID')}` : ''}
+                      onChange={e => {
+                        const val = Number(e.target.value.replace(/[^0-9]/g, ''));
+                        setEditForm(prev => ({ ...prev, total_fee: val }));
+                      }}
+                    />
+                  ) : (
+                    <div className="pl-6 text-sm">
+                      <p><span className="text-gray-500 block">Total Fee:</span> {formatCurrency(selectedOrder.total_fee)}</p>
+                    </div>
+                  )}
                 </div>
               </div>
+
               <div className="space-y-3">
                 <h4 className="font-semibold flex items-center gap-2"><MapPin className="w-4 h-4" /> Delivery</h4>
-                <div className="pl-6 text-sm space-y-1">
-                  <p className="whitespace-pre-wrap">{selectedOrder.customer_address}</p>
-                </div>
+                {selectedOrder.status === 'pending' ? (
+                  <Textarea
+                    label="Address"
+                    value={editForm.customer_address}
+                    onChange={e => setEditForm(prev => ({ ...prev, customer_address: e.target.value }))}
+                    rows={4}
+                  />
+                ) : (
+                  <div className="pl-6 text-sm space-y-1">
+                    <p className="whitespace-pre-wrap">{selectedOrder.customer_address}</p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -366,7 +438,9 @@ export function Orders() {
               </Button>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setIsDetailModalOpen(false)}>Close</Button>
-                {/* Could add 'Save Changes' here if we allowed editing address etc */}
+                {selectedOrder.status === 'pending' && (
+                  <Button onClick={handleSaveChanges}>Save Changes</Button>
+                )}
               </div>
             </div>
           </div>
