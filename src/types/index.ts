@@ -65,7 +65,8 @@ export interface CreateOrderPayload {
 
 // Courier types
 export interface Courier extends User {
-  vehicle_type?: 'motorcycle' | 'car' | 'bicycle' | 'van'; // Added vehicle_type
+  vehicle_type?: 'motorcycle' | 'car' | 'bicycle' | 'van';
+  plate_number?: string;
   active_orders_count?: number;
   total_completed?: number;
   total_earnings?: number;

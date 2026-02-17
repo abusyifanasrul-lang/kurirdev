@@ -1,59 +1,47 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Package, DollarSign, CheckCircle, Clock, Wifi, WifiOff, ChevronRight } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, isToday } from 'date-fns';
 import { cn } from '@/utils/cn';
 import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
+import { useOrderStore } from '@/stores/useOrderStore';
+import { useCourierStore } from '@/stores/useCourierStore';
+import { useUserStore } from '@/stores/useUserStore';
+import { Order } from '@/types';
 
-interface CourierOrder {
-  id: number;
-  order_number: string;
-  customer_name: string;
-  customer_phone: string;
-  customer_address: string;
-  status: 'assigned' | 'picked_up' | 'in_transit';
-  total_fee: number;
-  created_at: string;
-}
+// Removed unused CourierOrder interface as we use global Order type
 
 export function CourierDashboard() {
   const navigate = useNavigate();
-  const [isOnline, setIsOnline] = useState(true);
+  const { user } = useUserStore();
+  const { orders } = useOrderStore();
+  const { couriers, updateCourierStatus } = useCourierStore();
+
+  // Find this courier's data for online status
+  const courierData = couriers.find(c => c.id === user?.id);
+  const isOnline = courierData?.is_online ?? false;
+
   const [isConnected, setIsConnected] = useState(true);
-  const [todayEarnings] = useState(51200);
-  const [completedToday] = useState(8);
-  const [activeOrders] = useState<CourierOrder[]>([
-    {
-      id: 1,
-      order_number: 'ORD-20240215-0001',
-      customer_name: 'John Doe',
-      customer_phone: '+62812345678',
-      customer_address: 'Jl. Sudirman No. 123, Jakarta Selatan',
-      status: 'assigned',
-      total_fee: 8000,
-      created_at: new Date().toISOString(),
-    },
-    {
-      id: 2,
-      order_number: 'ORD-20240215-0002',
-      customer_name: 'Jane Smith',
-      customer_phone: '+62898765432',
-      customer_address: 'Jl. Gatot Subroto No. 45, Jakarta Pusat',
-      status: 'picked_up',
-      total_fee: 8000,
-      created_at: new Date().toISOString(),
-    },
-    {
-      id: 3,
-      order_number: 'ORD-20240215-0003',
-      customer_name: 'Bob Wilson',
-      customer_phone: '+62811223344',
-      customer_address: 'Jl. Kemang Raya No. 78, Jakarta Selatan',
-      status: 'in_transit',
-      total_fee: 8000,
-      created_at: new Date().toISOString(),
-    },
-  ]);
+
+  // Derived Stats
+  const myOrders = useMemo(() => orders.filter((o: Order) => o.courier_id === user?.id), [orders, user?.id]);
+
+  const activeOrders = useMemo(() =>
+    myOrders.filter((o: Order) => ['assigned', 'picked_up', 'in_transit'].includes(o.status)),
+    [myOrders]
+  );
+
+  const completedToday = useMemo(() =>
+    myOrders.filter((o: Order) => o.status === 'delivered' && isToday(new Date(o.created_at))).length,
+    [myOrders]
+  );
+
+  const todayEarnings = useMemo(() =>
+    myOrders
+      .filter((o: Order) => o.status === 'delivered' && isToday(new Date(o.created_at)))
+      .reduce((sum: number, o: Order) => sum + (o.total_fee || 0), 0),
+    [myOrders]
+  );
 
   // Polling simulation
   useEffect(() => {
@@ -64,8 +52,9 @@ export function CourierDashboard() {
   }, []);
 
   const handleToggleOnline = () => {
-    setIsOnline(!isOnline);
-    // In real app, this would call API to update online status
+    if (user?.id) {
+      updateCourierStatus(user.id, { is_online: !isOnline });
+    }
   };
 
   const formatCurrency = (value: number) => {
@@ -161,7 +150,7 @@ export function CourierDashboard() {
           </div>
         ) : (
           <div className="space-y-3">
-            {activeOrders.map((order) => (
+            {activeOrders.map((order: Order) => (
               <button
                 key={order.id}
                 onClick={() => navigate(`/courier/orders/${order.id}`)}
