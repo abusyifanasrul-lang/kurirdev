@@ -269,7 +269,16 @@ export function Orders() {
           <Input label="Phone Number" value={newOrder.customer_phone} onChange={e => setNewOrder({ ...newOrder, customer_phone: e.target.value })} />
           <Textarea label="Address" value={newOrder.customer_address} onChange={e => setNewOrder({ ...newOrder, customer_address: e.target.value })} />
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Fee (IDR)" type="number" value={newOrder.total_fee} onChange={e => setNewOrder({ ...newOrder, total_fee: Number(e.target.value) })} />
+            <Input
+              label="Fee (IDR)"
+              type="text"
+              value={newOrder.total_fee ? `Rp ${newOrder.total_fee.toLocaleString('id-ID')}` : ''}
+              onChange={e => {
+                const numericValue = Number(e.target.value.replace(/[^0-9]/g, ''));
+                setNewOrder({ ...newOrder, total_fee: numericValue });
+              }}
+              placeholder="Rp 0"
+            />
             <Input
               label="Estimated Delivery Time"
               type="datetime-local"
