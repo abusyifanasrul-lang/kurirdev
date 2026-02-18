@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
 import { ArrowLeft, Package, Clock, CheckCircle, XCircle, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { format, parseISO } from 'date-fns';
+import { format, isToday, isYesterday, parseISO } from 'date-fns';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useAuth } from '@/context/AuthContext';
+import { useCourierStore } from '@/stores/useCourierStore';
 
 type StatusFilter = 'all' | 'delivered' | 'cancelled' | 'in_transit' | 'picked_up' | 'assigned';
 
@@ -19,17 +20,13 @@ const statusConfig: Record<string, { color: string; bg: string; icon: typeof Che
 export function CourierHistory() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { orders, getCourierStats } = useOrderStore();
+  const { orders } = useOrderStore();
+  const { couriers } = useCourierStore();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
-  const courierStats = useMemo(() =>
-    user?.id ? getCourierStats(user.id) : null,
-    [orders, user?.id, getCourierStats]
-  );
-
-  // Filter orders for the list (with search/status filter applied)
+  // Filter orders assigned to this courier
   const courierOrders = useMemo(() => {
     if (!user) return [];
 
@@ -70,17 +67,21 @@ export function CourierHistory() {
 
   const getDateLabel = (dateStr: string) => {
     const date = parseISO(dateStr);
-    const now = new Date();
-    const today = format(now, 'yyyy-MM-dd');
-    const yesterday = format(new Date(now.setDate(now.getDate() - 1)), 'yyyy-MM-dd');
-
-    if (dateStr === today) return 'Hari Ini';
-    if (dateStr === yesterday) return 'Kemarin';
+    if (isToday(date)) return 'Hari Ini';
+    if (isYesterday(date)) return 'Kemarin';
     return format(date, 'dd MMMM yyyy');
   };
 
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
+
+  const totalEarnings = useMemo(() => {
+    const courier = couriers.find(c => c.id === user?.id);
+    const rate = (courier?.commission_rate ?? 80) / 100;
+    return courierOrders
+      .filter((o) => o.status === 'delivered')
+      .reduce((sum, o) => sum + (o.total_fee || 0) * rate, 0);
+  }, [courierOrders, couriers, user]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -93,7 +94,7 @@ export function CourierHistory() {
           <div className="flex-1">
             <h1 className="text-lg font-bold text-gray-900">Riwayat Pengiriman</h1>
             <p className="text-xs text-gray-500">
-              {courierStats?.total_orders || 0} pesanan • {formatCurrency(courierStats?.total_earnings || 0)} total transaksi
+              {courierOrders.length} pesanan • {formatCurrency(totalEarnings)} total pendapatan
             </p>
           </div>
         </div>

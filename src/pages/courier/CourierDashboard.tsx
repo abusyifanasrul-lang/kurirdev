@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Package, DollarSign, CheckCircle, Clock, Wifi, WifiOff, ChevronRight } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, isToday } from 'date-fns';
 import { cn } from '@/utils/cn';
 import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
 import { useOrderStore } from '@/stores/useOrderStore';
@@ -14,7 +14,7 @@ import { Order } from '@/types';
 export function CourierDashboard() {
   const navigate = useNavigate();
   const { user } = useUserStore();
-  const { orders, getCourierStats } = useOrderStore();
+  const { orders } = useOrderStore();
   const { couriers, updateCourierStatus } = useCourierStore();
 
   // Find this courier's data for online status
@@ -24,14 +24,23 @@ export function CourierDashboard() {
   const [isConnected, setIsConnected] = useState(true);
 
   // Derived Stats
-  const courierStats = useMemo(() =>
-    user?.id ? getCourierStats(user.id) : null,
-    [orders, user?.id, getCourierStats]
-  );
+  const myOrders = useMemo(() => orders.filter((o: Order) => o.courier_id === user?.id), [orders, user?.id]);
 
   const activeOrders = useMemo(() =>
-    courierStats?.recent_orders.filter(o => ['assigned', 'picked_up', 'in_transit'].includes(o.status)) || [],
-    [courierStats]
+    myOrders.filter((o: Order) => ['assigned', 'picked_up', 'in_transit'].includes(o.status)),
+    [myOrders]
+  );
+
+  const completedToday = useMemo(() =>
+    myOrders.filter((o: Order) => o.status === 'delivered' && isToday(new Date(o.created_at))).length,
+    [myOrders]
+  );
+
+  const todayEarnings = useMemo(() =>
+    myOrders
+      .filter((o: Order) => o.status === 'delivered' && isToday(new Date(o.created_at)))
+      .reduce((sum: number, o: Order) => sum + (o.total_fee || 0), 0),
+    [myOrders]
   );
 
   // Polling simulation
@@ -107,22 +116,22 @@ export function CourierDashboard() {
           <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
             <DollarSign className="h-5 w-5 text-green-600" />
           </div>
-          <p className="text-lg font-bold text-gray-900">{formatCurrency(courierStats?.total_earnings || 0)}</p>
-          <p className="text-xs text-gray-500">Total Earnings</p>
+          <p className="text-lg font-bold text-gray-900">{formatCurrency(todayEarnings)}</p>
+          <p className="text-xs text-gray-500">Today's Earnings</p>
         </div>
         <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center">
           <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
             <CheckCircle className="h-5 w-5 text-blue-600" />
           </div>
-          <p className="text-lg font-bold text-gray-900">{courierStats?.completed_orders || 0}</p>
+          <p className="text-lg font-bold text-gray-900">{completedToday}</p>
           <p className="text-xs text-gray-500">Completed</p>
         </div>
         <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center">
           <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-2">
             <Clock className="h-5 w-5 text-orange-600" />
           </div>
-          <p className="text-lg font-bold text-gray-900">{courierStats?.total_orders || 0}</p>
-          <p className="text-xs text-gray-500">Total Orders</p>
+          <p className="text-lg font-bold text-gray-900">{activeOrders.length}</p>
+          <p className="text-xs text-gray-500">Active</p>
         </div>
       </div>
 
