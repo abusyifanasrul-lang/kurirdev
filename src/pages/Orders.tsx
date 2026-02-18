@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Plus, Download, Search, User, MapPin, Truck, Bell } from 'lucide-react';
+import { Plus, Download, Search, User, MapPin, Truck, Bell, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { requestNotificationPermission, sendMockNotification } from '@/utils/notification';
 import { Header } from '@/components/layout/Header';
@@ -36,14 +36,31 @@ const statusOptions = [
   { value: 'cancelled', label: 'Cancelled' },
 ];
 
+const searchCategories = [
+  { value: 'all', label: 'All Fields' },
+  { value: 'order_number', label: 'Order ID' },
+  { value: 'customer_name', label: 'Customer' },
+  { value: 'customer_phone', label: 'Phone' },
+  { value: 'courier_name', label: 'Courier' },
+  { value: 'customer_address', label: 'Address' },
+];
+
+type SortField = 'order_number' | 'customer_name' | 'status' | 'courier_name' | 'total_fee' | 'created_at';
+type SortOrder = 'asc' | 'desc';
+
 export function Orders() {
   const { orders, addOrder, assignCourier, cancelOrder, generateOrderId, updateOrder } = useOrderStore();
   const { getAvailableCouriers, rotateQueue } = useCourierStore();
   const { user } = useUserStore(); // Current admin user
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchCategory, setSearchCategory] = useState('all');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [dateFilter, setDateFilter] = useState({ start: '', end: '' });
+  const [sortConfig, setSortConfig] = useState<{ field: SortField; order: SortOrder }>({
+    field: 'created_at',
+    order: 'desc',
+  });
 
   // Modals
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -82,26 +99,74 @@ export function Orders() {
 
   // Derived State
   const filteredOrders = useMemo(() => {
-    return orders.filter((order) => {
-      const matchesSearch =
-        !searchQuery ||
-        order.order_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        order.customer_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        order.customer_phone.includes(searchQuery);
+    return orders
+      .filter((order) => {
+        const matchesStatus = !statusFilter || order.status === statusFilter;
 
-      const matchesStatus = !statusFilter || order.status === statusFilter;
+        const orderDate = new Date(order.created_at);
+        const start = dateFilter.start ? new Date(dateFilter.start) : null;
+        const end = dateFilter.end ? new Date(dateFilter.end) : null;
+        if (end) end.setHours(23, 59, 59); // inclusive end date
 
-      const orderDate = new Date(order.created_at);
-      const start = dateFilter.start ? new Date(dateFilter.start) : null;
-      const end = dateFilter.end ? new Date(dateFilter.end) : null;
-      if (end) end.setHours(23, 59, 59); // inclusive end date
+        const matchesDateStart = !start || orderDate >= start;
+        const matchesDateEnd = !end || orderDate <= end;
 
-      const matchesDateStart = !start || orderDate >= start;
-      const matchesDateEnd = !end || orderDate <= end;
+        // Advanced Search Logic
+        const q = searchQuery.toLowerCase();
+        let matchesSearch = !searchQuery;
 
-      return matchesSearch && matchesStatus && matchesDateStart && matchesDateEnd;
-    });
-  }, [orders, searchQuery, statusFilter, dateFilter]);
+        if (searchQuery) {
+          if (searchCategory === 'all') {
+            matchesSearch =
+              order.order_number.toLowerCase().includes(q) ||
+              order.customer_name.toLowerCase().includes(q) ||
+              order.customer_phone.includes(searchQuery) ||
+              (order.courier_name?.toLowerCase().includes(q) || false) ||
+              order.customer_address.toLowerCase().includes(q);
+          } else if (searchCategory === 'order_number') {
+            matchesSearch = order.order_number.toLowerCase().includes(q);
+          } else if (searchCategory === 'customer_name') {
+            matchesSearch = order.customer_name.toLowerCase().includes(q);
+          } else if (searchCategory === 'customer_phone') {
+            matchesSearch = order.customer_phone.includes(searchQuery);
+          } else if (searchCategory === 'courier_name') {
+            matchesSearch = order.courier_name?.toLowerCase().includes(q) || false;
+          } else if (searchCategory === 'customer_address') {
+            matchesSearch = order.customer_address.toLowerCase().includes(q);
+          }
+        }
+
+        return matchesStatus && matchesDateStart && matchesDateEnd && matchesSearch;
+      })
+      .sort((a, b) => {
+        const field = sortConfig.field;
+        const order = sortConfig.order;
+
+        let aValue: any = a[field] || '';
+        let bValue: any = b[field] || '';
+
+        if (typeof aValue === 'string') aValue = aValue.toLowerCase();
+        if (typeof bValue === 'string') bValue = bValue.toLowerCase();
+
+        if (aValue < bValue) return order === 'asc' ? -1 : 1;
+        if (aValue > bValue) return order === 'asc' ? 1 : -1;
+        return 0;
+      });
+  }, [orders, searchQuery, searchCategory, statusFilter, dateFilter, sortConfig]);
+
+  const handleSort = (field: SortField) => {
+    setSortConfig(prev => ({
+      field,
+      order: prev.field === field && prev.order === 'asc' ? 'desc' : 'asc',
+    }));
+  };
+
+  const getSortIcon = (field: SortField) => {
+    if (sortConfig.field !== field) return <ArrowUpDown className="h-3 w-3 ml-1 text-gray-400" />;
+    return sortConfig.order === 'asc' ?
+      <ChevronUp className="h-3 w-3 ml-1 text-indigo-600" /> :
+      <ChevronDown className="h-3 w-3 ml-1 text-indigo-600" />;
+  };
 
   const availableCouriers = useMemo(() => getAvailableCouriers(), [getAvailableCouriers]);
 
@@ -222,13 +287,22 @@ export function Orders() {
         {/* Filters */}
         <Card className="mb-6">
           <div className="flex flex-col lg:flex-row flex-wrap gap-4">
-            <div className="flex-1 min-w-[200px]">
-              <Input
-                placeholder="Search orders..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                leftIcon={<Search className="h-4 w-4" />}
-              />
+            <div className="flex-1 min-w-[300px] flex gap-2">
+              <div className="w-40">
+                <Select
+                  options={searchCategories}
+                  value={searchCategory}
+                  onChange={(e) => setSearchCategory(e.target.value)}
+                />
+              </div>
+              <div className="flex-1">
+                <Input
+                  placeholder="Search orders..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  leftIcon={<Search className="h-4 w-4" />}
+                />
+              </div>
             </div>
             <div className="w-full lg:w-48">
               <Select
@@ -250,12 +324,42 @@ export function Orders() {
           <Table>
             <TableHead>
               <TableRow>
-                <TableHeader>Order #</TableHeader>
-                <TableHeader>Customer</TableHeader>
-                <TableHeader>Status</TableHeader>
-                <TableHeader>Courier</TableHeader>
-                <TableHeader>Fee</TableHeader>
-                <TableHeader>Created</TableHeader>
+                <TableHeader
+                  className="cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => handleSort('order_number')}
+                >
+                  <div className="flex items-center">Order # {getSortIcon('order_number')}</div>
+                </TableHeader>
+                <TableHeader
+                  className="cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => handleSort('customer_name')}
+                >
+                  <div className="flex items-center">Customer {getSortIcon('customer_name')}</div>
+                </TableHeader>
+                <TableHeader
+                  className="cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => handleSort('status')}
+                >
+                  <div className="flex items-center">Status {getSortIcon('status')}</div>
+                </TableHeader>
+                <TableHeader
+                  className="cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => handleSort('courier_name')}
+                >
+                  <div className="flex items-center">Courier {getSortIcon('courier_name')}</div>
+                </TableHeader>
+                <TableHeader
+                  className="cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => handleSort('total_fee')}
+                >
+                  <div className="flex items-center">Fee {getSortIcon('total_fee')}</div>
+                </TableHeader>
+                <TableHeader
+                  className="cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => handleSort('created_at')}
+                >
+                  <div className="flex items-center">Created {getSortIcon('created_at')}</div>
+                </TableHeader>
               </TableRow>
             </TableHead>
             <TableBody>
