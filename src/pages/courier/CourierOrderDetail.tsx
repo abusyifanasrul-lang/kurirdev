@@ -14,15 +14,20 @@ import { format, parseISO } from 'date-fns';
 import { cn } from '@/utils/cn';
 import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
 import { useOrderStore } from '@/stores/useOrderStore';
-import { useUserStore } from '@/stores/useUserStore';
+import { useAuth } from '@/context/AuthContext';
+import { useCourierStore } from '@/stores/useCourierStore';
 import { OrderStatus } from '@/types';
 
 export function CourierOrderDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { orders, updateOrderStatus } = useOrderStore();
-  const { user } = useUserStore();
+  const { user } = useAuth();
+  const { couriers } = useCourierStore();
   const [isUpdating, setIsUpdating] = useState(false);
+
+  const currentCourier = useMemo(() => couriers.find(c => c.id === user?.id), [couriers, user]);
+  const commissionRate = currentCourier?.commission_rate ?? 80;
 
   const order = useMemo(() => orders.find(o => o.id === Number(id)), [orders, id]);
 
@@ -229,9 +234,9 @@ export function CourierOrderDetail() {
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-500">Your Earnings (80%)</span>
+              <span className="text-sm text-gray-500">Your Earnings ({commissionRate}%)</span>
               <span className="font-semibold text-green-600">
-                Rp {((order.total_fee || 0) * 0.8).toLocaleString('id-ID')}
+                Rp {((order.total_fee || 0) * (commissionRate / 100)).toLocaleString('id-ID')}
               </span>
             </div>
             <div className="flex items-center justify-between">
@@ -299,7 +304,7 @@ export function CourierOrderDetail() {
             <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-2" />
             <p className="font-semibold text-green-800">Order Delivered!</p>
             <p className="text-sm text-green-600 mt-1">
-              Great job! You earned Rp {((order.total_fee || 0) * 0.8).toLocaleString('id-ID')}
+              Great job! You earned Rp {((order.total_fee || 0) * (commissionRate / 100)).toLocaleString('id-ID')}
             </p>
           </div>
         )}

@@ -1,220 +1,183 @@
-import { useState } from 'react';
-import { Package, CheckCircle, XCircle, Calendar } from 'lucide-react';
-import { format, subDays } from 'date-fns';
-import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
+import { useMemo, useState } from 'react';
+import { ArrowLeft, Package, Clock, CheckCircle, XCircle, Search } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { format, isToday, isYesterday, parseISO } from 'date-fns';
+import { useOrderStore } from '@/stores/useOrderStore';
+import { useAuth } from '@/context/AuthContext';
+import { useCourierStore } from '@/stores/useCourierStore';
 
-interface HistoryOrder {
-  id: number;
-  order_number: string;
-  customer_name: string;
-  customer_address: string;
-  status: 'delivered' | 'cancelled';
-  total_fee: number;
-  courier_earnings: number;
-  completed_at: string;
-}
+type StatusFilter = 'all' | 'delivered' | 'cancelled' | 'in_transit' | 'picked_up' | 'assigned';
+
+const statusConfig: Record<string, { color: string; bg: string; icon: typeof CheckCircle; label: string }> = {
+  delivered: { color: 'text-green-600', bg: 'bg-green-50', icon: CheckCircle, label: 'Delivered' },
+  cancelled: { color: 'text-red-600', bg: 'bg-red-50', icon: XCircle, label: 'Cancelled' },
+  in_transit: { color: 'text-blue-600', bg: 'bg-blue-50', icon: Package, label: 'In Transit' },
+  picked_up: { color: 'text-orange-600', bg: 'bg-orange-50', icon: Package, label: 'Picked Up' },
+  assigned: { color: 'text-indigo-600', bg: 'bg-indigo-50', icon: Clock, label: 'Assigned' },
+  pending: { color: 'text-gray-600', bg: 'bg-gray-50', icon: Clock, label: 'Pending' },
+};
 
 export function CourierHistory() {
-  const [dateFilter, setDateFilter] = useState('week');
-  
-  const [orders] = useState<HistoryOrder[]>([
-    {
-      id: 1,
-      order_number: 'ORD-20240214-0015',
-      customer_name: 'John Doe',
-      customer_address: 'Jl. Sudirman No. 123, Jakarta Selatan',
-      status: 'delivered',
-      total_fee: 8000,
-      courier_earnings: 6400,
-      completed_at: subDays(new Date(), 0).toISOString(),
-    },
-    {
-      id: 2,
-      order_number: 'ORD-20240214-0014',
-      customer_name: 'Jane Smith',
-      customer_address: 'Jl. Gatot Subroto No. 45, Jakarta Pusat',
-      status: 'delivered',
-      total_fee: 8000,
-      courier_earnings: 6400,
-      completed_at: subDays(new Date(), 0).toISOString(),
-    },
-    {
-      id: 3,
-      order_number: 'ORD-20240213-0010',
-      customer_name: 'Bob Wilson',
-      customer_address: 'Jl. Kemang Raya No. 78, Jakarta Selatan',
-      status: 'delivered',
-      total_fee: 8000,
-      courier_earnings: 6400,
-      completed_at: subDays(new Date(), 1).toISOString(),
-    },
-    {
-      id: 4,
-      order_number: 'ORD-20240213-0008',
-      customer_name: 'Alice Brown',
-      customer_address: 'Jl. Senopati No. 90, Jakarta Selatan',
-      status: 'cancelled',
-      total_fee: 8000,
-      courier_earnings: 0,
-      completed_at: subDays(new Date(), 1).toISOString(),
-    },
-    {
-      id: 5,
-      order_number: 'ORD-20240212-0005',
-      customer_name: 'Charlie Davis',
-      customer_address: 'Jl. Rasuna Said No. 12, Jakarta Selatan',
-      status: 'delivered',
-      total_fee: 8000,
-      courier_earnings: 6400,
-      completed_at: subDays(new Date(), 2).toISOString(),
-    },
-    {
-      id: 6,
-      order_number: 'ORD-20240211-0003',
-      customer_name: 'Diana Miller',
-      customer_address: 'Jl. Thamrin No. 56, Jakarta Pusat',
-      status: 'delivered',
-      total_fee: 8000,
-      courier_earnings: 6400,
-      completed_at: subDays(new Date(), 3).toISOString(),
-    },
-  ]);
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { orders } = useOrderStore();
+  const { couriers } = useCourierStore();
 
-  const filterOptions = [
-    { key: 'today', label: 'Today' },
-    { key: 'week', label: 'This Week' },
-    { key: 'month', label: 'This Month' },
-  ];
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
-  const filteredOrders = orders.filter((order) => {
-    const orderDate = new Date(order.completed_at);
-    const today = new Date();
-    
-    switch (dateFilter) {
-      case 'today':
-        return orderDate.toDateString() === today.toDateString();
-      case 'week':
-        const weekAgo = subDays(today, 7);
-        return orderDate >= weekAgo;
-      case 'month':
-        return orderDate.getMonth() === today.getMonth() && 
-               orderDate.getFullYear() === today.getFullYear();
-      default:
+  // Filter orders assigned to this courier
+  const courierOrders = useMemo(() => {
+    if (!user) return [];
+
+    return orders
+      .filter((order) => {
+        // Only orders assigned to this courier
+        const isMyCourier = order.courier_id === user.id;
+        if (!isMyCourier) return false;
+
+        // Apply status filter
+        if (statusFilter !== 'all' && order.status !== statusFilter) return false;
+
+        // Apply search filter
+        if (searchQuery) {
+          const q = searchQuery.toLowerCase();
+          return (
+            order.order_number.toLowerCase().includes(q) ||
+            order.customer_name.toLowerCase().includes(q) ||
+            order.customer_address.toLowerCase().includes(q)
+          );
+        }
+
         return true;
-    }
-  });
-
-  const deliveredCount = filteredOrders.filter(o => o.status === 'delivered').length;
-  const cancelledCount = filteredOrders.filter(o => o.status === 'cancelled').length;
-  const totalEarnings = filteredOrders.reduce((sum, o) => sum + o.courier_earnings, 0);
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-    }).format(value);
-  };
+      })
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [orders, user, statusFilter, searchQuery]);
 
   // Group orders by date
-  const groupedOrders = filteredOrders.reduce((groups, order) => {
-    const date = format(new Date(order.completed_at), 'yyyy-MM-dd');
-    if (!groups[date]) {
-      groups[date] = [];
-    }
-    groups[date].push(order);
+  const groupedOrders = useMemo(() => {
+    const groups: Record<string, typeof courierOrders> = {};
+    courierOrders.forEach((order) => {
+      const date = format(parseISO(order.created_at), 'yyyy-MM-dd');
+      if (!groups[date]) groups[date] = [];
+      groups[date].push(order);
+    });
     return groups;
-  }, {} as Record<string, HistoryOrder[]>);
+  }, [courierOrders]);
+
+  const getDateLabel = (dateStr: string) => {
+    const date = parseISO(dateStr);
+    if (isToday(date)) return 'Hari Ini';
+    if (isYesterday(date)) return 'Kemarin';
+    return format(date, 'dd MMMM yyyy');
+  };
+
+  const formatCurrency = (val: number) =>
+    new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
+
+  const totalEarnings = useMemo(() => {
+    const courier = couriers.find(c => c.id === user?.id);
+    const rate = (courier?.commission_rate ?? 80) / 100;
+    return courierOrders
+      .filter((o) => o.status === 'delivered')
+      .reduce((sum, o) => sum + (o.total_fee || 0) * rate, 0);
+  }, [courierOrders, couriers, user]);
 
   return (
-    <div className="space-y-4">
-      {/* Date Filter */}
-      <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4">
-        {filterOptions.map((option) => (
-          <button
-            key={option.key}
-            onClick={() => setDateFilter(option.key)}
-            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-              dateFilter === option.key
-                ? 'bg-green-600 text-white'
-                : 'bg-white text-gray-600 border border-gray-200'
-            }`}
-          >
-            {option.label}
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b sticky top-0 z-10">
+        <div className="flex items-center gap-3 p-4">
+          <button onClick={() => navigate('/courier')} className="p-2 hover:bg-gray-100 rounded-lg">
+            <ArrowLeft className="w-5 h-5" />
           </button>
-        ))}
+          <div className="flex-1">
+            <h1 className="text-lg font-bold text-gray-900">Riwayat Pengiriman</h1>
+            <p className="text-xs text-gray-500">
+              {courierOrders.length} pesanan • {formatCurrency(totalEarnings)} total pendapatan
+            </p>
+          </div>
+        </div>
+
+        {/* Search & Filter */}
+        <div className="px-4 pb-3 flex gap-2">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Cari pesanan..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+            className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="all">Semua</option>
+            <option value="delivered">Delivered</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="in_transit">In Transit</option>
+            <option value="picked_up">Picked Up</option>
+            <option value="assigned">Assigned</option>
+          </select>
+        </div>
       </div>
 
-      {/* Summary Stats */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100 text-center">
-          <div className="flex items-center justify-center gap-1 text-green-600 mb-1">
-            <CheckCircle className="h-4 w-4" />
-            <span className="text-lg font-bold">{deliveredCount}</span>
+      {/* Order List */}
+      <div className="p-4 space-y-4">
+        {Object.keys(groupedOrders).length === 0 ? (
+          <div className="text-center py-16">
+            <Package className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-500 font-medium">Belum ada riwayat pengiriman</p>
+            <p className="text-sm text-gray-400 mt-1">Pesanan yang dikirim akan muncul di sini</p>
           </div>
-          <p className="text-xs text-gray-500">Delivered</p>
-        </div>
-        <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100 text-center">
-          <div className="flex items-center justify-center gap-1 text-red-600 mb-1">
-            <XCircle className="h-4 w-4" />
-            <span className="text-lg font-bold">{cancelledCount}</span>
-          </div>
-          <p className="text-xs text-gray-500">Cancelled</p>
-        </div>
-        <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100 text-center">
-          <p className="text-lg font-bold text-gray-900">{formatCurrency(totalEarnings)}</p>
-          <p className="text-xs text-gray-500">Earnings</p>
-        </div>
-      </div>
+        ) : (
+          Object.entries(groupedOrders).map(([date, dateOrders]) => (
+            <div key={date}>
+              <h3 className="text-sm font-semibold text-gray-500 mb-2 px-1">{getDateLabel(date)}</h3>
+              <div className="space-y-2">
+                {dateOrders.map((order) => {
+                  const config = statusConfig[order.status] || statusConfig.pending;
+                  const StatusIcon = config.icon;
+                  const courierEarning = order.status === 'delivered' ? (order.total_fee || 0) * 0.8 : 0;
 
-      {/* Orders List */}
-      {Object.keys(groupedOrders).length === 0 ? (
-        <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 text-center">
-          <Package className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500">No orders found</p>
-          <p className="text-sm text-gray-400 mt-1">Try changing the date filter</p>
-        </div>
-      ) : (
-        Object.entries(groupedOrders).map(([date, dateOrders]) => (
-          <div key={date}>
-            <div className="flex items-center gap-2 mb-3">
-              <Calendar className="h-4 w-4 text-gray-400" />
-              <p className="text-sm font-medium text-gray-600">
-                {format(new Date(date), 'EEEE, MMMM dd, yyyy')}
-              </p>
-            </div>
-            <div className="space-y-3">
-              {dateOrders.map((order) => (
-                <div
-                  key={order.id}
-                  className="bg-white rounded-xl p-4 shadow-sm border border-gray-100"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="font-semibold text-gray-900 text-sm">{order.order_number}</p>
-                        <Badge variant={getStatusBadgeVariant(order.status)} size="sm">
-                          {getStatusLabel(order.status)}
-                        </Badge>
+                  return (
+                    <div
+                      key={order.id}
+                      onClick={() => navigate(`/courier/order/${order.id}`)}
+                      className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <p className="font-semibold text-gray-900 text-sm">{order.order_number}</p>
+                          <p className="text-xs text-gray-500">{format(parseISO(order.created_at), 'HH:mm')}</p>
+                        </div>
+                        <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${config.bg} ${config.color}`}>
+                          <StatusIcon className="w-3 h-3" />
+                          {config.label}
+                        </div>
                       </div>
-                      <p className="text-sm text-gray-700">{order.customer_name}</p>
-                      <p className="text-xs text-gray-500 truncate">{order.customer_address}</p>
+                      <div className="space-y-1">
+                        <p className="text-sm text-gray-700">{order.customer_name}</p>
+                        <p className="text-xs text-gray-500 line-clamp-1">{order.customer_address}</p>
+                      </div>
+                      <div className="flex justify-between items-center mt-3 pt-2 border-t border-gray-50">
+                        <span className="text-xs text-gray-500">Total Fee: {formatCurrency(order.total_fee)}</span>
+                        {courierEarning > 0 && (
+                          <span className="text-sm font-semibold text-green-600">+{formatCurrency(courierEarning)}</span>
+                        )}
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className={`font-semibold ${order.status === 'delivered' ? 'text-green-600' : 'text-gray-400'}`}>
-                        {order.status === 'delivered' ? formatCurrency(order.courier_earnings) : '-'}
-                      </p>
-                      <p className="text-xs text-gray-400">
-                        {format(new Date(order.completed_at), 'HH:mm')}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))
-      )}
+          ))
+        )}
+      </div>
     </div>
   );
 }

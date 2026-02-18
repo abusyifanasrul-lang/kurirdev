@@ -61,6 +61,7 @@ export interface CreateOrderPayload {
   customer_phone: string;
   customer_address: string;
   total_fee?: number;
+  payment_status?: PaymentStatus;
   estimated_delivery_time?: string;
 }
 
@@ -71,6 +72,7 @@ export interface Courier extends User {
   active_orders_count?: number;
   total_completed?: number;
   total_earnings?: number;
+  commission_rate?: number; // 0-100, default 80 (80% to courier)
 }
 
 export interface CourierPerformance {

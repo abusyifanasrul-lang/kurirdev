@@ -10,7 +10,10 @@ import { Badge } from '@/components/ui/Badge';
 import type { User as UserType } from '@/types';
 
 // Store
+// Store
 import { useUserStore } from '@/stores/useUserStore';
+import { useCourierStore } from '@/stores/useCourierStore';
+import { Courier } from '@/types';
 
 export function Settings() {
   const { user, users, updateUser, addUser, removeUser } = useUserStore();
@@ -77,18 +80,47 @@ export function Settings() {
   };
 
   const handleAddUser = () => {
-    const userData: UserType = {
-      id: Date.now(),
-      name: newUser.name,
-      email: newUser.email,
-      role: newUser.role as 'admin' | 'courier',
-      phone: newUser.phone,
-      is_active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
+    const parsedRole = newUser.role as 'admin' | 'courier';
 
-    addUser(userData);
+    if (parsedRole === 'courier') {
+      // Use CourierStore to ensure sync (it calls addUser internally)
+      const courierData: Courier = {
+        id: Date.now(),
+        name: newUser.name,
+        email: newUser.email,
+        password: newUser.password, // In real app, hash this
+        role: 'courier',
+        phone: newUser.phone,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        // Courier specific defaults
+        is_online: false,
+        vehicle_type: 'motorcycle',
+        plate_number: '',
+        commission_rate: 80,
+      };
+      useCourierStore.getState().addCourier(courierData);
+    } else {
+      // Normal admin add
+      const userData: UserType = {
+        id: Date.now(),
+        name: newUser.name,
+        email: newUser.email,
+        role: 'admin', // Enforce admin, or use parsedRole if extended
+        phone: newUser.phone,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      // For Admin, we invoke addUser directly (UserStore)
+      // Note: addUser in UserStore doesn't handle password currently for mock, 
+      // but we should arguably store it if we had auth logic relying on it there.
+      // But useCourierStore relies on syncing to useUserStore which expects User object.
+      // We'll stick to basic UserType.
+      addUser(userData);
+    }
+
     setIsAddUserModalOpen(false);
     setNewUser({ name: '', email: '', password: '', role: 'admin', phone: '' });
     showMessage('success', 'User added successfully!');

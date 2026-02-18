@@ -1,247 +1,239 @@
-import { useState } from 'react';
-import { DollarSign, TrendingUp, Calendar, Package } from 'lucide-react';
-import { format, subDays, startOfWeek, endOfWeek, eachDayOfInterval } from 'date-fns';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts';
+import { useMemo, useState } from 'react';
+import { ArrowLeft, TrendingUp, DollarSign, Package, Calendar } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { format, parseISO, startOfDay, subDays, startOfWeek, startOfMonth, isWithinInterval, endOfDay } from 'date-fns';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useOrderStore } from '@/stores/useOrderStore';
+import { useAuth } from '@/context/AuthContext';
+import { useCourierStore } from '@/stores/useCourierStore';
 
-interface EarningData {
-  date: string;
-  earnings: number;
-  orders: number;
-}
+type Period = 'daily' | 'weekly' | 'monthly';
 
 export function CourierEarnings() {
-  const [activeTab, setActiveTab] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { orders } = useOrderStore();
+  const { couriers } = useCourierStore();
+  const [period, setPeriod] = useState<Period>('daily');
 
-  // Generate mock data
-  const generateDailyData = (): EarningData[] => {
-    return [
-      { date: format(new Date(), 'yyyy-MM-dd'), earnings: 51200, orders: 8 },
-    ];
-  };
+  const currentCourier = useMemo(() => couriers.find(c => c.id === user?.id), [couriers, user]);
+  const COMMISSION_RATE = (currentCourier?.commission_rate ?? 80) / 100;
 
-  const generateWeeklyData = (): EarningData[] => {
-    const today = new Date();
-    const start = startOfWeek(today, { weekStartsOn: 1 });
-    const end = endOfWeek(today, { weekStartsOn: 1 });
-    const days = eachDayOfInterval({ start, end });
+  // All delivered orders for this courier
+  const deliveredOrders = useMemo(() => {
+    if (!user) return [];
+    return orders.filter(
+      (o) => o.courier_id === user.id && o.status === 'delivered'
+    );
+  }, [orders, user]);
 
-    return days.map((day) => ({
-      date: format(day, 'yyyy-MM-dd'),
-      earnings: Math.floor(Math.random() * 50000) + 30000,
-      orders: Math.floor(Math.random() * 8) + 3,
-    }));
-  };
+  // Today's stats
+  const todayStats = useMemo(() => {
+    const today = startOfDay(new Date());
+    const todayEnd = endOfDay(new Date());
+    const todayOrders = deliveredOrders.filter((o) =>
+      isWithinInterval(parseISO(o.created_at), { start: today, end: todayEnd })
+    );
+    const totalFee = todayOrders.reduce((sum, o) => sum + (o.total_fee || 0), 0);
+    return {
+      orders: todayOrders.length,
+      totalFee,
+      earnings: totalFee * COMMISSION_RATE,
+    };
+  }, [deliveredOrders]);
 
-  const generateMonthlyData = (): EarningData[] => {
-    const today = new Date();
-    return Array.from({ length: 4 }, (_, i) => ({
-      date: format(subDays(today, (3 - i) * 7), 'yyyy-MM-dd'),
-      earnings: Math.floor(Math.random() * 300000) + 200000,
-      orders: Math.floor(Math.random() * 40) + 20,
-    }));
-  };
+  // All-time stats
+  const allTimeStats = useMemo(() => {
+    const totalFee = deliveredOrders.reduce((sum, o) => sum + (o.total_fee || 0), 0);
+    return {
+      orders: deliveredOrders.length,
+      totalFee,
+      earnings: totalFee * COMMISSION_RATE,
+    };
+  }, [deliveredOrders]);
 
-  const [dailyData] = useState(generateDailyData());
-  const [weeklyData] = useState(generateWeeklyData());
-  const [monthlyData] = useState(generateMonthlyData());
+  // Chart data - computed from actual orders
+  const chartData = useMemo(() => {
+    const now = new Date();
 
-  const getCurrentData = () => {
-    switch (activeTab) {
-      case 'daily':
-        return dailyData;
-      case 'weekly':
-        return weeklyData;
-      case 'monthly':
-        return monthlyData;
-      default:
-        return dailyData;
+    if (period === 'daily') {
+      // Last 7 days
+      const days = Array.from({ length: 7 }, (_, i) => {
+        const date = subDays(now, 6 - i);
+        const dayStart = startOfDay(date);
+        const dayEnd = endOfDay(date);
+        const dayOrders = deliveredOrders.filter((o) =>
+          isWithinInterval(parseISO(o.created_at), { start: dayStart, end: dayEnd })
+        );
+        const totalFee = dayOrders.reduce((sum, o) => sum + (o.total_fee || 0), 0);
+        return {
+          label: format(date, 'dd/MM'),
+          earnings: totalFee * COMMISSION_RATE,
+          orders: dayOrders.length,
+        };
+      });
+      return days;
     }
-  };
 
-  const getTotalEarnings = () => {
-    return getCurrentData().reduce((sum, d) => sum + d.earnings, 0);
-  };
+    if (period === 'weekly') {
+      // Last 4 weeks
+      const weeks = Array.from({ length: 4 }, (_, i) => {
+        const weekStart = startOfWeek(subDays(now, (3 - i) * 7), { weekStartsOn: 1 });
+        const weekEnd = endOfDay(subDays(startOfWeek(subDays(now, (2 - i) * 7), { weekStartsOn: 1 }), 1));
+        const weekOrders = deliveredOrders.filter((o) => {
+          const d = parseISO(o.created_at);
+          return d >= weekStart && d <= weekEnd;
+        });
+        const totalFee = weekOrders.reduce((sum, o) => sum + (o.total_fee || 0), 0);
+        return {
+          label: `W${i + 1}`,
+          earnings: totalFee * COMMISSION_RATE,
+          orders: weekOrders.length,
+        };
+      });
+      return weeks;
+    }
 
-  const getTotalOrders = () => {
-    return getCurrentData().reduce((sum, d) => sum + d.orders, 0);
-  };
+    // Monthly - last 6 months
+    const months = Array.from({ length: 6 }, (_, i) => {
+      const date = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+      const monthStart = startOfMonth(date);
+      const monthEnd = endOfDay(new Date(date.getFullYear(), date.getMonth() + 1, 0));
+      const monthOrders = deliveredOrders.filter((o) => {
+        const d = parseISO(o.created_at);
+        return d >= monthStart && d <= monthEnd;
+      });
+      const totalFee = monthOrders.reduce((sum, o) => sum + (o.total_fee || 0), 0);
+      return {
+        label: format(date, 'MMM'),
+        earnings: totalFee * COMMISSION_RATE,
+        orders: monthOrders.length,
+      };
+    });
+    return months;
+  }, [deliveredOrders, period]);
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-    }).format(value);
-  };
+  const formatCurrency = (val: number) =>
+    new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
 
-  const tabs = [
-    { key: 'daily', label: 'Today' },
-    { key: 'weekly', label: 'This Week' },
-    { key: 'monthly', label: 'This Month' },
-  ] as const;
+  const formatChartCurrency = (val: number) => {
+    if (val >= 1000000) return `${(val / 1000000).toFixed(1)}jt`;
+    if (val >= 1000) return `${(val / 1000).toFixed(0)}rb`;
+    return val.toString();
+  };
 
   return (
-    <div className="space-y-4">
-      {/* Tabs */}
-      <div className="flex bg-gray-100 rounded-xl p-1">
-        {tabs.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-              activeTab === tab.key
-                ? 'bg-white text-green-600 shadow'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            {tab.label}
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+        <div className="flex items-center gap-3 p-4">
+          <button onClick={() => navigate('/courier')} className="p-2 hover:bg-white/10 rounded-lg">
+            <ArrowLeft className="w-5 h-5" />
           </button>
-        ))}
-      </div>
-
-      {/* Summary Card */}
-      <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-2xl p-6 text-white">
-        <div className="flex items-start justify-between mb-4">
           <div>
-            <p className="text-green-100 text-sm">Total Earnings</p>
-            <p className="text-3xl font-bold mt-1">{formatCurrency(getTotalEarnings())}</p>
-          </div>
-          <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-            <DollarSign className="h-6 w-6" />
+            <h1 className="text-lg font-bold">Pendapatan</h1>
+            <p className="text-xs text-indigo-200">Ringkasan pendapatan kamu</p>
           </div>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Package className="h-4 w-4 text-green-200" />
-            <span className="text-green-100">{getTotalOrders()} orders</span>
+
+        {/* Summary Cards */}
+        <div className="grid grid-cols-2 gap-3 p-4 pt-0">
+          <div className="bg-white/10 backdrop-blur rounded-xl p-3">
+            <div className="flex items-center gap-2 mb-1">
+              <DollarSign className="w-4 h-4 text-indigo-200" />
+              <span className="text-xs text-indigo-200">Hari Ini</span>
+            </div>
+            <p className="text-lg font-bold">{formatCurrency(todayStats.earnings)}</p>
+            <p className="text-xs text-indigo-200">{todayStats.orders} pesanan</p>
           </div>
-          <div className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-green-200" />
-            <span className="text-green-100">+12% vs last {activeTab === 'daily' ? 'day' : activeTab === 'weekly' ? 'week' : 'month'}</span>
+          <div className="bg-white/10 backdrop-blur rounded-xl p-3">
+            <div className="flex items-center gap-2 mb-1">
+              <TrendingUp className="w-4 h-4 text-indigo-200" />
+              <span className="text-xs text-indigo-200">Total Semua</span>
+            </div>
+            <p className="text-lg font-bold">{formatCurrency(allTimeStats.earnings)}</p>
+            <p className="text-xs text-indigo-200">{allTimeStats.orders} pesanan</p>
           </div>
+        </div>
+      </div>
+
+      {/* Period Selector */}
+      <div className="p-4">
+        <div className="flex bg-white rounded-lg border border-gray-200 p-1">
+          {(['daily', 'weekly', 'monthly'] as Period[]).map((p) => (
+            <button
+              key={p}
+              onClick={() => setPeriod(p)}
+              className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${period === p
+                ? 'bg-indigo-600 text-white'
+                : 'text-gray-600 hover:bg-gray-50'
+                }`}
+            >
+              {p === 'daily' ? 'Harian' : p === 'weekly' ? 'Mingguan' : 'Bulanan'}
+            </button>
+          ))}
         </div>
       </div>
 
       {/* Chart */}
-      {activeTab !== 'daily' && (
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-          <h3 className="font-semibold text-gray-900 mb-4">
-            {activeTab === 'weekly' ? 'Daily Earnings' : 'Weekly Earnings'}
+      <div className="px-4 pb-4">
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+            <Calendar className="w-4 h-4" />
+            Grafik Pendapatan
           </h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={getCurrentData()}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-              <XAxis
-                dataKey="date"
-                tickFormatter={(value) => {
-                  if (activeTab === 'weekly') {
-                    return format(new Date(value), 'EEE');
-                  }
-                  return format(new Date(value), 'MMM dd');
-                }}
-                stroke="#9CA3AF"
-                fontSize={12}
-              />
-              <YAxis
-                tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
-                stroke="#9CA3AF"
-                fontSize={12}
-              />
-              <Tooltip
-                formatter={(value) => [formatCurrency(value as number), 'Earnings']}
-                labelFormatter={(label) => format(new Date(label), 'EEEE, MMM dd')}
-              />
-              <Bar dataKey="earnings" fill="#16a34a" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          {chartData.every((d) => d.earnings === 0) ? (
+            <div className="text-center py-12">
+              <Package className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+              <p className="text-sm text-gray-500">Belum ada data pendapatan</p>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} tickFormatter={formatChartCurrency} width={45} />
+                <Tooltip
+                  formatter={(value: number | undefined) => [formatCurrency(value ?? 0), 'Pendapatan']}
+                  labelFormatter={(label) => `Periode: ${label}`}
+                />
+                <Bar dataKey="earnings" fill="#6366f1" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
-      )}
-
-      {/* Daily Breakdown */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-        <h3 className="font-semibold text-gray-900 mb-4">
-          {activeTab === 'daily' ? "Today's Earnings" : 'Earnings Breakdown'}
-        </h3>
-        
-        {activeTab === 'daily' ? (
-          <div className="space-y-3">
-            {dailyData[0].orders > 0 ? (
-              Array.from({ length: dailyData[0].orders }, (_, i) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                      <Package className="h-5 w-5 text-green-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">ORD-{format(new Date(), 'yyyyMMdd')}-{String(i + 1).padStart(4, '0')}</p>
-                      <p className="text-xs text-gray-500">{format(subDays(new Date(), 0), 'HH:mm')}</p>
-                    </div>
-                  </div>
-                  <p className="font-semibold text-green-600">{formatCurrency(6400)}</p>
-                </div>
-              ))
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                <DollarSign className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                <p>No earnings yet today</p>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {getCurrentData().map((data, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                    <Calendar className="h-5 w-5 text-gray-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">
-                      {format(new Date(data.date), activeTab === 'weekly' ? 'EEEE' : 'MMM dd')}
-                    </p>
-                    <p className="text-xs text-gray-500">{data.orders} orders</p>
-                  </div>
-                </div>
-                <p className="font-semibold text-green-600">{formatCurrency(data.earnings)}</p>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-          <p className="text-sm text-gray-500">Avg per Order</p>
-          <p className="text-xl font-bold text-gray-900">
-            {formatCurrency(getTotalOrders() > 0 ? getTotalEarnings() / getTotalOrders() : 0)}
-          </p>
-        </div>
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-          <p className="text-sm text-gray-500">
-            {activeTab === 'daily' ? 'Orders Today' : activeTab === 'weekly' ? 'Avg per Day' : 'Avg per Week'}
-          </p>
-          <p className="text-xl font-bold text-gray-900">
-            {activeTab === 'daily' 
-              ? getTotalOrders()
-              : (getTotalOrders() / getCurrentData().length).toFixed(1)
-            } orders
-          </p>
-        </div>
+      {/* Recent Transactions */}
+      <div className="px-4 pb-8">
+        <h3 className="text-sm font-semibold text-gray-700 mb-3">Transaksi Terakhir</h3>
+        {deliveredOrders.length === 0 ? (
+          <div className="text-center py-8 bg-white rounded-xl border border-gray-200">
+            <Package className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+            <p className="text-sm text-gray-500">Belum ada transaksi</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {deliveredOrders.slice(0, 10).map((order) => {
+              const earning = (order.total_fee || 0) * COMMISSION_RATE;
+              return (
+                <div
+                  key={order.id}
+                  onClick={() => navigate(`/courier/order/${order.id}`)}
+                  className="bg-white rounded-xl p-3 border border-gray-100 flex justify-between items-center cursor-pointer hover:shadow-sm transition-shadow"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{order.order_number}</p>
+                    <p className="text-xs text-gray-500">
+                      {format(parseISO(order.created_at), 'dd MMM yyyy, HH:mm')} • {order.customer_name}
+                    </p>
+                  </div>
+                  <span className="text-sm font-semibold text-green-600">+{formatCurrency(earning)}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

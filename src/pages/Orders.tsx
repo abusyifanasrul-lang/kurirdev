@@ -24,7 +24,7 @@ import {
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useCourierStore } from '@/stores/useCourierStore';
 import { useUserStore } from '@/stores/useUserStore';
-import type { Order, CreateOrderPayload } from '@/types';
+import type { Order, CreateOrderPayload, PaymentStatus } from '@/types';
 
 const statusOptions = [
   { value: '', label: 'All Status' },
@@ -59,15 +59,23 @@ export function Orders() {
     customer_phone: '',
     customer_address: '',
     total_fee: 15000,
+    payment_status: 'unpaid',
     estimated_delivery_time: '',
   });
 
   // Edit Form State
-  const [editForm, setEditForm] = useState({
+  const [editForm, setEditForm] = useState<{
+    customer_name: string;
+    customer_phone: string;
+    customer_address: string;
+    total_fee: number;
+    payment_status: PaymentStatus;
+  }>({
     customer_name: '',
     customer_phone: '',
     customer_address: '',
     total_fee: 0,
+    payment_status: 'unpaid',
   });
 
   const [cancelReason, setCancelReason] = useState('');
@@ -104,7 +112,9 @@ export function Orders() {
         customer_name: selectedOrder.customer_name,
         customer_phone: selectedOrder.customer_phone,
         customer_address: selectedOrder.customer_address,
+        customer_address: selectedOrder.customer_address,
         total_fee: selectedOrder.total_fee,
+        payment_status: selectedOrder.payment_status,
       });
     }
   }, [selectedOrder]);
@@ -117,7 +127,7 @@ export function Orders() {
       ...newOrder,
       total_fee: newOrder.total_fee || 15000,
       status: 'pending',
-      payment_status: 'unpaid',
+      payment_status: newOrder.payment_status || 'unpaid',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       created_by: user?.id || 1,
@@ -321,7 +331,17 @@ export function Orders() {
               value={newOrder.estimated_delivery_time}
               onChange={e => setNewOrder({ ...newOrder, estimated_delivery_time: e.target.value })}
             />
+
           </div>
+          <Select
+            label="Payment Status"
+            value={newOrder.payment_status}
+            onChange={e => setNewOrder({ ...newOrder, payment_status: e.target.value as any })}
+            options={[
+              { value: 'unpaid', label: 'Unpaid' },
+              { value: 'paid', label: 'Paid' }
+            ]}
+          />
           <div className="flex justify-end gap-2 pt-4">
             <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>Cancel</Button>
             <Button onClick={handleCreateOrder}>Create Order</Button>
@@ -379,14 +399,29 @@ export function Orders() {
                           const val = Number(e.target.value.replace(/[^0-9]/g, ''));
                           setEditForm(prev => ({ ...prev, total_fee: val }));
                         }}
+
+                      />
+                      <Select
+                        label="Payment Status"
+                        value={editForm.payment_status}
+                        onChange={e => setEditForm(prev => ({ ...prev, payment_status: e.target.value as any }))}
+                        options={[
+                          { value: 'unpaid', label: 'Unpaid' },
+                          { value: 'paid', label: 'Paid' }
+                        ]}
                       />
                       <div className="flex justify-end pt-2">
                         <Button size="sm" variant="secondary" onClick={handleSaveChanges}>Save Changes</Button>
                       </div>
                     </div>
                   ) : (
-                    <div className="pl-6 text-sm">
+                    <div className="pl-6 text-sm space-y-1">
                       <p><span className="text-gray-500 block">Total Fee:</span> {formatCurrency(selectedOrder.total_fee)}</p>
+                      <p><span className="text-gray-500 block">Status:</span>
+                        <Badge variant={selectedOrder.payment_status === 'paid' ? 'success' : 'warning'} size="sm">
+                          {selectedOrder.payment_status.toUpperCase()}
+                        </Badge>
+                      </p>
                     </div>
                   )}
                 </div>

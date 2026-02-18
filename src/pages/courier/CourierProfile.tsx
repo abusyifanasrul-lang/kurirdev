@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Mail, 
-  Phone, 
-  Lock, 
-  LogOut, 
-  ChevronRight, 
+import {
+  Mail,
+  Phone,
+  Lock,
+  LogOut,
+  ChevronRight,
   CheckCircle,
   AlertCircle,
   Shield,
@@ -13,11 +13,12 @@ import {
   HelpCircle
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
+import { useAuth } from '@/context/AuthContext';
 
 export function CourierProfile() {
   const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  
+  const { user, logout } = useAuth();
+
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
@@ -28,9 +29,7 @@ export function CourierProfile() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const handleLogout = () => {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('user_role');
+    logout();
     navigate('/');
   };
 
@@ -47,7 +46,7 @@ export function CourierProfile() {
 
     setIsLoading(true);
     await new Promise(resolve => setTimeout(resolve, 1500));
-    
+
     setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
     setIsChangePasswordOpen(false);
     setMessage({ type: 'success', text: 'Password changed successfully!' });
@@ -61,19 +60,19 @@ export function CourierProfile() {
       icon: Bell,
       label: 'Notifications',
       description: 'Manage push notifications',
-      onClick: () => {},
+      onClick: () => { },
     },
     {
       icon: Shield,
       label: 'Privacy & Security',
       description: 'Account security settings',
-      onClick: () => {},
+      onClick: () => { },
     },
     {
       icon: HelpCircle,
       label: 'Help & Support',
       description: 'Get help or report issues',
-      onClick: () => {},
+      onClick: () => { },
     },
   ];
 
@@ -103,11 +102,11 @@ export function CourierProfile() {
         <div className="flex items-center gap-4 mb-6">
           <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
             <span className="text-3xl font-bold text-green-600">
-              {user.name?.charAt(0) || 'C'}
+              {user?.name?.charAt(0) || 'C'}
             </span>
           </div>
           <div>
-            <h2 className="text-xl font-bold text-gray-900">{user.name || 'Courier'}</h2>
+            <h2 className="text-xl font-bold text-gray-900">{user?.name || 'Courier'}</h2>
             <p className="text-sm text-gray-500">Courier</p>
             <div className="flex items-center gap-1 mt-1">
               <span className="w-2 h-2 bg-green-500 rounded-full" />
@@ -121,14 +120,14 @@ export function CourierProfile() {
             <Mail className="h-5 w-5 text-gray-400" />
             <div>
               <p className="text-xs text-gray-500">Email</p>
-              <p className="text-sm font-medium text-gray-900">{user.email || 'courier@delivery.com'}</p>
+              <p className="text-sm font-medium text-gray-900">{user?.email || '-'}</p>
             </div>
           </div>
           <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
             <Phone className="h-5 w-5 text-gray-400" />
             <div>
               <p className="text-xs text-gray-500">Phone</p>
-              <p className="text-sm font-medium text-gray-900">{user.phone || '+62812345678'}</p>
+              <p className="text-sm font-medium text-gray-900">{user?.phone || '-'}</p>
             </div>
           </div>
         </div>

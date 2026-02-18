@@ -32,6 +32,7 @@ const INITIAL_COURIERS: Courier[] = [
         updated_at: '2024-01-15T00:00:00Z',
         vehicle_type: 'motorcycle',
         plate_number: 'B 1234 XY',
+        commission_rate: 80,
     },
     {
         id: 4,
@@ -45,6 +46,7 @@ const INITIAL_COURIERS: Courier[] = [
         updated_at: '2024-01-20T00:00:00Z',
         vehicle_type: 'motorcycle',
         plate_number: 'B 5678 AB',
+        commission_rate: 80,
     },
     {
         id: 5,
@@ -58,6 +60,7 @@ const INITIAL_COURIERS: Courier[] = [
         updated_at: '2024-02-10T00:00:00Z',
         vehicle_type: 'motorcycle',
         plate_number: 'B 9012 CD',
+        commission_rate: 80,
     },
 ];
 

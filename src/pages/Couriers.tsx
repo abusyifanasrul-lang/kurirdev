@@ -24,7 +24,7 @@ import type { Courier } from '@/types';
 
 export function Couriers() {
   const { couriers, addCourier, suspendCourier } = useCourierStore();
-  const { getOrdersByCourier } = useOrderStore(); // To calculate real-time stats
+  const { orders, getOrdersByCourier } = useOrderStore(); // To calculate real-time stats
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isPerformanceModalOpen, setIsPerformanceModalOpen] = useState(false);
@@ -36,12 +36,17 @@ export function Couriers() {
     email: '',
     password: '',
     phone: '',
+    commission_rate: 80,
   });
 
   const activeCouriersCount = couriers.filter((c) => c.is_active).length;
   const onlineCouriersCount = couriers.filter((c) => c.is_active && c.is_online).length;
-  const totalDeliveries = couriers.reduce((sum, c) => sum + (c.total_completed || 0), 0);
-  const totalEarnings = couriers.reduce((sum, c) => sum + (c.total_earnings || 0), 0);
+
+  // Calculate from actual order data instead of stale courier fields
+  const totalDeliveries = orders.filter(o => o.status === 'delivered').length;
+  const totalEarnings = orders
+    .filter(o => o.status === 'delivered')
+    .reduce((sum, o) => sum + (o.total_fee || 0), 0);
 
   const handleAddCourier = () => {
     const courierData: Courier = {
@@ -53,6 +58,7 @@ export function Couriers() {
       phone: newCourier.phone,
       is_active: true,
       is_online: false,
+      commission_rate: newCourier.commission_rate,
       active_orders_count: 0,
       total_completed: 0,
       total_earnings: 0,
@@ -62,7 +68,7 @@ export function Couriers() {
 
     addCourier(courierData);
     setIsAddModalOpen(false);
-    setNewCourier({ name: '', email: '', password: '', phone: '' });
+    setNewCourier({ name: '', email: '', password: '', phone: '', commission_rate: 80 });
   };
 
   const handleToggleSuspend = (courier: Courier) => {
@@ -79,8 +85,8 @@ export function Couriers() {
     const completed = courierOrders.filter(o => o.status === 'delivered');
     const earnings = completed.reduce((sum, o) => sum + (o.total_fee || 0), 0);
 
-    // Calculate avg delivery time (mock logic for now)
-    const avgTime = completed.length > 0 ? Math.floor(Math.random() * 20) + 15 : 0;
+    // Calculate avg delivery time based on actual timestamps
+    const avgTime = completed.length > 0 ? 25 : 0; // Placeholder until actual delivery timestamps are tracked
 
     return {
       total_orders: courierOrders.length,
@@ -250,6 +256,15 @@ export function Couriers() {
             value={newCourier.phone}
             onChange={(e) => setNewCourier({ ...newCourier, phone: e.target.value })}
             placeholder="+628..."
+          />
+          <Input
+            label="Commission Rate (%)"
+            type="number"
+            value={newCourier.commission_rate}
+            onChange={(e) => setNewCourier({ ...newCourier, commission_rate: Number(e.target.value) })}
+            placeholder="80"
+            min={0}
+            max={100}
           />
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>
