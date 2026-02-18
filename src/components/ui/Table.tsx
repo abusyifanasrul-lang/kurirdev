@@ -52,15 +52,17 @@ export function TableRow({ children, className, onClick }: TableRowProps) {
 interface TableHeaderProps {
   children: React.ReactNode;
   className?: string;
+  onClick?: () => void;
 }
 
-export function TableHeader({ children, className }: TableHeaderProps) {
+export function TableHeader({ children, className, onClick }: TableHeaderProps) {
   return (
     <th
       className={cn(
         'px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider',
         className
       )}
+      onClick={onClick}
     >
       {children}
     </th>

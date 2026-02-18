@@ -177,7 +177,6 @@ export function Orders() {
         customer_name: selectedOrder.customer_name,
         customer_phone: selectedOrder.customer_phone,
         customer_address: selectedOrder.customer_address,
-        customer_address: selectedOrder.customer_address,
         total_fee: selectedOrder.total_fee,
         payment_status: selectedOrder.payment_status,
       });
