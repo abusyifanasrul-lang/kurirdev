@@ -6,14 +6,14 @@ import { cn } from '@/utils/cn';
 import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useCourierStore } from '@/stores/useCourierStore';
-import { useUserStore } from '@/stores/useUserStore';
+import { useAuth } from '@/context/AuthContext';
 import { Order } from '@/types';
 
 // Removed unused CourierOrder interface as we use global Order type
 
 export function CourierDashboard() {
   const navigate = useNavigate();
-  const { user } = useUserStore();
+  const { user } = useAuth();
   const { orders } = useOrderStore();
   const { couriers, updateCourierStatus } = useCourierStore();
 

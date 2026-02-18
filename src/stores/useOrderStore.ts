@@ -21,30 +21,27 @@ interface OrderState {
     getRecentOrders: (limit?: number) => Order[];
 }
 
-// Helper to generate distinct dates for the last 7 days
-const getDateDaysAgo = (days: number) => {
-    const date = new Date();
-    date.setDate(date.getDate() - days);
-    return date.toISOString();
-};
+
 
 const generateMockOrders = (): Order[] => {
     const orders: Order[] = [];
     const statuses: OrderStatus[] = ['pending', 'assigned', 'picked_up', 'in_transit', 'delivered', 'cancelled'];
 
     for (let i = 1; i <= 50; i++) {
-        const daysAgo = Math.floor(Math.random() * 7); // 0 to 6 days ago
+        // Use deterministic "random" based on ID
+        const daysAgo = i % 7;
         const dateStr = new Date();
         dateStr.setDate(dateStr.getDate() - daysAgo);
         const dateYMD = dateStr.toISOString().slice(0, 10).replace(/-/g, '');
 
-        const status = statuses[Math.floor(Math.random() * statuses.length)];
+        const statusIdx = (i * 13) % statuses.length;
+        const status = statuses[statusIdx];
         const isCompleted = status === 'delivered';
         const hasCourier = status !== 'pending' && status !== 'cancelled';
 
-        // Distribute among couriers 3, 4, 5
         const courierId = hasCourier ? (i % 3) + 3 : undefined;
-        const courierName = courierId === 3 ? 'Budi Santoso' : courierId === 4 ? 'Siti Aminah' : 'Agus Pratama';
+        const courierNames: Record<number, string> = { 3: 'Budi Santoso', 4: 'Siti Aminah', 5: 'Agus Pratama' };
+        const courierName = courierId ? courierNames[courierId] : undefined;
 
         orders.push({
             id: i,
@@ -53,12 +50,12 @@ const generateMockOrders = (): Order[] => {
             customer_phone: `+6281${String(i).padStart(8, '0')}`,
             customer_address: `Jl. Contoh No. ${i}, Jakarta`,
             courier_id: courierId,
-            courier_name: hasCourier ? courierName : undefined,
+            courier_name: courierName,
             status: status,
-            total_fee: 15000 + (Math.floor(Math.random() * 10) * 1000),
+            total_fee: 15000 + ((i % 10) * 1000),
             payment_status: isCompleted ? 'paid' : 'unpaid',
-            created_at: getDateDaysAgo(daysAgo),
-            updated_at: getDateDaysAgo(daysAgo),
+            created_at: dateStr.toISOString(),
+            updated_at: dateStr.toISOString(),
             created_by: 1
         });
     }
@@ -68,11 +65,13 @@ const generateMockOrders = (): Order[] => {
 export const useOrderStore = create<OrderState>()(
     persist(
         (set, get) => ({
-            orders: generateMockOrders(),
-            statusHistory: {}, // Can populate if needed, but empty start is fine for simplified mock
+            orders: [], // Start empty, initialize logically
+            statusHistory: {},
 
             initializeOrders: () => {
-                // Logic to maybe fetch or re-validate if needed
+                if (get().orders.length === 0) {
+                    set({ orders: generateMockOrders() });
+                }
             },
 
             addOrder: (order) => {

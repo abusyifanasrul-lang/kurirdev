@@ -23,6 +23,9 @@ export function CourierHistory() {
   const { orders } = useOrderStore();
   const { couriers } = useCourierStore();
 
+  const currentCourier = useMemo(() => couriers.find(c => c.id === user?.id), [couriers, user?.id]);
+  const COMMISSION_RATE = (currentCourier?.commission_rate ?? 80) / 100;
+
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
@@ -142,7 +145,7 @@ export function CourierHistory() {
                 {dateOrders.map((order) => {
                   const config = statusConfig[order.status] || statusConfig.pending;
                   const StatusIcon = config.icon;
-                  const courierEarning = order.status === 'delivered' ? (order.total_fee || 0) * 0.8 : 0;
+                  const courierEarning = order.status === 'delivered' ? (order.total_fee || 0) * COMMISSION_RATE : 0;
 
                   return (
                     <div
