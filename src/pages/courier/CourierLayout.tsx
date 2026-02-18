@@ -1,7 +1,6 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { Home, Package, History, DollarSign, User, LogOut, Bell } from 'lucide-react';
 import { cn } from '@/utils/cn';
-import { InstallBanner, FloatingInstallButton } from '@/components/ui/InstallBanner';
 
 export function CourierLayout() {
   const navigate = useNavigate();
@@ -50,10 +49,6 @@ export function CourierLayout() {
       <main className="px-4 py-6">
         <Outlet />
       </main>
-
-      {/* PWA Install Components */}
-      <InstallBanner />
-      <FloatingInstallButton />
 
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-2 py-2 z-50">
