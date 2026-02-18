@@ -22,12 +22,39 @@ export function playAlertSound() {
 export function registerServiceWorker() {
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js')
+            // Register enhanced service worker untuk instant delivery
+            navigator.serviceWorker.register('/sw-enhanced.js')
                 .then(registration => {
-                    console.log('SW registered: ', registration);
+                    console.log('[SW] Enhanced PWA registered: ', registration);
+                    
+                    // Check for updates
+                    registration.addEventListener('updatefound', () => {
+                        const newWorker = registration.installing;
+                        if (newWorker) {
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    // New version available
+                                    console.log('[SW] New version available');
+                                    // Show update notification to user
+                                    if (confirm('New version available! Reload to update?')) {
+                                        window.location.reload();
+                                    }
+                                }
+                            });
+                        }
+                    });
                 })
                 .catch(registrationError => {
-                    console.log('SW registration failed: ', registrationError);
+                    console.log('[SW] Enhanced PWA registration failed: ', registrationError);
+                    
+                    // Fallback to basic service worker
+                    navigator.serviceWorker.register('/sw.js')
+                        .then(registration => {
+                            console.log('[SW] Basic PWA registered: ', registration);
+                        })
+                        .catch(error => {
+                            console.log('[SW] Basic PWA registration failed: ', error);
+                        });
                 });
 
             // Listen for messages from SW
@@ -36,8 +63,36 @@ export function registerServiceWorker() {
                     // Play sound if foreground
                     playAlertSound();
 
-                    // Optional: Trigger a toast or other UI update
-                    console.log('Foreground notification received:', event.data.payload);
+                    // Handle real-time updates
+                    console.log('[SW] Foreground notification received:', event.data.payload);
+                    
+                    // Trigger UI update if needed
+                    if (event.data.payload.priority === 'urgent') {
+                        // Dispatch custom event for urgent updates
+                        window.dispatchEvent(new CustomEvent('urgent-order-update', {
+                            detail: event.data.payload
+                        }));
+                    }
+                }
+                
+                if (event.data && event.data.type === 'REAL_TIME_UPDATE') {
+                    // Handle real-time data updates
+                    console.log('[SW] Real-time update received:', event.data.payload);
+                    
+                    // Dispatch event for components to listen
+                    window.dispatchEvent(new CustomEvent('real-time-data-update', {
+                        detail: event.data.payload
+                    }));
+                }
+                
+                if (event.data && event.data.type === 'NOTIFICATION_ACTION') {
+                    // Handle notification actions
+                    console.log('[SW] Notification action received:', event.data);
+                    
+                    // Dispatch event for components to handle
+                    window.dispatchEvent(new CustomEvent('notification-action', {
+                        detail: event.data
+                    }));
                 }
             });
         });
@@ -75,11 +130,7 @@ export async function sendMockNotification(title: string, body: string, data: an
                 body: body,
                 icon: '/icons/icon-192.png',
                 badge: '/icons/icon-96.png',
-                vibrate: [500, 110, 500, 110, 450, 110, 200, 110, 170, 40, 450],
-                data: { ...data, url: window.location.origin + `/orders/${data.orderId}` },
-                actions: [
-                    { action: 'view-detail', title: 'LIHAT DETAIL' }
-                ]
+                data: { ...data, url: window.location.origin + `/orders/${data.orderId}` }
             });
         }
     } else {
