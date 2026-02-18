@@ -19,6 +19,14 @@ interface OrderState {
     generateOrderId: () => string;
     getOrdersByCourier: (courierId: number) => Order[];
     getRecentOrders: (limit?: number) => Order[];
+    getCourierStats: (courierId: number) => {
+        total_orders: number;
+        completed_orders: number;
+        active_orders: number;
+        total_earnings: number;
+        average_delivery_time: number;
+        recent_orders: Order[];
+    };
 }
 
 // Helper to generate distinct dates for the last 7 days
@@ -156,6 +164,25 @@ export const useOrderStore = create<OrderState>()(
                 return [...get().orders]
                     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
                     .slice(0, limit);
+            },
+
+            getCourierStats: (courierId) => {
+                const courierOrders = get().orders.filter(o => o.courier_id === courierId);
+                const completed = courierOrders.filter(o => o.status === 'delivered');
+                const active = courierOrders.filter(o => ['assigned', 'picked_up', 'in_transit'].includes(o.status));
+                const totalEarnings = completed.reduce((sum, o) => sum + (o.total_fee || 0), 0);
+                const recent = [...courierOrders]
+                    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                    .slice(0, 5);
+
+                return {
+                    total_orders: courierOrders.length,
+                    completed_orders: completed.length,
+                    active_orders: active.length,
+                    total_earnings: totalEarnings,
+                    average_delivery_time: completed.length > 0 ? 25 : 0, // Placeholder
+                    recent_orders: recent
+                };
             }
         }),
         {

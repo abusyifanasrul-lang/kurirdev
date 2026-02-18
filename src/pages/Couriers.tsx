@@ -24,7 +24,7 @@ import type { Courier } from '@/types';
 
 export function Couriers() {
   const { couriers, addCourier, suspendCourier } = useCourierStore();
-  const { orders, getOrdersByCourier } = useOrderStore(); // To calculate real-time stats
+  const { orders, getCourierStats } = useOrderStore(); // To calculate real-time stats
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isPerformanceModalOpen, setIsPerformanceModalOpen] = useState(false);
@@ -77,41 +77,10 @@ export function Couriers() {
     suspendCourier(courier.id, shouldSuspend);
   };
 
-  const getCourierStats = (courierId: number) => {
-    // Safety check for getOrdersByCourier
-    if (!getOrdersByCourier) return null;
-
-    const courierOrders = getOrdersByCourier(courierId) || [];
-    const completed = courierOrders.filter(o => o.status === 'delivered');
-    const earnings = completed.reduce((sum, o) => sum + (o.total_fee || 0), 0);
-
-    // Calculate avg delivery time based on actual timestamps
-    const avgTime = completed.length > 0 ? 25 : 0; // Placeholder until actual delivery timestamps are tracked
-
-    return {
-      total_orders: courierOrders.length,
-      completed_orders: completed.length,
-      total_earnings: earnings,
-      average_delivery_time: avgTime,
-      recent_orders: courierOrders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5)
-    };
-  };
-
   const selectedCourierStats = useMemo(() => {
     if (!selectedCourier) return null;
-    try {
-      return getCourierStats(selectedCourier.id);
-    } catch (error) {
-      console.error("Error calculating stats:", error);
-      return {
-        total_orders: 0,
-        completed_orders: 0,
-        total_earnings: 0,
-        average_delivery_time: 0,
-        recent_orders: []
-      };
-    }
-  }, [selectedCourier, couriers, getOrdersByCourier]);
+    return getCourierStats(selectedCourier.id);
+  }, [selectedCourier, orders, getCourierStats]);
 
 
   const formatCurrency = (value: number) => {
@@ -209,8 +178,8 @@ export function Couriers() {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>{courier.total_completed || 0}</TableCell>
-                    <TableCell>{formatCurrency(courier.total_earnings || 0)}</TableCell>
+                    <TableCell>{getCourierStats(courier.id).completed_orders}</TableCell>
+                    <TableCell>{formatCurrency(getCourierStats(courier.id).total_earnings)}</TableCell>
                     <TableCell>
                       <Button variant="ghost" size="sm" onClick={(e) => {
                         e.stopPropagation();

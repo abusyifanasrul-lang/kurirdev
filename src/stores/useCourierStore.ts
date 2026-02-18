@@ -1,12 +1,11 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Courier, CourierPerformance } from '@/types';
+import { Courier } from '@/types';
 import { useUserStore } from './useUserStore';
 
 interface CourierState {
     couriers: Courier[];
     queue: Courier[]; // FIFO Queue
-    performanceStats: Record<number, CourierPerformance>;
 
     initializeQueue: () => void;
     addCourier: (courier: Courier) => void;
@@ -64,18 +63,11 @@ const INITIAL_COURIERS: Courier[] = [
     },
 ];
 
-const INITIAL_PERFORMANCE: Record<number, CourierPerformance> = {
-    3: { total_orders: 160, completed_orders: 150, cancelled_orders: 5, total_earnings: 2500000, average_delivery_time: 25, recent_orders: [] },
-    4: { total_orders: 85, completed_orders: 80, cancelled_orders: 2, total_earnings: 1200000, average_delivery_time: 30, recent_orders: [] },
-    5: { total_orders: 210, completed_orders: 200, cancelled_orders: 8, total_earnings: 3100000, average_delivery_time: 22, recent_orders: [] },
-};
-
 export const useCourierStore = create<CourierState>()(
     persist(
         (set, get) => ({
             couriers: INITIAL_COURIERS,
             queue: INITIAL_COURIERS, // Initially same order
-            performanceStats: INITIAL_PERFORMANCE,
 
             initializeQueue: () => {
                 // Ensure queue has all couriers
