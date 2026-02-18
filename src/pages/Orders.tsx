@@ -371,14 +371,19 @@ export function Orders() {
                 <div className="space-y-2">
                   <h4 className="font-semibold flex items-center gap-2 text-sm text-gray-700">Payment</h4>
                   {selectedOrder.status === 'pending' ? (
-                    <Input
-                      label="Total Fee"
-                      value={editForm.total_fee ? `Rp ${editForm.total_fee.toLocaleString('id-ID')}` : ''}
-                      onChange={e => {
-                        const val = Number(e.target.value.replace(/[^0-9]/g, ''));
-                        setEditForm(prev => ({ ...prev, total_fee: val }));
-                      }}
-                    />
+                    <div>
+                      <Input
+                        label="Total Fee"
+                        value={editForm.total_fee ? `Rp ${editForm.total_fee.toLocaleString('id-ID')}` : ''}
+                        onChange={e => {
+                          const val = Number(e.target.value.replace(/[^0-9]/g, ''));
+                          setEditForm(prev => ({ ...prev, total_fee: val }));
+                        }}
+                      />
+                      <div className="flex justify-end pt-2">
+                        <Button size="sm" variant="secondary" onClick={handleSaveChanges}>Save Changes</Button>
+                      </div>
+                    </div>
                   ) : (
                     <div className="pl-6 text-sm">
                       <p><span className="text-gray-500 block">Total Fee:</span> {formatCurrency(selectedOrder.total_fee)}</p>
@@ -447,9 +452,6 @@ export function Orders() {
               </Button>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setIsDetailModalOpen(false)}>Close</Button>
-                {selectedOrder.status === 'pending' && (
-                  <Button onClick={handleSaveChanges}>Save Changes</Button>
-                )}
               </div>
             </div>
           </div>
