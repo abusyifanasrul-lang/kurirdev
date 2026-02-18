@@ -1,7 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from '@/context/AuthContext';
-import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 
 // Loading Skeleton
 function LoadingScreen() {
@@ -75,62 +74,60 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
 
 export function App() {
   return (
-    <ErrorBoundary>
-      <AuthProvider>
-        <BrowserRouter>
-          <Suspense fallback={<LoadingScreen />}>
-            <Routes>
-              {/* Login Page */}
-              <Route
-                path="/"
-                element={
-                  <AuthRoute>
-                    <Login />
-                  </AuthRoute>
-                }
-              />
+    <AuthProvider>
+      <BrowserRouter>
+        <Suspense fallback={<LoadingScreen />}>
+          <Routes>
+            {/* Login Page */}
+            <Route
+              path="/"
+              element={
+                <AuthRoute>
+                  <Login />
+                </AuthRoute>
+              }
+            />
 
-              {/* Admin Routes */}
-              <Route
-                path="/admin"
-                element={
-                  <ProtectedRoute allowedRoles={['admin']}>
-                    <AdminLayout />
-                  </ProtectedRoute>
-                }
-              >
-                <Route index element={<Dashboard />} />
-                <Route path="orders" element={<Orders />} />
-                <Route path="couriers" element={<Couriers />} />
-                <Route path="reports" element={<Reports />} />
-                <Route path="notifications" element={<Notifications />} />
-                <Route path="settings" element={<Settings />} />
-              </Route>
+            {/* Admin Routes */}
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Dashboard />} />
+              <Route path="orders" element={<Orders />} />
+              <Route path="couriers" element={<Couriers />} />
+              <Route path="reports" element={<Reports />} />
+              <Route path="notifications" element={<Notifications />} />
+              <Route path="settings" element={<Settings />} />
+            </Route>
 
-              {/* Courier PWA Routes */}
-              <Route
-                path="/courier"
-                element={
-                  <ProtectedRoute allowedRoles={['courier']}>
-                    <CourierLayout />
-                  </ProtectedRoute>
-                }
-              >
-                <Route index element={<CourierDashboard />} />
-                <Route path="orders" element={<CourierOrders />} />
-                <Route path="orders/:id" element={<CourierOrderDetail />} />
-                <Route path="notifications" element={<CourierNotifications />} />
-                <Route path="history" element={<CourierHistory />} />
-                <Route path="earnings" element={<CourierEarnings />} />
-                <Route path="profile" element={<CourierProfile />} />
-              </Route>
+            {/* Courier PWA Routes */}
+            <Route
+              path="/courier"
+              element={
+                <ProtectedRoute allowedRoles={['courier']}>
+                  <CourierLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<CourierDashboard />} />
+              <Route path="orders" element={<CourierOrders />} />
+              <Route path="orders/:id" element={<CourierOrderDetail />} />
+              <Route path="notifications" element={<CourierNotifications />} />
+              <Route path="history" element={<CourierHistory />} />
+              <Route path="earnings" element={<CourierEarnings />} />
+              <Route path="profile" element={<CourierProfile />} />
+            </Route>
 
-              {/* Fallback */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </Suspense>
-        </BrowserRouter>
-      </AuthProvider>
-    </ErrorBoundary>
+            {/* Fallback */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }

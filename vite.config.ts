@@ -19,8 +19,6 @@ export default defineConfig({
         "icons/icon.svg",
         "icons/icon-192.png",
         "icons/icon-512.png",
-        "icons/icon512_maskable.png",
-        "icons/icon512_rounded.png",
         "alert.mp3",
       ],
       manifest: {
@@ -47,16 +45,10 @@ export default defineConfig({
             type: "image/png",
           },
           {
-            src: "/icons/icon512_maskable.png",
+            src: "/icons/icon-512.png",
             sizes: "512x512",
             type: "image/png",
             purpose: "maskable",
-          },
-          {
-            src: "/icons/icon512_rounded.png",
-            sizes: "512x512",
-            type: "image/png",
-            purpose: "any",
           },
         ],
         screenshots: [
