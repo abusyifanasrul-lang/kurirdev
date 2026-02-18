@@ -31,9 +31,10 @@ export function CourierEarnings() {
   const todayStats = useMemo(() => {
     const today = startOfDay(new Date());
     const todayEnd = endOfDay(new Date());
-    const todayOrders = deliveredOrders.filter((o) =>
-      isWithinInterval(parseISO(o.created_at), { start: today, end: todayEnd })
-    );
+    const todayOrders = deliveredOrders.filter((o) => {
+      const deliveryDate = o.actual_delivery_time ? parseISO(o.actual_delivery_time) : parseISO(o.created_at);
+      return isWithinInterval(deliveryDate, { start: today, end: todayEnd });
+    });
     const totalFee = todayOrders.reduce((sum, o) => sum + (o.total_fee || 0), 0);
     return {
       orders: todayOrders.length,
@@ -62,9 +63,10 @@ export function CourierEarnings() {
         const date = subDays(now, 6 - i);
         const dayStart = startOfDay(date);
         const dayEnd = endOfDay(date);
-        const dayOrders = deliveredOrders.filter((o) =>
-          isWithinInterval(parseISO(o.created_at), { start: dayStart, end: dayEnd })
-        );
+        const dayOrders = deliveredOrders.filter((o) => {
+          const deliveryDate = o.actual_delivery_time ? parseISO(o.actual_delivery_time) : parseISO(o.created_at);
+          return isWithinInterval(deliveryDate, { start: dayStart, end: dayEnd });
+        });
         const totalFee = dayOrders.reduce((sum, o) => sum + (o.total_fee || 0), 0);
         return {
           label: format(date, 'dd/MM'),
@@ -81,8 +83,8 @@ export function CourierEarnings() {
         const weekStart = startOfWeek(subDays(now, (3 - i) * 7), { weekStartsOn: 1 });
         const weekEnd = endOfDay(subDays(startOfWeek(subDays(now, (2 - i) * 7), { weekStartsOn: 1 }), 1));
         const weekOrders = deliveredOrders.filter((o) => {
-          const d = parseISO(o.created_at);
-          return d >= weekStart && d <= weekEnd;
+          const deliveryDate = o.actual_delivery_time ? parseISO(o.actual_delivery_time) : parseISO(o.created_at);
+          return deliveryDate >= weekStart && deliveryDate <= weekEnd;
         });
         const totalFee = weekOrders.reduce((sum, o) => sum + (o.total_fee || 0), 0);
         return {

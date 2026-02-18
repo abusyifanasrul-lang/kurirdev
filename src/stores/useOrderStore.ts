@@ -88,12 +88,25 @@ export const useOrderStore = create<OrderState>()(
 
             updateOrderStatus: (orderId, status, userId, userName, notes) =>
                 set((state) => {
-                    const updatedOrders = state.orders.map((o) =>
-                        o.id === orderId ? { ...o, status, updated_at: new Date().toISOString() } : o
-                    );
+                    const updatedOrders = state.orders.map((o) => {
+                        if (o.id !== orderId) return o;
+
+                        const updates: Partial<Order> = {
+                            status,
+                            updated_at: new Date().toISOString()
+                        };
+
+                        if (status === 'picked_up' && !o.actual_pickup_time) {
+                            updates.actual_pickup_time = new Date().toISOString();
+                        } else if (status === 'delivered' && !o.actual_delivery_time) {
+                            updates.actual_delivery_time = new Date().toISOString();
+                        }
+
+                        return { ...o, ...updates };
+                    });
 
                     const newHistory: OrderStatusHistory = {
-                        id: Date.now(), // simple unique id
+                        id: Date.now(),
                         order_id: orderId,
                         status,
                         changed_by: userId,

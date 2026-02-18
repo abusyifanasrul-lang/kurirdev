@@ -47,7 +47,7 @@ export function Reports() {
 
     // 1. Filter Orders in Range
     const filteredOrders = orders.filter((o) => {
-      const dateStr = o.created_at; // ISO string
+      const dateStr = (o.status === 'delivered' && o.actual_delivery_time) ? o.actual_delivery_time : o.created_at;
       if (!dateStr) return false;
       const date = parseISO(dateStr);
       return isWithinInterval(date, { start, end });
@@ -70,8 +70,10 @@ export function Reports() {
           const c = couriers.find(c => c.id === o.courier_id);
           courierStats[o.courier_id] = { name: c?.name || 'Unknown', count: 0, earnings: 0 };
         }
+        const courier = couriers.find(c => c.id === o.courier_id);
+        const rate = (courier?.commission_rate ?? 80) / 100;
         courierStats[o.courier_id].count += 1;
-        courierStats[o.courier_id].earnings += o.total_fee || 0;
+        courierStats[o.courier_id].earnings += (o.total_fee || 0) * rate;
       }
     });
 
@@ -86,9 +88,10 @@ export function Reports() {
     const days = eachDayOfInterval({ start, end });
     const dailyData = days.map(day => {
       const dayStr = format(day, 'yyyy-MM-dd');
-      const dayOrders = filteredOrders.filter(o =>
-        format(parseISO(o.created_at!), 'yyyy-MM-dd') === dayStr
-      );
+      const dayOrders = filteredOrders.filter(o => {
+        const dateStr = (o.status === 'delivered' && o.actual_delivery_time) ? o.actual_delivery_time : o.created_at;
+        return format(parseISO(dateStr!), 'yyyy-MM-dd') === dayStr;
+      });
       const dayRevenue = dayOrders
         .filter(o => o.status === 'delivered')
         .reduce((acc, o) => acc + (o.total_fee || 0), 0);
@@ -139,17 +142,8 @@ export function Reports() {
   };
 
   const handleExportReport = () => {
-    const headers = ['Metric', 'Value'];
-    const summaryRows = [
-      ['Report Period', `${appliedRange.start} to ${appliedRange.end}`],
-      ['Total Orders', analytics.totalOrders],
-      ['Total Revenue', analytics.totalRevenue],
-      ['Average Orders/Day', analytics.avgOrdersPerDay.toFixed(2)],
-      ['Top Courier', analytics.topCourier?.name || 'N/A'],
-    ];
-
-    // Add detailed rows or just summary? Usually detailed data is better.
     // Let's create a "Orders Dump" for the period + Summary at top.
+    // Add detailed rows or just summary? Usually detailed data is better.
 
     // Actually, simple CSV format usually prefers uniform columns. 
     // Let's dump the Orders List for this period.
@@ -158,7 +152,8 @@ export function Reports() {
       .filter(o => {
         const start = startOfDay(parseISO(appliedRange.start));
         const end = endOfDay(parseISO(appliedRange.end));
-        return isWithinInterval(parseISO(o.created_at!), { start, end });
+        const dateStr = (o.status === 'delivered' && o.actual_delivery_time) ? o.actual_delivery_time : o.created_at;
+        return isWithinInterval(parseISO(dateStr!), { start, end });
       })
       .map(o => [
         o.order_number,
@@ -326,8 +321,8 @@ export function Reports() {
                     <tr key={index}>
                       <td className="py-3">
                         <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-sm font-medium ${index === 0 ? 'bg-yellow-100 text-yellow-800' :
-                            index === 1 ? 'bg-gray-100 text-gray-800' :
-                              index === 2 ? 'bg-orange-100 text-orange-800' : 'bg-gray-50 text-gray-600'
+                          index === 1 ? 'bg-gray-100 text-gray-800' :
+                            index === 2 ? 'bg-orange-100 text-orange-800' : 'bg-gray-50 text-gray-600'
                           }`}>
                           {index + 1}
                         </span>

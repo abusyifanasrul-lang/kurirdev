@@ -46,7 +46,12 @@ export function Couriers() {
   const totalDeliveries = orders.filter(o => o.status === 'delivered').length;
   const totalEarnings = orders
     .filter(o => o.status === 'delivered')
-    .reduce((sum, o) => sum + (o.total_fee || 0), 0);
+    .reduce((sum, o) => {
+      // Find courier for this order to get their commission rate
+      const courier = couriers.find(c => c.id === o.courier_id);
+      const rate = (courier?.commission_rate ?? 80) / 100;
+      return sum + (o.total_fee || 0) * rate;
+    }, 0);
 
   const handleAddCourier = () => {
     const courierData: Courier = {
@@ -83,7 +88,9 @@ export function Couriers() {
 
     const courierOrders = getOrdersByCourier(courierId) || [];
     const completed = courierOrders.filter(o => o.status === 'delivered');
-    const earnings = completed.reduce((sum, o) => sum + (o.total_fee || 0), 0);
+    const courier = couriers.find(c => c.id === courierId);
+    const rate = (courier?.commission_rate ?? 80) / 100;
+    const earnings = completed.reduce((sum, o) => sum + (o.total_fee || 0) * rate, 0);
 
     // Calculate avg delivery time based on actual timestamps
     const avgTime = completed.length > 0 ? 25 : 0; // Placeholder until actual delivery timestamps are tracked
