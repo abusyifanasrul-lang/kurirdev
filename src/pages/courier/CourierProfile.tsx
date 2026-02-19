@@ -105,6 +105,7 @@ export function CourierProfile() {
               ? 'bg-green-50 border border-green-200 text-green-700'
               : 'bg-red-50 border border-red-200 text-red-700'
           )}
+          style={{ display: message.text === 'Password saat ini salah' ? 'none' : 'flex' }}
         >
           {message.type === 'success' ? (
             <CheckCircle className="h-5 w-5 flex-shrink-0" />
@@ -181,10 +182,24 @@ export function CourierProfile() {
               <input
                 type="password"
                 value={passwordForm.currentPassword}
-                onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                onChange={(e) => {
+                  setPasswordForm({ ...passwordForm, currentPassword: e.target.value });
+                  if (message?.text === 'Password saat ini salah') setMessage(null);
+                }}
+                className={cn(
+                  "w-full px-4 py-3 border rounded-xl focus:ring-2 focus:border-green-500",
+                  message?.text === 'Password saat ini salah'
+                    ? "border-red-500 focus:ring-red-200"
+                    : "border-gray-300 focus:ring-green-500"
+                )}
                 placeholder="Enter current password"
               />
+              {message?.text === 'Password saat ini salah' && (
+                <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {message.text}
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
