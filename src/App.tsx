@@ -1,7 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from '@/context/AuthContext';
-import { useSessionStore } from '@/stores/useSessionStore';
+import { AuthProvider, useAuth } from '@/context/AuthContext';
 
 // Loading Skeleton
 function LoadingScreen() {
@@ -39,7 +38,9 @@ const CourierNotifications = lazy(() => import('@/pages/courier/CourierNotificat
 
 // Protected Route Component
 function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles: string[] }) {
-  const { user, isAuthenticated } = useSessionStore();
+  const { user, isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) return <LoadingScreen />;
 
   // Strictly respect the store state
   if (!isAuthenticated || !user) {
@@ -56,7 +57,9 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
 
 // Auth Check - Redirect to dashboard if logged in
 function AuthRoute({ children }: { children: React.ReactNode }) {
-  const { user, isAuthenticated } = useSessionStore();
+  const { user, isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) return <LoadingScreen />;
 
   if (isAuthenticated && user) {
     return <Navigate to={user.role === 'admin' ? '/admin' : '/courier'} replace />;
