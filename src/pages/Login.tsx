@@ -61,8 +61,8 @@ export function Login() {
         // Store auth data using the Store action
         login(foundUser);
 
-        // Persist token for API stability
-        localStorage.setItem('auth_token', 'mock_jwt_token_' + Date.now());
+        // Persist token for API stability (session-scoped)
+        sessionStorage.setItem('auth_token', 'mock_jwt_token_' + Date.now());
 
         // Navigate based on role
         if (selectedRole === 'admin') {

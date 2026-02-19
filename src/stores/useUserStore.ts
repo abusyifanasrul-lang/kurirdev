@@ -96,6 +96,17 @@ export const useUserStore = create<UserState>()(
         }),
         {
             name: 'user-storage',
+            storage: {
+                getItem: (name) => {
+                    const str = sessionStorage.getItem(name);
+                    if (!str) return null;
+                    return JSON.parse(str);
+                },
+                setItem: (name, value) => {
+                    sessionStorage.setItem(name, JSON.stringify(value));
+                },
+                removeItem: (name) => sessionStorage.removeItem(name),
+            },
         }
     )
 );

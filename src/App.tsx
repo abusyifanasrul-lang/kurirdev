@@ -40,7 +40,7 @@ const CourierNotifications = lazy(() => import('@/pages/courier/CourierNotificat
 // Protected Route Component
 function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles: string[] }) {
   const { user, isAuthenticated } = useUserStore();
-  const token = localStorage.getItem('auth_token');
+  const token = sessionStorage.getItem('auth_token');
 
   // Strictly respect the token and store state
   if (!token || !isAuthenticated || !user) {
@@ -58,7 +58,7 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
 // Auth Check - Redirect to dashboard if logged in
 function AuthRoute({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated } = useUserStore();
-  const token = localStorage.getItem('auth_token');
+  const token = sessionStorage.getItem('auth_token');
 
   if (token && isAuthenticated && user) {
     return <Navigate to={user.role === 'admin' ? '/admin' : '/courier'} replace />;
