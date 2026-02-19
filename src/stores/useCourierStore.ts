@@ -5,6 +5,7 @@ import { useUserStore } from './useUserStore';
 
 interface CourierState {
     couriers: Courier[];
+    queue: Courier[];
     addCourier: (courier: Courier) => void;
     updateCourier: (id: number, data: Partial<Courier>) => void;
     updateCourierStatus: (id: number, data: Partial<Courier>) => void;
@@ -75,21 +76,30 @@ export const useCourierStore = create<CourierState>()(
     persist(
         (set, get) => ({
             couriers: INITIAL_COURIERS,
+            queue: INITIAL_COURIERS,
 
             addCourier: (courier) => {
                 set((state) => ({
-                    couriers: [...state.couriers, courier]
+                    couriers: [...state.couriers, courier],
+                    queue: [...state.queue, courier]
                 }));
                 // Sync to user database
                 useUserStore.getState().addUser(courier);
             },
 
             updateCourier: (id, data) => {
-                set((state) => ({
-                    couriers: state.couriers.map((c) =>
+                set((state) => {
+                    const updatedCouriers = state.couriers.map((c) =>
                         c.id === id ? { ...c, ...data, updated_at: new Date().toISOString() } : c
-                    ),
-                }));
+                    );
+                    const updatedQueue = state.queue.map((c) =>
+                        c.id === id ? { ...c, ...data, updated_at: new Date().toISOString() } : c
+                    );
+                    return {
+                        couriers: updatedCouriers,
+                        queue: updatedQueue
+                    };
+                });
                 // Sync to user database
                 useUserStore.getState().updateUser(id, data);
             },
@@ -101,26 +111,27 @@ export const useCourierStore = create<CourierState>()(
             removeCourier: (id) => {
                 set((state) => ({
                     couriers: state.couriers.filter((c) => c.id !== id),
+                    queue: state.queue.filter((c) => c.id !== id),
                 }));
                 // Sync to user database
                 useUserStore.getState().removeUser(id);
             },
 
             getAvailableCouriers: () => {
-                return get().couriers.filter(c => c.is_active && c.is_online);
+                return get().queue.filter(c => c.is_active && c.is_online);
             },
 
             rotateQueue: (id) => {
                 // Move the recently assigned courier to the end of the list for basic FIFO load balancing
                 set((state) => {
-                    const index = state.couriers.findIndex(c => c.id === id);
+                    const index = state.queue.findIndex(c => c.id === id);
                     if (index === -1) return state;
 
-                    const newCouriers = [...state.couriers];
-                    const [courier] = newCouriers.splice(index, 1);
-                    newCouriers.push(courier);
+                    const newQueue = [...state.queue];
+                    const [courier] = newQueue.splice(index, 1);
+                    newQueue.push(courier);
 
-                    return { couriers: newCouriers };
+                    return { queue: newQueue };
                 });
             },
         }),

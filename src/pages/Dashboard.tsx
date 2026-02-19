@@ -35,11 +35,16 @@ import { useCourierStore } from '@/stores/useCourierStore';
 const COLORS = ['#F59E0B', '#3B82F6', '#8B5CF6', '#06B6D4', '#22C55E', '#EF4444'];
 
 export function Dashboard() {
-  const { orders, getRecentOrders } = useOrderStore();
-  const { queue, couriers } = useCourierStore();
+  const { orders, getRecentOrders, initializeOrders } = useOrderStore();
+  const { queue = [], couriers = [] } = useCourierStore();
 
   const [isConnected, setIsConnected] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(new Date());
+
+  // Initialize data if empty
+  useEffect(() => {
+    initializeOrders();
+  }, [initializeOrders]);
 
   // Simulate polling/refresh
   useEffect(() => {
@@ -64,15 +69,15 @@ export function Dashboard() {
   // --- Derived Analytics ---
   const analytics = useMemo(() => {
     const today = new Date();
-    const todayOrders = orders.filter(o => isToday(new Date(o.created_at)));
-    const pendingOrders = orders.filter(o => o.status === 'pending');
+    const todayOrders = (orders || []).filter(o => isToday(new Date(o.created_at)));
+    const pendingOrders = (orders || []).filter(o => o.status === 'pending');
 
     // Revenue: Sum of total_fee for 'delivered' orders today
     const revenueToday = todayOrders
       .filter(o => o.status === 'delivered')
-      .reduce((sum, o) => sum + o.total_fee, 0);
+      .reduce((sum, o) => sum + (o.total_fee || 0), 0);
 
-    const activeCouriersCount = couriers.filter(c => c.is_active && c.is_online).length;
+    const activeCouriersCount = (couriers || []).filter(c => c.is_active && c.is_online).length;
 
     // Pie Chart Data
     const statusCounts = orders.reduce((acc, order) => {
@@ -102,13 +107,13 @@ export function Dashboard() {
       const start = startOfDay(date);
       const end = endOfDay(date);
 
-      const dayOrders = orders.filter(o =>
+      const dayOrders = (orders || []).filter(o =>
         isWithinInterval(new Date(o.created_at), { start, end })
       );
 
       const revenue = dayOrders
         .filter(o => o.status === 'delivered')
-        .reduce((sum, o) => sum + o.total_fee, 0);
+        .reduce((sum, o) => sum + (o.total_fee || 0), 0);
 
       data.push({
         date: date.toISOString(),
