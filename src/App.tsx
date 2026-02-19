@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from '@/context/AuthContext';
-import { useUserStore } from '@/stores/useUserStore';
+import { useSessionStore } from './stores/useSessionStore';
 
 // Loading Skeleton
 function LoadingScreen() {
@@ -39,7 +39,7 @@ const CourierNotifications = lazy(() => import('@/pages/courier/CourierNotificat
 
 // Protected Route Component
 function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles: string[] }) {
-  const { user, isAuthenticated } = useUserStore();
+  const { user, isAuthenticated } = useSessionStore();
   const token = sessionStorage.getItem('auth_token');
 
   // Strictly respect the token and store state
@@ -57,7 +57,7 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
 
 // Auth Check - Redirect to dashboard if logged in
 function AuthRoute({ children }: { children: React.ReactNode }) {
-  const { user, isAuthenticated } = useUserStore();
+  const { user, isAuthenticated } = useSessionStore();
   const token = sessionStorage.getItem('auth_token');
 
   if (token && isAuthenticated && user) {

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import type { User, AuthState } from '@/types';
 import { authApi } from '@/services/api';
 import { useUserStore } from '@/stores/useUserStore';
+import { useSessionStore } from '@/stores/useSessionStore';
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<void>;
@@ -12,7 +13,8 @@ interface AuthContextType extends AuthState {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { user, isAuthenticated, login: storeLogin, logout: storeLogout, updateUser: storeUpdateUser } = useUserStore();
+  const { user, isAuthenticated, setSession, clearSession } = useSessionStore();
+  const { updateUser: storeUpdateUser } = useUserStore();
   const [state, setState] = useState<AuthState>({
     user: null,
     token: null,
@@ -38,15 +40,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await authApi.login(email, password);
       if (response.success && response.data) {
         const { user: apiUser, token } = response.data;
-        localStorage.setItem('auth_token', token);
-        storeLogin(apiUser);
+        sessionStorage.setItem('auth_token', token);
+        setSession(apiUser);
       } else {
         throw new Error(response.message || 'Login failed');
       }
     } catch (error) {
       throw error;
     }
-  }, [storeLogin]);
+  }, [setSession]);
 
   const logout = useCallback(async () => {
     try {
@@ -54,10 +56,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // Ignore errors on logout
     } finally {
-      localStorage.removeItem('auth_token');
-      storeLogout();
+      sessionStorage.removeItem('auth_token');
+      clearSession();
     }
-  }, [storeLogout]);
+  }, [clearSession]);
 
   const updateUser = useCallback((updatedUser: User) => {
     storeUpdateUser(updatedUser.id, updatedUser);

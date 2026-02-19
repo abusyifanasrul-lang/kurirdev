@@ -25,6 +25,7 @@ const INITIAL_COURIERS: Courier[] = [
         name: 'Budi Santoso',
         email: 'budi@courier.com',
         role: 'courier',
+        password: 'password123',
         phone: '+6281298765432',
         is_active: true,
         is_online: true,
@@ -39,6 +40,7 @@ const INITIAL_COURIERS: Courier[] = [
         name: 'Siti Aminah',
         email: 'siti@courier.com',
         role: 'courier',
+        password: 'password123',
         phone: '+6281345678901',
         is_active: true,
         is_online: false,
@@ -53,6 +55,7 @@ const INITIAL_COURIERS: Courier[] = [
         name: 'Agus Pratama',
         email: 'agus@courier.com',
         role: 'courier',
+        password: 'password123',
         phone: '+6281876543210',
         is_active: true,
         is_online: true,
@@ -74,11 +77,10 @@ export const useCourierStore = create<CourierState>()(
     persist(
         (set, get) => ({
             couriers: INITIAL_COURIERS,
-            queue: INITIAL_COURIERS, // Initially same order
+            queue: INITIAL_COURIERS,
             performanceStats: INITIAL_PERFORMANCE,
 
             initializeQueue: () => {
-                // Ensure queue has all couriers
                 const currentQueueIds = get().queue.map(c => c.id);
                 const missing = get().couriers.filter(c => !currentQueueIds.includes(c.id));
                 if (missing.length > 0) {
@@ -87,7 +89,6 @@ export const useCourierStore = create<CourierState>()(
             },
 
             addCourier: (courier) => {
-                // Sync with UserStore (Side Effect outside set)
                 useUserStore.getState().addUser({
                     id: courier.id,
                     name: courier.name,
@@ -107,15 +108,12 @@ export const useCourierStore = create<CourierState>()(
             },
 
             updateCourierStatus: (id, status) => {
-                // Sync with UserStore
                 useUserStore.getState().updateUser(id, status);
 
                 set((state) => {
                     const updatedCouriers = state.couriers.map((c) => (c.id === id ? { ...c, ...status } : c));
-
                     let updatedQueue = state.queue.map(c => (c.id === id ? { ...c, ...status } : c));
 
-                    // If turning Online, move to back of queue
                     if (status.is_online === true) {
                         const courierInQueue = updatedQueue.find(c => c.id === id);
                         if (courierInQueue) {
@@ -129,7 +127,6 @@ export const useCourierStore = create<CourierState>()(
             },
 
             suspendCourier: (id, isSuspended) => {
-                // Sync with UserStore
                 useUserStore.getState().updateUser(id, { is_active: !isSuspended });
 
                 set((state) => {
@@ -145,7 +142,7 @@ export const useCourierStore = create<CourierState>()(
                     if (!courier) return state;
 
                     const newQueue = state.queue.filter((c) => c.id !== courierId);
-                    newQueue.push(courier); // Move to back
+                    newQueue.push(courier);
                     return { queue: newQueue };
                 }),
 

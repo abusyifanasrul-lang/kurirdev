@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Truck, User, Users, Eye, EyeOff, Loader2, Mail, Lock } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useUserStore } from '@/stores/useUserStore';
+import { useSessionStore } from '@/stores/useSessionStore';
 
 type RoleType = 'admin' | 'courier' | null;
 
@@ -30,7 +31,8 @@ export function Login() {
     }
   };
 
-  const { users, login } = useUserStore(); // Get users from store
+  const { users } = useUserStore();
+  const { setSession } = useSessionStore();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,15 +53,12 @@ export function Login() {
         u.role === selectedRole
       );
 
-      // 2. Validate Password
-      // Check against stored password if available, otherwise fallback to demo rule (>= 6 chars)
-      const isValidPassword = foundUser && foundUser.password
-        ? foundUser.password === password
-        : password.length >= 6;
+      // 2. Validate Password strictly
+      const isValidPassword = foundUser && foundUser.password === password;
 
       if (foundUser && isValidPassword) {
-        // Store auth data using the Store action
-        login(foundUser);
+        // Store session in the isolated store
+        setSession(foundUser);
 
         // Persist token for API stability (session-scoped)
         sessionStorage.setItem('auth_token', 'mock_jwt_token_' + Date.now());
@@ -74,7 +73,7 @@ export function Login() {
         if (!foundUser) {
           setError(`User with this email not found as ${selectedRole}.`);
         } else {
-          setError('Invalid password (must be at least 6 characters for demo).');
+          setError('Invalid password.');
         }
       }
     } catch (err) {
