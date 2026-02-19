@@ -23,7 +23,7 @@ import {
 // Stores & Types
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useCourierStore } from '@/stores/useCourierStore';
-import { useUserStore } from '@/stores/useUserStore';
+import { useAuth } from '@/context/AuthContext';
 import type { Order, CreateOrderPayload, PaymentStatus } from '@/types';
 
 const statusOptions = [
@@ -51,7 +51,7 @@ type SortOrder = 'asc' | 'desc';
 export function Orders() {
   const { orders, addOrder, assignCourier, cancelOrder, generateOrderId, updateOrder } = useOrderStore();
   const { getAvailableCouriers, rotateQueue } = useCourierStore();
-  const { user } = useUserStore(); // Current admin user
+  const { user } = useAuth(); // Current admin user
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchCategory, setSearchCategory] = useState('all');

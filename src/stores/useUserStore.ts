@@ -1,22 +1,22 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { User } from '@/types';
 
 interface UserState {
-    users: User[]; // Combined list of Admins and Couriers for Settings page
+    users: User[]; // Combined list of Admins and Couriers
     addUser: (user: User) => void;
     removeUser: (id: number) => void;
     updateUser: (id: number, data: Partial<User>) => void;
 }
 
-// Initial Mock Data with default passwords
+// Initial Mock Data with strict passwords
 const INITIAL_USERS: User[] = [
     {
         id: 1,
         name: 'Super Admin',
         email: 'admin@delivery.com',
         role: 'admin',
-        password: 'password123',
+        password: 'admin123',
         phone: '+6281234567890',
         is_active: true,
         created_at: '2024-01-01T00:00:00Z',
@@ -27,7 +27,7 @@ const INITIAL_USERS: User[] = [
         name: 'Admin Operational',
         email: 'ops@delivery.com',
         role: 'admin',
-        password: 'password123',
+        password: 'admin123',
         phone: '+6281234567891',
         is_active: true,
         created_at: '2024-02-01T00:00:00Z',
@@ -38,7 +38,7 @@ const INITIAL_USERS: User[] = [
         name: 'Budi Santoso',
         email: 'budi@courier.com',
         role: 'courier',
-        password: 'password123',
+        password: 'courier123',
         phone: '+6281298765432',
         is_active: true,
         is_online: true,
@@ -50,7 +50,7 @@ const INITIAL_USERS: User[] = [
         name: 'Siti Aminah',
         email: 'siti@courier.com',
         role: 'courier',
-        password: 'password123',
+        password: 'courier123',
         phone: '+6281345678901',
         is_active: true,
         is_online: false,
@@ -62,7 +62,7 @@ const INITIAL_USERS: User[] = [
         name: 'Agus Pratama',
         email: 'agus@courier.com',
         role: 'courier',
-        password: 'password123',
+        password: 'courier123',
         phone: '+6281876543210',
         is_active: true,
         is_online: true,
@@ -78,8 +78,7 @@ export const useUserStore = create<UserState>()(
             addUser: (user) => set((state) => ({ users: [...state.users, user] })),
             removeUser: (id) =>
                 set((state) => {
-                    // Prevent deleting Super Admin (ID 1)
-                    if (id === 1) return state;
+                    if (id === 1) return state; // Prevent deleting Super Admin
                     return { users: state.users.filter((u) => u.id !== id) };
                 }),
             updateUser: (id, data) =>
@@ -89,6 +88,7 @@ export const useUserStore = create<UserState>()(
         }),
         {
             name: 'user-storage',
+            storage: createJSONStorage(() => localStorage),
         }
     )
 );

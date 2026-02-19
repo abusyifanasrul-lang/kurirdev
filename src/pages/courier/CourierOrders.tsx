@@ -4,11 +4,11 @@ import { Package, ChevronRight, Search } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
 import { useOrderStore } from '@/stores/useOrderStore';
-import { useUserStore } from '@/stores/useUserStore';
+import { useAuth } from '@/context/AuthContext';
 
 export function CourierOrders() {
   const navigate = useNavigate();
-  const { user } = useUserStore();
+  const { user } = useAuth();
   const { orders } = useOrderStore(); // Global orders
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -72,8 +72,8 @@ export function CourierOrders() {
             key={filter.key}
             onClick={() => setActiveFilter(filter.key)}
             className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${activeFilter === filter.key
-                ? 'bg-green-600 text-white'
-                : 'bg-white text-gray-600 border border-gray-200'
+              ? 'bg-green-600 text-white'
+              : 'bg-white text-gray-600 border border-gray-200'
               }`}
           >
             {filter.label}

@@ -2,9 +2,8 @@ import { useState, useEffect } from 'react';
 import { Bell, Search, RefreshCw, Wifi, WifiOff, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { useAuth } from '@/context/AuthContext'; // Or useUserStore if migrated completely
+import { useAuth } from '@/context/AuthContext';
 import { useNotificationStore } from '@/stores/useNotificationStore';
-import { useUserStore } from '@/stores/useUserStore'; // Fallback if AuthContext is removed
 
 interface HeaderProps {
   title: string;
@@ -32,7 +31,7 @@ export function Header({
   onMenuClick,
 }: HeaderProps) {
   // We need the current user to filter notifications
-  const { user } = useUserStore();
+  const { user } = useAuth();
   const { notifications, unreadCount, markAllAsRead } = useNotificationStore();
 
   // Calculate unread for THIS user

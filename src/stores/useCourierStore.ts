@@ -1,158 +1,127 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { Courier, CourierPerformance } from '@/types';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { Courier } from '@/types';
 import { useUserStore } from './useUserStore';
 
 interface CourierState {
     couriers: Courier[];
-    queue: Courier[]; // FIFO Queue
-    performanceStats: Record<number, CourierPerformance>;
-
-    initializeQueue: () => void;
     addCourier: (courier: Courier) => void;
-    updateCourierStatus: (id: number, status: Partial<Courier>) => void;
-    suspendCourier: (id: number, isSuspended: boolean) => void;
-
-    // Queue Logic
-    rotateQueue: (courierId: number) => void; // Move courier to back after assignment
-    getAvailableCouriers: () => Courier[]; // Get online and active couriers sorted by Queue order
+    updateCourier: (id: number, data: Partial<Courier>) => void;
+    removeCourier: (id: number) => void;
+    getAvailableCouriers: () => Courier[];
+    rotateQueue: (id: number) => void;
 }
 
-// Initial Courier Data (Linked to Users 3, 4, 5)
+// Initial Data matched with INITIAL_USERS in useUserStore
 const INITIAL_COURIERS: Courier[] = [
     {
-        id: 3,
+        id: 2,
         name: 'Budi Santoso',
-        email: 'budi@courier.com',
+        email: 'budi@kurir.com',
         role: 'courier',
-        password: 'password123',
-        phone: '+6281298765432',
+        password: 'courier123',
+        phone: '+628123456789',
         is_active: true,
         is_online: true,
-        created_at: '2024-01-15T00:00:00Z',
-        updated_at: '2024-01-15T00:00:00Z',
         vehicle_type: 'motorcycle',
-        plate_number: 'B 1234 XY',
+        plate_number: 'B 1234 ABC',
         commission_rate: 80,
+        active_orders_count: 0,
+        total_completed: 45,
+        total_earnings: 1250000,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+    },
+    {
+        id: 3,
+        name: 'Siti Aminah',
+        email: 'siti@kurir.com',
+        role: 'courier',
+        password: 'courier123',
+        phone: '+628123456790',
+        is_active: true,
+        is_online: true,
+        vehicle_type: 'motorcycle',
+        plate_number: 'B 5678 DEF',
+        commission_rate: 80,
+        active_orders_count: 1,
+        total_completed: 32,
+        total_earnings: 850000,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
     },
     {
         id: 4,
-        name: 'Siti Aminah',
-        email: 'siti@courier.com',
+        name: 'Agus Prayitno',
+        email: 'agus@kurir.com',
         role: 'courier',
-        password: 'password123',
-        phone: '+6281345678901',
+        password: 'courier123',
+        phone: '+628123456791',
         is_active: true,
         is_online: false,
-        created_at: '2024-01-20T00:00:00Z',
-        updated_at: '2024-01-20T00:00:00Z',
-        vehicle_type: 'motorcycle',
-        plate_number: 'B 5678 AB',
+        vehicle_type: 'bicycle',
+        plate_number: '-',
         commission_rate: 80,
-    },
-    {
-        id: 5,
-        name: 'Agus Pratama',
-        email: 'agus@courier.com',
-        role: 'courier',
-        password: 'password123',
-        phone: '+6281876543210',
-        is_active: true,
-        is_online: true,
-        created_at: '2024-02-10T00:00:00Z',
-        updated_at: '2024-02-10T00:00:00Z',
-        vehicle_type: 'motorcycle',
-        plate_number: 'B 9012 CD',
-        commission_rate: 80,
+        active_orders_count: 0,
+        total_completed: 12,
+        total_earnings: 340000,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
     },
 ];
-
-const INITIAL_PERFORMANCE: Record<number, CourierPerformance> = {
-    3: { total_orders: 160, completed_orders: 150, cancelled_orders: 5, total_earnings: 2500000, average_delivery_time: 25, recent_orders: [] },
-    4: { total_orders: 85, completed_orders: 80, cancelled_orders: 2, total_earnings: 1200000, average_delivery_time: 30, recent_orders: [] },
-    5: { total_orders: 210, completed_orders: 200, cancelled_orders: 8, total_earnings: 3100000, average_delivery_time: 22, recent_orders: [] },
-};
 
 export const useCourierStore = create<CourierState>()(
     persist(
         (set, get) => ({
             couriers: INITIAL_COURIERS,
-            queue: INITIAL_COURIERS,
-            performanceStats: INITIAL_PERFORMANCE,
-
-            initializeQueue: () => {
-                const currentQueueIds = get().queue.map(c => c.id);
-                const missing = get().couriers.filter(c => !currentQueueIds.includes(c.id));
-                if (missing.length > 0) {
-                    set(state => ({ queue: [...state.queue, ...missing] }));
-                }
-            },
 
             addCourier: (courier) => {
-                useUserStore.getState().addUser({
-                    id: courier.id,
-                    name: courier.name,
-                    email: courier.email,
-                    password: courier.password,
-                    role: 'courier',
-                    phone: courier.phone,
-                    is_active: true,
-                    created_at: courier.created_at,
-                    updated_at: courier.updated_at,
-                });
-
                 set((state) => ({
-                    couriers: [...state.couriers, courier],
-                    queue: [...state.queue, courier],
+                    couriers: [...state.couriers, courier]
                 }));
+                // Sync to user database
+                useUserStore.getState().addUser(courier);
             },
 
-            updateCourierStatus: (id, status) => {
-                useUserStore.getState().updateUser(id, status);
-
-                set((state) => {
-                    const updatedCouriers = state.couriers.map((c) => (c.id === id ? { ...c, ...status } : c));
-                    let updatedQueue = state.queue.map(c => (c.id === id ? { ...c, ...status } : c));
-
-                    if (status.is_online === true) {
-                        const courierInQueue = updatedQueue.find(c => c.id === id);
-                        if (courierInQueue) {
-                            updatedQueue = updatedQueue.filter(c => c.id !== id);
-                            updatedQueue.push(courierInQueue);
-                        }
-                    }
-
-                    return { couriers: updatedCouriers, queue: updatedQueue };
-                });
+            updateCourier: (id, data) => {
+                set((state) => ({
+                    couriers: state.couriers.map((c) =>
+                        c.id === id ? { ...c, ...data, updated_at: new Date().toISOString() } : c
+                    ),
+                }));
+                // Sync to user database
+                useUserStore.getState().updateUser(id, data);
             },
 
-            suspendCourier: (id, isSuspended) => {
-                useUserStore.getState().updateUser(id, { is_active: !isSuspended });
-
-                set((state) => {
-                    return {
-                        couriers: state.couriers.map((c) => (c.id === id ? { ...c, is_active: !isSuspended } : c)),
-                    };
-                });
+            removeCourier: (id) => {
+                set((state) => ({
+                    couriers: state.couriers.filter((c) => c.id !== id),
+                }));
+                // Sync to user database
+                useUserStore.getState().removeUser(id);
             },
-
-            rotateQueue: (courierId) =>
-                set((state) => {
-                    const courier = state.queue.find((c) => c.id === courierId);
-                    if (!courier) return state;
-
-                    const newQueue = state.queue.filter((c) => c.id !== courierId);
-                    newQueue.push(courier);
-                    return { queue: newQueue };
-                }),
 
             getAvailableCouriers: () => {
-                const { queue } = get();
-                return queue.filter((c) => c.is_active && c.is_online);
+                return get().couriers.filter(c => c.is_active && c.is_online);
+            },
+
+            rotateQueue: (id) => {
+                // Move the recently assigned courier to the end of the list for basic FIFO load balancing
+                set((state) => {
+                    const index = state.couriers.findIndex(c => c.id === id);
+                    if (index === -1) return state;
+
+                    const newCouriers = [...state.couriers];
+                    const [courier] = newCouriers.splice(index, 1);
+                    newCouriers.push(courier);
+
+                    return { couriers: newCouriers };
+                });
             },
         }),
         {
             name: 'courier-storage',
+            storage: createJSONStorage(() => localStorage),
         }
     )
 );

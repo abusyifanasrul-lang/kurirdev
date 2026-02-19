@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { User, AuthState } from '@/types';
 import { authApi } from '@/services/api';
-import { useUserStore } from '@/stores/useUserStore';
 import { useSessionStore } from '@/stores/useSessionStore';
 
 interface AuthContextType extends AuthState {
@@ -13,8 +12,7 @@ interface AuthContextType extends AuthState {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { user, isAuthenticated, setSession, clearSession } = useSessionStore();
-  const { updateUser: storeUpdateUser } = useUserStore();
+  const { user, isAuthenticated, login: storeLogin, logout: storeLogout, updateUser: storeUpdateUser } = useSessionStore();
   const [state, setState] = useState<AuthState>({
     user: null,
     token: null,
@@ -34,21 +32,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user, isAuthenticated]);
 
   const login = useCallback(async (email: string, password: string) => {
-    // This maintains original signature but now proxies to useUserStore
-    // In a real app, this would perform the manual Fetch, then call storeLogin
     try {
       const response = await authApi.login(email, password);
       if (response.success && response.data) {
         const { user: apiUser, token } = response.data;
         sessionStorage.setItem('auth_token', token);
-        setSession(apiUser);
+        storeLogin(apiUser);
       } else {
         throw new Error(response.message || 'Login failed');
       }
     } catch (error) {
       throw error;
     }
-  }, [setSession]);
+  }, [storeLogin]);
 
   const logout = useCallback(async () => {
     try {
@@ -57,12 +53,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Ignore errors on logout
     } finally {
       sessionStorage.removeItem('auth_token');
-      clearSession();
+      storeLogout();
     }
-  }, [clearSession]);
+  }, [storeLogout]);
 
   const updateUser = useCallback((updatedUser: User) => {
-    storeUpdateUser(updatedUser.id, updatedUser);
+    storeUpdateUser(updatedUser);
   }, [storeUpdateUser]);
 
   return (

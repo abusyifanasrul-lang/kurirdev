@@ -12,11 +12,13 @@ import type { User as UserType } from '@/types';
 // Store
 // Store
 import { useUserStore } from '@/stores/useUserStore';
+import { useAuth } from '@/context/AuthContext';
 import { useCourierStore } from '@/stores/useCourierStore';
 import { Courier } from '@/types';
 
 export function Settings() {
-  const { user, users, updateUser, addUser, removeUser } = useUserStore();
+  const { users, updateUser, addUser, removeUser } = useUserStore();
+  const { user } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'users'>('profile');
 
@@ -317,7 +319,7 @@ export function Settings() {
               </div>
 
               <div className="space-y-4">
-                {users.map((u) => (
+                {users.map((u: UserType) => (
                   <div
                     key={u.id}
                     className="flex flex-col sm:flex-row items-center justify-between p-4 bg-gray-50 rounded-lg gap-4 hover:bg-gray-100 transition-colors cursor-pointer"

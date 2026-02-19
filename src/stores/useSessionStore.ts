@@ -5,8 +5,9 @@ import { User } from '@/types';
 interface SessionState {
     user: User | null;
     isAuthenticated: boolean;
-    setSession: (user: User) => void;
-    clearSession: () => void;
+    login: (user: User) => void;
+    logout: () => void;
+    updateUser: (data: Partial<User>) => void;
 }
 
 export const useSessionStore = create<SessionState>()(
@@ -14,8 +15,11 @@ export const useSessionStore = create<SessionState>()(
         (set) => ({
             user: null,
             isAuthenticated: false,
-            setSession: (user) => set({ user, isAuthenticated: true }),
-            clearSession: () => set({ user: null, isAuthenticated: false }),
+            login: (user) => set({ user, isAuthenticated: true }),
+            logout: () => set({ user: null, isAuthenticated: false }),
+            updateUser: (data) => set((state) => ({
+                user: state.user ? { ...state.user, ...data } : null
+            })),
         }),
         {
             name: 'session-storage',

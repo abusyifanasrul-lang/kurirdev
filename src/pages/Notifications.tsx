@@ -8,15 +8,12 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
 import { Badge } from '@/components/ui/Badge';
-import { useAuth } from '@/context/AuthContext'; // To know who is sending
-import { useUserStore } from '@/stores/useUserStore';
+import { useAuth } from '@/context/AuthContext';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import { useCourierStore } from '@/stores/useCourierStore';
 
-// Stores
-
 export function Notifications() {
-  const { user } = useUserStore(); // Current admin
+  const { user } = useAuth(); // Current tab-isolated admin session
   const { couriers } = useCourierStore(); // To select recipient
   const { notifications, addNotification } = useNotificationStore();
 

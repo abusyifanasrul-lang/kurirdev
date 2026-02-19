@@ -3,10 +3,10 @@ import { Bell, CheckCircle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/Badge';
 import { useNotificationStore } from '@/stores/useNotificationStore';
-import { useUserStore } from '@/stores/useUserStore';
+import { useAuth } from '@/context/AuthContext';
 
 export function CourierNotifications() {
-    const { user } = useUserStore();
+    const { user } = useAuth();
     const { notifications, markAsRead } = useNotificationStore();
 
     const myNotifications = notifications

@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from '@/context/AuthContext';
-import { useSessionStore } from './stores/useSessionStore';
+import { useSessionStore } from '@/stores/useSessionStore';
 
 // Loading Skeleton
 function LoadingScreen() {

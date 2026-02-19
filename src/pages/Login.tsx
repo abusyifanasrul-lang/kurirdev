@@ -32,7 +32,7 @@ export function Login() {
   };
 
   const { users } = useUserStore();
-  const { setSession } = useSessionStore();
+  const { login: sessionLogin } = useSessionStore();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,12 +53,12 @@ export function Login() {
         u.role === selectedRole
       );
 
-      // 2. Validate Password strictly
+      // 2. Validate Password (Strict matching only)
       const isValidPassword = foundUser && foundUser.password === password;
 
       if (foundUser && isValidPassword) {
-        // Store session in the isolated store
-        setSession(foundUser);
+        // 3. Establish Session (sessionStorage)
+        sessionLogin(foundUser);
 
         // Persist token for API stability (session-scoped)
         sessionStorage.setItem('auth_token', 'mock_jwt_token_' + Date.now());
