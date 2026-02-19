@@ -72,7 +72,7 @@ export function CourierProfile() {
     }
 
     setIsLoading(false);
-    setTimeout(() => setMessage(null), 3000);
+    setTimeout(() => setMessage(null), 5000);
   };
 
   const menuItems = [
@@ -146,7 +146,16 @@ export function CourierProfile() {
             </div>
             <div className="text-left">
               <p className="font-medium text-gray-900">Ganti Password</p>
-              <p className="text-sm text-gray-500">Perbarui password kamu</p>
+              <p className="text-sm">
+                {message?.type === 'success' ? (
+                  <span className="text-green-600 flex items-center gap-1">
+                    <CheckCircle className="h-3 w-3 inline mr-1" />
+                    Password berhasil diperbarui!
+                  </span>
+                ) : (
+                  <span className="text-gray-500">Perbarui password kamu</span>
+                )}
+              </p>
             </div>
           </div>
           <ChevronRight className={cn(
