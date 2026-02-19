@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { format, isToday, isYesterday, parseISO } from 'date-fns';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useAuth } from '@/context/AuthContext';
-import { useUserStore } from '@/stores/useUserStore';
 import { useCourierStore } from '@/stores/useCourierStore';
 
 type StatusFilter = 'all' | 'delivered' | 'cancelled' | 'in_transit' | 'picked_up' | 'assigned';
@@ -20,12 +19,9 @@ const statusConfig: Record<string, { color: string; bg: string; icon: typeof Che
 
 export function CourierHistory() {
   const navigate = useNavigate();
-  const auth = useAuth();
-  const userStore = useUserStore();
+  const { user } = useAuth();
   const { orders } = useOrderStore();
   const { couriers } = useCourierStore();
-
-  const user = auth.user || userStore.user;
 
   const currentCourier = useMemo(() => couriers.find(c => c.id === user?.id), [couriers, user?.id]);
   const COMMISSION_RATE = (currentCourier?.commission_rate ?? 80) / 100;

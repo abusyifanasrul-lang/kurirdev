@@ -6,7 +6,6 @@ import { cn } from '@/utils/cn';
 import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useCourierStore } from '@/stores/useCourierStore';
-import { useUserStore } from '@/stores/useUserStore';
 import { useAuth } from '@/context/AuthContext';
 import { Order } from '@/types';
 
@@ -14,13 +13,9 @@ import { Order } from '@/types';
 
 export function CourierDashboard() {
   const navigate = useNavigate();
-  const auth = useAuth();
-  const userStore = useUserStore();
+  const { user } = useAuth();
   const { orders } = useOrderStore();
   const { couriers, updateCourierStatus } = useCourierStore();
-
-  // Use AuthContext primary, but fallback to UserStore to prevent broken toggle
-  const user = auth.user || userStore.user;
 
   // Find this courier's data for online status
   const courierData = couriers.find(c => c.id === user?.id);

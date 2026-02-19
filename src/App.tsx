@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from '@/context/AuthContext';
+import { useUserStore } from '@/stores/useUserStore';
 
 // Loading Skeleton
 function LoadingScreen() {
@@ -38,14 +39,16 @@ const CourierNotifications = lazy(() => import('@/pages/courier/CourierNotificat
 
 // Protected Route Component
 function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles: string[] }) {
+  const { user, isAuthenticated } = useUserStore();
   const token = localStorage.getItem('auth_token');
-  const userRole = localStorage.getItem('user_role');
 
-  if (!token) {
+  if (!token || !isAuthenticated || !user) {
     return <Navigate to="/" replace />;
   }
 
-  if (userRole && !allowedRoles.includes(userRole)) {
+  const userRole = user.role;
+
+  if (!allowedRoles.includes(userRole)) {
     if (userRole === 'admin') {
       return <Navigate to="/admin" replace />;
     } else if (userRole === 'courier') {
@@ -58,13 +61,13 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
 
 // Auth Check - Redirect if already logged in
 function AuthRoute({ children }: { children: React.ReactNode }) {
+  const { user, isAuthenticated } = useUserStore();
   const token = localStorage.getItem('auth_token');
-  const userRole = localStorage.getItem('user_role');
 
-  if (token && userRole) {
-    if (userRole === 'admin') {
+  if (token && isAuthenticated && user) {
+    if (user.role === 'admin') {
       return <Navigate to="/admin" replace />;
-    } else if (userRole === 'courier') {
+    } else if (user.role === 'courier') {
       return <Navigate to="/courier" replace />;
     }
   }
