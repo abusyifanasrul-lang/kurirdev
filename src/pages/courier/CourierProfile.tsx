@@ -38,35 +38,37 @@ export function CourierProfile() {
   };
 
   const handleChangePassword = async () => {
+    // 1. Validasi Password Baru & Konfirmasi
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      setMessage({ type: 'error', text: 'Passwords do not match!' });
+      setMessage({ type: 'error', text: 'Password tidak cocok' });
       return;
     }
 
     if (passwordForm.newPassword.length < 8) {
-      setMessage({ type: 'error', text: 'Password must be at least 8 characters!' });
+      setMessage({ type: 'error', text: 'Password minimal 8 karakter' });
       return;
     }
 
-    // Validate Current Password (against active session)
+    // 2. Validasi Password Saat Ini
     if (user?.password !== passwordForm.currentPassword) {
       setMessage({ type: 'error', text: 'Password saat ini salah' });
       return;
     }
 
     setIsLoading(true);
+    // Simulasi delay sedikit untuk UX
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     if (user?.id) {
-      // Update useUserStore - Saves to localStorage (Permanent)
+      // 3. Update useUserStore - Simpan ke localStorage (Permanen)
       updatePersistentUser(user.id, { password: passwordForm.newPassword });
 
-      // Update useSessionStore - Updates current tab session
+      // 4. Update useSessionStore - Update sesi tab aktif
       updateSessionUser({ password: passwordForm.newPassword });
 
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setIsChangePasswordOpen(false);
-      setMessage({ type: 'success', text: 'Password changed successfully!' });
+      setMessage({ type: 'success', text: 'Password berhasil diperbarui!' });
     }
 
     setIsLoading(false);
@@ -76,45 +78,26 @@ export function CourierProfile() {
   const menuItems = [
     {
       icon: Bell,
-      label: 'Notifications',
-      description: 'Manage push notifications',
+      label: 'Notifikasi',
+      description: 'Kelola notifikasi push',
       onClick: () => { },
     },
     {
       icon: Shield,
-      label: 'Privacy & Security',
-      description: 'Account security settings',
+      label: 'Privasi & Keamanan',
+      description: 'Pengaturan keamanan akun',
       onClick: () => { },
     },
     {
       icon: HelpCircle,
-      label: 'Help & Support',
-      description: 'Get help or report issues',
+      label: 'Bantuan & Dukungan',
+      description: 'Dapatkan bantuan atau laporkan masalah',
       onClick: () => { },
     },
   ];
 
   return (
     <div className="space-y-4">
-      {/* Message */}
-      {message && (
-        <div
-          className={cn(
-            "p-4 rounded-xl flex items-center gap-3",
-            message.type === 'success'
-              ? 'bg-green-50 border border-green-200 text-green-700'
-              : 'bg-red-50 border border-red-200 text-red-700'
-          )}
-        >
-          {message.type === 'success' ? (
-            <CheckCircle className="h-5 w-5 flex-shrink-0" />
-          ) : (
-            <AlertCircle className="h-5 w-5 flex-shrink-0" />
-          )}
-          {message.text}
-        </div>
-      )}
-
       {/* Profile Card */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
         <div className="flex items-center gap-4 mb-6">
@@ -124,11 +107,11 @@ export function CourierProfile() {
             </span>
           </div>
           <div>
-            <h2 className="text-xl font-bold text-gray-900">{user?.name || 'Courier'}</h2>
-            <p className="text-sm text-gray-500">Courier</p>
+            <h2 className="text-xl font-bold text-gray-900">{user?.name || 'Kurir'}</h2>
+            <p className="text-sm text-gray-500">Kurir</p>
             <div className="flex items-center gap-1 mt-1">
               <span className="w-2 h-2 bg-green-500 rounded-full" />
-              <span className="text-xs text-green-600">Active</span>
+              <span className="text-xs text-green-600">Aktif</span>
             </div>
           </div>
         </div>
@@ -144,14 +127,14 @@ export function CourierProfile() {
           <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
             <Phone className="h-5 w-5 text-gray-400" />
             <div>
-              <p className="text-xs text-gray-500">Phone</p>
+              <p className="text-xs text-gray-500">Telepon</p>
               <p className="text-sm font-medium text-gray-900">{user?.phone || '-'}</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Change Password */}
+      {/* Ganti Password */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <button
           onClick={() => setIsChangePasswordOpen(!isChangePasswordOpen)}
@@ -162,8 +145,8 @@ export function CourierProfile() {
               <Lock className="h-5 w-5 text-gray-600" />
             </div>
             <div className="text-left">
-              <p className="font-medium text-gray-900">Change Password</p>
-              <p className="text-sm text-gray-500">Update your password</p>
+              <p className="font-medium text-gray-900">Ganti Password</p>
+              <p className="text-sm text-gray-500">Perbarui password kamu</p>
             </div>
           </div>
           <ChevronRight className={cn(
@@ -176,7 +159,7 @@ export function CourierProfile() {
           <div className="p-4 border-t border-gray-100 space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Current Password
+                Password Saat Ini
               </label>
               <input
                 type="password"
@@ -186,12 +169,12 @@ export function CourierProfile() {
                   if (message?.text === 'Password saat ini salah') setMessage(null);
                 }}
                 className={cn(
-                  "w-full px-4 py-3 border rounded-xl focus:ring-2 focus:border-green-500",
+                  "w-full px-4 py-3 border rounded-xl focus:ring-2",
                   message?.text === 'Password saat ini salah'
                     ? "border-red-500 focus:ring-red-200"
                     : "border-gray-300 focus:ring-green-500"
                 )}
-                placeholder="Enter current password"
+                placeholder="Masukkan password saat ini"
               />
               {message?.text === 'Password saat ini salah' && (
                 <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
@@ -202,28 +185,56 @@ export function CourierProfile() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                New Password
+                Password Baru
               </label>
               <input
                 type="password"
                 value={passwordForm.newPassword}
-                onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                placeholder="Enter new password"
+                onChange={(e) => {
+                  setPasswordForm({ ...passwordForm, newPassword: e.target.value });
+                  if (message?.text === 'Password minimal 8 karakter') setMessage(null);
+                }}
+                className={cn(
+                  "w-full px-4 py-3 border rounded-xl focus:ring-2",
+                  message?.text === 'Password minimal 8 karakter'
+                    ? "border-red-500 focus:ring-red-200"
+                    : "border-gray-300 focus:ring-green-500"
+                )}
+                placeholder="Masukkan password baru"
               />
-              <p className="text-xs text-gray-500 mt-1">Min 8 characters</p>
+              <p className="text-xs text-gray-500 mt-1">Minimal 8 karakter</p>
+              {message?.text === 'Password minimal 8 karakter' && (
+                <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {message.text}
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Confirm New Password
+                Konfirmasi Password Baru
               </label>
               <input
                 type="password"
                 value={passwordForm.confirmPassword}
-                onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                placeholder="Confirm new password"
+                onChange={(e) => {
+                  setPasswordForm({ ...passwordForm, confirmPassword: e.target.value });
+                  if (message?.text === 'Password tidak cocok') setMessage(null);
+                }}
+                className={cn(
+                  "w-full px-4 py-3 border rounded-xl focus:ring-2",
+                  message?.text === 'Password tidak cocok'
+                    ? "border-red-500 focus:ring-red-200"
+                    : "border-gray-300 focus:ring-green-500"
+                )}
+                placeholder="Konfirmasi password baru"
               />
+              {message?.text === 'Password tidak cocok' && (
+                <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {message.text}
+                </p>
+              )}
             </div>
             <button
               onClick={handleChangePassword}
@@ -233,7 +244,7 @@ export function CourierProfile() {
                 isLoading ? "opacity-70 cursor-not-allowed" : "hover:bg-green-700"
               )}
             >
-              {isLoading ? 'Updating...' : 'Update Password'}
+              {isLoading ? 'Memperbarui...' : 'Perbarui Password'}
             </button>
           </div>
         )}
@@ -270,8 +281,16 @@ export function CourierProfile() {
         className="w-full flex items-center justify-center gap-2 p-4 bg-red-50 text-red-600 font-medium rounded-2xl hover:bg-red-100 transition-colors"
       >
         <LogOut className="h-5 w-5" />
-        Sign Out
+        Keluar
       </button>
+
+      {/* Success Toast */}
+      {message?.type === 'success' && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-3 bg-green-600 text-white text-sm font-medium rounded-xl shadow-lg">
+          <CheckCircle className="h-4 w-4 flex-shrink-0" />
+          {message.text}
+        </div>
+      )}
 
       {/* App Version */}
       <p className="text-center text-sm text-gray-400">
