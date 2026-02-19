@@ -61,8 +61,10 @@ export function Login() {
         // Store auth data using the Store action
         login(foundUser);
 
-        // Also persist to localStorage for persistence across reloads (handled by persist middleware in store, but we set token here)
+        // Persist to localStorage for session management and ProtectedRoutes
         localStorage.setItem('auth_token', 'mock_jwt_token_' + Date.now());
+        localStorage.setItem('user', JSON.stringify(foundUser));
+        localStorage.setItem('user_role', foundUser.role);
 
         // Navigate based on role
         if (selectedRole === 'admin') {
