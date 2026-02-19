@@ -14,10 +14,14 @@ import {
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/context/AuthContext';
+import { useUserStore } from '@/stores/useUserStore';
+import { useSessionStore } from '@/stores/useSessionStore';
 
 export function CourierProfile() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { updateUser: updatePersistentUser } = useUserStore();
+  const { updateUser: updateSessionUser } = useSessionStore();
 
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
@@ -44,14 +48,28 @@ export function CourierProfile() {
       return;
     }
 
+    // Validate Current Password (against active session)
+    if (user?.password !== passwordForm.currentPassword) {
+      setMessage({ type: 'error', text: 'Password saat ini salah' });
+      return;
+    }
+
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
-    setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-    setIsChangePasswordOpen(false);
-    setMessage({ type: 'success', text: 'Password changed successfully!' });
+    if (user?.id) {
+      // Update useUserStore - Saves to localStorage (Permanent)
+      updatePersistentUser(user.id, { password: passwordForm.newPassword });
+
+      // Update useSessionStore - Updates current tab session
+      updateSessionUser({ password: passwordForm.newPassword });
+
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setIsChangePasswordOpen(false);
+      setMessage({ type: 'success', text: 'Password changed successfully!' });
+    }
+
     setIsLoading(false);
-
     setTimeout(() => setMessage(null), 3000);
   };
 
