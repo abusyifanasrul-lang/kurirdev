@@ -7,7 +7,8 @@ import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Ba
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useCourierStore } from '@/stores/useCourierStore';
 import { useAuth } from '@/context/AuthContext';
-import { Order } from '@/types';
+import { useSessionStore } from '@/stores/useSessionStore';
+import { Order, User as UserType, Courier } from '@/types';
 
 // Removed unused CourierOrder interface as we use global Order type
 
@@ -18,7 +19,7 @@ export function CourierDashboard() {
   const { couriers, updateCourierStatus } = useCourierStore();
 
   // Find this courier's data for online status
-  const courierData = couriers.find(c => c.id === user?.id);
+  const courierData = couriers.find((c: Courier) => c.id === user?.id);
   const isOnline = courierData?.is_online ?? false;
 
   const [isConnected, setIsConnected] = useState(true);
@@ -53,7 +54,10 @@ export function CourierDashboard() {
 
   const handleToggleOnline = () => {
     if (user?.id) {
-      updateCourierStatus(user.id, { is_online: !isOnline });
+      const newStatus = !isOnline;
+      updateCourierStatus(user.id, { is_online: newStatus });
+      // Sync with tab-isolated session store
+      useSessionStore.getState().updateUser({ is_online: newStatus });
     }
   };
 

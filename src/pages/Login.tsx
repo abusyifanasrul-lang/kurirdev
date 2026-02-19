@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Truck, User, Users, Eye, EyeOff, Loader2, Mail, Lock } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useUserStore } from '@/stores/useUserStore';
+import type { User as UserType } from '@/types';
 import { useSessionStore } from '@/stores/useSessionStore';
 
 type RoleType = 'admin' | 'courier' | null;
@@ -48,7 +49,7 @@ export function Login() {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      const foundUser = users.find(u =>
+      const foundUser = users.find((u: UserType) =>
         u.email.toLowerCase().trim() === email.toLowerCase().trim() &&
         u.role === selectedRole
       );
@@ -59,9 +60,6 @@ export function Login() {
       if (foundUser && isValidPassword) {
         // 3. Establish Session (sessionStorage)
         sessionLogin(foundUser);
-
-        // Persist token for API stability (session-scoped)
-        sessionStorage.setItem('auth_token', 'mock_jwt_token_' + Date.now());
 
         // Navigate based on role
         if (selectedRole === 'admin') {

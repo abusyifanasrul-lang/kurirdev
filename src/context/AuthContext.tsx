@@ -15,18 +15,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated, login: storeLogin, logout: storeLogout, updateUser: storeUpdateUser } = useSessionStore();
   const [state, setState] = useState<AuthState>({
     user: null,
-    token: null,
+    token: null, // Keep for type compatibility but unused
     isAuthenticated: false,
     isLoading: true,
   });
 
   useEffect(() => {
-    const token = sessionStorage.getItem('auth_token');
-
     setState({
       user,
-      token,
-      isAuthenticated: !!(token && isAuthenticated && user),
+      token: null,
+      isAuthenticated: !!(isAuthenticated && user),
       isLoading: false,
     });
   }, [user, isAuthenticated]);
@@ -35,8 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await authApi.login(email, password);
       if (response.success && response.data) {
-        const { user: apiUser, token } = response.data;
-        sessionStorage.setItem('auth_token', token);
+        const { user: apiUser } = response.data;
         storeLogin(apiUser);
       } else {
         throw new Error(response.message || 'Login failed');
@@ -52,7 +49,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // Ignore errors on logout
     } finally {
-      sessionStorage.removeItem('auth_token');
       storeLogout();
     }
   }, [storeLogout]);

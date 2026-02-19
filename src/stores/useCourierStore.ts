@@ -7,6 +7,7 @@ interface CourierState {
     couriers: Courier[];
     addCourier: (courier: Courier) => void;
     updateCourier: (id: number, data: Partial<Courier>) => void;
+    updateCourierStatus: (id: number, data: Partial<Courier>) => void;
     removeCourier: (id: number) => void;
     getAvailableCouriers: () => Courier[];
     rotateQueue: (id: number) => void;
@@ -91,6 +92,10 @@ export const useCourierStore = create<CourierState>()(
                 }));
                 // Sync to user database
                 useUserStore.getState().updateUser(id, data);
+            },
+
+            updateCourierStatus: (id, data) => {
+                get().updateCourier(id, data);
             },
 
             removeCourier: (id) => {
