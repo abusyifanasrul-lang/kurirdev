@@ -246,6 +246,13 @@ export function CourierProfile() {
             >
               {isLoading ? 'Memperbarui...' : 'Perbarui Password'}
             </button>
+
+            {message?.type === 'success' && (
+              <div className="flex items-center gap-2 px-4 py-3 bg-green-50 border border-green-200 text-green-700 text-sm font-medium rounded-xl">
+                <CheckCircle className="h-4 w-4 flex-shrink-0" />
+                {message.text}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -283,14 +290,6 @@ export function CourierProfile() {
         <LogOut className="h-5 w-5" />
         Keluar
       </button>
-
-      {/* Success Toast */}
-      {message?.type === 'success' && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-3 bg-green-600 text-white text-sm font-medium rounded-xl shadow-lg">
-          <CheckCircle className="h-4 w-4 flex-shrink-0" />
-          {message.text}
-        </div>
-      )}
 
       {/* App Version */}
       <p className="text-center text-sm text-gray-400">
