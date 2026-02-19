@@ -14,6 +14,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
+import { useAuth } from '@/context/AuthContext';
 
 interface NavItem {
   path: string;
@@ -34,9 +35,9 @@ const navItems: NavItem[] = [
 export function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, logout } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   // Check screen size
   useEffect(() => {
@@ -59,10 +60,8 @@ export function Layout() {
     }
   }, [location.pathname, isMobile]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('user_role');
+  const handleLogout = async () => {
+    await logout();
     navigate('/');
   };
 
@@ -92,7 +91,7 @@ export function Layout() {
         >
           <Menu className="h-6 w-6" />
         </button>
-        
+
         <div className="flex items-center gap-2">
           <div className="p-1.5 bg-indigo-600 rounded-lg">
             <Truck className="h-5 w-5" />
@@ -206,7 +205,7 @@ export function Layout() {
           <p className="text-sm text-gray-500">Admin</p>
           <h2 className="font-semibold text-gray-900">{getCurrentPageTitle()}</h2>
         </div>
-        
+
         <Outlet />
       </main>
     </div>

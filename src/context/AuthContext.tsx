@@ -12,6 +12,7 @@ interface AuthContextType extends AuthState {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const { user, isAuthenticated, login: storeLogin, logout: storeLogout, updateUser: storeUpdateUser } = useUserStore();
   const [state, setState] = useState<AuthState>({
     user: null,
     token: null,
@@ -19,44 +20,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isLoading: true,
   });
 
-  const { user: storeUser, isAuthenticated: storeAuth } = useUserStore();
-
-  // Check for existing auth on mount
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
 
-    if (token && storeAuth && storeUser) {
-      setState({
-        user: storeUser,
-        token,
-        isAuthenticated: true,
-        isLoading: false,
-      });
-    } else {
-      setState((prev) => ({ ...prev, isLoading: false }));
-    }
-  }, [storeUser, storeAuth]);
+    setState({
+      user,
+      token,
+      isAuthenticated: !!(token && isAuthenticated && user),
+      isLoading: false,
+    });
+  }, [user, isAuthenticated]);
 
   const login = useCallback(async (email: string, password: string) => {
+    // This maintains original signature but now proxies to useUserStore
+    // In a real app, this would perform the manual Fetch, then call storeLogin
     try {
       const response = await authApi.login(email, password);
       if (response.success && response.data) {
-        const { user, token } = response.data;
+        const { user: apiUser, token } = response.data;
         localStorage.setItem('auth_token', token);
-        localStorage.setItem('user', JSON.stringify(user));
-        setState({
-          user,
-          token,
-          isAuthenticated: true,
-          isLoading: false,
-        });
+        storeLogin(apiUser);
       } else {
         throw new Error(response.message || 'Login failed');
       }
     } catch (error) {
       throw error;
     }
-  }, []);
+  }, [storeLogin]);
 
   const logout = useCallback(async () => {
     try {
@@ -65,20 +55,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Ignore errors on logout
     } finally {
       localStorage.removeItem('auth_token');
-      localStorage.removeItem('user');
-      setState({
-        user: null,
-        token: null,
-        isAuthenticated: false,
-        isLoading: false,
-      });
+      storeLogout();
     }
-  }, []);
+  }, [storeLogout]);
 
-  const updateUser = useCallback((user: User) => {
-    localStorage.setItem('user', JSON.stringify(user));
-    setState((prev) => ({ ...prev, user }));
-  }, []);
+  const updateUser = useCallback((updatedUser: User) => {
+    storeUpdateUser(updatedUser.id, updatedUser);
+  }, [storeUpdateUser]);
 
   return (
     <AuthContext.Provider value={{ ...state, login, logout, updateUser }}>

@@ -42,34 +42,26 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
   const { user, isAuthenticated } = useUserStore();
   const token = localStorage.getItem('auth_token');
 
+  // Strictly respect the token and store state
   if (!token || !isAuthenticated || !user) {
     return <Navigate to="/" replace />;
   }
 
-  const userRole = user.role;
-
-  if (!allowedRoles.includes(userRole)) {
-    if (userRole === 'admin') {
-      return <Navigate to="/admin" replace />;
-    } else if (userRole === 'courier') {
-      return <Navigate to="/courier" replace />;
-    }
+  // Strictly check roles but stay on current page if unauthorized (or simple redirect to root)
+  if (!allowedRoles.includes(user.role)) {
+    return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;
 }
 
-// Auth Check - Redirect if already logged in
+// Auth Check - Redirect to dashboard if logged in
 function AuthRoute({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated } = useUserStore();
   const token = localStorage.getItem('auth_token');
 
   if (token && isAuthenticated && user) {
-    if (user.role === 'admin') {
-      return <Navigate to="/admin" replace />;
-    } else if (user.role === 'courier') {
-      return <Navigate to="/courier" replace />;
-    }
+    return <Navigate to={user.role === 'admin' ? '/admin' : '/courier'} replace />;
   }
 
   return <>{children}</>;

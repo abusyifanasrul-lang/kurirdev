@@ -1,15 +1,14 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { Home, Package, History, DollarSign, User, LogOut, Bell } from 'lucide-react';
 import { cn } from '@/utils/cn';
+import { useAuth } from '@/context/AuthContext';
 
 export function CourierLayout() {
   const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const { user, logout } = useAuth();
 
-  const handleLogout = () => {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('user_role');
+  const handleLogout = async () => {
+    await logout();
     navigate('/');
   };
 
@@ -29,10 +28,10 @@ export function CourierLayout() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-              <span className="text-lg font-bold">{user.name?.charAt(0) || 'C'}</span>
+              <span className="text-lg font-bold">{user?.name?.charAt(0) || 'C'}</span>
             </div>
             <div>
-              <p className="font-semibold">{user.name || 'Courier'}</p>
+              <p className="font-semibold">{user?.name || 'Courier'}</p>
               <p className="text-xs text-green-100">Courier App</p>
             </div>
           </div>

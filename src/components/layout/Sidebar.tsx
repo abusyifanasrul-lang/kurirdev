@@ -10,6 +10,7 @@ import {
   Truck,
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
+import { useAuth } from '@/context/AuthContext';
 
 interface NavItem {
   path: string;
@@ -29,12 +30,10 @@ const navItems: NavItem[] = [
 
 export function Sidebar() {
   const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const { user, logout } = useAuth();
 
-  const handleLogout = () => {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('user_role');
+  const handleLogout = async () => {
+    await logout();
     navigate('/');
   };
 
