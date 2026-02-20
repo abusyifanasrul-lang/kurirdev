@@ -20,10 +20,10 @@ import {
 // Stores
 import { useCourierStore } from '@/stores/useCourierStore';
 import { useOrderStore } from '@/stores/useOrderStore';
-import type { Courier } from '@/types';
+import { Order, Courier } from '@/types';
 
 export function Couriers() {
-  const { couriers, addCourier, suspendCourier } = useCourierStore();
+  const { couriers, addCourier, updateCourier } = useCourierStore();
   const { orders, getOrdersByCourier } = useOrderStore(); // To calculate real-time stats
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -39,8 +39,8 @@ export function Couriers() {
     commission_rate: 80,
   });
 
-  const activeCouriersCount = couriers.filter((c) => c.is_active).length;
-  const onlineCouriersCount = couriers.filter((c) => c.is_active && c.is_online).length;
+  const activeCouriersCount = couriers.filter((c: Courier) => c.is_active).length;
+  const onlineCouriersCount = couriers.filter((c: Courier) => c.is_active && c.is_online).length;
 
   // Calculate from actual order data instead of stale courier fields
   const totalDeliveries = orders.filter(o => o.status === 'delivered').length;
@@ -48,7 +48,7 @@ export function Couriers() {
     .filter(o => o.status === 'delivered')
     .reduce((sum, o) => {
       // Find courier for this order to get their commission rate
-      const courier = couriers.find(c => c.id === o.courier_id);
+      const courier = couriers.find((c: Courier) => c.id === o.courier_id);
       const rate = (courier?.commission_rate ?? 80) / 100;
       return sum + (o.total_fee || 0) * rate;
     }, 0);
@@ -77,9 +77,8 @@ export function Couriers() {
   };
 
   const handleToggleSuspend = (courier: Courier) => {
-    // If currently active (is_active=true), we want to suspend (isSuspended=true)
-    const shouldSuspend = courier.is_active;
-    suspendCourier(courier.id, shouldSuspend);
+    // Toggle active status: if true then false, if false then true
+    updateCourier(courier.id, { is_active: !courier.is_active });
   };
 
   const getCourierStats = (courierId: number) => {
@@ -183,7 +182,7 @@ export function Couriers() {
               {couriers.length === 0 ? (
                 <TableEmpty colSpan={5} message="No couriers found" />
               ) : (
-                couriers.map((courier) => (
+                couriers.map((courier: Courier) => (
                   <TableRow
                     key={courier.id}
                     className="cursor-pointer hover:bg-gray-50"
@@ -216,8 +215,13 @@ export function Couriers() {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>{courier.total_completed || 0}</TableCell>
-                    <TableCell>{formatCurrency(courier.total_earnings || 0)}</TableCell>
+                    <TableCell>
+                      {formatCurrency(
+                        orders
+                          .filter(o => o.courier_id === courier.id && o.status === 'delivered')
+                          .reduce((sum, o) => sum + (o.total_fee || 0) * ((courier.commission_rate ?? 80) / 100), 0)
+                      )}
+                    </TableCell>
                     <TableCell>
                       <Button variant="ghost" size="sm" onClick={(e) => {
                         e.stopPropagation();

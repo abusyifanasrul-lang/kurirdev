@@ -94,9 +94,11 @@ export function CourierDashboard() {
           </div>
           <button
             onClick={handleToggleOnline}
+            disabled={user?.is_active === false}
             className={cn(
-              "relative w-14 h-8 rounded-full transition-colors duration-200",
-              isOnline ? "bg-green-500" : "bg-gray-300"
+              "relative w-14 h-8 rounded-full transition-all duration-200",
+              isOnline ? "bg-green-500" : "bg-gray-300",
+              user?.is_active === false && "opacity-50 cursor-not-allowed grayscale-[0.5]"
             )}
           >
             <span
@@ -107,7 +109,11 @@ export function CourierDashboard() {
             />
           </button>
         </div>
-        {!isOnline && (
+        {user?.is_active === false ? (
+          <p className="text-xs text-red-500 mt-2 font-medium">
+            Tidak bisa online: Akun sedang disuspend
+          </p>
+        ) : !isOnline && (
           <p className="text-xs text-gray-500 mt-2">
             Turn online to receive new orders
           </p>

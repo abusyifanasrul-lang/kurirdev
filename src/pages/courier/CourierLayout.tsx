@@ -45,6 +45,18 @@ export function CourierLayout() {
         </div>
       </header>
 
+      {/* Account Suspended Banner */}
+      {user?.is_active === false && (
+        <div className="bg-orange-500 text-white px-4 py-3 sticky top-[72px] z-30 flex items-center gap-2 shadow-md">
+          <div className="bg-white/20 p-1 rounded-full">
+            <Bell className="h-4 w-4" />
+          </div>
+          <p className="text-sm font-medium">
+            Akun kamu sedang disuspend. Silakan hubungi admin.
+          </p>
+        </div>
+      )}
+
       {/* Main Content */}
       <main className="px-4 py-6">
         <Outlet />
