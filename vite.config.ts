@@ -16,10 +16,9 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: [
-        "icons/icon.svg",
-        "icons/icon-192.png",
-        "icons/icon-512.png",
-        "alert.mp3",
+        "icons/android/android-launchericon-192-192.png",
+        "icons/android/android-launchericon-512-512.png",
+        "icons/ios/180.png",
       ],
       manifest: {
         id: "/",
@@ -35,20 +34,21 @@ export default defineConfig({
         categories: ["business", "productivity"],
         icons: [
           {
-            src: "/icons/icon-192.png",
+            src: "icons/android/android-launchericon-192-192.png",
             sizes: "192x192",
             type: "image/png",
+            purpose: "any maskable",
           },
           {
-            src: "/icons/icon-512.png",
+            src: "icons/android/android-launchericon-512-512.png",
             sizes: "512x512",
             type: "image/png",
+            purpose: "any maskable",
           },
           {
-            src: "/icons/icon-512.png",
-            sizes: "512x512",
+            src: "icons/ios/180.png",
+            sizes: "180x180",
             type: "image/png",
-            purpose: "maskable",
           },
         ],
         screenshots: [
@@ -62,7 +62,12 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,woff,ttf}"],
+        globPatterns: ["**/*.{js,css,html,ico,svg,woff2,woff,ttf}"],
+        additionalManifestEntries: [
+          { url: 'icons/android/android-launchericon-192-192.png', revision: null },
+          { url: 'icons/android/android-launchericon-512-512.png', revision: null },
+          { url: 'icons/ios/180.png', revision: null },
+        ],
         navigateFallback: "/index.html",
         navigateFallbackAllowlist: [/^(?!\/__).*/],
         runtimeCaching: [
