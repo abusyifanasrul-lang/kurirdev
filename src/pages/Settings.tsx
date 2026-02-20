@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { User, Lock, Users, Plus, CheckCircle, AlertCircle, Shield, Edit2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { User, Lock, Users, Plus, ToggleLeft, ToggleRight, CheckCircle, AlertCircle, Shield, Edit2 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -17,7 +17,7 @@ import { useCourierStore } from '@/stores/useCourierStore';
 import { Courier } from '@/types';
 
 export function Settings() {
-  const { users, updateUser, addUser, deactivateUser, reactivateUser } = useUserStore();
+  const { users, updateUser, addUser } = useUserStore();
   const { user } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'users'>('profile');
@@ -162,24 +162,19 @@ export function Settings() {
     showMessage('success', 'User updated successfully!');
   };
 
-  const handleToggleStatus = (u: UserType) => {
+  const handleToggleUserStatus = (u: UserType) => {
     if (u.id === user?.id) {
-      showMessage('error', 'You cannot deactivate yourself!');
+      showMessage('error', 'You cannot suspend yourself!');
       return;
     }
-    // RBAC: Only Super Admin (id 1) can deactivate/reactivate others
+    // RBAC: Only Super Admin (id 1) can suspend/activate others
     if (user?.id !== 1) {
       showMessage('error', 'Only Super Admin can manage user status!');
       return;
     }
 
-    if (u.is_active) {
-      deactivateUser(u.id);
-      showMessage('success', 'User deactivated successfully!');
-    } else {
-      reactivateUser(u.id);
-      showMessage('success', 'User reactivated successfully!');
-    }
+    updateUser(u.id, { is_active: !u.is_active });
+    showMessage('success', `User ${u.is_active ? 'suspended' : 'activated'} successfully!`);
   };
 
   const tabs = [
@@ -352,9 +347,13 @@ export function Settings() {
                     </div>
 
                     <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-                      <Badge variant={u.role === 'admin' ? 'default' : 'warning'} className="capitalize">
-                        {u.role.replace('_', ' ')}
-                      </Badge>
+                      {!u.is_active ? (
+                        <Badge variant="danger" className="capitalize">Suspended</Badge>
+                      ) : (
+                        <Badge variant={u.role === 'admin' ? 'default' : 'warning'} className="capitalize">
+                          {u.role.replace('_', ' ')}
+                        </Badge>
+                      )}
 
                       {/* Edit Button (Visible based on permission) */}
                       {canEdit(u) && (
@@ -367,12 +366,12 @@ export function Settings() {
                         </button>
                       )}
 
-                      {/* Status Toggle Action - RBAC Protected */}
+                      {/* Toggle Status Action - RBAC Protected */}
                       {user?.id === 1 && u.id !== 1 && u.id !== user.id && (
                         <button
-                          onClick={(e) => { e.stopPropagation(); handleToggleStatus(u); }}
-                          className={`p-2 rounded-lg transition-colors ${u.is_active ? 'text-orange-400 hover:text-orange-600 hover:bg-orange-50' : 'text-green-400 hover:text-green-600 hover:bg-green-50'}`}
-                          title={u.is_active ? 'Deactivate User' : 'Reactivate User'}
+                          onClick={(e) => { e.stopPropagation(); handleToggleUserStatus(u); }}
+                          className={`p-2 transition-colors rounded-lg ${u.is_active ? 'text-red-400 hover:text-red-600 hover:bg-red-50' : 'text-green-400 hover:text-green-600 hover:bg-green-50'}`}
+                          title={u.is_active ? 'Suspend User' : 'Activate User'}
                         >
                           {u.is_active ? <ToggleRight className="h-5 w-5" /> : <ToggleLeft className="h-5 w-5" />}
                         </button>
