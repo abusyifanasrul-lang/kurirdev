@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import { ArrowLeft, Package, Clock, CheckCircle, XCircle, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format, isToday, isYesterday, parseISO } from 'date-fns';
+import { Badge } from '@/components/ui/Badge';
+import { Order, Courier } from '@/types';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useAuth } from '@/context/AuthContext';
 import { useCourierStore } from '@/stores/useCourierStore';
@@ -158,9 +160,16 @@ export function CourierHistory() {
                           <p className="font-semibold text-gray-900 text-sm">{order.order_number}</p>
                           <p className="text-xs text-gray-500">{format(parseISO(order.created_at), 'HH:mm')}</p>
                         </div>
-                        <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${config.bg} ${config.color}`}>
-                          <StatusIcon className="w-3 h-3" />
-                          {config.label}
+                        <div className="flex flex-col items-end gap-1">
+                          <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${config.bg} ${config.color}`}>
+                            <StatusIcon className="w-3 h-3" />
+                            {config.label}
+                          </div>
+                          {order.status === 'delivered' && (
+                            <Badge variant={order.payment_status === 'paid' ? 'success' : 'warning'} size="sm">
+                              {order.payment_status === 'paid' ? 'Sudah Setor' : 'Belum Setor'}
+                            </Badge>
+                          )}
                         </div>
                       </div>
                       <div className="space-y-1">

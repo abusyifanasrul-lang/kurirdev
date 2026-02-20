@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, DollarSign, CheckCircle, Clock, Wifi, WifiOff, ChevronRight } from 'lucide-react';
+import { Package, DollarSign, CheckCircle, Clock, Wifi, WifiOff, ChevronRight, AlertTriangle } from 'lucide-react';
 import { format, isToday } from 'date-fns';
 import { cn } from '@/utils/cn';
 import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
@@ -44,6 +44,11 @@ export function CourierDashboard() {
     [myOrders]
   );
 
+  const unpaidDeliveredOrdersCount = useMemo(() =>
+    myOrders.filter((o: Order) => o.status === 'delivered' && o.payment_status === 'unpaid').length,
+    [myOrders]
+  );
+
   // Polling simulation
   useEffect(() => {
     const interval = setInterval(() => {
@@ -79,6 +84,28 @@ export function CourierDashboard() {
         {isConnected ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
         {isConnected ? "Connected" : "Connection lost - Showing cached data"}
       </div>
+
+      {/* Unpaid Warning Card */}
+      {unpaidDeliveredOrdersCount > 0 && (
+        <div
+          onClick={() => navigate('/courier/history')}
+          className="bg-orange-50 border border-orange-200 rounded-2xl p-4 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+              <AlertTriangle className="h-5 w-5 text-orange-600" />
+            </div>
+            <div>
+              <p className="font-bold text-orange-900">⚠️ {unpaidDeliveredOrdersCount} order belum disetor ke admin</p>
+              <p className="text-sm text-orange-700">Setor hari ini sebelum tutup.</p>
+            </div>
+          </div>
+          <div className="flex items-center text-orange-600 font-semibold text-sm">
+            Lihat History
+            <ChevronRight className="h-4 w-4 ml-1" />
+          </div>
+        </div>
+      )}
 
       {/* Online/Offline Toggle */}
       <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
