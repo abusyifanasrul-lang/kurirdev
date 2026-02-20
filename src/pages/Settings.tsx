@@ -133,7 +133,7 @@ export function Settings() {
     setEditUserForm({
       name: u.name,
       email: u.email,
-      phone: u.phone,
+      phone: u.phone || '',
       password: '' // Default empty, only update if filled
     });
     setIsEditUserModalOpen(true);
@@ -182,6 +182,13 @@ export function Settings() {
     { id: 'password', label: 'Password', icon: Lock },
     { id: 'users', label: 'System Users', icon: Users },
   ] as const;
+
+  const canEdit = (target: UserType) => {
+    if (user?.id === 1) return true // Super Admin bisa edit semua
+    if (target.id === 1) return false // Tidak ada yang bisa edit Super Admin kecuali dirinya
+    if (target.role === 'admin' && target.id !== user?.id) return false // Admin tidak bisa edit admin lain
+    return true
+  }
 
   return (
     <div className="min-h-screen">
@@ -322,8 +329,8 @@ export function Settings() {
                 {users.map((u: UserType) => (
                   <div
                     key={u.id}
-                    className="flex flex-col sm:flex-row items-center justify-between p-4 bg-gray-50 rounded-lg gap-4 hover:bg-gray-100 transition-colors cursor-pointer"
-                    onClick={() => openEditModal(u)}
+                    className={`flex flex-col sm:flex-row items-center justify-between p-4 bg-gray-50 rounded-lg gap-4 hover:bg-gray-100 transition-colors ${canEdit(u) ? 'cursor-pointer' : 'cursor-default'}`}
+                    onClick={() => canEdit(u) && openEditModal(u)}
                   >
                     <div className="flex items-center gap-4 w-full sm:w-auto">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center font-medium ${u.role === 'admin' ? 'bg-indigo-100 text-indigo-600' : 'bg-orange-100 text-orange-600'
@@ -344,14 +351,16 @@ export function Settings() {
                         {u.role.replace('_', ' ')}
                       </Badge>
 
-                      {/* Edit Button (Visible) */}
-                      <button
-                        onClick={(e) => { e.stopPropagation(); openEditModal(u); }}
-                        className="p-2 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                        title="Edit User"
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </button>
+                      {/* Edit Button (Visible based on permission) */}
+                      {canEdit(u) && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); openEditModal(u); }}
+                          className="p-2 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                          title="Edit User"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </button>
+                      )}
 
                       {/* Delete Action - RBAC Protected */}
                       {user?.id === 1 && u.id !== 1 && u.id !== user.id && (
