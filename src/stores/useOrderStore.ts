@@ -153,11 +153,14 @@ export const useOrderStore = create<OrderState>()(
             })),
 
             generateOrderId: () => {
-                const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-                // Find max ID for today to increment
-                const todayOrders = get().orders.filter(o => o.order_number.includes(dateStr));
+                const now = new Date();
+                const DD = String(now.getDate()).padStart(2, '0');
+                const MM = String(now.getMonth() + 1).padStart(2, '0');
+                const YY = String(now.getFullYear()).slice(-2);
+                const dateKey = `${DD}${MM}${YY}`;
+                const todayOrders = get().orders.filter(o => o.order_number.startsWith(`P${dateKey}`));
                 const count = todayOrders.length + 1;
-                return `ORD-${dateStr}-${String(count).padStart(3, '0')}`;
+                return `P${dateKey}${String(count).padStart(3, '0')}`;
             },
 
             getOrdersByCourier: (courierId) => {

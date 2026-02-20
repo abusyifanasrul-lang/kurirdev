@@ -347,6 +347,9 @@ export function Orders() {
                 >
                   <div className="flex items-center">Courier {getSortIcon('courier_name')}</div>
                 </TableHeader>
+                <TableHeader>
+                  <div className="flex items-center">Setoran</div>
+                </TableHeader>
                 <TableHeader
                   className="cursor-pointer hover:bg-gray-100 transition-colors"
                   onClick={() => handleSort('total_fee')}
@@ -382,6 +385,26 @@ export function Orders() {
                       <Badge variant={getStatusBadgeVariant(order.status)}>{getStatusLabel(order.status)}</Badge>
                     </TableCell>
                     <TableCell>{order.courier_name || <span className="text-gray-400 italic">Unassigned</span>}</TableCell>
+                    <TableCell>
+                      {order.status === 'delivered' ? (
+                        order.payment_status === 'paid' ? (
+                          <Badge variant="success">Sudah Setor</Badge>
+                        ) : (
+                          <Button
+                            size="sm"
+                            className="bg-orange-500 hover:bg-orange-600 text-white h-7 px-2 text-[10px]"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              updateOrder(order.id, { payment_status: 'paid' });
+                            }}
+                          >
+                            Konfirmasi Setor
+                          </Button>
+                        )
+                      ) : (
+                        <Badge variant="outline" className="text-gray-400 border-gray-200">Belum Setor</Badge>
+                      )}
+                    </TableCell>
                     <TableCell>{formatCurrency(order.total_fee)}</TableCell>
                     <TableCell className="text-gray-500">{format(new Date(order.created_at), 'dd MMM HH:mm')}</TableCell>
                   </TableRow>
@@ -441,8 +464,8 @@ export function Orders() {
             value={newOrder.payment_status}
             onChange={e => setNewOrder({ ...newOrder, payment_status: e.target.value as any })}
             options={[
-              { value: 'unpaid', label: 'Unpaid' },
-              { value: 'paid', label: 'Paid' }
+              { value: 'unpaid', label: 'Belum Setor' },
+              { value: 'paid', label: 'Sudah Setor' }
             ]}
           />
           <div className="flex justify-end gap-2 pt-4">
@@ -509,8 +532,8 @@ export function Orders() {
                         value={editForm.payment_status}
                         onChange={e => setEditForm(prev => ({ ...prev, payment_status: e.target.value as any }))}
                         options={[
-                          { value: 'unpaid', label: 'Unpaid' },
-                          { value: 'paid', label: 'Paid' }
+                          { value: 'unpaid', label: 'Belum Setor' },
+                          { value: 'paid', label: 'Sudah Setor' }
                         ]}
                       />
                       <div className="flex justify-end pt-2">
@@ -522,7 +545,7 @@ export function Orders() {
                       <p><span className="text-gray-500 block">Total Fee:</span> {formatCurrency(selectedOrder.total_fee)}</p>
                       <p><span className="text-gray-500 block">Status:</span>
                         <Badge variant={selectedOrder.payment_status === 'paid' ? 'success' : 'warning'} size="sm">
-                          {selectedOrder.payment_status.toUpperCase()}
+                          {selectedOrder.payment_status === 'paid' ? 'SUDAH SETOR' : 'BELUM SETOR'}
                         </Badge>
                       </p>
                     </div>
