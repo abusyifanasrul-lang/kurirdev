@@ -70,10 +70,8 @@ export function Reports() {
           const c = couriers.find(c => c.id === o.courier_id);
           courierStats[o.courier_id] = { name: c?.name || 'Unknown', count: 0, earnings: 0 };
         }
-        const courier = couriers.find(c => c.id === o.courier_id);
-        const rate = (courier?.commission_rate ?? 80) / 100;
         courierStats[o.courier_id].count += 1;
-        courierStats[o.courier_id].earnings += (o.total_fee || 0) * rate;
+        courierStats[o.courier_id].earnings += (o.total_fee || 0);
       }
     });
 
