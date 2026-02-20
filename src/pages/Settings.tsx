@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { User, Lock, Users, Plus, Trash2, CheckCircle, AlertCircle, Shield, Edit2 } from 'lucide-react';
+import { User, Lock, Users, Plus, CheckCircle, AlertCircle, Shield, Edit2, UserX, RefreshCw } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -330,18 +330,19 @@ export function Settings() {
                 {users.map((u: UserType) => (
                   <div
                     key={u.id}
-                    className={`flex flex-col sm:flex-row items-center justify-between p-4 bg-gray-50 rounded-lg gap-4 hover:bg-gray-100 transition-colors ${canEdit(u) ? 'cursor-pointer' : 'cursor-default'}`}
+                    className={`flex flex-col sm:flex-row items-center justify-between p-4 rounded-lg gap-4 transition-all ${u.is_active ? 'bg-gray-50 hover:bg-gray-100' : 'bg-gray-100/50 opacity-60 grayscale-[0.5]'} ${canEdit(u) ? 'cursor-pointer' : 'cursor-default'}`}
                     onClick={() => canEdit(u) && openEditModal(u)}
                   >
                     <div className="flex items-center gap-4 w-full sm:w-auto">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-medium ${u.role === 'admin' ? 'bg-indigo-100 text-indigo-600' : 'bg-orange-100 text-orange-600'
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-medium transition-opacity ${!u.is_active ? 'opacity-50' : ''} ${u.role === 'admin' ? 'bg-indigo-100 text-indigo-600' : 'bg-orange-100 text-orange-600'
                         }`}>
                         {u.role === 'admin' ? <Shield className="w-5 h-5" /> : u.name.charAt(0)}
                       </div>
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-medium">{u.name}</p>
                           {u.id === user?.id && <Badge variant="info" size="sm">You</Badge>}
+                          {!u.is_active && <Badge variant="danger" size="sm" className="bg-red-100 text-red-700 animate-pulse">NON-AKTIF</Badge>}
                         </div>
                         <p className="text-sm text-gray-500">{u.email}</p>
                       </div>
@@ -363,14 +364,14 @@ export function Settings() {
                         </button>
                       )}
 
-                      {/* Delete Action - RBAC Protected */}
+                      {/* Status Toggle Action - RBAC Protected */}
                       {user?.id === 1 && u.id !== 1 && u.id !== user.id && (
                         <button
                           onClick={(e) => { e.stopPropagation(); handleToggleSuspend(u); }}
-                          className={`p-2 rounded-lg transition-colors ${u.is_active ? 'text-red-400 hover:text-red-600 hover:bg-red-50' : 'text-green-400 hover:text-green-600 hover:bg-green-50'}`}
+                          className={`p-2 rounded-lg transition-colors ${u.is_active ? 'text-red-400 hover:text-red-600 hover:bg-red-50' : 'text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50'}`}
                           title={u.is_active ? "Suspend User" : "Activate User"}
                         >
-                          {u.is_active ? <Trash2 className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
+                          {u.is_active ? <UserX className="h-4 w-4" /> : <RefreshCw className="h-4 w-4" />}
                         </button>
                       )}
                     </div>
