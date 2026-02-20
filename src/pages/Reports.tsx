@@ -140,39 +140,47 @@ export function Reports() {
   };
 
   const handleExportReport = () => {
-    // Let's create a "Orders Dump" for the period + Summary at top.
-    // Add detailed rows or just summary? Usually detailed data is better.
+    const start = appliedRange.start;
+    const end = appliedRange.end;
 
-    // Actually, simple CSV format usually prefers uniform columns. 
-    // Let's dump the Orders List for this period.
-    const orderHeaders = ['Order ID', 'Date', 'Customer', 'Courier', 'Status', 'Fee'];
-    const orderRows = useOrderStore.getState().orders // Use filtered logic if possible, re-filter or capture from analytics?
-      .filter(o => {
-        const start = startOfDay(parseISO(appliedRange.start));
-        const end = endOfDay(parseISO(appliedRange.end));
-        const dateStr = (o.status === 'delivered' && o.actual_delivery_time) ? o.actual_delivery_time : o.created_at;
-        return isWithinInterval(parseISO(dateStr!), { start, end });
-      })
-      .map(o => [
-        o.order_number,
-        format(parseISO(o.created_at!), 'yyyy-MM-dd HH:mm'),
-        o.customer_name,
-        o.courier_name || 'Unassigned',
-        o.status,
-        o.total_fee
-      ]);
+    // 1. Summary Section
+    const summaryRows = [
+      ['LAPORAN PERFORMA PENGIRIMAN'],
+      [`Periode: ${start} - ${end}`],
+      [''],
+      ['RINGKASAN'],
+      ['Total Pesanan', analytics.totalOrders],
+      ['Total Pendapatan (Gross)', formatCurrency(analytics.totalRevenue)],
+      ['Rata-rata Pesanan/Hari', analytics.avgOrdersPerDay.toFixed(1)],
+      ['Kurir Terbaik', analytics.topCourier?.name || 'N/A'],
+      [''],
+      ['BREAKDOWN STATUS'],
+      ...analytics.statusChartData.map(s => [s.name, s.value]),
+      [''],
+      ['PERFORMA KURIR (TOP 5)'],
+      ['Peringkat', 'Nama Kurir', 'Pesanan Terkirim', 'Gross Revenue Generated']
+    ];
 
-    const csvContent = [orderHeaders, ...orderRows]
-      .map(row => row.map(val => `"${val}"`).join(',')) // Quote values
+    // 2. Courier List Section
+    const courierRows = analytics.couriersList.map((c, index) => [
+      index + 1,
+      c.name,
+      c.count,
+      formatCurrency(c.earnings)
+    ]);
+
+    const csvContent = [...summaryRows, ...courierRows]
+      .map(row => row.map(val => `"${val}"`).join(','))
       .join('\n');
 
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `orders-report-${appliedRange.start}-to-${appliedRange.end}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `laporan-kurir-${start}-to-${end}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -182,7 +190,7 @@ export function Reports() {
         subtitle="Analytics and performance reports"
         actions={
           <Button leftIcon={<Download className="h-4 w-4" />} onClick={handleExportReport}>
-            Export Orders (CSV)
+            Export Laporan
           </Button>
         }
       />
