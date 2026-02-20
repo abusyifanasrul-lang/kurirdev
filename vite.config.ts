@@ -53,11 +53,18 @@ export default defineConfig({
         ],
         screenshots: [
           {
-            src: "/screenshots/dashboard.png",
+            src: "/screenshots/dashboard-wide.png",
             sizes: "1280x720",
             type: "image/png",
             form_factor: "wide",
             label: "Admin Dashboard",
+          },
+          {
+            src: "/screenshots/dashboard-mobile.png",
+            sizes: "390x844",
+            type: "image/png",
+            form_factor: "narrow",
+            label: "Courier PWA",
           },
         ],
       },
