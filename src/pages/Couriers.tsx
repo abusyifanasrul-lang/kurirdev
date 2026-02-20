@@ -20,7 +20,7 @@ import {
 // Stores
 import { useCourierStore } from '@/stores/useCourierStore';
 import { useOrderStore } from '@/stores/useOrderStore';
-import { Order, Courier } from '@/types';
+import { Courier } from '@/types';
 
 export function Couriers() {
   const { couriers, addCourier, updateCourier } = useCourierStore();
@@ -214,6 +214,9 @@ export function Couriers() {
                           <span className="text-xs text-gray-400">Offline</span>
                         )}
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      {orders.filter(o => o.courier_id === courier.id && o.status === 'delivered').length}
                     </TableCell>
                     <TableCell>
                       {formatCurrency(
