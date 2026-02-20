@@ -5,7 +5,8 @@ import { User } from '@/types';
 interface UserState {
     users: User[]; // Combined list of Admins and Couriers
     addUser: (user: User) => void;
-    removeUser: (id: number) => void;
+    deactivateUser: (id: number) => void;
+    reactivateUser: (id: number) => void;
     updateUser: (id: number, data: Partial<User>) => void;
 }
 
@@ -76,11 +77,14 @@ export const useUserStore = create<UserState>()(
         (set) => ({
             users: INITIAL_USERS,
             addUser: (user) => set((state) => ({ users: [...state.users, user] })),
-            removeUser: (id) =>
-                set((state) => {
-                    if (id === 1) return state; // Prevent deleting Super Admin
-                    return { users: state.users.filter((u) => u.id !== id) };
-                }),
+            deactivateUser: (id) =>
+                set((state) => ({
+                    users: state.users.map((u) => (u.id === id ? { ...u, is_active: false } : u)),
+                })),
+            reactivateUser: (id) =>
+                set((state) => ({
+                    users: state.users.map((u) => (u.id === id ? { ...u, is_active: true } : u)),
+                })),
             updateUser: (id, data) =>
                 set((state) => ({
                     users: state.users.map((u) => (u.id === id ? { ...u, ...data } : u)),
