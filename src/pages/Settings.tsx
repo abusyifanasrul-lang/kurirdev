@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { User, Lock, Users, Plus, ToggleLeft, ToggleRight, CheckCircle, AlertCircle, Shield, Edit2 } from 'lucide-react';
+import { User, Lock, Users, Plus, Trash2, CheckCircle, AlertCircle, Shield, Edit2 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -19,6 +19,7 @@ import { Courier } from '@/types';
 export function Settings() {
   const { users, updateUser, addUser } = useUserStore();
   const { user } = useAuth();
+  const { updateCourier } = useCourierStore();
 
   const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'users'>('profile');
 
@@ -162,19 +163,19 @@ export function Settings() {
     showMessage('success', 'User updated successfully!');
   };
 
-  const handleToggleUserStatus = (u: UserType) => {
+  const handleToggleSuspend = (u: UserType) => {
     if (u.id === user?.id) {
       showMessage('error', 'You cannot suspend yourself!');
       return;
     }
-    // RBAC: Only Super Admin (id 1) can suspend/activate others
+    // RBAC: Only Super Admin (id 1) can change status
     if (user?.id !== 1) {
-      showMessage('error', 'Only Super Admin can manage user status!');
+      showMessage('error', 'Only Super Admin can change user status!');
       return;
     }
 
-    updateUser(u.id, { is_active: !u.is_active });
-    showMessage('success', `User ${u.is_active ? 'suspended' : 'activated'} successfully!`);
+    updateCourier(u.id, { is_active: !u.is_active });
+    showMessage('success', `User ${!u.is_active ? 'activated' : 'suspended'} successfully!`);
   };
 
   const tabs = [
@@ -329,7 +330,7 @@ export function Settings() {
                 {users.map((u: UserType) => (
                   <div
                     key={u.id}
-                    className={`flex flex-col sm:flex-row items-center justify-between p-4 bg-gray-50 rounded-lg gap-4 hover:bg-gray-100 transition-colors ${canEdit(u) ? 'cursor-pointer' : 'cursor-default'} ${!u.is_active ? 'opacity-50' : ''}`}
+                    className={`flex flex-col sm:flex-row items-center justify-between p-4 bg-gray-50 rounded-lg gap-4 hover:bg-gray-100 transition-colors ${canEdit(u) ? 'cursor-pointer' : 'cursor-default'}`}
                     onClick={() => canEdit(u) && openEditModal(u)}
                   >
                     <div className="flex items-center gap-4 w-full sm:w-auto">
@@ -347,13 +348,9 @@ export function Settings() {
                     </div>
 
                     <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-                      {!u.is_active ? (
-                        <Badge variant="danger" className="capitalize">Suspended</Badge>
-                      ) : (
-                        <Badge variant={u.role === 'admin' ? 'default' : 'warning'} className="capitalize">
-                          {u.role.replace('_', ' ')}
-                        </Badge>
-                      )}
+                      <Badge variant={u.role === 'admin' ? 'default' : 'warning'} className="capitalize">
+                        {u.role.replace('_', ' ')}
+                      </Badge>
 
                       {/* Edit Button (Visible based on permission) */}
                       {canEdit(u) && (
@@ -366,14 +363,14 @@ export function Settings() {
                         </button>
                       )}
 
-                      {/* Toggle Status Action - RBAC Protected */}
+                      {/* Delete Action - RBAC Protected */}
                       {user?.id === 1 && u.id !== 1 && u.id !== user.id && (
                         <button
-                          onClick={(e) => { e.stopPropagation(); handleToggleUserStatus(u); }}
-                          className={`p-2 transition-colors rounded-lg ${u.is_active ? 'text-red-400 hover:text-red-600 hover:bg-red-50' : 'text-green-400 hover:text-green-600 hover:bg-green-50'}`}
-                          title={u.is_active ? 'Suspend User' : 'Activate User'}
+                          onClick={(e) => { e.stopPropagation(); handleToggleSuspend(u); }}
+                          className={`p-2 rounded-lg transition-colors ${u.is_active ? 'text-red-400 hover:text-red-600 hover:bg-red-50' : 'text-green-400 hover:text-green-600 hover:bg-green-50'}`}
+                          title={u.is_active ? "Suspend User" : "Activate User"}
                         >
-                          {u.is_active ? <ToggleRight className="h-5 w-5" /> : <ToggleLeft className="h-5 w-5" />}
+                          {u.is_active ? <Trash2 className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
                         </button>
                       )}
                     </div>
