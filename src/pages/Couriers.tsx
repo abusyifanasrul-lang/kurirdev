@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react';
-import { Plus, Eye, ToggleLeft, ToggleRight, TrendingUp, Package, DollarSign, Phone, Mail, Award } from 'lucide-react';
+import { Plus, Eye, ToggleLeft, ToggleRight, TrendingUp, Package, DollarSign, Phone, Mail, Award, Truck, Hash } from 'lucide-react';
 import { format } from 'date-fns';
 import { Header } from '@/components/layout/Header';
 import { Card, StatCard } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
 import { Modal } from '@/components/ui/Modal';
 import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
 import {
@@ -37,6 +38,8 @@ export function Couriers() {
     password: '',
     phone: '',
     commission_rate: 80,
+    vehicle_type: 'motorcycle' as Courier['vehicle_type'],
+    plate_number: '',
   });
 
   const activeCouriersCount = couriers.filter((c: Courier) => c.is_active).length;
@@ -63,6 +66,8 @@ export function Couriers() {
       phone: newCourier.phone,
       is_active: true,
       is_online: false,
+      vehicle_type: newCourier.vehicle_type,
+      plate_number: newCourier.plate_number,
       commission_rate: newCourier.commission_rate,
       active_orders_count: 0,
       total_completed: 0,
@@ -73,7 +78,15 @@ export function Couriers() {
 
     addCourier(courierData);
     setIsAddModalOpen(false);
-    setNewCourier({ name: '', email: '', password: '', phone: '', commission_rate: 80 });
+    setNewCourier({
+      name: '',
+      email: '',
+      password: '',
+      phone: '',
+      commission_rate: 80,
+      vehicle_type: 'motorcycle',
+      plate_number: ''
+    });
   };
 
   const handleToggleSuspend = (courier: Courier) => {
@@ -271,6 +284,25 @@ export function Couriers() {
             onChange={(e) => setNewCourier({ ...newCourier, phone: e.target.value })}
             placeholder="+628..."
           />
+          <div className="grid grid-cols-2 gap-4">
+            <Select
+              label="Vehicle Type"
+              value={newCourier.vehicle_type}
+              onChange={(e) => setNewCourier({ ...newCourier, vehicle_type: e.target.value as Courier['vehicle_type'] })}
+              options={[
+                { value: 'motorcycle', label: 'Motorcycle' },
+                { value: 'car', label: 'Car' },
+                { value: 'bicycle', label: 'Bicycle' },
+                { value: 'van', label: 'Van' },
+              ]}
+            />
+            <Input
+              label="Plate Number"
+              value={newCourier.plate_number}
+              onChange={(e) => setNewCourier({ ...newCourier, plate_number: e.target.value })}
+              placeholder="B 1234 XYZ"
+            />
+          </div>
           <Input
             label="Commission Rate (%)"
             type="number"
@@ -312,9 +344,15 @@ export function Couriers() {
                 </div>
                 <div>
                   <h4 className="font-bold text-gray-900">{selectedCourier.name}</h4>
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
                     <span className="flex items-center gap-1"><Mail className="w-3 h-3" /> {selectedCourier.email}</span>
                     <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {selectedCourier.phone}</span>
+                    {selectedCourier.vehicle_type && (
+                      <span className="flex items-center gap-1 capitalize"><Truck className="w-3 h-3" /> {selectedCourier.vehicle_type}</span>
+                    )}
+                    {selectedCourier.plate_number && (
+                      <span className="flex items-center gap-1 uppercase"><Hash className="w-3 h-3" /> {selectedCourier.plate_number}</span>
+                    )}
                   </div>
                 </div>
               </div>
