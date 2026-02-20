@@ -45,7 +45,7 @@ const searchCategories = [
   { value: 'customer_address', label: 'Address' },
 ];
 
-type SortField = 'order_number' | 'customer_name' | 'status' | 'courier_name' | 'total_fee' | 'created_at';
+type SortField = 'order_number' | 'customer_name' | 'status' | 'courier_name' | 'payment_status' | 'total_fee' | 'created_at';
 type SortOrder = 'asc' | 'desc';
 
 export function Orders() {
@@ -347,8 +347,11 @@ export function Orders() {
                 >
                   <div className="flex items-center">Courier {getSortIcon('courier_name')}</div>
                 </TableHeader>
-                <TableHeader>
-                  <div className="flex items-center">Setoran</div>
+                <TableHeader
+                  className="cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => handleSort('payment_status')}
+                >
+                  <div className="flex items-center">Setoran {getSortIcon('payment_status')}</div>
                 </TableHeader>
                 <TableHeader
                   className="cursor-pointer hover:bg-gray-100 transition-colors"
@@ -402,7 +405,7 @@ export function Orders() {
                           </Button>
                         )
                       ) : (
-                        <Badge variant="outline" className="text-gray-400 border-gray-200">Belum Setor</Badge>
+                        <Badge variant="default" className="text-gray-400 border-gray-200">Belum Setor</Badge>
                       )}
                     </TableCell>
                     <TableCell>{formatCurrency(order.total_fee)}</TableCell>
