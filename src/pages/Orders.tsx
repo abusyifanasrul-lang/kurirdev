@@ -23,6 +23,7 @@ import {
 // Stores & Types
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useCourierStore } from '@/stores/useCourierStore';
+import { useUserStore } from '@/stores/useUserStore';
 import { useAuth } from '@/context/AuthContext';
 import type { Order, CreateOrderPayload, PaymentStatus } from '@/types';
 
@@ -51,7 +52,14 @@ type SortOrder = 'asc' | 'desc';
 export function Orders() {
   const { orders, addOrder, assignCourier, cancelOrder, generateOrderId, updateOrder } = useOrderStore();
   const { getAvailableCouriers, rotateQueue } = useCourierStore();
+  const { users } = useUserStore();
   const { user } = useAuth(); // Current admin user
+
+  const getCourierName = (courierId?: string) => {
+    if (!courierId) return null;
+    const courier = users.find(u => u.id === courierId);
+    return courier?.name || null;
+  };
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchCategory, setSearchCategory] = useState('all');
@@ -121,7 +129,7 @@ export function Orders() {
               order.order_number.toLowerCase().includes(q) ||
               order.customer_name.toLowerCase().includes(q) ||
               order.customer_phone.includes(searchQuery) ||
-              (order.courier_name?.toLowerCase().includes(q) || false) ||
+              (getCourierName(order.courier_id)?.toLowerCase().includes(q) || false) ||
               order.customer_address.toLowerCase().includes(q);
           } else if (searchCategory === 'order_number') {
             matchesSearch = order.order_number.toLowerCase().includes(q);
@@ -130,7 +138,7 @@ export function Orders() {
           } else if (searchCategory === 'customer_phone') {
             matchesSearch = order.customer_phone.includes(searchQuery);
           } else if (searchCategory === 'courier_name') {
-            matchesSearch = order.courier_name?.toLowerCase().includes(q) || false;
+            matchesSearch = getCourierName(order.courier_id)?.toLowerCase().includes(q) || false;
           } else if (searchCategory === 'customer_address') {
             matchesSearch = order.customer_address.toLowerCase().includes(q);
           }
@@ -243,7 +251,7 @@ export function Orders() {
       o.customer_phone,
       `"${o.customer_address}"`,
       o.status,
-      o.courier_name || 'Unassigned',
+      getCourierName(o.courier_id) || 'Unassigned',
       o.total_fee
     ]);
 
@@ -387,7 +395,7 @@ export function Orders() {
                     <TableCell>
                       <Badge variant={getStatusBadgeVariant(order.status)}>{getStatusLabel(order.status)}</Badge>
                     </TableCell>
-                    <TableCell>{order.courier_name || <span className="text-gray-400 italic">Unassigned</span>}</TableCell>
+                    <TableCell>{getCourierName(order.courier_id) || <span className="text-gray-400 italic">Unassigned</span>}</TableCell>
                     <TableCell>
                       {order.status === 'delivered' ? (
                         order.payment_status === 'paid' ? (
@@ -598,7 +606,7 @@ export function Orders() {
                 </div>
               ) : (
                 <div className="pl-6 text-sm">
-                  <p><span className="text-gray-500">Assigned To:</span> {selectedOrder.courier_name}</p>
+                  <p><span className="text-gray-500">Assigned To:</span> {getCourierName(selectedOrder.courier_id)}</p>
                   {selectedOrder.assigned_at && <p><span className="text-gray-500">Time:</span> {format(new Date(selectedOrder.assigned_at), 'PPp')}</p>}
                 </div>
               )}
