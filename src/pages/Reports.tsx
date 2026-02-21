@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Download, Calendar, TrendingUp, DollarSign, Package, Award, Filter } from 'lucide-react';
+import { Download, Calendar, TrendingUp, DollarSign, Package, Award, Filter, CheckCircle } from 'lucide-react';
 import { format, subDays, isWithinInterval, parseISO, startOfDay, endOfDay, eachDayOfInterval } from 'date-fns';
 import {
   BarChart,
@@ -128,7 +128,7 @@ export function Reports() {
       totalCourierPayout += (o.total_fee || 0) * rate;
     });
     const netRevenue = totalRevenue - totalCourierPayout;
-    
+
     // Calculate Success Rate
     const successRate = totalOrders > 0 ? (deliveredOrders.length / totalOrders) * 100 : 0;
 
@@ -160,7 +160,7 @@ export function Reports() {
     const start = appliedRange.start;
     const end = appliedRange.end;
     const reportElement = document.getElementById('report-print-template');
-    
+
     if (!reportElement) return;
 
     setIsExporting(true);
@@ -173,12 +173,12 @@ export function Reports() {
       });
 
       const imgData = canvas.toDataURL('image/png');
-      
+
       // Calculate PDF dimensions (A4 portrait)
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      
+
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
       pdf.save(`Laporan-Eksekutif-${start}-${end}.pdf`);
     } catch (error) {
@@ -195,8 +195,8 @@ export function Reports() {
         title="Reports"
         subtitle="Analytics and performance reports"
         actions={
-          <Button 
-            leftIcon={isExporting ? undefined : <Download className="h-4 w-4" />} 
+          <Button
+            leftIcon={isExporting ? undefined : <Download className="h-4 w-4" />}
             onClick={handleExportReport}
             disabled={isExporting}
           >
@@ -365,8 +365,8 @@ export function Reports() {
         It has fixed dimensions representing an A4 paper layout (roughly 794x1123 at 96dpi, 
         but we let height be auto to fit content and scale it to PDF width later).
       */}
-      <div 
-        style={{ position: 'absolute', top: '-10000px', left: '-10000px', width: '800px', backgroundColor: 'white', padding: '40px', color: '#111827' }} 
+      <div
+        style={{ position: 'absolute', top: '-10000px', left: '-10000px', width: '800px', backgroundColor: 'white', padding: '40px', color: '#111827' }}
       >
         <div id="report-print-template" style={{ backgroundColor: 'white', padding: '20px' }}>
           {/* Header */}
@@ -384,15 +384,15 @@ export function Reports() {
           {/* Headline Metrics */}
           <div className="grid grid-cols-4 gap-4 mb-8">
             <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-              <p className="text-sm text-gray-500 font-medium mb-1 flex items-center gap-1"><DollarSign className="w-4 h-4 text-green-600"/> Gross Revenue</p>
+              <p className="text-sm text-gray-500 font-medium mb-1 flex items-center gap-1"><DollarSign className="w-4 h-4 text-green-600" /> Gross Revenue</p>
               <p className="text-xl font-bold text-gray-900">{formatCurrency(analytics.totalRevenue)}</p>
             </div>
             <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
               <p className="text-sm text-indigo-700 font-medium mb-1">Net Revenue (Platform)</p>
               <p className="text-xl font-bold text-indigo-900">{formatCurrency(analytics.netRevenue)}</p>
             </div>
-             <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-              <p className="text-sm text-gray-500 font-medium mb-1 flex items-center gap-1"><CheckCircle className="w-4 h-4 text-emerald-500"/> Success Rate</p>
+            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+              <p className="text-sm text-gray-500 font-medium mb-1 flex items-center gap-1"><CheckCircle className="w-4 h-4 text-emerald-500" /> Success Rate</p>
               <p className="text-xl font-bold text-gray-900">{analytics.successRate.toFixed(1)}%</p>
             </div>
             <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
@@ -403,7 +403,7 @@ export function Reports() {
 
           {/* Charts Row */}
           <div className="grid grid-cols-2 gap-6 mb-8">
-             {/* Chart 1: Daily Revenue */}
+            {/* Chart 1: Daily Revenue */}
             <div className="border border-gray-200 rounded-xl p-4">
               <h3 className="text-base font-semibold text-gray-800 mb-4 border-b pb-2">Tren Pemasukan Harian</h3>
               <div style={{ width: '100%', height: 250 }}>
@@ -419,7 +419,7 @@ export function Reports() {
             </div>
 
             {/* Chart 2: Order Status */}
-             <div className="border border-gray-200 rounded-xl p-4">
+            <div className="border border-gray-200 rounded-xl p-4">
               <h3 className="text-base font-semibold text-gray-800 mb-4 border-b pb-2">Distribusi Status Pesanan</h3>
               <div style={{ width: '100%', height: 250 }} className="flex justify-center items-center">
                 {analytics.statusChartData.length > 0 ? (
@@ -436,15 +436,15 @@ export function Reports() {
                         nameKey="name"
                       >
                         {analytics.statusChartData.map((entry, index) => {
-                           // Try to use semantic colors if possible, otherwise fallback to scheme
-                           let color = COLORS[index % COLORS.length];
-                           if(entry.name === 'Delivered') color = '#10B981'; // emerald-500
-                           if(entry.name === 'Cancelled') color = '#EF4444'; // red-500
-                           if(entry.name === 'In Transit') color = '#3B82F6'; // blue-500
+                          // Try to use semantic colors if possible, otherwise fallback to scheme
+                          let color = COLORS[index % COLORS.length];
+                          if (entry.name === 'Delivered') color = '#10B981'; // emerald-500
+                          if (entry.name === 'Cancelled') color = '#EF4444'; // red-500
+                          if (entry.name === 'In Transit') color = '#3B82F6'; // blue-500
                           return <Cell key={`cell-${index}`} fill={color} />;
                         })}
                       </Pie>
-                      <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px' }}/>
+                      <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
                     </PieChart>
                   </ResponsiveContainer>
                 ) : (
@@ -456,31 +456,31 @@ export function Reports() {
 
           {/* Courier Performance Table */}
           <div className="border border-gray-200 rounded-xl overflow-hidden">
-             <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
-                <h3 className="text-base font-semibold text-gray-800">Top 5 Kurir (Berdasarkan Volume Pengiriman)</h3>
-             </div>
-             <table className="w-full text-sm text-left">
-                <thead className="text-xs text-gray-500 uppercase bg-white border-b">
-                   <tr>
-                      <th className="px-4 py-3 font-medium">Rank</th>
-                      <th className="px-4 py-3 font-medium">Nama Kurir</th>
-                      <th className="px-4 py-3 font-medium">Pesanan Selesai</th>
-                      <th className="px-4 py-3 font-medium">Nilai Transaksi (Gross)</th>
-                   </tr>
-                </thead>
-                <tbody>
-                   {analytics.couriersList.map((c, idx) => (
-                      <tr key={idx} className="bg-white border-b last:border-0">
-                         <td className="px-4 py-3 font-medium text-gray-900">{idx + 1}</td>
-                         <td className="px-4 py-3">{c.name}</td>
-                         <td className="px-4 py-3">{c.count}</td>
-                         <td className="px-4 py-3 text-gray-600">{formatCurrency(c.earnings)}</td>
-                      </tr>
-                   ))}
-                </tbody>
-             </table>
+            <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+              <h3 className="text-base font-semibold text-gray-800">Top 5 Kurir (Berdasarkan Volume Pengiriman)</h3>
+            </div>
+            <table className="w-full text-sm text-left">
+              <thead className="text-xs text-gray-500 uppercase bg-white border-b">
+                <tr>
+                  <th className="px-4 py-3 font-medium">Rank</th>
+                  <th className="px-4 py-3 font-medium">Nama Kurir</th>
+                  <th className="px-4 py-3 font-medium">Pesanan Selesai</th>
+                  <th className="px-4 py-3 font-medium">Nilai Transaksi (Gross)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {analytics.couriersList.map((c, idx) => (
+                  <tr key={idx} className="bg-white border-b last:border-0">
+                    <td className="px-4 py-3 font-medium text-gray-900">{idx + 1}</td>
+                    <td className="px-4 py-3">{c.name}</td>
+                    <td className="px-4 py-3">{c.count}</td>
+                    <td className="px-4 py-3 text-gray-600">{formatCurrency(c.earnings)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          
+
           <div className="mt-8 text-center text-xs text-gray-400">
             Dicetak otomatis oleh Sistem DeliveryPro pada {format(new Date(), 'dd MMM yyyy HH:mm')}
           </div>
