@@ -14,7 +14,6 @@ import {
   Cell,
   Legend,
 } from 'recharts';
-import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { Header } from '@/components/layout/Header';
 import { Card, StatCard } from '@/components/ui/Card';
@@ -156,37 +155,112 @@ export function Reports() {
     }).format(value);
   };
 
-  const handleExportReport = async () => {
+  const handleExportReport = () => {
     const start = appliedRange.start;
     const end = appliedRange.end;
-    const reportElement = document.getElementById('report-print-template');
 
-    if (!reportElement) return;
+    // Create new PDF document (A4, portrait)
+    const pdf = new jsPDF('p', 'mm', 'a4');
 
-    setIsExporting(true);
-    try {
-      // Create canvas from the hidden element
-      const canvas = await html2canvas(reportElement, {
-        scale: 2, // Higher scale for better resolution
-        useCORS: true,
-        logging: false, // Turn off console logs
+    // --- Header ---
+    pdf.setFontSize(18);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(67, 56, 202); // indigo-700
+    pdf.text('DeliveryPro - Laporan Eksekutif UMKM', 15, 20);
+
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(107, 114, 128); // gray-500
+    pdf.text(`Periode: ${start} s/d ${end}`, 15, 26);
+
+    pdf.setDrawColor(229, 231, 235); // gray-200
+    pdf.line(15, 30, 195, 30);
+
+    // --- Section 1: Ringkasan Finansial (Headline Metrics) ---
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(17, 24, 39); // gray-900
+    pdf.text('RINGKASAN PERFORMA:', 15, 42);
+
+    pdf.setFontSize(11);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(55, 65, 81); // gray-700
+    pdf.text(`Total Pesanan: ${analytics.totalOrders}`, 20, 50);
+    pdf.text(`Rata-rata Harian: ${analytics.avgOrdersPerDay.toFixed(1)} pesanan/hari`, 20, 57);
+
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(22, 163, 74); // green-600
+    pdf.text(`Pendapatan Kotor (Gross): ${formatCurrency(analytics.totalRevenue)}`, 20, 67);
+
+    pdf.setTextColor(67, 56, 202); // indigo-700
+    pdf.text(`Pendapatan Bersih (Net Platform): ${formatCurrency(analytics.netRevenue)}`, 20, 74);
+
+    pdf.setTextColor(16, 185, 129); // emerald-500
+    pdf.text(`Tingkat Kesuksesan (Success Rate): ${analytics.successRate.toFixed(1)}%`, 20, 84);
+
+    // --- Section 2: Breakdown Status ---
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(17, 24, 39); // gray-900
+    pdf.text('DISTRIBUSI STATUS PESANAN:', 15, 98);
+
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(55, 65, 81); // gray-700
+
+    let yPos = 106;
+    if (analytics.statusChartData.length > 0) {
+      analytics.statusChartData.forEach((status, idx) => {
+        pdf.text(`- ${status.name}: ${status.value} pesanan`, 20, yPos);
+        yPos += 7;
       });
-
-      const imgData = canvas.toDataURL('image/png');
-
-      // Calculate PDF dimensions (A4 portrait)
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`Laporan-Eksekutif-${start}-${end}.pdf`);
-    } catch (error) {
-      console.error("Error generating PDF:", error);
-      alert("Gagal mengekspor laporan. Silakan coba lagi.");
-    } finally {
-      setIsExporting(false);
+    } else {
+      pdf.text('Tidak ada data status untuk periode ini.', 20, yPos);
+      yPos += 7;
     }
+
+    // --- Section 3: Top 5 Kurir ---
+    yPos += 10;
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(17, 24, 39); // gray-900
+    pdf.text('PERFORMA KURIR (TOP 5):', 15, yPos);
+
+    yPos += 8;
+    // Table Header
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFillColor(243, 244, 246); // gray-100
+    pdf.rect(15, yPos - 5, 180, 8, 'F');
+    pdf.text('Peringkat', 18, yPos);
+    pdf.text('Nama Kurir', 45, yPos);
+    pdf.text('Pesanan Selesai', 110, yPos);
+    pdf.text('Gross Revenue', 150, yPos);
+
+    yPos += 8;
+    pdf.setFont('helvetica', 'normal');
+    if (analytics.couriersList.length > 0) {
+      analytics.couriersList.forEach((c, i) => {
+        pdf.text(`${i + 1}`, 22, yPos);
+        pdf.text(c.name, 45, yPos);
+        pdf.text(`${c.count}`, 120, yPos);
+        pdf.text(formatCurrency(c.earnings), 150, yPos);
+
+        pdf.setDrawColor(243, 244, 246); // gray-100
+        pdf.line(15, yPos + 3, 195, yPos + 3);
+        yPos += 9;
+      });
+    } else {
+      pdf.text('Tidak ada data kurir untuk periode ini.', 20, yPos);
+    }
+
+    // --- Footer ---
+    pdf.setFontSize(8);
+    pdf.setTextColor(156, 163, 175); // gray-400
+    pdf.text(`Dicetak pada: ${format(new Date(), 'dd MMM yyyy HH:mm')}`, 15, 285);
+
+    // Download PDF
+    pdf.save(`Laporan-Eksekutif-${start}-${end}.pdf`);
   };
 
   return (
@@ -196,11 +270,10 @@ export function Reports() {
         subtitle="Analytics and performance reports"
         actions={
           <Button
-            leftIcon={isExporting ? undefined : <Download className="h-4 w-4" />}
+            leftIcon={<Download className="h-4 w-4" />}
             onClick={handleExportReport}
-            disabled={isExporting}
           >
-            {isExporting ? 'Mengekspor PDF...' : 'Export Laporan'}
+            Export Laporan
           </Button>
         }
       />
@@ -357,134 +430,6 @@ export function Reports() {
             </table>
           </div>
         </Card>
-      </div>
-
-      {/* --- HIDDEN PRINT TEMPLATE FOR PDF EXPORT --- */}
-      {/* 
-        This div is positioned absolutely way off-screen.
-        It has fixed dimensions representing an A4 paper layout (roughly 794x1123 at 96dpi, 
-        but we let height be auto to fit content and scale it to PDF width later).
-      */}
-      <div
-        style={{ position: 'absolute', top: '-10000px', left: '-10000px', width: '800px', backgroundColor: 'white', padding: '40px', color: '#111827' }}
-      >
-        <div id="report-print-template" style={{ backgroundColor: 'white', padding: '20px' }}>
-          {/* Header */}
-          <div className="flex justify-between items-center border-b border-gray-200 pb-6 mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-indigo-700 font-sans tracking-tight">DeliveryPro</h1>
-              <p className="text-lg text-gray-500 mt-1">Laporan Eksekutif Pengiriman UMKM</p>
-            </div>
-            <div className="text-right">
-              <p className="text-sm text-gray-400 font-medium">Periode Laporan</p>
-              <p className="text-base font-semibold text-gray-800">{format(parseISO(appliedRange.start), 'dd MMM yyyy')} - {format(parseISO(appliedRange.end), 'dd MMM yyyy')}</p>
-            </div>
-          </div>
-
-          {/* Headline Metrics */}
-          <div className="grid grid-cols-4 gap-4 mb-8">
-            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-              <p className="text-sm text-gray-500 font-medium mb-1 flex items-center gap-1"><DollarSign className="w-4 h-4 text-green-600" /> Gross Revenue</p>
-              <p className="text-xl font-bold text-gray-900">{formatCurrency(analytics.totalRevenue)}</p>
-            </div>
-            <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
-              <p className="text-sm text-indigo-700 font-medium mb-1">Net Revenue (Platform)</p>
-              <p className="text-xl font-bold text-indigo-900">{formatCurrency(analytics.netRevenue)}</p>
-            </div>
-            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-              <p className="text-sm text-gray-500 font-medium mb-1 flex items-center gap-1"><CheckCircle className="w-4 h-4 text-emerald-500" /> Success Rate</p>
-              <p className="text-xl font-bold text-gray-900">{analytics.successRate.toFixed(1)}%</p>
-            </div>
-            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-              <p className="text-sm text-gray-500 font-medium mb-1">Total Orders</p>
-              <p className="text-xl font-bold text-gray-900">{analytics.totalOrders} <span className="text-xs font-normal text-gray-400">({analytics.avgOrdersPerDay.toFixed(1)}/hari)</span></p>
-            </div>
-          </div>
-
-          {/* Charts Row */}
-          <div className="grid grid-cols-2 gap-6 mb-8">
-            {/* Chart 1: Daily Revenue */}
-            <div className="border border-gray-200 rounded-xl p-4">
-              <h3 className="text-base font-semibold text-gray-800 mb-4 border-b pb-2">Tren Pemasukan Harian</h3>
-              <div style={{ width: '100%', height: 250 }}>
-                <ResponsiveContainer>
-                  <BarChart data={analytics.dailyData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
-                    <XAxis dataKey="date" tickFormatter={(v) => format(new Date(v), 'dd/MM')} stroke="#9CA3AF" fontSize={11} tickLine={false} axisLine={false} />
-                    <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} stroke="#9CA3AF" fontSize={11} tickLine={false} axisLine={false} width={40} />
-                    <Bar dataKey="revenue" fill="#4F46E5" radius={[4, 4, 0, 0]} maxBarSize={40} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* Chart 2: Order Status */}
-            <div className="border border-gray-200 rounded-xl p-4">
-              <h3 className="text-base font-semibold text-gray-800 mb-4 border-b pb-2">Distribusi Status Pesanan</h3>
-              <div style={{ width: '100%', height: 250 }} className="flex justify-center items-center">
-                {analytics.statusChartData.length > 0 ? (
-                  <ResponsiveContainer>
-                    <PieChart>
-                      <Pie
-                        data={analytics.statusChartData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={90}
-                        paddingAngle={2}
-                        dataKey="value"
-                        nameKey="name"
-                      >
-                        {analytics.statusChartData.map((entry, index) => {
-                          // Try to use semantic colors if possible, otherwise fallback to scheme
-                          let color = COLORS[index % COLORS.length];
-                          if (entry.name === 'Delivered') color = '#10B981'; // emerald-500
-                          if (entry.name === 'Cancelled') color = '#EF4444'; // red-500
-                          if (entry.name === 'In Transit') color = '#3B82F6'; // blue-500
-                          return <Cell key={`cell-${index}`} fill={color} />;
-                        })}
-                      </Pie>
-                      <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <span className="text-gray-400 text-sm">Tidak ada data</span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Courier Performance Table */}
-          <div className="border border-gray-200 rounded-xl overflow-hidden">
-            <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
-              <h3 className="text-base font-semibold text-gray-800">Top 5 Kurir (Berdasarkan Volume Pengiriman)</h3>
-            </div>
-            <table className="w-full text-sm text-left">
-              <thead className="text-xs text-gray-500 uppercase bg-white border-b">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Rank</th>
-                  <th className="px-4 py-3 font-medium">Nama Kurir</th>
-                  <th className="px-4 py-3 font-medium">Pesanan Selesai</th>
-                  <th className="px-4 py-3 font-medium">Nilai Transaksi (Gross)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {analytics.couriersList.map((c, idx) => (
-                  <tr key={idx} className="bg-white border-b last:border-0">
-                    <td className="px-4 py-3 font-medium text-gray-900">{idx + 1}</td>
-                    <td className="px-4 py-3">{c.name}</td>
-                    <td className="px-4 py-3">{c.count}</td>
-                    <td className="px-4 py-3 text-gray-600">{formatCurrency(c.earnings)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="mt-8 text-center text-xs text-gray-400">
-            Dicetak otomatis oleh Sistem DeliveryPro pada {format(new Date(), 'dd MMM yyyy HH:mm')}
-          </div>
-        </div>
       </div>
     </div>
   );
