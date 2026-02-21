@@ -1,6 +1,6 @@
 // User types
 export interface User {
-  id: number;
+  id: string;
   name: string;
   email: string;
   role: 'admin' | 'courier';
@@ -11,6 +11,7 @@ export interface User {
   fcm_token?: string;
   created_at: string;
   updated_at: string;
+  created_by?: string;
 }
 
 export interface AuthState {
@@ -25,13 +26,12 @@ export type OrderStatus = 'pending' | 'assigned' | 'picked_up' | 'in_transit' | 
 export type PaymentStatus = 'unpaid' | 'paid';
 
 export interface Order {
-  id: number;
+  id: string;
   order_number: string;
   customer_name: string;
   customer_phone: string;
   customer_address: string;
-  courier_id?: number;
-  courier_name?: string;
+  courier_id?: string;
   assigned_at?: string;
   status: OrderStatus;
   total_fee: number;
@@ -43,14 +43,15 @@ export interface Order {
   cancellation_reason?: string;
   created_at: string;
   updated_at: string;
-  created_by?: number;
+  created_by?: string;
+  notes?: string;
 }
 
 export interface OrderStatusHistory {
-  id: number;
-  order_id: number;
+  id: string;
+  order_id: string;
   status: OrderStatus;
-  changed_by: number;
+  changed_by: string;
   changed_by_name?: string;
   changed_at: string;
   notes?: string;
@@ -69,9 +70,6 @@ export interface CreateOrderPayload {
 export interface Courier extends User {
   vehicle_type?: 'motorcycle' | 'car' | 'bicycle' | 'van';
   plate_number?: string;
-  active_orders_count?: number;
-  total_completed?: number;
-  total_earnings?: number;
   commission_rate?: number; // 0-100, default 80 (80% to courier)
 }
 
@@ -105,8 +103,8 @@ export interface RevenueChartData {
 
 // Notifications
 export interface Notification {
-  id: number;
-  user_id: number;
+  id: string;
+  user_id: string;
   user_name?: string;
   title: string;
   body: string;
@@ -116,7 +114,7 @@ export interface Notification {
 }
 
 export interface SendNotificationPayload {
-  user_id: number;
+  user_id: string;
   title: string;
   body: string;
 }
@@ -140,7 +138,7 @@ export interface PaginatedResponse<T> {
 // Filter types
 export interface OrderFilters {
   status?: OrderStatus;
-  courier_id?: number;
+  courier_id?: string;
   start_date?: string;
   end_date?: string;
   search?: string;
@@ -158,7 +156,7 @@ export interface ReportSummary {
   total_revenue: number;
   average_orders_per_day: number;
   top_courier?: {
-    id: number;
+    id: string;
     name: string;
     orders_count: number;
     earnings: number;

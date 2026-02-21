@@ -10,9 +10,9 @@ interface NotificationState {
     resetStore: () => void;
 
     addNotification: (notification: Omit<Notification, 'id' | 'sent_at' | 'is_read'>) => void;
-    markAsRead: (id: number) => void;
+    markAsRead: (id: string) => void;
     markAllAsRead: () => void;
-    getNotificationsByUser: (userId: number) => Notification[];
+    getNotificationsByUser: (userId: string) => Notification[];
 }
 
 const STORE_VERSION = '1.0.4';
@@ -29,7 +29,7 @@ export const useNotificationStore = create<NotificationState>()(
             addNotification: (data) =>
                 set((state) => {
                     const newNotification: Notification = {
-                        id: Date.now(),
+                        id: crypto.randomUUID(),
                         ...data,
                         is_read: false,
                         sent_at: new Date().toISOString(),

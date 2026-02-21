@@ -7,19 +7,19 @@ import { sendMockNotification } from '@/utils/notification';
 interface OrderState {
     _storeVersion: string;
     orders: Order[];
-    statusHistory: Record<number, OrderStatusHistory[]>;
+    statusHistory: Record<string, OrderStatusHistory[]>;
 
     resetStore: () => void;
     initializeOrders: () => void;
     addOrder: (order: Order) => void;
-    updateOrderStatus: (orderId: number, status: OrderStatus, userId: number, userName: string, notes?: string) => void;
-    assignCourier: (orderId: number, courierId: number, courierName: string, userId: number, userName: string) => void;
-    cancelOrder: (orderId: number, reason: string, userId: number, userName: string) => void;
-    updateOrder: (orderId: number, updates: Partial<Order>) => void;
+    updateOrderStatus: (orderId: string, status: OrderStatus, userId: string, userName: string, notes?: string) => void;
+    assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => void;
+    cancelOrder: (orderId: string, reason: string, userId: string, userName: string) => void;
+    updateOrder: (orderId: string, updates: Partial<Order>) => void;
 
     // Helpers
     generateOrderId: () => string;
-    getOrdersByCourier: (courierId: number) => Order[];
+    getOrdersByCourier: (courierId: string) => Order[];
     getRecentOrders: (limit?: number) => Order[];
 }
 
@@ -41,24 +41,23 @@ const generateMockOrders = (): Order[] => {
         const isCompleted = status === 'delivered';
         const hasCourier = status !== 'pending' && status !== 'cancelled';
 
-        const courierId = hasCourier ? (i % 3) + 3 : undefined;
-        const courierNames: Record<number, string> = { 3: 'Budi Santoso', 4: 'Siti Aminah', 5: 'Agus Pratama' };
+        const courierId = hasCourier ? String((i % 3) + 3) : undefined;
+        const courierNames: Record<string, string> = { "3": 'Budi Santoso', "4": 'Siti Aminah', "5": 'Agus Pratama' };
         const courierName = courierId ? courierNames[courierId] : undefined;
 
         orders.push({
-            id: i,
+            id: String(i),
             order_number: `ORD-${dateYMD}-${String(i).padStart(3, '0')}`,
             customer_name: `Customer ${i}`,
             customer_phone: `+6281${String(i).padStart(8, '0')}`,
             customer_address: `Jl. Contoh No. ${i}, Jakarta`,
             courier_id: courierId,
-            courier_name: courierName,
             status: status,
             total_fee: 15000 + ((i % 10) * 1000),
             payment_status: isCompleted ? 'paid' : 'unpaid',
             created_at: dateStr.toISOString(),
             updated_at: dateStr.toISOString(),
-            created_by: 1
+            created_by: "1"
         });
     }
     return orders;
@@ -112,7 +111,7 @@ export const useOrderStore = create<OrderState>()(
                     });
 
                     const newHistory: OrderStatusHistory = {
-                        id: Date.now(),
+                        id: crypto.randomUUID(),
                         order_id: orderId,
                         status,
                         changed_by: userId,
@@ -132,7 +131,7 @@ export const useOrderStore = create<OrderState>()(
             assignCourier: (orderId, courierId, courierName, userId, userName) => {
                 get().updateOrderStatus(orderId, 'assigned', userId, userName, `Assigned to ${courierName}`);
                 set((state) => {
-                    const updatedOrders = state.orders.map(o => o.id === orderId ? { ...o, courier_id: courierId, courier_name: courierName, assigned_at: new Date().toISOString() } : o);
+                    const updatedOrders = state.orders.map(o => o.id === orderId ? { ...o, courier_id: courierId, assigned_at: new Date().toISOString() } : o);
 
                     // Trigger Notification
                     useNotificationStore.getState().addNotification({
