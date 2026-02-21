@@ -8,6 +8,7 @@ import { useOrderStore } from '@/stores/useOrderStore';
 import { useCourierStore } from '@/stores/useCourierStore';
 import { useAuth } from '@/context/AuthContext';
 import { useSessionStore } from '@/stores/useSessionStore';
+import { useUserStore } from '@/stores/useUserStore';
 import { Order, User as UserType, Courier } from '@/types';
 
 // Removed unused CourierOrder interface as we use global Order type
@@ -17,6 +18,12 @@ export function CourierDashboard() {
   const { user } = useAuth();
   const { orders } = useOrderStore();
   const { couriers, updateCourierStatus } = useCourierStore();
+  const { users } = useUserStore();
+  const { user: currentUser } = useSessionStore();
+
+  // Real-time suspended check from useUserStore
+  const liveUser = users.find(u => u.id === currentUser?.id);
+  const isSuspended = liveUser?.is_active === false;
 
   // Find this courier's data for online status
   const courierData = couriers.find((c: Courier) => c.id === user?.id);
@@ -121,11 +128,11 @@ export function CourierDashboard() {
           </div>
           <button
             onClick={handleToggleOnline}
-            disabled={user?.is_active === false}
+            disabled={isSuspended}
             className={cn(
               "relative w-14 h-8 rounded-full transition-all duration-200",
               isOnline ? "bg-green-500" : "bg-gray-300",
-              user?.is_active === false && "opacity-50 cursor-not-allowed grayscale-[0.5]"
+              isSuspended && "opacity-50 cursor-not-allowed grayscale-[0.5]"
             )}
           >
             <span
@@ -136,7 +143,7 @@ export function CourierDashboard() {
             />
           </button>
         </div>
-        {user?.is_active === false ? (
+        {isSuspended ? (
           <p className="text-xs text-red-500 mt-2 font-medium">
             Tidak bisa online: Akun sedang disuspend
           </p>

@@ -16,6 +16,8 @@ import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Ba
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useAuth } from '@/context/AuthContext';
 import { useCourierStore } from '@/stores/useCourierStore';
+import { useSessionStore } from '@/stores/useSessionStore';
+import { useUserStore } from '@/stores/useUserStore';
 import { OrderStatus } from '@/types';
 
 export function CourierOrderDetail() {
@@ -24,7 +26,13 @@ export function CourierOrderDetail() {
   const { orders, updateOrderStatus } = useOrderStore();
   const { user } = useAuth();
   const { couriers } = useCourierStore();
+  const { users } = useUserStore();
+  const { user: currentUser } = useSessionStore();
   const [isUpdating, setIsUpdating] = useState(false);
+
+  // Real-time suspended check from useUserStore
+  const liveUser = users.find(u => u.id === currentUser?.id);
+  const isSuspended = liveUser?.is_active === false;
 
   const currentCourier = useMemo(() => couriers.find(c => c.id === user?.id), [couriers, user]);
   const commissionRate = currentCourier?.commission_rate ?? 80;
@@ -275,28 +283,39 @@ export function CourierOrderDetail() {
         </div>
 
         {/* Action Button */}
-        {nextStatusButton && order.status !== 'delivered' && (
-          <button
-            onClick={handleUpdateStatus}
-            disabled={isUpdating}
-            className={cn(
-              "w-full py-4 rounded-xl font-semibold text-white text-lg transition-all",
-              nextStatusButton.color,
-              isUpdating && "opacity-70 cursor-not-allowed"
-            )}
-          >
-            {isUpdating ? (
-              <span className="flex items-center justify-center gap-2">
-                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                Updating...
-              </span>
-            ) : (
-              nextStatusButton.label
-            )}
-          </button>
+        {isSuspended ? (
+          <div className="w-full py-4 px-4 rounded-xl bg-red-50 border border-red-200 text-center">
+            <p className="text-red-600 font-medium">
+              Akun Anda sedang disuspend.
+            </p>
+            <p className="text-red-400 text-sm mt-1">
+              Hubungi admin untuk informasi lebih lanjut.
+            </p>
+          </div>
+        ) : (
+          nextStatusButton && order.status !== 'delivered' && (
+            <button
+              onClick={handleUpdateStatus}
+              disabled={isUpdating}
+              className={cn(
+                "w-full py-4 rounded-xl font-semibold text-white text-lg transition-all",
+                nextStatusButton.color,
+                isUpdating && "opacity-70 cursor-not-allowed"
+              )}
+            >
+              {isUpdating ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  Updating...
+                </span>
+              ) : (
+                nextStatusButton.label
+              )}
+            </button>
+          )
         )}
 
         {order.status === 'delivered' && (
