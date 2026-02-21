@@ -4,8 +4,11 @@ import { Courier } from '@/types';
 import { useUserStore } from './useUserStore';
 
 interface CourierState {
+    _storeVersion: string;
     couriers: Courier[];
     queue: Courier[];
+
+    resetStore: () => void;
     addCourier: (courier: Courier) => void;
     updateCourier: (id: number, data: Partial<Courier>) => void;
     updateCourierStatus: (id: number, data: Partial<Courier>) => void;
@@ -72,11 +75,16 @@ const INITIAL_COURIERS: Courier[] = [
     },
 ];
 
+const STORE_VERSION = '1.0.4';
+
 export const useCourierStore = create<CourierState>()(
     persist(
         (set, get) => ({
+            _storeVersion: STORE_VERSION,
             couriers: INITIAL_COURIERS,
             queue: INITIAL_COURIERS,
+
+            resetStore: () => set({ couriers: INITIAL_COURIERS, queue: INITIAL_COURIERS, _storeVersion: STORE_VERSION }),
 
             addCourier: (courier) => {
                 set((state) => ({
@@ -138,6 +146,12 @@ export const useCourierStore = create<CourierState>()(
         {
             name: 'courier-storage',
             storage: createJSONStorage(() => localStorage),
+            onRehydrateStorage: () => (state) => {
+                if (state && state._storeVersion !== STORE_VERSION) {
+                    console.warn('Store version mismatch — resetting courier-storage');
+                    state.resetStore();
+                }
+            }
         }
     )
 );

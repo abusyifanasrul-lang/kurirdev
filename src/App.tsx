@@ -1,6 +1,7 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { useOrderStore } from '@/stores/useOrderStore';
 
 // Loading Skeleton
 function LoadingScreen() {
@@ -68,9 +69,85 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// PWA Update Banner Component
+function PWAUpdateBanner() {
+  const { user, isAuthenticated } = useAuth();
+  const { orders } = useOrderStore();
+  const [showBanner, setShowBanner] = useState(false);
+  const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
+
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+
+    navigator.serviceWorker.register('/sw.js').then(reg => {
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        if (newWorker) {
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              setWaitingWorker(newWorker);
+            }
+          });
+        }
+      });
+    }).catch(err => console.error("SW Registration failed:", err));
+  }, []);
+
+  useEffect(() => {
+    if (!waitingWorker) return;
+
+    // Strict condition: Check if courier is actively processing an order
+    if (isAuthenticated && user?.role === 'courier') {
+      const activeOrders = orders.filter(
+        (o) => o.courier_id === user.id && (o.status === 'picked_up' || o.status === 'in_transit')
+      );
+      if (activeOrders.length > 0) {
+        return; // Suppress banner to prevent disrupting active operations
+      }
+    }
+
+    setShowBanner(true);
+  }, [waitingWorker, isAuthenticated, user, orders]);
+
+  const handleUpdate = () => {
+    if (waitingWorker) {
+      waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+    }
+    setShowBanner(false);
+    setTimeout(() => {
+      window.location.reload();
+    }, 500); // Give SW short breathing room to swap
+  };
+
+  const handleDismiss = () => {
+    setShowBanner(false);
+  };
+
+  if (!showBanner) return null;
+
+  return (
+    <div className="fixed bottom-4 right-4 bg-white p-4 rounded-xl border border-gray-200 shadow-xl z-50 animate-in slide-in-from-bottom-5 fade-in w-72">
+      <div className="flex gap-3 mb-3">
+        <div className="bg-indigo-100 p-2 rounded-lg text-indigo-600 h-9 w-9 flex items-center justify-center shrink-0">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+        </div>
+        <div>
+          <h4 className="font-semibold text-gray-900 text-sm">Versi Baru Tersedia</h4>
+          <p className="text-xs text-gray-500 mt-1">Tap update agar aplikasi tersinkronisasi.</p>
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <button onClick={handleUpdate} className="flex-1 bg-indigo-600 text-white text-xs font-medium py-2 rounded-lg hover:bg-indigo-700 transition">Update</button>
+        <button onClick={handleDismiss} className="flex-1 bg-gray-100 text-gray-700 text-xs font-medium py-2 rounded-lg hover:bg-gray-200 transition">Nanti</button>
+      </div>
+    </div>
+  );
+}
+
 export function App() {
   return (
     <AuthProvider>
+      <PWAUpdateBanner />
       <BrowserRouter>
         <Suspense fallback={<LoadingScreen />}>
           <Routes>

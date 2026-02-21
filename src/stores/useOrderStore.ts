@@ -5,9 +5,11 @@ import { useNotificationStore } from './useNotificationStore';
 import { sendMockNotification } from '@/utils/notification';
 
 interface OrderState {
+    _storeVersion: string;
     orders: Order[];
     statusHistory: Record<number, OrderStatusHistory[]>;
 
+    resetStore: () => void;
     initializeOrders: () => void;
     addOrder: (order: Order) => void;
     updateOrderStatus: (orderId: number, status: OrderStatus, userId: number, userName: string, notes?: string) => void;
@@ -62,11 +64,16 @@ const generateMockOrders = (): Order[] => {
     return orders;
 };
 
+const STORE_VERSION = '1.0.4';
+
 export const useOrderStore = create<OrderState>()(
     persist(
         (set, get) => ({
+            _storeVersion: STORE_VERSION,
             orders: [], // Start empty, initialize logically
             statusHistory: {},
+
+            resetStore: () => set({ orders: [], statusHistory: {}, _storeVersion: STORE_VERSION }),
 
             initializeOrders: () => {
                 if (get().orders.length === 0) {
@@ -175,6 +182,12 @@ export const useOrderStore = create<OrderState>()(
         }),
         {
             name: 'order-storage',
+            onRehydrateStorage: () => (state) => {
+                if (state && state._storeVersion !== STORE_VERSION) {
+                    console.warn('Store version mismatch — resetting order-storage');
+                    state.resetStore();
+                }
+            }
         }
     )
 );

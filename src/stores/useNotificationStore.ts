@@ -3,8 +3,11 @@ import { persist } from 'zustand/middleware';
 import { Notification } from '@/types';
 
 interface NotificationState {
+    _storeVersion: string;
     notifications: Notification[];
     unreadCount: number;
+
+    resetStore: () => void;
 
     addNotification: (notification: Omit<Notification, 'id' | 'sent_at' | 'is_read'>) => void;
     markAsRead: (id: number) => void;
@@ -12,11 +15,16 @@ interface NotificationState {
     getNotificationsByUser: (userId: number) => Notification[];
 }
 
+const STORE_VERSION = '1.0.4';
+
 export const useNotificationStore = create<NotificationState>()(
     persist(
         (set, get) => ({
+            _storeVersion: STORE_VERSION,
             notifications: [],
             unreadCount: 0,
+
+            resetStore: () => set({ notifications: [], unreadCount: 0, _storeVersion: STORE_VERSION }),
 
             addNotification: (data) =>
                 set((state) => {
@@ -58,6 +66,12 @@ export const useNotificationStore = create<NotificationState>()(
         }),
         {
             name: 'notification-storage',
+            onRehydrateStorage: () => (state) => {
+                if (state && state._storeVersion !== STORE_VERSION) {
+                    console.warn('Store version mismatch — resetting notification-storage');
+                    state.resetStore();
+                }
+            }
         }
     )
 );

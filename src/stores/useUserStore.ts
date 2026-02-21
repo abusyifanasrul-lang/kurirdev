@@ -3,7 +3,10 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { User } from '@/types';
 
 interface UserState {
+    _storeVersion: string;
     users: User[]; // Combined list of Admins and Couriers
+
+    resetStore: () => void;
     addUser: (user: User) => void;
     removeUser: (id: number) => void;
     updateUser: (id: number, data: Partial<User>) => void;
@@ -71,10 +74,16 @@ const INITIAL_USERS: User[] = [
     },
 ];
 
+const STORE_VERSION = '1.0.4';
+
 export const useUserStore = create<UserState>()(
     persist(
         (set) => ({
+            _storeVersion: STORE_VERSION,
             users: INITIAL_USERS,
+
+            resetStore: () => set({ users: INITIAL_USERS, _storeVersion: STORE_VERSION }),
+
             addUser: (user) => set((state) => ({ users: [...state.users, user] })),
             removeUser: (id) =>
                 set((state) => {
@@ -89,6 +98,12 @@ export const useUserStore = create<UserState>()(
         {
             name: 'user-storage',
             storage: createJSONStorage(() => localStorage),
+            onRehydrateStorage: () => (state) => {
+                if (state && state._storeVersion !== STORE_VERSION) {
+                    console.warn('Store version mismatch — resetting user-storage');
+                    state.resetStore();
+                }
+            }
         }
     )
 );

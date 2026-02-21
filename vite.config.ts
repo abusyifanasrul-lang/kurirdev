@@ -15,6 +15,9 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
+      strategies: "injectManifest",
+      srcDir: "public",
+      filename: "sw.js",
       includeAssets: [
         "icons/android/android-launchericon-192-192.png",
         "icons/android/android-launchericon-512-512.png",
@@ -80,6 +83,14 @@ export default defineConfig({
           },
         ],
       },
+      injectManifest: {
+        globPatterns: ["**/*.{js,css,html,ico,svg,woff2,woff,ttf}"],
+        additionalManifestEntries: [
+          { url: 'icons/android/android-launchericon-192-192.png', revision: null },
+          { url: 'icons/android/android-launchericon-512-512.png', revision: null },
+          { url: 'icons/ios/180.png', revision: null },
+        ]
+      },
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,svg,woff2,woff,ttf}"],
         additionalManifestEntries: [
@@ -90,6 +101,14 @@ export default defineConfig({
         navigateFallback: "/index.html",
         navigateFallbackAllowlist: [/^(?!\/__).*/],
         runtimeCaching: [
+          {
+            urlPattern: /\.(?:js|css)$/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'assets-cache',
+              networkTimeoutSeconds: 3
+            }
+          },
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
             handler: "CacheFirst",
