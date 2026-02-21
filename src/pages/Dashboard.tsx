@@ -4,15 +4,11 @@ import {
   DollarSign,
   Users,
   Clock,
-  TrendingUp,
-  User,
-  MoreVertical
+  TrendingUp
 } from 'lucide-react';
 import {
   LineChart,
   Line,
-  BarChart,
-  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -38,7 +34,7 @@ export function Dashboard() {
   const { orders, getRecentOrders, initializeOrders } = useOrderStore();
   const { queue = [], couriers = [] } = useCourierStore();
 
-  const [isConnected, setIsConnected] = useState(true);
+  const [isConnected] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(new Date());
 
   // Initialize data if empty
@@ -68,7 +64,6 @@ export function Dashboard() {
 
   // --- Derived Analytics ---
   const analytics = useMemo(() => {
-    const today = new Date();
     const todayOrders = (orders || []).filter(o => isToday(new Date(o.created_at)));
     const pendingOrders = (orders || []).filter(o => o.status === 'pending');
 

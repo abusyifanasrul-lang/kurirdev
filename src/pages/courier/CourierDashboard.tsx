@@ -9,7 +9,7 @@ import { useCourierStore } from '@/stores/useCourierStore';
 import { useAuth } from '@/context/AuthContext';
 import { useSessionStore } from '@/stores/useSessionStore';
 import { useUserStore } from '@/stores/useUserStore';
-import { Order, User as UserType, Courier } from '@/types';
+import { Order, Courier } from '@/types';
 
 // Removed unused CourierOrder interface as we use global Order type
 

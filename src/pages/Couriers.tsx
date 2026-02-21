@@ -58,7 +58,7 @@ export function Couriers() {
 
   const handleAddCourier = () => {
     const courierData: Courier = {
-      id: Date.now(),
+      id: crypto.randomUUID(),
       name: newCourier.name,
       email: newCourier.email,
       password: newCourier.password,
@@ -69,9 +69,6 @@ export function Couriers() {
       vehicle_type: newCourier.vehicle_type,
       plate_number: newCourier.plate_number,
       commission_rate: newCourier.commission_rate,
-      active_orders_count: 0,
-      total_completed: 0,
-      total_earnings: 0,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -98,9 +95,9 @@ export function Couriers() {
     // Safety check for getOrdersByCourier
     if (!getOrdersByCourier) return null;
 
-    const courierOrders = getOrdersByCourier(courierId) || [];
+    const courierOrders = getOrdersByCourier(courierId as unknown as string) || [];
     const completed = courierOrders.filter(o => o.status === 'delivered');
-    const courier = couriers.find(c => c.id === courierId);
+    const courier = couriers.find(c => c.id === courierId as unknown as string);
     const rate = (courier?.commission_rate ?? 80) / 100;
     const earnings = completed.reduce((sum, o) => sum + (o.total_fee || 0) * rate, 0);
 
@@ -119,7 +116,7 @@ export function Couriers() {
   const selectedCourierStats = useMemo(() => {
     if (!selectedCourier) return null;
     try {
-      return getCourierStats(selectedCourier.id);
+      return getCourierStats(selectedCourier.id as any);
     } catch (error) {
       console.error("Error calculating stats:", error);
       return {

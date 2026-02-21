@@ -42,8 +42,6 @@ const generateMockOrders = (): Order[] => {
         const hasCourier = status !== 'pending' && status !== 'cancelled';
 
         const courierId = hasCourier ? String((i % 3) + 3) : undefined;
-        const courierNames: Record<string, string> = { "3": 'Budi Santoso', "4": 'Siti Aminah', "5": 'Agus Pratama' };
-        const courierName = courierId ? courierNames[courierId] : undefined;
 
         orders.push({
             id: String(i),

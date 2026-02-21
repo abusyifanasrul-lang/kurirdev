@@ -101,7 +101,6 @@ export const mockOrders: Order[] = Array.from({ length: 50 }, (_, i) => {
   const status = statuses[Math.floor(Math.random() * statuses.length)];
   const hasCourier = status !== 'pending' && status !== 'cancelled';
   const courierId = hasCourier ? ["2", "3", "4"][Math.floor(Math.random() * 3)] : undefined;
-  const courier = courierId ? mockUsers.find(u => u.id === courierId) : undefined;
   
   return {
     id: String(i + 1),

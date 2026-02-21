@@ -10,11 +10,11 @@ import { Textarea } from '@/components/ui/Textarea';
 import { Badge } from '@/components/ui/Badge';
 import { useAuth } from '@/context/AuthContext';
 import { useNotificationStore } from '@/stores/useNotificationStore';
-import { useCourierStore } from '@/stores/useCourierStore';
+import { useUserStore } from '@/stores/useUserStore';
 
 export function Notifications() {
   const { user } = useAuth(); // Current tab-isolated admin session
-  const { couriers } = useCourierStore(); // To select recipient
+  const { users } = useUserStore(); // To select recipient
   const { notifications, addNotification } = useNotificationStore();
 
   const [selectedCourierId, setSelectedCourierId] = useState('');
@@ -23,7 +23,7 @@ export function Notifications() {
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
-  const activeCouriers = couriers.filter((c) => c.is_active);
+  const activeCouriers = users.filter(u => u.role === 'courier' && u.is_active);
 
   // Filter notifications to show history of what ADMIN sent (or all if we want transparency)
   // Let's show all for now to monitor system.
@@ -38,7 +38,7 @@ export function Notifications() {
     setIsLoading(true);
     await new Promise((resolve) => setTimeout(resolve, 800)); // Simulate net delay
 
-    const courier = activeCouriers.find((c) => c.id === parseInt(selectedCourierId));
+    const courier = activeCouriers.find((c) => c.id === selectedCourierId);
 
     if (courier) {
       addNotification({

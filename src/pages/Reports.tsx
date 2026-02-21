@@ -63,7 +63,7 @@ export function Reports() {
     const avgOrdersPerDay = totalOrders / daysDiff;
 
     // 3. Top Courier
-    const courierStats: Record<number, { name: string; count: number; earnings: number }> = {};
+    const courierStats: Record<string, { name: string; count: number; earnings: number }> = {};
 
     deliveredOrders.forEach(o => {
       if (o.courier_id) {
@@ -77,10 +77,10 @@ export function Reports() {
     });
 
     const topCourierId = Object.keys(courierStats).reduce((a, b) =>
-      (courierStats[parseInt(a)]?.count > courierStats[parseInt(b)]?.count ? a : b),
+      (courierStats[a]?.count > courierStats[b]?.count ? a : b),
       '0'
     );
-    const topCourier = courierStats[parseInt(topCourierId)] || null;
+    const topCourier = courierStats[topCourierId] || null;
 
     // 4. Charts Data
     // Group by Day

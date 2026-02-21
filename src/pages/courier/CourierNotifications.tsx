@@ -1,7 +1,5 @@
-import { useState } from 'react';
 import { Bell, CheckCircle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
-import { Badge } from '@/components/ui/Badge';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import { useAuth } from '@/context/AuthContext';
 
@@ -13,7 +11,7 @@ export function CourierNotifications() {
         .filter(n => n.user_id === user?.id)
         .sort((a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime());
 
-    const handleMarkAsRead = (id: number) => {
+    const handleMarkAsRead = (id: string) => {
         markAsRead(id);
     };
 

@@ -3,7 +3,6 @@ import { ArrowLeft, Package, Clock, CheckCircle, XCircle, Search } from 'lucide-
 import { useNavigate } from 'react-router-dom';
 import { format, isToday, isYesterday, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/Badge';
-import { Order, Courier } from '@/types';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useAuth } from '@/context/AuthContext';
 import { useCourierStore } from '@/stores/useCourierStore';

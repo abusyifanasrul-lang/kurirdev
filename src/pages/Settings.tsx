@@ -88,7 +88,7 @@ export function Settings() {
     if (parsedRole === 'courier') {
       // Use CourierStore to ensure sync (it calls addUser internally)
       const courierData: Courier = {
-        id: Date.now(),
+        id: crypto.randomUUID(),
         name: newUser.name,
         email: newUser.email,
         password: newUser.password, // In real app, hash this
@@ -107,7 +107,7 @@ export function Settings() {
     } else {
       // Normal admin add
       const userData: UserType = {
-        id: Date.now(),
+        id: crypto.randomUUID(),
         name: newUser.name,
         email: newUser.email,
         role: 'admin', // Enforce admin, or use parsedRole if extended
@@ -169,7 +169,7 @@ export function Settings() {
       return;
     }
     // RBAC: Only Super Admin (id 1) can change status
-    if (user?.id !== 1) {
+    if (user?.id !== "1") {
       showMessage('error', 'Only Super Admin can change user status!');
       return;
     }
@@ -185,8 +185,8 @@ export function Settings() {
   ] as const;
 
   const canEdit = (target: UserType) => {
-    if (user?.id === 1) return true // Super Admin bisa edit semua
-    if (target.id === 1) return false // Tidak ada yang bisa edit Super Admin kecuali dirinya
+    if (user?.id === "1") return true // Super Admin bisa edit semua
+    if (target.id === "1") return false // Tidak ada yang bisa edit Super Admin kecuali dirinya
     if (target.role === 'admin' && target.id !== user?.id) return false // Admin tidak bisa edit admin lain
     return true
   }
@@ -365,7 +365,7 @@ export function Settings() {
                       )}
 
                       {/* Status Toggle Action - RBAC Protected */}
-                      {user?.id === 1 && u.id !== 1 && u.id !== user.id && (
+                      {user?.id === "1" && u.id !== "1" && u.id !== user.id && (
                         <button
                           onClick={(e) => { e.stopPropagation(); handleToggleSuspend(u); }}
                           className={`p-2 rounded-lg transition-colors ${u.is_active ? 'text-red-400 hover:text-red-600 hover:bg-red-50' : 'text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50'}`}

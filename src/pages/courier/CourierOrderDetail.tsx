@@ -37,7 +37,7 @@ export function CourierOrderDetail() {
   const currentCourier = useMemo(() => couriers.find(c => c.id === user?.id), [couriers, user]);
   const commissionRate = currentCourier?.commission_rate ?? 80;
 
-  const order = useMemo(() => orders.find(o => o.id === Number(id)), [orders, id]);
+  const order = useMemo(() => orders.find(o => o.id === id), [orders, id]);
 
   if (!order) {
     return <div className="p-8 text-center">Order not found</div>;
@@ -75,7 +75,7 @@ export function CourierOrderDetail() {
     // Simulate API call delay
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    updateOrderStatus(order.id, nextStatus, user?.id || 0, user?.name || 'Courier');
+    updateOrderStatus(order.id, nextStatus, user?.id || "0" as string, user?.name || 'Courier');
     setIsUpdating(false);
 
     if (nextStatus === 'delivered') {

@@ -46,7 +46,7 @@ const searchCategories = [
   { value: 'customer_address', label: 'Address' },
 ];
 
-type SortField = 'order_number' | 'customer_name' | 'status' | 'courier_name' | 'payment_status' | 'total_fee' | 'created_at';
+type SortField = 'order_number' | 'customer_name' | 'status' | 'courier_id' | 'payment_status' | 'total_fee' | 'created_at';
 type SortOrder = 'asc' | 'desc';
 
 export function Orders() {
@@ -150,8 +150,8 @@ export function Orders() {
         const field = sortConfig.field;
         const order = sortConfig.order;
 
-        let aValue: any = a[field] || '';
-        let bValue: any = b[field] || '';
+        let aValue: any = field === 'courier_id' ? getCourierName(a[field]) || '' : a[field] || '';
+        let bValue: any = field === 'courier_id' ? getCourierName(b[field]) || '' : b[field] || '';
 
         if (typeof aValue === 'string') aValue = aValue.toLowerCase();
         if (typeof bValue === 'string') bValue = bValue.toLowerCase();
@@ -194,7 +194,7 @@ export function Orders() {
   // Handlers
   const handleCreateOrder = () => {
     const orderData: Order = {
-      id: Date.now(),
+      id: crypto.randomUUID(),
       order_number: generateOrderId(),
       ...newOrder,
       total_fee: newOrder.total_fee || 15000,
@@ -202,7 +202,7 @@ export function Orders() {
       payment_status: newOrder.payment_status || 'unpaid',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      created_by: user?.id || 1,
+      created_by: user?.id || "1",
     };
 
     addOrder(orderData);
@@ -230,7 +230,7 @@ export function Orders() {
 
   const handleCancel = () => {
     if (!selectedOrder) return;
-    cancelOrder(selectedOrder.id, cancelReason, user?.id || 1, user?.name || 'Admin');
+    cancelOrder(selectedOrder.id, cancelReason, user?.id || "1", user?.name || 'Admin');
     setIsCancelModalOpen(false);
     setIsDetailModalOpen(false);
     setCancelReason('');
@@ -351,9 +351,9 @@ export function Orders() {
                 </TableHeader>
                 <TableHeader
                   className="cursor-pointer hover:bg-gray-100 transition-colors"
-                  onClick={() => handleSort('courier_name')}
+                  onClick={() => handleSort('courier_id')}
                 >
-                  <div className="flex items-center">Courier {getSortIcon('courier_name')}</div>
+                  <div className="flex items-center">Courier {getSortIcon('courier_id')}</div>
                 </TableHeader>
                 <TableHeader
                   className="cursor-pointer hover:bg-gray-100 transition-colors"

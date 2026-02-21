@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { Bell, Search, RefreshCw, Wifi, WifiOff, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -32,7 +31,7 @@ export function Header({
 }: HeaderProps) {
   // We need the current user to filter notifications
   const { user } = useAuth();
-  const { notifications, unreadCount, markAllAsRead } = useNotificationStore();
+  const { notifications } = useNotificationStore();
 
   // Calculate unread for THIS user
   const userUnreadCount = notifications.filter(n => n.user_id === user?.id && !n.is_read).length;
