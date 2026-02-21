@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Download, Calendar, TrendingUp, DollarSign, Package, Award, Filter, CheckCircle } from 'lucide-react';
+import { Download, Calendar, TrendingUp, DollarSign, Package, Award, Filter } from 'lucide-react';
 import { format, subDays, isWithinInterval, parseISO, startOfDay, endOfDay, eachDayOfInterval } from 'date-fns';
 import {
   BarChart,
@@ -36,7 +36,6 @@ export function Reports() {
   });
 
   const [appliedRange, setAppliedRange] = useState(dateRange);
-  const [isExporting, setIsExporting] = useState(false);
 
   const handleApplyFilter = () => {
     setAppliedRange(dateRange);
@@ -166,7 +165,7 @@ export function Reports() {
     pdf.setFontSize(18);
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(67, 56, 202); // indigo-700
-    pdf.text('DeliveryPro - Laporan Eksekutif UMKM', 15, 20);
+    pdf.text('KurirDev - Laporan Eksekutif Operasional', 15, 20);
 
     pdf.setFontSize(10);
     pdf.setFont('helvetica', 'normal');
@@ -280,7 +279,7 @@ export function Reports() {
 
     yPos += 8;
     if (analytics.statusChartData.length > 0) {
-      analytics.statusChartData.forEach((status, idx) => {
+      analytics.statusChartData.forEach((status) => {
         pdf.text(`- ${status.name}: ${status.value} pesanan`, 20, yPos);
         yPos += 7;
       });
