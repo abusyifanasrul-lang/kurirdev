@@ -211,9 +211,9 @@ export function Orders() {
   const handleAssign = () => {
     if (!selectedOrder || !assignCourierId) return;
 
-    const courier = availableCouriers.find(c => c.id === Number(assignCourierId));
+    const courier = availableCouriers.find(c => c.id === assignCourierId);
     if (courier) {
-      assignCourier(selectedOrder.id, courier.id, courier.name, user?.id || 1, user?.name || 'Admin');
+      assignCourier(selectedOrder.id, courier.id, courier.name, user?.id || "1", user?.name || 'Admin');
       rotateQueue(courier.id); // Validating FIFO logic
       setIsDetailModalOpen(false);
       setAssignCourierId('');
