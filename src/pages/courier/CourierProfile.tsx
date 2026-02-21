@@ -25,6 +25,12 @@ export function CourierProfile() {
   const { updateUser: updatePersistentUser } = useUserStore();
   const { updateUser: updateSessionUser } = useSessionStore();
   const { couriers } = useCourierStore();
+  const { users } = useUserStore();
+  const { user: currentUser } = useSessionStore();
+
+  // Real-time suspended check from useUserStore
+  const liveUser = users.find(u => u.id === currentUser?.id);
+  const isSuspended = liveUser?.is_active === false;
 
   const courierData = useMemo(() =>
     couriers.find(c => c.id === user?.id),
@@ -159,8 +165,12 @@ export function CourierProfile() {
         {/* Ganti Password */}
         <div className="flex flex-col">
           <button
-            onClick={() => setIsChangePasswordOpen(!isChangePasswordOpen)}
-            className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+            onClick={() => !isSuspended && setIsChangePasswordOpen(!isChangePasswordOpen)}
+            disabled={isSuspended}
+            className={cn(
+              "w-full flex items-center justify-between p-4 transition-colors",
+              isSuspended ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-50"
+            )}
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center">
@@ -168,16 +178,29 @@ export function CourierProfile() {
               </div>
               <div className="text-left">
                 <p className="font-medium text-gray-900">Ganti Password</p>
-                <p className="text-sm text-gray-500">Perbarui password akun kamu</p>
+                <p className="text-sm text-gray-500">
+                  {isSuspended ? "Akun sedang disuspend" : "Perbarui password akun kamu"}
+                </p>
               </div>
             </div>
             <ChevronRight className={cn(
-              "h-5 w-5 text-gray-400 transition-transform",
+              "h-5 w-4 text-gray-400 transition-transform",
               isChangePasswordOpen && "rotate-90"
             )} />
           </button>
 
-          {isChangePasswordOpen && (
+          {isSuspended && (
+            <div className="p-4 bg-red-50 border border-red-200 text-center">
+              <p className="text-red-600 font-medium">
+                Akun Anda sedang disuspend.
+              </p>
+              <p className="text-red-400 text-sm mt-1">
+                Hubungi admin untuk informasi lebih lanjut.
+              </p>
+            </div>
+          )}
+
+          {isChangePasswordOpen && !isSuspended && (
             <div className="p-4 bg-gray-50/50 space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
