@@ -198,17 +198,87 @@ export function Reports() {
     pdf.setTextColor(16, 185, 129); // emerald-500
     pdf.text(`Tingkat Kesuksesan (Success Rate): ${analytics.successRate.toFixed(1)}%`, 20, 84);
 
-    // --- Section 2: Breakdown Status ---
+    // ==========================================
+    // FUNGSI DRAW BAR CHART LOKAL
+    // ==========================================
+    const drawBarChart = (
+      doc: jsPDF,
+      data: Array<{ date: string; revenue: number; orders: number }>,
+      x: number,
+      y: number,
+      w: number,
+      h: number
+    ) => {
+      // Hanya ambil maksimal 7 hari terakhir jika datanya panjang
+      const chartData = data.slice(-7);
+
+      const maxVal = Math.max(...chartData.map(d => d.revenue));
+      const safeMaxVal = maxVal > 0 ? maxVal : 1;
+      const barW = Math.max((w / chartData.length) - 8, 4); // Margin antar bar ditambah, minimal lebar 4
+
+      // Hitung posisi awal X agar bar terta rapi di area grafik
+      const startX = x + ((w / chartData.length) - barW) / 2;
+
+      // Sumbu Y dan X
+      doc.setDrawColor(209, 213, 219);
+      doc.line(x, y, x, y + h);
+      doc.line(x, y + h, x + w, y + h);
+
+      // Label Sumbu Y (Rupiah)
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(107, 114, 128);
+
+      // Format singkat untuk Y-axis (misal 50k)
+      const formatK = (val: number) => {
+        if (val === 0) return "0";
+        if (val >= 1000000) return `${(val / 1000000).toFixed(1)}M`;
+        if (val >= 1000) return `${(val / 1000).toFixed(0)}k`;
+        return val.toString();
+      };
+
+      doc.text(formatK(maxVal), x - 2, y + 3, { align: 'right' });
+      doc.text(formatK(maxVal / 2), x - 2, y + (h / 2) + 1.5, { align: 'right' });
+      doc.text("0", x - 2, y + h, { align: 'right' });
+
+      // Menggambar Bar & Label X
+      chartData.forEach((d, i) => {
+        const barH = (d.revenue / safeMaxVal) * h;
+        const bx = startX + i * (w / chartData.length);
+        const by = y + h - barH;
+
+        if (d.revenue > 0) {
+          doc.setFillColor(99, 102, 241); // indigo-500
+          doc.rect(bx, by, barW, barH, 'F');
+        }
+
+        // Label Sumbu X (Tanggal misal: 18 Feb)
+        doc.setFontSize(7);
+        const labelDate = format(parseISO(d.date), 'dd MMM');
+        doc.text(labelDate, bx + (barW / 2), y + h + 5, { align: 'center' });
+      });
+    };
+
+    // --- Section 2: Tren Pendapatan (Chart) ---
     pdf.setFontSize(12);
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(17, 24, 39); // gray-900
-    pdf.text('DISTRIBUSI STATUS PESANAN:', 15, 98);
+    pdf.text('TREN PENDAPATAN (7 HARI TERAKHIR):', 15, 98);
+
+    drawBarChart(pdf, analytics.dailyData, 30, 105, 165, 40);
+
+    // --- Section 3: Breakdown Status ---
+    let yPos = 165;
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(17, 24, 39); // gray-900
+    pdf.text('DISTRIBUSI STATUS PESANAN:', 15, yPos);
 
     pdf.setFontSize(10);
     pdf.setFont('helvetica', 'normal');
     pdf.setTextColor(55, 65, 81); // gray-700
 
-    let yPos = 106;
+    yPos += 8;
     if (analytics.statusChartData.length > 0) {
       analytics.statusChartData.forEach((status, idx) => {
         pdf.text(`- ${status.name}: ${status.value} pesanan`, 20, yPos);
