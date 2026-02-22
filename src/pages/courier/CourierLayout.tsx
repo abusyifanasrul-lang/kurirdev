@@ -1,11 +1,13 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { Home, Package, History, DollarSign, User, LogOut, Bell } from 'lucide-react';
+import { Home, Package, History, DollarSign, User, LogOut, Bell, Sun, Moon } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/context/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export function CourierLayout() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { isDarkMode, toggleDarkMode } = useTheme();
 
   const handleLogout = async () => {
     await logout();
@@ -22,9 +24,9 @@ export function CourierLayout() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-800 pb-20">
       {/* Header */}
-      <header className="bg-green-600 text-white px-4 py-4 sticky top-0 z-40">
+      <header className="bg-green-600 dark:bg-gray-900 text-white px-4 py-4 sticky top-0 z-40">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
@@ -35,13 +37,22 @@ export function CourierLayout() {
               <p className="text-xs text-green-100">Courier App</p>
             </div>
           </div>
-          <button
-            onClick={handleLogout}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-            aria-label="Keluar"
-          >
-            <LogOut className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleDarkMode}
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+              aria-label="Toggle dark mode"
+            >
+              {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </button>
+            <button
+              onClick={handleLogout}
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+              aria-label="Keluar"
+            >
+              <LogOut className="h-5 w-5" />
+            </button>
+          </div>
         </div>
       </header>
 
@@ -63,7 +74,7 @@ export function CourierLayout() {
       </main>
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-2 py-2 z-50" role="navigation" aria-label="Menu utama kurir">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 px-2 py-2 z-50" role="navigation" aria-label="Menu utama kurir">
         <div className="flex items-center justify-around">
           {navItems.map((item) => (
             <NavLink
