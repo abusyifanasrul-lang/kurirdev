@@ -47,7 +47,7 @@ const generateMockOrders = (): Order[] => {
 
         orders.push({
             id: String(i),
-            order_number: `ORD-${dateYMD}-${String(i).padStart(3, '0')}`,
+            order_number: `P${String(dateStr.getDate()).padStart(2, '0')}${String(dateStr.getMonth() + 1).padStart(2, '0')}${String(dateStr.getFullYear()).slice(-2)}${String(i).padStart(3, '0')}`,
             customer_name: `${firstNames[(i - 1) % firstNames.length]} ${lastNames[Math.floor((i - 1) / firstNames.length) % lastNames.length]}`,
             customer_phone: `+6281${String(i).padStart(8, '0')}`,
             customer_address: `Jl. Contoh No. ${i}, Jakarta`,
