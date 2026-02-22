@@ -104,6 +104,35 @@ export function Orders() {
   });
 
   const [cancelReason, setCancelReason] = useState('');
+  const [nameSuggestions, setNameSuggestions] = useState<Array<{name: string, phone: string, address: string}>>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+
+  const handleCustomerNameChange = (value: string) => {
+    setNewOrder({ ...newOrder, customer_name: value })
+    if (value.length >= 2) {
+      const unique = new Map()
+      orders
+        .filter(o => o.customer_name.toLowerCase().includes(value.toLowerCase()))
+        .forEach(o => {
+          if (!unique.has(o.customer_name)) {
+            unique.set(o.customer_name, {
+              name: o.customer_name,
+              phone: o.customer_phone,
+              address: o.customer_address
+            })
+          }
+        })
+      setNameSuggestions(Array.from(unique.values()).slice(0, 5))
+      setShowSuggestions(true)
+    } else {
+      setShowSuggestions(false)
+    }
+  }
+
+  const handleSelectCustomer = (customer: {name: string, phone: string, address: string}) => {
+    setNewOrder({ ...newOrder, customer_name: customer.name, customer_phone: customer.phone, customer_address: customer.address })
+    setShowSuggestions(false)
+  }
 
   // Derived State
   const filteredOrders = useMemo(() => {
@@ -448,7 +477,20 @@ export function Orders() {
       {/* CREATE ORDER MODAL */}
       <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} title="New Order" size="lg">
         <div className="space-y-4">
-          <Input label="Customer Name" value={newOrder.customer_name} onChange={e => setNewOrder({ ...newOrder, customer_name: e.target.value })} />
+          <div className="relative">
+            <Input label="Customer Name" value={newOrder.customer_name} onChange={e => handleCustomerNameChange(e.target.value)} />
+            {showSuggestions && nameSuggestions.length > 0 && (
+              <div className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1">
+                {nameSuggestions.map((c, i) => (
+                  <button key={i} type="button" onClick={() => handleSelectCustomer(c)}
+                    className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b last:border-0">
+                    <p className="font-medium text-gray-900">{c.name}</p>
+                    <p className="text-sm text-gray-500">{c.phone}</p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <Input label="Phone Number" value={newOrder.customer_phone} onChange={e => setNewOrder({ ...newOrder, customer_phone: e.target.value })} />
           <Textarea label="Address" value={newOrder.customer_address} onChange={e => setNewOrder({ ...newOrder, customer_address: e.target.value })} />
           <div className="grid grid-cols-2 gap-4">
