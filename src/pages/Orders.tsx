@@ -106,6 +106,8 @@ export function Orders() {
   const [cancelReason, setCancelReason] = useState('');
   const [nameSuggestions, setNameSuggestions] = useState<Array<{name: string, phone: string, address: string}>>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
 
   const handleCustomerNameChange = (value: string) => {
     setNewOrder({ ...newOrder, customer_name: value })
@@ -133,6 +135,34 @@ export function Orders() {
     setNewOrder({ ...newOrder, customer_name: customer.name, customer_phone: customer.phone, customer_address: customer.address })
     setShowSuggestions(false)
   }
+
+  // Pagination derived state
+  const paginatedOrders = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredOrders.slice(startIndex, endIndex);
+  }, [filteredOrders, currentPage]);
+
+  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+  const startItem = filteredOrders.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0;
+  const endItem = Math.min(currentPage * itemsPerPage, filteredOrders.length);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handlePrevious = () => {
+    setCurrentPage(prev => Math.max(prev - 1, 1));
+  };
+
+  const handleNext = () => {
+    setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  };
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, dateFilter, sortConfig]);
 
   // Derived State
   const filteredOrders = useMemo(() => {
@@ -405,10 +435,10 @@ export function Orders() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredOrders.length === 0 ? (
+              {paginatedOrders.length === 0 ? (
                 <TableEmpty colSpan={6} message="No orders found" />
               ) : (
-                filteredOrders.map((order) => (
+                paginatedOrders.map((order) => (
                   <TableRow
                     key={order.id}
                     className="cursor-pointer hover:bg-gray-50 transition-colors"
@@ -454,9 +484,32 @@ export function Orders() {
           </Table>
         </Card>
 
+        {/* Pagination Controls - Desktop */}
+        <div className="hidden lg:flex items-center justify-between mt-4">
+          <p className="text-sm text-gray-600">
+            Showing {startItem}-{endItem} of {filteredOrders.length} orders
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handlePrevious}
+              disabled={currentPage === 1}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleNext}
+              disabled={currentPage === totalPages}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+
         {/* Mobile List Info */}
         <div className="lg:hidden space-y-3">
-          {filteredOrders.map(order => (
+          {paginatedOrders.map(order => (
             <Card key={order.id} padding="sm" onClick={() => { setSelectedOrder(order); setIsDetailModalOpen(true); }}>
               <div className="flex justify-between items-start mb-2">
                 <div>
@@ -471,6 +524,31 @@ export function Orders() {
               </div>
             </Card>
           ))}
+        </div>
+
+        {/* Pagination Controls - Mobile */}
+        <div className="lg:hidden flex items-center justify-between mt-4 px-4">
+          <p className="text-sm text-gray-600">
+            Showing {startItem}-{endItem} of {filteredOrders.length} orders
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handlePrevious}
+              disabled={currentPage === 1}
+              size="sm"
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleNext}
+              disabled={currentPage === totalPages}
+              size="sm"
+            >
+              Next
+            </Button>
+          </div>
         </div>
       </div>
 

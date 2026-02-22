@@ -38,6 +38,8 @@ export function CourierLayout() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {/* Tombol dark mode — hidden until requested */}
+            {/*
             <button
               onClick={toggleDarkMode}
               className="p-2 hover:bg-white/10 rounded-lg transition-colors"
@@ -45,6 +47,7 @@ export function CourierLayout() {
             >
               {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </button>
+            */}
             <button
               onClick={handleLogout}
               className="p-2 hover:bg-white/10 rounded-lg transition-colors"
