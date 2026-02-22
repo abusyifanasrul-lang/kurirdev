@@ -36,8 +36,7 @@ const generateMockOrders = (): Order[] => {
         const daysAgo = i % 7;
         const dateStr = new Date();
         dateStr.setDate(dateStr.getDate() - daysAgo);
-        const dateYMD = dateStr.toISOString().slice(0, 10).replace(/-/g, '');
-
+        
         const statusIdx = (i * 3 + Math.floor(i / 5)) % statuses.length;
         const status = statuses[statusIdx];
         const isCompleted = status === 'delivered';
