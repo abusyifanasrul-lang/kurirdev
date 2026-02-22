@@ -84,9 +84,14 @@ const addresses = [
 ];
 
 function generateOrderNumber(index: number): string {
-  const date = new Date();
-  const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
-  return `ORD-${dateStr}-${String(index + 1).padStart(4, '0')}`;
+  const now = new Date();
+  const DD = String(now.getDate()).padStart(2, '0');
+  const MM = String(now.getMonth() + 1).padStart(2, '0');
+  const YY = String(now.getFullYear()).slice(-2);
+  const dateKey = `${DD}${MM}${YY}`;
+  const todayOrders = mockOrders.filter(o => o.order_number.startsWith(`P${dateKey}`));
+  const count = todayOrders.length + 1;
+  return `P${dateKey}${String(count).padStart(3, '0')}`;
 }
 
 function randomDate(daysAgo: number): string {
