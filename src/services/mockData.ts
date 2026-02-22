@@ -88,10 +88,7 @@ function generateOrderNumber(index: number): string {
   const DD = String(now.getDate()).padStart(2, '0');
   const MM = String(now.getMonth() + 1).padStart(2, '0');
   const YY = String(now.getFullYear()).slice(-2);
-  const dateKey = `${DD}${MM}${YY}`;
-  const todayOrders = mockOrders.filter(o => o.order_number.startsWith(`P${dateKey}`));
-  const count = todayOrders.length + 1;
-  return `P${dateKey}${String(count).padStart(3, '0')}`;
+  return `P${DD}${MM}${YY}${String(index + 1).padStart(3, '0')}`;
 }
 
 function randomDate(daysAgo: number): string {
