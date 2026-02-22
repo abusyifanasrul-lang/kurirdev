@@ -135,8 +135,9 @@ export const useOrderStore = create<OrderState>()(
                     // Trigger Notification
                     useNotificationStore.getState().addNotification({
                         user_id: courierId,
+                        user_name: courierName,
                         title: 'New Order Assigned',
-                        body: `Order ${state.orders.find(o => o.id === orderId)?.order_number} telah ditugaskan kepada ${courierName}.`,
+                        body: `Order ${state.orders.find(o => o.id === orderId)?.order_number} has been assigned to you.`,
                         data: { orderId }
                     });
 
