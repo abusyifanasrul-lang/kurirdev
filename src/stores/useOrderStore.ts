@@ -28,6 +28,8 @@ interface OrderState {
 const generateMockOrders = (): Order[] => {
     const orders: Order[] = [];
     const statuses: OrderStatus[] = ['pending', 'assigned', 'picked_up', 'in_transit', 'delivered', 'cancelled'];
+    const firstNames = ['Budi', 'Siti', 'Ahmad', 'Dewi', 'Rizky', 'Nurul', 'Eko', 'Fitri'];
+    const lastNames = ['Santoso', 'Rahayu', 'Fauzi', 'Kusuma', 'Pratama', 'Hidayah', 'Wijaya', 'Putri'];
 
     for (let i = 1; i <= 50; i++) {
         // Use deterministic "random" based on ID
@@ -46,7 +48,7 @@ const generateMockOrders = (): Order[] => {
         orders.push({
             id: String(i),
             order_number: `ORD-${dateYMD}-${String(i).padStart(3, '0')}`,
-            customer_name: `Customer ${i}`,
+            customer_name: `${firstNames[(i - 1) % firstNames.length]} ${lastNames[Math.floor((i - 1) / firstNames.length) % lastNames.length]}`,
             customer_phone: `+6281${String(i).padStart(8, '0')}`,
             customer_address: `Jl. Contoh No. ${i}, Jakarta`,
             courier_id: courierId,
