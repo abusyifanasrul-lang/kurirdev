@@ -15,7 +15,7 @@ import { useUserStore } from '@/stores/useUserStore';
 export function Notifications() {
   const { user } = useAuth(); // Current tab-isolated admin session
   const { users } = useUserStore(); // To select recipient
-  const { notifications, addNotification, subscribeNotifications } = useNotificationStore();
+  const { notifications, addNotification, subscribeAllNotifications } = useNotificationStore();
 
   const [selectedCourierId, setSelectedCourierId] = useState('');
   const [notificationTitle, setNotificationTitle] = useState('');
@@ -27,9 +27,9 @@ export function Notifications() {
 
   // Admin subscribe ke semua notifikasi
   useEffect(() => {
-    const unsub = subscribeNotifications(user?.id || '')
+    const unsub = subscribeAllNotifications()
     return () => unsub()
-  }, [user?.id])
+  }, [])
 
   // Filter notifications to show history of what ADMIN sent (or all if we want transparency)
   // Let's show all for now to monitor system.

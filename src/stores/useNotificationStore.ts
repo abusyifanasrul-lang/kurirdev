@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { db } from '@/lib/firebase'
 import {
   collection, doc, setDoc, updateDoc,
-  onSnapshot, query, where
+  onSnapshot, query, where, orderBy
 } from 'firebase/firestore'
 import { Notification } from '@/types'
 
@@ -11,6 +11,7 @@ interface NotificationState {
   isLoading: boolean
 
   subscribeNotifications: (userId: string) => () => void
+  subscribeAllNotifications: () => () => void
   addNotification: (notification: Omit<Notification, 'id' | 'sent_at' | 'is_read'>) => Promise<void>
   markAsRead: (id: string) => Promise<void>
   markAllAsRead: (userId: string) => Promise<void>
@@ -30,6 +31,19 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
       const notifications = snapshot.docs
         .map(d => d.data() as Notification)
         .sort((a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime())
+      set({ notifications, isLoading: false })
+    })
+    return unsub
+  },
+
+  subscribeAllNotifications: () => {
+    const q = query(
+      collection(db, 'notifications'),
+      orderBy('sent_at', 'desc')
+    )
+    const unsub = onSnapshot(q, (snapshot) => {
+      const notifications = snapshot.docs
+        .map(d => d.data() as Notification)
       set({ notifications, isLoading: false })
     })
     return unsub
