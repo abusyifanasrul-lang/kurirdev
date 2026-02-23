@@ -25,11 +25,19 @@ import { Courier } from '@/types';
 
 export function Couriers() {
   const { couriers, addCourier, updateCourier } = useCourierStore();
-  const { orders, getOrdersByCourier } = useOrderStore(); // To calculate real-time stats
+  const { orders, getOrdersByCourier, updateOrder } = useOrderStore(); // To calculate real-time stats
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isPerformanceModalOpen, setIsPerformanceModalOpen] = useState(false);
+  const [showSettleConfirm, setShowSettleConfirm] = useState(false);
   const [selectedCourier, setSelectedCourier] = useState<Courier | null>(null);
+
+  const courierUnpaidCount = (courierId: string) =>
+    orders.filter(o =>
+      o.courier_id === courierId &&
+      o.status === 'delivered' &&
+      o.payment_status === 'unpaid'
+    ).length;
 
   // Form state
   const [newCourier, setNewCourier] = useState({
@@ -234,6 +242,11 @@ export function Couriers() {
                           .filter(o => o.courier_id === courier.id && o.status === 'delivered')
                           .reduce((sum, o) => sum + (o.total_fee || 0) * ((courier.commission_rate ?? 80) / 100), 0)
                       )}
+                      {courierUnpaidCount(courier.id) > 0 && (
+                        <span className="ml-2 px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-full font-medium">
+                          ⚠️ {courierUnpaidCount(courier.id)} belum setor
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Button variant="ghost" size="sm" onClick={(e) => {
@@ -398,6 +411,41 @@ export function Couriers() {
               </div>
             </div>
 
+            {/* Tagihan Setoran */}
+            {(() => {
+              const unpaidOrders = orders.filter(o =>
+                o.courier_id === selectedCourier?.id &&
+                o.status === 'delivered' &&
+                o.payment_status === 'unpaid'
+              );
+              const unpaidTotalFee = unpaidOrders.reduce(
+                (sum, o) => sum + o.total_fee, 0
+              );
+              const unpaidPlatformFee = unpaidTotalFee *
+                (1 - (selectedCourier?.commission_rate ?? 80) / 100);
+
+              return unpaidOrders.length > 0 && (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                  <h4 className="font-semibold flex items-center gap-2 text-orange-800 mb-3">
+                    💰 Tagihan Setoran
+                  </h4>
+                  <div className="space-y-1 text-sm text-orange-700 mb-4">
+                    <p>{unpaidOrders.length} order belum disetor</p>
+                    <p>Total ongkir: {formatCurrency(unpaidTotalFee)}</p>
+                    <p className="font-bold">
+                      Harus disetor ({100 - (selectedCourier?.commission_rate ?? 80)}%): {formatCurrency(unpaidPlatformFee)}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowSettleConfirm(true)}
+                    className="w-full py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-semibold transition-colors"
+                  >
+                    Konfirmasi Setor Semua — {formatCurrency(unpaidPlatformFee)}
+                  </button>
+                </div>
+              );
+            })()}
+
             {/* Recent History */}
             <div>
               <h4 className="font-semibold mb-3">Recent Delivery History</h4>
@@ -434,6 +482,48 @@ export function Couriers() {
           </div>
         )}
       </Modal>
+
+      {/* Konfirmasi Dialog */}
+      {showSettleConfirm && selectedCourier && (() => {
+        const unpaidOrders = orders.filter(o =>
+          o.courier_id === selectedCourier.id &&
+          o.status === 'delivered' &&
+          o.payment_status === 'unpaid'
+        );
+        const unpaidPlatformFee = unpaidOrders.reduce(
+          (sum, o) => sum + o.total_fee, 0
+        ) * (1 - (selectedCourier.commission_rate ?? 80) / 100);
+
+        return (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl p-6 max-w-sm w-full mx-4">
+              <h3 className="font-bold text-lg mb-2">Konfirmasi Setoran</h3>
+              <p className="text-gray-600 mb-4">
+                Terima setoran {formatCurrency(unpaidPlatformFee)} dari {selectedCourier.name}?
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowSettleConfirm(false)}
+                  className="flex-1 py-2 border rounded-lg"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={() => {
+                    unpaidOrders.forEach(o =>
+                      updateOrder(o.id, { payment_status: 'paid' })
+                    );
+                    setShowSettleConfirm(false);
+                  }}
+                  className="flex-1 py-2 bg-green-500 text-white rounded-lg font-semibold"
+                >
+                  Konfirmasi
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
