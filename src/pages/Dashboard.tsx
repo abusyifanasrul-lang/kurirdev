@@ -31,16 +31,11 @@ import { useCourierStore } from '@/stores/useCourierStore';
 const COLORS = ['#F59E0B', '#3B82F6', '#8B5CF6', '#06B6D4', '#22C55E', '#EF4444'];
 
 export function Dashboard() {
-  const { orders, getRecentOrders, initializeOrders } = useOrderStore();
+  const { orders, getRecentOrders } = useOrderStore();
   const { queue = [], couriers = [] } = useCourierStore();
 
   const [isConnected] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(new Date());
-
-  // Initialize data if empty
-  useEffect(() => {
-    initializeOrders();
-  }, [initializeOrders]);
 
   // Simulate polling/refresh
   useEffect(() => {

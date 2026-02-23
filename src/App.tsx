@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useUserStore } from '@/stores/useUserStore';
+import { seedOrders } from '@/lib/firebaseOrderSeeder';
 
 // Loading Skeleton
 function LoadingScreen() {
@@ -148,10 +149,16 @@ function PWAUpdateBanner() {
 
 export function App() {
   const subscribeUsers = useUserStore(state => state.subscribeUsers)
+  const subscribeOrders = useOrderStore(state => state.subscribeOrders)
 
   useEffect(() => {
-    const unsub = subscribeUsers()
-    return () => unsub()
+    seedOrders()
+    const unsubUsers = subscribeUsers()
+    const unsubOrders = subscribeOrders()
+    return () => {
+      unsubUsers()
+      unsubOrders()
+    }
   }, [])
 
   return (
