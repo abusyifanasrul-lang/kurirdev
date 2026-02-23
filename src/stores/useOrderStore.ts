@@ -81,6 +81,10 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
         [orderId]: [...currentHistory, newHistory]
       }
     }))
+    await setDoc(
+      doc(db, 'tracking_logs', newHistory.id),
+      newHistory
+    )
   },
 
   assignCourier: async (orderId, courierId, courierName, userId, userName) => {

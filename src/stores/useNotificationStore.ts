@@ -1,77 +1,64 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { Notification } from '@/types';
+import { create } from 'zustand'
+import { db } from '@/lib/firebase'
+import {
+  collection, doc, setDoc, updateDoc,
+  onSnapshot, query, where
+} from 'firebase/firestore'
+import { Notification } from '@/types'
 
 interface NotificationState {
-    _storeVersion: string;
-    notifications: Notification[];
-    unreadCount: number;
+  notifications: Notification[]
+  isLoading: boolean
 
-    resetStore: () => void;
-
-    addNotification: (notification: Omit<Notification, 'id' | 'sent_at' | 'is_read'>) => void;
-    markAsRead: (id: string) => void;
-    markAllAsRead: () => void;
-    getNotificationsByUser: (userId: string) => Notification[];
+  subscribeNotifications: (userId: string) => () => void
+  addNotification: (notification: Omit<Notification, 'id' | 'sent_at' | 'is_read'>) => Promise<void>
+  markAsRead: (id: string) => Promise<void>
+  markAllAsRead: (userId: string) => Promise<void>
+  getNotificationsByUser: (userId: string) => Notification[]
 }
 
-const STORE_VERSION = '1.0.4';
+export const useNotificationStore = create<NotificationState>()((set, get) => ({
+  notifications: [],
+  isLoading: true,
 
-export const useNotificationStore = create<NotificationState>()(
-    persist(
-        (set, get) => ({
-            _storeVersion: STORE_VERSION,
-            notifications: [],
-            unreadCount: 0,
-
-            resetStore: () => set({ notifications: [], unreadCount: 0, _storeVersion: STORE_VERSION }),
-
-            addNotification: (data) =>
-                set((state) => {
-                    const newNotification: Notification = {
-                        id: crypto.randomUUID(),
-                        ...data,
-                        is_read: false,
-                        sent_at: new Date().toISOString(),
-                    };
-                    return {
-                        notifications: [newNotification, ...state.notifications],
-                        unreadCount: state.unreadCount + 1,
-                    };
-                }),
-
-            markAsRead: (id) =>
-                set((state) => {
-                    const notification = state.notifications.find((n) => n.id === id);
-                    if (notification && !notification.is_read) {
-                        return {
-                            notifications: state.notifications.map((n) =>
-                                n.id === id ? { ...n, is_read: true } : n
-                            ),
-                            unreadCount: Math.max(0, state.unreadCount - 1),
-                        };
-                    }
-                    return state;
-                }),
-
-            markAllAsRead: () =>
-                set((state) => ({
-                    notifications: state.notifications.map((n) => ({ ...n, is_read: true })),
-                    unreadCount: 0,
-                })),
-
-            getNotificationsByUser: (userId) => {
-                return get().notifications.filter(n => n.user_id === userId);
-            }
-        }),
-        {
-            name: 'notification-storage',
-            onRehydrateStorage: () => (state) => {
-                if (state && state._storeVersion !== STORE_VERSION) {
-                    console.warn('Store version mismatch — resetting notification-storage');
-                    state.resetStore();
-                }
-            }
-        }
+  subscribeNotifications: (userId: string) => {
+    const q = query(
+      collection(db, 'notifications'),
+      where('user_id', '==', userId)
     )
-);
+    const unsub = onSnapshot(q, (snapshot) => {
+      const notifications = snapshot.docs
+        .map(d => d.data() as Notification)
+        .sort((a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime())
+      set({ notifications, isLoading: false })
+    })
+    return unsub
+  },
+
+  addNotification: async (data) => {
+    const newNotification: Notification = {
+      id: crypto.randomUUID(),
+      ...data,
+      is_read: false,
+      sent_at: new Date().toISOString(),
+    }
+    await setDoc(doc(db, 'notifications', newNotification.id), newNotification)
+  },
+
+  markAsRead: async (id) => {
+    await updateDoc(doc(db, 'notifications', id), { is_read: true })
+  },
+
+  markAllAsRead: async (userId) => {
+    const unread = get().notifications.filter(
+      n => n.user_id === userId && !n.is_read
+    )
+    await Promise.all(
+      unread.map(n => updateDoc(doc(db, 'notifications', n.id), { is_read: true }))
+    )
+  },
+
+  getNotificationsByUser: (userId) => {
+    return get().notifications.filter(n => n.user_id === userId)
+  }
+}))

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Send, Bell, CheckCircle, Clock, AlertTriangle, Info, Smile } from 'lucide-react';
 import { format, isSameDay, parseISO } from 'date-fns';
 import { Header } from '@/components/layout/Header';
@@ -15,7 +15,7 @@ import { useUserStore } from '@/stores/useUserStore';
 export function Notifications() {
   const { user } = useAuth(); // Current tab-isolated admin session
   const { users } = useUserStore(); // To select recipient
-  const { notifications, addNotification } = useNotificationStore();
+  const { notifications, addNotification, subscribeNotifications } = useNotificationStore();
 
   const [selectedCourierId, setSelectedCourierId] = useState('');
   const [notificationTitle, setNotificationTitle] = useState('');
@@ -24,6 +24,12 @@ export function Notifications() {
   const [successMessage, setSuccessMessage] = useState('');
 
   const activeCouriers = users.filter(u => u.role === 'courier' && u.is_active);
+
+  // Admin subscribe ke semua notifikasi
+  useEffect(() => {
+    const unsub = subscribeNotifications(user?.id || '')
+    return () => unsub()
+  }, [user?.id])
 
   // Filter notifications to show history of what ADMIN sent (or all if we want transparency)
   // Let's show all for now to monitor system.
@@ -36,12 +42,11 @@ export function Notifications() {
     if (!selectedCourierId || !notificationTitle || !notificationBody) return;
 
     setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 800)); // Simulate net delay
 
     const courier = activeCouriers.find((c) => c.id === selectedCourierId);
 
     if (courier) {
-      addNotification({
+      await addNotification({
         user_id: courier.id,
         user_name: courier.name,
         title: notificationTitle,

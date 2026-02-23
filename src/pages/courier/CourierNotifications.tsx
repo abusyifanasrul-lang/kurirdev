@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Bell, CheckCircle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useNotificationStore } from '@/stores/useNotificationStore';
@@ -5,14 +6,20 @@ import { useAuth } from '@/context/AuthContext';
 
 export function CourierNotifications() {
     const { user } = useAuth();
-    const { notifications, markAsRead } = useNotificationStore();
+    const { notifications, markAsRead, subscribeNotifications } = useNotificationStore();
+
+    useEffect(() => {
+        if (!user?.id) return
+        const unsub = subscribeNotifications(user.id)
+        return () => unsub()
+    }, [user?.id])
 
     const myNotifications = notifications
         .filter(n => n.user_id === user?.id)
         .sort((a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime());
 
-    const handleMarkAsRead = (id: string) => {
-        markAsRead(id);
+    const handleMarkAsRead = async (id: string) => {
+        await markAsRead(id);
     };
 
     return (
