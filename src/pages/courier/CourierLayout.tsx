@@ -1,13 +1,11 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { Home, Package, History, DollarSign, User, LogOut, Bell, Sun, Moon } from 'lucide-react';
+import { Home, Package, History, DollarSign, User, LogOut, Bell } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/context/AuthContext';
-import { useTheme } from '@/contexts/ThemeContext';
 
 export function CourierLayout() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { isDarkMode, toggleDarkMode } = useTheme();
 
   const handleLogout = async () => {
     await logout();

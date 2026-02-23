@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { useOrderStore } from '@/stores/useOrderStore';
+import { useUserStore } from '@/stores/useUserStore';
 
 // Loading Skeleton
 function LoadingScreen() {
@@ -146,6 +147,13 @@ function PWAUpdateBanner() {
 }
 
 export function App() {
+  const subscribeUsers = useUserStore(state => state.subscribeUsers)
+
+  useEffect(() => {
+    const unsub = subscribeUsers()
+    return () => unsub()
+  }, [])
+
   return (
     <ThemeProvider>
       <AuthProvider>
