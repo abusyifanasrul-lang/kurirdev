@@ -9,7 +9,7 @@ import { useCourierStore } from '@/stores/useCourierStore';
 import { useAuth } from '@/context/AuthContext';
 import { useSessionStore } from '@/stores/useSessionStore';
 import { useUserStore } from '@/stores/useUserStore';
-import { Order, Courier } from '@/types';
+import { Order } from '@/types';
 
 // Removed unused CourierOrder interface as we use global Order type
 
@@ -17,7 +17,7 @@ export function CourierDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { orders } = useOrderStore();
-  const { couriers, updateCourierStatus } = useCourierStore();
+  const { } = useCourierStore();
   const { users } = useUserStore();
   const { user: currentUser } = useSessionStore();
 
@@ -26,8 +26,7 @@ export function CourierDashboard() {
   const isSuspended = liveUser?.is_active === false;
 
   // Find this courier's data for online status
-  const courierData = couriers.find((c: Courier) => c.id === user?.id);
-  const isOnline = courierData?.is_online ?? false;
+  const isOnline = liveUser?.is_online ?? false;
 
   const [isConnected, setIsConnected] = useState(true);
 
@@ -64,11 +63,10 @@ export function CourierDashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleToggleOnline = () => {
+  const handleToggleOnline = async () => {
     if (user?.id) {
       const newStatus = !isOnline;
-      updateCourierStatus(user.id, { is_online: newStatus });
-      // Sync with tab-isolated session store
+      await useUserStore.getState().updateUser(user.id, { is_online: newStatus });
       useSessionStore.getState().updateUser({ is_online: newStatus });
     }
   };

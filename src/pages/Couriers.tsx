@@ -21,10 +21,13 @@ import {
 // Stores
 import { useCourierStore } from '@/stores/useCourierStore';
 import { useOrderStore } from '@/stores/useOrderStore';
+import { useUserStore } from '@/stores/useUserStore';
 import { Courier } from '@/types';
 
 export function Couriers() {
-  const { couriers, addCourier, updateCourier } = useCourierStore();
+  const { addCourier, updateCourier } = useCourierStore();
+  const { users } = useUserStore();
+  const couriers = users.filter(u => u.role === 'courier') as Courier[];
   const { orders, getOrdersByCourier, updateOrder } = useOrderStore(); // To calculate real-time stats
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);

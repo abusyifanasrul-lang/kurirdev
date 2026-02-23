@@ -26,13 +26,13 @@ import { format, isToday, subDays, startOfDay, endOfDay, isWithinInterval } from
 
 // Stores
 import { useOrderStore } from '@/stores/useOrderStore';
-import { useCourierStore } from '@/stores/useCourierStore';
+import { useUserStore } from '@/stores/useUserStore';
 
 const COLORS = ['#F59E0B', '#3B82F6', '#8B5CF6', '#06B6D4', '#22C55E', '#EF4444'];
 
 export function Dashboard() {
   const { orders, getRecentOrders } = useOrderStore();
-  const { queue = [], couriers = [] } = useCourierStore();
+  const { users } = useUserStore();
 
   const [isConnected] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(new Date());
@@ -67,7 +67,7 @@ export function Dashboard() {
       .filter(o => o.status === 'delivered')
       .reduce((sum, o) => sum + (o.total_fee || 0), 0);
 
-    const activeCouriersCount = (couriers || []).filter(c => c.is_active && c.is_online).length;
+    const activeCouriersCount = (users || []).filter(u => u.role === 'courier' && u.is_active && u.is_online).length;
 
     // Pie Chart Data
     const statusCounts = orders.reduce((acc, order) => {
@@ -87,7 +87,7 @@ export function Dashboard() {
       pending_orders: pendingOrders.length,
       orders_by_status: pieData
     };
-  }, [orders, couriers]);
+  }, [orders, users]);
 
   const revenueChartData = useMemo(() => {
     // Last 7 days
@@ -245,10 +245,10 @@ export function Dashboard() {
                 <Badge variant="info">FIFO</Badge>
               </div>
               <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
-                {queue.filter(c => c.is_active && c.is_online).length === 0 ? (
+                {users.filter(u => u.role === 'courier' && u.is_active && u.is_online).length === 0 ? (
                   <p className="text-sm text-gray-500 text-center py-4">No online couriers in queue</p>
                 ) : (
-                  queue.filter(c => c.is_active && c.is_online).map((courier, index) => (
+                  users.filter(u => u.role === 'courier' && u.is_active && u.is_online).map((courier, index) => (
                     <div key={courier.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
                       <div className="flex items-center gap-3">
                         <div className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 font-bold text-xs">

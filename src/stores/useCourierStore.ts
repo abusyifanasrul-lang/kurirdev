@@ -111,10 +111,9 @@ export const useCourierStore = create<CourierState>()(
 
       getAvailableCouriers: () => {
         const { users } = useUserStore.getState()
-        const couriers = users.filter(u => u.role === 'courier')
-        return get().queue.filter(q =>
-          couriers.find(c => c.id === q.id && c.is_active && c.is_online)
-        )
+        return users.filter(u =>
+          u.role === 'courier' && u.is_active && u.is_online
+        ) as Courier[]
       },
 
       rotateQueue: (id) => {

@@ -51,7 +51,7 @@ type SortOrder = 'asc' | 'desc';
 
 export function Orders() {
   const { orders, addOrder, assignCourier, cancelOrder, generateOrderId, updateOrder } = useOrderStore();
-  const { getAvailableCouriers, rotateQueue } = useCourierStore();
+  const { rotateQueue } = useCourierStore();
   const { users } = useUserStore();
   const { user } = useAuth(); // Current admin user
 
@@ -205,7 +205,9 @@ export function Orders() {
       <ChevronDown className="h-3 w-3 ml-1 text-indigo-600" />;
   };
 
-  const availableCouriers = useMemo(() => getAvailableCouriers(), [getAvailableCouriers]);
+  const availableCouriers = users.filter(u =>
+    u.role === 'courier' && u.is_active === true && u.is_online === true
+  );
 
   // Sync edit form when order selected
   useEffect(() => {
