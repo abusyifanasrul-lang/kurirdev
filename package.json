@@ -13,6 +13,7 @@
     "clsx": "2.1.1",
     "date-fns": "^4.1.0",
     "firebase": "^12.9.0",
+    "firebase-admin": "^13.6.1",
     "idb": "^8.0.3",
     "jspdf": "^4.2.0",
     "lucide-react": "^0.564.0",
