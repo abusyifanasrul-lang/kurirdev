@@ -25,7 +25,6 @@ export const requestFCMPermission = async (userId: string): Promise<string | nul
     }
 
     const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js')
-    await navigator.serviceWorker.ready
 
     const token = await getToken(messaging, {
       vapidKey: VAPID_KEY,
