@@ -318,7 +318,7 @@ export function Login() {
 
         {/* Footer */}
         <p className="text-center text-indigo-200 text-sm mt-8">
-          © 2024 DeliveryPro. All rights reserved.
+          Draft Aplikasi Kurir Me.
         </p>
       </div>
     </div>

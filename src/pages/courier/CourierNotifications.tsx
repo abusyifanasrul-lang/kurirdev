@@ -18,9 +18,13 @@ export function CourierNotifications() {
         .filter(n => n.user_id === user?.id)
         .sort((a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime());
 
+    const unreadCount = myNotifications.filter(n => !n.is_read).length;
+
     const handleMarkAsRead = async (id: string) => {
         await markAsRead(id);
     };
+
+    export { unreadCount };
 
     return (
         <div className="space-y-4">

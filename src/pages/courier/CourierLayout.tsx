@@ -2,10 +2,14 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { Home, Package, History, DollarSign, User, LogOut, Bell } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/context/AuthContext';
+import { useNotificationStore } from '@/stores/useNotificationStore';
 
 export function CourierLayout() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { notifications } = useNotificationStore();
+
+  const unreadCount = notifications.filter(n => n.user_id === user?.id && !n.is_read).length;
 
   const handleLogout = async () => {
     await logout();
@@ -91,7 +95,14 @@ export function CourierLayout() {
                 )
               }
             >
-              <item.icon className="h-5 w-5" />
+              <div className="relative">
+                <item.icon className="h-5 w-5" />
+                {item.label === 'Notifs' && unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+              </div>
               <span className="text-xs font-medium">{item.label}</span>
             </NavLink>
           ))}
