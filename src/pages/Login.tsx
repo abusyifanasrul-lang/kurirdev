@@ -5,6 +5,7 @@ import { cn } from '@/utils/cn';
 import { useUserStore } from '@/stores/useUserStore';
 import type { User as UserType } from '@/types';
 import { useSessionStore } from '@/stores/useSessionStore';
+import { requestFCMPermission } from '@/lib/fcm';
 
 type RoleType = 'admin' | 'courier' | null;
 
@@ -60,6 +61,11 @@ export function Login() {
       if (foundUser && isValidPassword) {
         // 3. Establish Session (sessionStorage)
         sessionLogin(foundUser);
+
+        // Request FCM permission for couriers
+        if (selectedRole === 'courier') {
+          requestFCMPermission(foundUser.id)
+        }
 
         // Navigate based on role
         if (selectedRole === 'admin') {
