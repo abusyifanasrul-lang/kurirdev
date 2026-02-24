@@ -102,9 +102,10 @@ export const requestFCMPermission = async (userId: string): Promise<string | nul
       // Unregister old firebase SW to force fresh registration
       const existingRegs = await navigator.serviceWorker.getRegistrations()
       for (const reg of existingRegs) {
-        if (reg.active?.scriptURL.includes('firebase-messaging-sw')) {
+        if (reg.active?.scriptURL.includes('firebase-messaging-sw') ||
+          reg.active?.scriptURL.includes('sw.js')) {
           await reg.unregister()
-          console.log('🗑️ Unregistered old firebase-messaging-sw')
+          console.log(`🗑️ Unregistered old SW: ${reg.active?.scriptURL}`)
         }
       }
 
@@ -114,8 +115,8 @@ export const requestFCMPermission = async (userId: string): Promise<string | nul
       await new Promise(resolve => setTimeout(resolve, 1000))
     }
 
-    // Register service worker fresh
-    const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js')
+    // Register service worker fresh (using combined sw.js)
+    const registration = await navigator.serviceWorker.register('/sw.js')
     await registration.update() // Force update check
 
     const token = await getToken(messaging, {
@@ -157,7 +158,7 @@ export const refreshFCMToken = async (userId: string): Promise<void> => {
     // Skip FCM on localhost (requires HTTPS)
     if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') return
 
-    const registration = await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js')
+    const registration = await navigator.serviceWorker.getRegistration('/sw.js')
     if (!registration) return
 
     const token = await getToken(messaging, {
