@@ -5,6 +5,7 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { seedOrders } from '@/lib/firebaseOrderSeeder';
+import { seedUsers } from '@/lib/firebaseUserSeeder';
 import { onForegroundMessage, refreshFCMToken } from '@/lib/fcm';
 
 // Loading Skeleton
@@ -153,6 +154,7 @@ export function App() {
   const subscribeOrders = useOrderStore(state => state.subscribeOrders)
 
   useEffect(() => {
+    seedUsers()
     seedOrders()
     const unsubUsers = subscribeUsers()
     const unsubOrders = subscribeOrders()
