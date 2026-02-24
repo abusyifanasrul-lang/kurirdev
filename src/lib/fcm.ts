@@ -12,6 +12,12 @@ export const requestFCMPermission = async (userId: string): Promise<string | nul
       return null
     }
 
+    // Skip FCM on localhost (requires HTTPS)
+    if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+      console.debug('⏭️ FCM skipped on localhost')
+      return null
+    }
+
     const permission = await Notification.requestPermission()
     if (permission !== 'granted') {
       console.log('⚠️ Notification permission denied')
@@ -35,8 +41,13 @@ export const requestFCMPermission = async (userId: string): Promise<string | nul
       return token
     }
     return null
-  } catch (error) {
-    console.error('❌ FCM token error:', error)
+  } catch (error: any) {
+    // More descriptive error for common FCM issues
+    if (error?.code === 'messaging/token-subscribe-failed') {
+      console.warn('⚠️ FCM token subscribe failed — cek API key restrictions di Google Cloud Console')
+    } else {
+      console.error('❌ FCM token error:', error)
+    }
     return null
   }
 }
@@ -44,6 +55,9 @@ export const requestFCMPermission = async (userId: string): Promise<string | nul
 export const refreshFCMToken = async (userId: string): Promise<void> => {
   try {
     if (!messaging) return
+
+    // Skip FCM on localhost (requires HTTPS)
+    if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') return
 
     const registration = await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js')
     if (!registration) return

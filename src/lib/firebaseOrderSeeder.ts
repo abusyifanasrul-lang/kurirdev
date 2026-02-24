@@ -41,7 +41,7 @@ export const seedOrders = async (): Promise<void> => {
   const colRef = collection(db, 'orders')
   const existing = await getDocs(colRef)
   if (!existing.empty) {
-    console.log('Orders already seeded — skipping')
+    console.debug('Orders already seeded — skipping')
     return
   }
 
