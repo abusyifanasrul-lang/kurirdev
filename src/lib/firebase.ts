@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app'
 import { getFirestore } from 'firebase/firestore'
-import { getMessaging } from 'firebase/messaging'
+import { getMessaging, type Messaging } from 'firebase/messaging'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -14,5 +14,13 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig)
 
 export const db = getFirestore(app)
-export const messaging = getMessaging(app)
+
+// Safe init: getMessaging() throws in unsupported browsers (non-HTTPS, older browsers)
+let _messaging: Messaging | null = null
+try {
+  _messaging = getMessaging(app)
+} catch (e) {
+  console.warn('⚠️ Firebase Messaging not supported in this browser:', e)
+}
+export const messaging = _messaging
 export default app

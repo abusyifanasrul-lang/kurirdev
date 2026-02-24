@@ -5,6 +5,7 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { seedOrders } from '@/lib/firebaseOrderSeeder';
+import { onForegroundMessage, refreshFCMToken } from '@/lib/fcm';
 
 // Loading Skeleton
 function LoadingScreen() {
@@ -155,9 +156,38 @@ export function App() {
     seedOrders()
     const unsubUsers = subscribeUsers()
     const unsubOrders = subscribeOrders()
+
+    // 1. Refresh FCM Token if logged in as courier (Tahap 4)
+    const currentUserStr = sessionStorage.getItem('user-session');
+    if (currentUserStr) {
+      try {
+        const sessionData = JSON.parse(currentUserStr);
+        const currentUser = sessionData.state?.user;
+        if (currentUser?.role === 'courier') {
+          refreshFCMToken(currentUser.id).catch(console.error);
+        }
+      } catch (e) {
+        // ignore parse error
+      }
+    }
+
+    // 2. Listen for foreground notifications (Tahap 3)
+    const unsubFCM = onForegroundMessage((payload) => {
+      console.log('🔔 Foreground message received:', payload);
+      const { title, body } = payload.notification ?? {};
+      if (title && Notification.permission === 'granted') {
+        const notif = new Notification(title, {
+          body,
+          icon: '/icons/android/android-launchericon-192-192.png',
+        });
+        notif.onclick = () => window.focus();
+      }
+    });
+
     return () => {
       unsubUsers()
       unsubOrders()
+      unsubFCM()
     }
   }, [])
 

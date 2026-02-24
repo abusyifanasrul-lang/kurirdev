@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { Plus, Download, Search, User, MapPin, Truck, Bell, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { requestNotificationPermission, sendMockNotification } from '@/utils/notification';
+import { sendPushNotification } from '@/services/notificationService';
 import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -104,7 +105,7 @@ export function Orders() {
   });
 
   const [cancelReason, setCancelReason] = useState('');
-  const [nameSuggestions, setNameSuggestions] = useState<Array<{name: string, phone: string, address: string}>>([])
+  const [nameSuggestions, setNameSuggestions] = useState<Array<{ name: string, phone: string, address: string }>>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
 
   const handleCustomerNameChange = (value: string) => {
@@ -129,7 +130,7 @@ export function Orders() {
     }
   }
 
-  const handleSelectCustomer = (customer: {name: string, phone: string, address: string}) => {
+  const handleSelectCustomer = (customer: { name: string, phone: string, address: string }) => {
     setNewOrder({ ...newOrder, customer_name: customer.name, customer_phone: customer.phone, customer_address: customer.address })
     setShowSuggestions(false)
   }
@@ -254,6 +255,18 @@ export function Orders() {
     if (courier) {
       assignCourier(selectedOrder.id, courier.id, courier.name, user?.id || "1", user?.name || 'Admin');
       rotateQueue(courier.id); // Validating FIFO logic
+
+      // Send push notification to courier (non-blocking)
+      const courierData = users.find(u => u.id === courier.id);
+      if (courierData?.fcm_token) {
+        sendPushNotification({
+          token: courierData.fcm_token,
+          title: 'Order Baru 🚀',
+          body: `Order ${selectedOrder.order_number} - ${selectedOrder.customer_name} telah di-assign ke kamu`,
+          data: { orderId: selectedOrder.id, type: 'order_assigned' }
+        }).catch(console.error);
+      }
+
       setIsDetailModalOpen(false);
       setAssignCourierId('');
     }
