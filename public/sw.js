@@ -46,6 +46,30 @@ self.addEventListener('notificationclick', (event) => {
   )
 })
 
+self.addEventListener('install', () => {
+  self.skipWaiting()
+})
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(clients.claim())
+})
+
+// Manual push listener fallback for non-Firebase payloads or SDK failures
+self.addEventListener('push', (event) => {
+  console.log('[sw.js] Manual push event received:', event)
+  if (!event.data) return
+
+  try {
+    const payload = event.data.json()
+    console.log('[sw.js] Push payload:', payload)
+
+    // If the SDK already handled it, don't show twice 
+    // (Firebase usually handles payloads with "notification" or specific data keys)
+  } catch (e) {
+    console.error('[sw.js] Push parse error:', e)
+  }
+})
+
 import { precacheAndRoute } from 'workbox-precaching';
 
 // Required for VitePWA injectManifest

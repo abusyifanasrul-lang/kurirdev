@@ -84,7 +84,9 @@ function PWAUpdateBanner() {
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
 
-    navigator.serviceWorker.register('/sw.js').then(reg => {
+    // Use the existing registration instead of re-registering
+    navigator.serviceWorker.ready.then(reg => {
+      // Listen for updates on the current registration
       reg.addEventListener('updatefound', () => {
         const newWorker = reg.installing;
         if (newWorker) {
@@ -95,7 +97,12 @@ function PWAUpdateBanner() {
           });
         }
       });
-    }).catch(err => console.error("SW Registration failed:", err));
+
+      // Also check if there's already a waiting worker
+      if (reg.waiting) {
+        setWaitingWorker(reg.waiting);
+      }
+    }).catch(err => console.error("SW ready Check failed:", err));
   }, []);
 
   useEffect(() => {

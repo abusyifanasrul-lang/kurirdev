@@ -26,14 +26,32 @@ export default async function handler(req, res) {
 
   const message = {
     token,
-    notification: {
+    data: {
       title,
       body: body || '',
+      orderId: data?.orderId || '',
+      type: data?.type || 'general',
+      click_action: data?.orderId
+        ? `https://kurirdev.vercel.app/courier/orders/${data.orderId}`
+        : 'https://kurirdev.vercel.app/courier/orders'
     },
-    data: data || {},
+    android: {
+      priority: 'high',
+      notification: {
+        channelId: 'high_importance_channel',
+        priority: 'high',
+        defaultSound: true,
+        defaultVibrateTimings: true
+      }
+    },
     webpush: {
       headers: {
         Urgency: 'high'
+      },
+      fcm_options: {
+        link: data?.orderId
+          ? `https://kurirdev.vercel.app/courier/orders/${data.orderId}`
+          : 'https://kurirdev.vercel.app/courier/orders'
       },
       notification: {
         title,
@@ -43,18 +61,7 @@ export default async function handler(req, res) {
         tag: data?.orderId || 'kurirdev-notif',
         renotify: true,
         vibrate: [200, 100, 200],
-        requireInteraction: true,
-        actions: [
-          {
-            action: 'open',
-            title: 'Buka Aplikasi'
-          }
-        ]
-      },
-      fcm_options: {
-        link: data?.orderId
-          ? `https://kurirdev.vercel.app/courier/orders/${data.orderId}`
-          : 'https://kurirdev.vercel.app/courier/orders'
+        requireInteraction: true
       }
     }
   }

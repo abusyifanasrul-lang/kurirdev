@@ -115,9 +115,9 @@ export const requestFCMPermission = async (userId: string): Promise<string | nul
       await new Promise(resolve => setTimeout(resolve, 1000))
     }
 
-    // Register service worker fresh (using combined sw.js)
-    const registration = await navigator.serviceWorker.register('/sw.js')
-    await registration.update() // Force update check
+    // Use the already registered service worker (from main.tsx / App.tsx)
+    const registration = await navigator.serviceWorker.ready;
+    await registration.update(); // Just check for updates without re-registering
 
     const token = await getToken(messaging, {
       vapidKey: VAPID_KEY,
