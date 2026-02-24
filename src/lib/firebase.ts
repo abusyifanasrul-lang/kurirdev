@@ -1,8 +1,9 @@
-import { initializeApp } from 'firebase/app'
+import { initializeApp, SDK_VERSION } from 'firebase/app'
 import { getFirestore } from 'firebase/firestore'
 import { getMessaging, type Messaging } from 'firebase/messaging'
 
 console.log('🔑 API Key:', import.meta.env.VITE_FIREBASE_API_KEY?.substring(0, 10) ?? 'UNDEFINED')
+console.log('🔥 Firebase SDK version:', SDK_VERSION)
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
