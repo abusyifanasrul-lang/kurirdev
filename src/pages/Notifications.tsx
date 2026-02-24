@@ -46,6 +46,7 @@ export function Notifications() {
     const courier = activeCouriers.find((c) => c.id === selectedCourierId);
 
     if (courier) {
+      // 1. Save to Firestore for history
       await addNotification({
         user_id: courier.id,
         user_name: courier.name,
@@ -53,6 +54,17 @@ export function Notifications() {
         body: notificationBody,
         data: { type: 'manual_alert', sender_id: user?.id },
       });
+
+      // 2. Trigger real push notification
+      if (courier.fcm_token) {
+        const { sendPushNotification } = await import('@/services/notificationService');
+        await sendPushNotification({
+          token: courier.fcm_token,
+          title: notificationTitle,
+          body: notificationBody,
+          data: { type: 'manual_alert' }
+        });
+      }
 
       setSelectedCourierId('');
       setNotificationTitle('');
