@@ -101,6 +101,13 @@ function PWAUpdateBanner() {
   useEffect(() => {
     if (!waitingWorker) return;
 
+    // Don't show if recently dismissed (6-hour cooldown)
+    const dismissedAt = localStorage.getItem('pwa_update_dismissed');
+    if (dismissedAt) {
+      const hoursAgo = (Date.now() - Number(dismissedAt)) / (1000 * 60 * 60);
+      if (hoursAgo < 6) return;
+    }
+
     // Strict condition: Check if courier is actively processing an order
     if (isAuthenticated && user?.role === 'courier') {
       const activeOrders = orders.filter(
@@ -119,6 +126,7 @@ function PWAUpdateBanner() {
       waitingWorker.postMessage({ type: 'SKIP_WAITING' });
     }
     setShowBanner(false);
+    localStorage.removeItem('pwa_update_dismissed');
     setTimeout(() => {
       window.location.reload();
     }, 500); // Give SW short breathing room to swap
@@ -126,6 +134,7 @@ function PWAUpdateBanner() {
 
   const handleDismiss = () => {
     setShowBanner(false);
+    localStorage.setItem('pwa_update_dismissed', String(Date.now()));
   };
 
   if (!showBanner) return null;
