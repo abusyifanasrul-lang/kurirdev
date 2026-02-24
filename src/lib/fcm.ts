@@ -13,9 +13,15 @@ export const requestFCMPermission = async (userId: string): Promise<string | nul
       return null
     }
 
-    const token = await getToken(messaging, { vapidKey: VAPID_KEY })
+    const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js')
+    await navigator.serviceWorker.ready
+
+    const token = await getToken(messaging, {
+      vapidKey: VAPID_KEY,
+      serviceWorkerRegistration: registration
+    })
+
     if (token) {
-      // Simpan token ke Firestore
       await updateDoc(doc(db, 'users', userId), { fcm_token: token })
       console.log('✅ FCM token saved:', token)
       return token
