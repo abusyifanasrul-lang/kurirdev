@@ -1,4 +1,5 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { Home, Package, History, DollarSign, User, LogOut, Bell } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/context/AuthContext';
@@ -11,6 +12,12 @@ export function CourierLayout() {
   const { user: currentUser } = useSessionStore();
   const { notifications } = useNotificationStore();
   const unreadCount = notifications.filter(n => n.user_id === currentUser?.id && !n.is_read).length;
+
+  useEffect(() => {
+    if (!currentUser?.id) return
+    const unsub = useNotificationStore.getState().subscribeNotifications(currentUser.id)
+    return () => unsub()
+  }, [currentUser?.id])
 
   const handleLogout = async () => {
     await logout();
