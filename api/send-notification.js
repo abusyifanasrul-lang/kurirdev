@@ -25,19 +25,36 @@ export default async function handler(req, res) {
   if (!title) return res.status(400).json({ error: 'Title required' })
 
   const message = {
-    notification: { title, body: body || '' },
-    data: data || {},
     token,
+    notification: {
+      title,
+      body: body || '',
+    },
+    data: data || {},
     webpush: {
+      headers: {
+        Urgency: 'high'
+      },
+      notification: {
+        title,
+        body: body || '',
+        icon: 'https://kurirdev.vercel.app/icons/android/android-launchericon-192-192.png',
+        badge: 'https://kurirdev.vercel.app/icons/android/android-launchericon-96-96.png',
+        tag: data?.orderId || 'kurirdev-notif',
+        renotify: true,
+        vibrate: [200, 100, 200],
+        requireInteraction: true,
+        actions: [
+          {
+            action: 'open',
+            title: 'Buka Aplikasi'
+          }
+        ]
+      },
       fcm_options: {
         link: data?.orderId
           ? `https://kurirdev.vercel.app/courier/orders/${data.orderId}`
           : 'https://kurirdev.vercel.app/courier/orders'
-      },
-      notification: {
-        icon: '/icons/android/android-launchericon-192-192.png',
-        badge: '/icons/android/android-launchericon-96-96.png',
-        vibrate: [200, 100, 200],
       }
     }
   }

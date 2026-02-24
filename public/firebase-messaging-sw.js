@@ -13,17 +13,23 @@ firebase.initializeApp({
 const messaging = firebase.messaging()
 
 messaging.onBackgroundMessage((payload) => {
-  const { title, body } = payload.notification || {}
+  console.log('[firebase-messaging-sw.js] Background message received:', payload)
+
+  const { title, body, icon, badge } = payload.notification || {}
   const data = payload.data || {}
 
-  self.registration.showNotification(title || 'KurirDev', {
-    body: body || '',
-    icon: '/icons/android/android-launchericon-192-192.png',
-    badge: '/icons/android/android-launchericon-96-96.png',
+  const notificationTitle = title || data.title || 'KurirDev'
+  const notificationOptions = {
+    body: body || data.body || '',
+    icon: icon || '/icons/android/android-launchericon-192-192.png',
+    badge: badge || '/icons/android/android-launchericon-96-96.png',
     vibrate: [200, 100, 200],
-    data: data, // Pass data for notificationclick handler
-    tag: data.orderId || 'kurirdev-notification', // Prevent duplicate notifications
-  })
+    data: data,
+    tag: data.orderId || 'kurirdev-notification',
+    requireInteraction: true
+  }
+
+  return self.registration.showNotification(notificationTitle, notificationOptions)
 })
 
 // Handle notification click — open/focus the relevant page
