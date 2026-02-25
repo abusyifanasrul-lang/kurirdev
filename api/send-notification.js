@@ -26,6 +26,12 @@ export default async function handler(req, res) {
 
   const message = {
     token,
+    // Top-level notification — required for Firebase SDK to populate
+    // payload.notification in onMessage() and onBackgroundMessage()
+    notification: {
+      title,
+      body: body || '',
+    },
     data: {
       title,
       body: body || '',

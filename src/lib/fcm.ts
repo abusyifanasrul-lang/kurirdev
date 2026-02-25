@@ -73,7 +73,7 @@ async function clearStaleFirebaseData(): Promise<void> {
  * Key used to track if we've already cleaned stale data after an app change.
  * This prevents clearing data on every login — only needed once.
  */
-const CLEANUP_KEY = 'fcm_cleanup_done_v3' // bumped: migrated to kurirdev-prod project
+const CLEANUP_KEY = 'fcm_cleanup_done_v4' // bumped: fix push notification popup not showing
 
 export const requestFCMPermission = async (userId: string): Promise<string | null> => {
   try {

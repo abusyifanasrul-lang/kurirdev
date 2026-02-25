@@ -192,11 +192,15 @@ export function App() {
     // 2. Listen for foreground notifications (Tahap 3)
     const unsubFCM = onForegroundMessage((payload) => {
       console.log('🔔 Foreground message received:', payload);
-      const { title, body } = payload.notification ?? {};
+      // Check notification first, fallback to data (for data-only messages)
+      const notifData = payload.notification || payload.data || {};
+      const title = notifData.title;
+      const body = notifData.body;
       if (title && Notification.permission === 'granted') {
         const notif = new Notification(title, {
-          body,
+          body: body || '',
           icon: '/icons/android/android-launchericon-192-192.png',
+          tag: payload.data?.orderId || 'kurirdev-foreground',
         });
         notif.onclick = () => window.focus();
       }

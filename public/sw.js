@@ -12,20 +12,73 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging()
 
+// Handle background messages from Firebase SDK
 messaging.onBackgroundMessage((payload) => {
   console.log('[sw.js] Background message received:', payload)
-  const { title, body, icon, badge } = payload.notification || {}
-  const data = payload.data || {}
 
-  return self.registration.showNotification(title || data.title || 'KurirDev', {
-    body: body || data.body || '',
-    icon: icon || '/icons/android/android-launchericon-192-192.png',
-    badge: badge || '/icons/android/android-launchericon-96-96.png',
+  // Extract title/body from notification OR data (data-only messages)
+  const notif = payload.notification || {}
+  const data = payload.data || {}
+  const title = notif.title || data.title || 'KurirDev'
+  const body = notif.body || data.body || ''
+
+  return self.registration.showNotification(title, {
+    body,
+    icon: notif.icon || '/icons/android/android-launchericon-192-192.png',
+    badge: notif.badge || '/icons/android/android-launchericon-96-96.png',
     vibrate: [200, 100, 200],
     data: data,
     tag: data.orderId || 'kurirdev-notification',
     requireInteraction: true
   })
+})
+
+// Manual push handler — catches ALL push events including those Firebase SDK might miss
+self.addEventListener('push', (event) => {
+  console.log('[sw.js] Push event received:', event)
+  if (!event.data) return
+
+  try {
+    const payload = event.data.json()
+    console.log('[sw.js] Push payload:', payload)
+
+    // Check if this is a data-only message (no "notification" key at top level)
+    // Firebase SDK's onBackgroundMessage should handle notification-bearing messages,
+    // but for data-only payloads we must show it ourselves.
+    const notif = payload.notification
+    const data = payload.data || {}
+
+    // If there IS a notification key, Firebase SDK will handle showing it — don't duplicate.
+    // If there is NO notification key, we need to manually show it.
+    if (!notif && (data.title || data.body)) {
+      const title = data.title || 'KurirDev'
+      const body = data.body || ''
+
+      event.waitUntil(
+        self.registration.showNotification(title, {
+          body,
+          icon: '/icons/android/android-launchericon-192-192.png',
+          badge: '/icons/android/android-launchericon-96-96.png',
+          vibrate: [200, 100, 200],
+          data: data,
+          tag: data.orderId || 'kurirdev-notification',
+          requireInteraction: true
+        })
+      )
+    }
+  } catch (e) {
+    console.error('[sw.js] Push parse error:', e)
+    // Even if JSON parse fails, try to show something
+    event.waitUntil(
+      self.registration.showNotification('KurirDev', {
+        body: 'Anda memiliki notifikasi baru',
+        icon: '/icons/android/android-launchericon-192-192.png',
+        badge: '/icons/android/android-launchericon-96-96.png',
+        vibrate: [200, 100, 200],
+        tag: 'kurirdev-fallback'
+      })
+    )
+  }
 })
 
 self.addEventListener('notificationclick', (event) => {
@@ -54,28 +107,11 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(clients.claim())
 })
 
-// Manual push listener fallback for non-Firebase payloads or SDK failures
-self.addEventListener('push', (event) => {
-  console.log('[sw.js] Manual push event received:', event)
-  if (!event.data) return
-
-  try {
-    const payload = event.data.json()
-    console.log('[sw.js] Push payload:', payload)
-
-    // If the SDK already handled it, don't show twice 
-    // (Firebase usually handles payloads with "notification" or specific data keys)
-  } catch (e) {
-    console.error('[sw.js] Push parse error:', e)
-  }
-})
-
+// --- Workbox precaching (injected by VitePWA injectManifest) ---
 import { precacheAndRoute } from 'workbox-precaching';
-
-// Required for VitePWA injectManifest
 precacheAndRoute(self.__WB_MANIFEST);
 
-const CACHE_VERSION = 'v1.0.4';
+const CACHE_VERSION = 'v1.0.5';
 const CACHE_NAME = `kurirdev-${CACHE_VERSION}`;
 
 self.addEventListener('activate', event => {
