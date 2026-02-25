@@ -13,13 +13,19 @@ export const sendPushNotification = async (params: SendPushParams): Promise<bool
             body: JSON.stringify(params),
         })
 
+        const text = await response.text()
+        let result: any
+        try {
+            result = JSON.parse(text)
+        } catch {
+            result = { error: text }
+        }
+
         if (!response.ok) {
-            const error = await response.json()
-            console.error('❌ Push notification failed:', error)
+            console.error('❌ Push notification failed:', response.status, result)
             return false
         }
 
-        const result = await response.json()
         console.log('✅ Push notification sent:', result.messageId)
         return true
     } catch (error) {
