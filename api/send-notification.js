@@ -39,10 +39,8 @@ export default async function handler(req, res) {
 
     const message = {
       token,
-      notification: {
-        title,
-        body: body || '',
-      },
+      // Data-only message: display is handled by sw.js (background) and App.tsx (foreground)
+      // Do NOT add top-level "notification" — Chrome will auto-display it AND onBackgroundMessage fires = double
       data: {
         title,
         body: body || '',
