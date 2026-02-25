@@ -115,9 +115,20 @@ export const requestFCMPermission = async (userId: string): Promise<string | nul
       await new Promise(resolve => setTimeout(resolve, 1000))
     }
 
-    // Use the already registered service worker (from main.tsx / App.tsx)
-    const registration = await navigator.serviceWorker.ready;
-    await registration.update(); // Just check for updates without re-registering
+    // Ensure we have a valid SW registration (re-register if cleanup removed it)
+    let registration = await navigator.serviceWorker.getRegistration('/')
+    if (!registration) {
+      console.log('📦 Re-registering service worker...')
+      registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
+      // Wait for SW to be active
+      await navigator.serviceWorker.ready
+      console.log('✅ Service worker re-registered')
+    } else {
+      // Just check for updates without re-registering
+      await registration.update().catch(() => {
+        console.debug('SW update check skipped')
+      })
+    }
 
     const token = await getToken(messaging, {
       vapidKey: VAPID_KEY,
