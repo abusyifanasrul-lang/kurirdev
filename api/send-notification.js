@@ -69,16 +69,6 @@ export default async function handler(req, res) {
           link: data?.orderId
             ? `https://kurirdev.vercel.app/courier/orders/${data.orderId}`
             : 'https://kurirdev.vercel.app/courier/orders'
-        },
-        notification: {
-          title,
-          body: body || '',
-          icon: 'https://kurirdev.vercel.app/icons/android/android-launchericon-192-192.png',
-          badge: 'https://kurirdev.vercel.app/icons/android/android-launchericon-96-96.png',
-          tag: data?.orderId || 'kurirdev-notif',
-          renotify: true,
-          vibrate: [200, 100, 200],
-          requireInteraction: true
         }
       }
     }
