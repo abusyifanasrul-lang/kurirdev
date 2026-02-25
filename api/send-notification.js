@@ -17,11 +17,20 @@ function getAdmin() {
       )
     }
 
+    // Parse private key — handle various Vercel env var formats
+    let parsedKey = privateKey
+    // Strip surrounding quotes if present (Vercel sometimes wraps in quotes)
+    if (parsedKey.startsWith('"') && parsedKey.endsWith('"')) {
+      parsedKey = JSON.parse(parsedKey)
+    }
+    // Replace literal \n with actual newlines
+    parsedKey = parsedKey.replace(/\\n/g, '\n')
+
     admin.initializeApp({
       credential: admin.credential.cert({
         projectId,
         clientEmail,
-        privateKey: privateKey.replace(/\\n/g, '\n'),
+        privateKey: parsedKey,
       }),
     })
   }
