@@ -1,37 +1,20 @@
 import admin from 'firebase-admin'
 
-// Lazy init — only call initializeApp inside handler to get proper error responses
+// Lazy init — decode base64 service account JSON to avoid Vercel newline issues
 function getAdmin() {
   if (!admin.apps.length) {
-    const projectId = process.env.FIREBASE_PROJECT_ID
-    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL
-    const privateKey = process.env.FIREBASE_PRIVATE_KEY
+    const base64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64
 
-    if (!projectId || !clientEmail || !privateKey) {
-      throw new Error(
-        `Missing Firebase env vars: ${[
-          !projectId && 'FIREBASE_PROJECT_ID',
-          !clientEmail && 'FIREBASE_CLIENT_EMAIL',
-          !privateKey && 'FIREBASE_PRIVATE_KEY',
-        ].filter(Boolean).join(', ')}`
-      )
+    if (!base64) {
+      throw new Error('Missing env var: FIREBASE_SERVICE_ACCOUNT_BASE64')
     }
 
-    // Parse private key — handle various Vercel env var formats
-    let parsedKey = privateKey
-    // Strip surrounding quotes if present (Vercel sometimes wraps in quotes)
-    if (parsedKey.startsWith('"') && parsedKey.endsWith('"')) {
-      parsedKey = JSON.parse(parsedKey)
-    }
-    // Replace literal \n with actual newlines
-    parsedKey = parsedKey.replace(/\\n/g, '\n')
+    const serviceAccount = JSON.parse(
+      Buffer.from(base64, 'base64').toString('utf8')
+    )
 
     admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId,
-        clientEmail,
-        privateKey: parsedKey,
-      }),
+      credential: admin.credential.cert(serviceAccount),
     })
   }
   return admin
@@ -105,7 +88,6 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('Error in send-notification:', error)
 
-    // Handle invalid/expired token
     if (error.code === 'messaging/registration-token-not-registered'
       || error.code === 'messaging/invalid-registration-token') {
       return res.status(410).json({
