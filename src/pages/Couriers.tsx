@@ -405,7 +405,7 @@ export function Couriers() {
                 <p className="text-xs text-gray-500 uppercase font-semibold">Completed</p>
               </div>
               <div className="bg-white border rounded-lg p-3 text-center shadow-sm">
-                <p className="text-xl font-bold text-gray-900">{formatCurrency(selectedCourierStats.total_earnings)}</p>
+                <p className="text-xl font-bold text-gray-900 leading-tight break-words">{formatCurrency(selectedCourierStats.total_earnings)}</p>
                 <p className="text-xs text-gray-500 uppercase font-semibold">History Earnings</p>
               </div>
               <div className="bg-white border rounded-lg p-3 text-center shadow-sm">

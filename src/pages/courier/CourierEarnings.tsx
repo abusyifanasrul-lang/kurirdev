@@ -145,7 +145,7 @@ export function CourierEarnings() {
               <DollarSign className="w-4 h-4 text-indigo-200" />
               <span className="text-xs text-indigo-200">Hari Ini</span>
             </div>
-            <p className="text-lg font-bold">{formatCurrency(todayStats.earnings)}</p>
+            <p className="text-lg font-bold break-words leading-tight">{formatCurrency(todayStats.earnings)}</p>
             <p className="text-xs text-indigo-200">{todayStats.orders} pesanan</p>
           </div>
           <div className="bg-white/10 backdrop-blur rounded-xl p-3">
@@ -153,7 +153,7 @@ export function CourierEarnings() {
               <TrendingUp className="w-4 h-4 text-indigo-200" />
               <span className="text-xs text-indigo-200">Total Semua</span>
             </div>
-            <p className="text-lg font-bold">{formatCurrency(allTimeStats.earnings)}</p>
+            <p className="text-lg font-bold break-words leading-tight">{formatCurrency(allTimeStats.earnings)}</p>
             <p className="text-xs text-indigo-200">{allTimeStats.orders} pesanan</p>
           </div>
         </div>

@@ -52,7 +52,7 @@ export function StatCard({ title, value, icon, trend, subtitle, className, to, o
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className="text-xs lg:text-sm font-medium text-gray-500 truncate">{title}</p>
-          <p className="mt-1 lg:mt-2 text-xl lg:text-3xl font-semibold text-gray-900 truncate">{value}</p>
+          <p className="mt-1 lg:mt-2 text-xl lg:text-3xl font-semibold text-gray-900 break-words leading-tight">{value}</p>
           {trend && (
             <p className={cn('mt-1 lg:mt-2 text-xs lg:text-sm flex items-center', trend.isPositive ? 'text-green-600' : 'text-red-600')}>
               {trend.isPositive ? '↑' : '↓'} {Math.abs(trend.value)}%

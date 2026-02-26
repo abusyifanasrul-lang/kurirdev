@@ -23,12 +23,17 @@ import { Input } from '@/components/ui/Input';
 // Stores
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useCourierStore } from '@/stores/useCourierStore';
+import { useUserStore } from '@/stores/useUserStore';
 
 const COLORS = ['#F59E0B', '#3B82F6', '#8B5CF6', '#06B6D4', '#22C55E', '#EF4444'];
 
 export function Reports() {
   const { orders } = useOrderStore();
   const { couriers } = useCourierStore();
+  const { users } = useUserStore();
+  const courierMap = Object.fromEntries(
+    users.filter(u => u.role === 'courier').map(u => [u.id, u.name])
+  );
 
   const [dateRange, setDateRange] = useState({
     start: format(subDays(new Date(), 7), 'yyyy-MM-dd'),
@@ -68,8 +73,7 @@ export function Reports() {
     deliveredOrders.forEach(o => {
       if (o.courier_id) {
         if (!courierStats[o.courier_id]) {
-          const c = couriers.find(c => c.id === o.courier_id);
-          courierStats[o.courier_id] = { name: c?.name || 'Unknown', count: 0, earnings: 0 };
+          courierStats[o.courier_id] = { name: courierMap[o.courier_id] || couriers.find(c => c.id === o.courier_id)?.name || 'Unknown', count: 0, earnings: 0 };
         }
         courierStats[o.courier_id].count += 1;
         courierStats[o.courier_id].earnings += (o.total_fee || 0);
