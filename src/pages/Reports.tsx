@@ -350,24 +350,24 @@ export function Reports() {
       <div className="p-4 lg:p-8 space-y-6">
         {/* Date Range Picker */}
         <Card>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-wrap">
+          <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-gray-400" />
-              <span className="text-sm font-medium text-gray-700">Date Range:</span>
+              <Calendar className="h-4 w-4 text-gray-400" />
+              <span className="text-sm font-medium text-gray-700">Date Range</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full">
               <Input
                 type="date"
                 value={dateRange.start}
                 onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-                className="w-40"
+                className="flex-1 min-w-0"
               />
-              <span className="text-gray-400">to</span>
+              <span className="text-gray-400 text-sm flex-shrink-0">to</span>
               <Input
                 type="date"
                 value={dateRange.end}
                 onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-                className="w-40"
+                className="flex-1 min-w-0"
               />
             </div>
             <Button variant="secondary" size="sm" onClick={handleApplyFilter} leftIcon={<Filter className="h-4 w-4" />}>
