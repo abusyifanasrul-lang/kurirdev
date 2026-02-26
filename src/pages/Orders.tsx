@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Plus, Download, Search, User, MapPin, Truck, Bell, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
+import { Plus, Download, Search, Bell, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { requestNotificationPermission, sendMockNotification } from '@/utils/notification';
 import { sendPushNotification } from '@/services/notificationService';
@@ -544,106 +544,88 @@ export function Orders() {
       </Modal>
 
       {/* DETAIL / ASSIGN MODAL */}
-      <Modal isOpen={isDetailModalOpen} onClose={() => setIsDetailModalOpen(false)} title="Order Details" size="lg">
+      <Modal isOpen={isDetailModalOpen} onClose={() => setIsDetailModalOpen(false)} title="Order Details" size="md">
         {selectedOrder && (
-          <div className="space-y-6">
-            {/* Header Info */}
-            <div className="flex justify-between items-start bg-gray-50 p-4 rounded-lg">
+          <div className="space-y-3">
+            {/* Header - compact */}
+            <div className="flex justify-between items-center bg-gray-50 px-3 py-2 rounded-lg">
               <div>
-                <h3 className="text-xl font-bold text-gray-900">{selectedOrder.order_number}</h3>
-                <p className="text-sm text-gray-500">Created {format(new Date(selectedOrder.created_at), 'PPp')}</p>
+                <span className="text-base font-bold text-gray-900">{selectedOrder.order_number}</span>
+                <span className="text-xs text-gray-400 ml-2">{format(new Date(selectedOrder.created_at), 'dd MMM yy, HH:mm')}</span>
               </div>
-              <Badge variant={getStatusBadgeVariant(selectedOrder.status)} size="md">{getStatusLabel(selectedOrder.status)}</Badge>
+              <Badge variant={getStatusBadgeVariant(selectedOrder.status)} size="sm">{getStatusLabel(selectedOrder.status)}</Badge>
             </div>
 
-            {/* Customer Info */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div className="space-y-3">
-                  <h4 className="font-semibold flex items-center gap-2"><User className="w-4 h-4" /> Customer</h4>
-                  {selectedOrder.status === 'pending' ? (
-                    <div className="space-y-2">
-                      <Input
-                        label="Name"
-                        value={editForm.customer_name}
-                        onChange={e => setEditForm(prev => ({ ...prev, customer_name: e.target.value }))}
-                      />
-                      <Input
-                        label="Phone"
-                        value={editForm.customer_phone}
-                        onChange={e => setEditForm(prev => ({ ...prev, customer_phone: e.target.value }))}
-                      />
-                    </div>
-                  ) : (
-                    <div className="pl-6 text-sm space-y-1">
-                      <p><span className="text-gray-500 block">Name:</span> {selectedOrder.customer_name}</p>
-                      <p><span className="text-gray-500 block">Phone:</span> {selectedOrder.customer_phone}</p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <h4 className="font-semibold flex items-center gap-2 text-sm text-gray-700">Payment</h4>
-                  {selectedOrder.status === 'pending' ? (
-                    <div>
-                      <Input
-                        label="Total Fee"
-                        value={editForm.total_fee ? `Rp ${editForm.total_fee.toLocaleString('id-ID')}` : ''}
-                        onChange={e => {
-                          const val = Number(e.target.value.replace(/[^0-9]/g, ''));
-                          setEditForm(prev => ({ ...prev, total_fee: val }));
-                        }}
-
-                      />
-                      <Select
-                        label="Payment Status"
-                        value={editForm.payment_status}
-                        onChange={e => setEditForm(prev => ({ ...prev, payment_status: e.target.value as any }))}
-                        options={[
-                          { value: 'unpaid', label: 'Belum Setor' },
-                          { value: 'paid', label: 'Sudah Setor' }
-                        ]}
-                      />
-                      <div className="flex justify-end pt-2">
-                        <Button size="sm" variant="secondary" onClick={handleSaveChanges}>Save Changes</Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="pl-6 text-sm space-y-1">
-                      <p><span className="text-gray-500 block">Total Fee:</span> {formatCurrency(selectedOrder.total_fee)}</p>
-                      <p><span className="text-gray-500 block">Status:</span>
-                        <Badge variant={selectedOrder.payment_status === 'paid' ? 'success' : 'warning'} size="sm">
-                          {selectedOrder.payment_status === 'paid' ? 'SUDAH SETOR' : 'BELUM SETOR'}
-                        </Badge>
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <h4 className="font-semibold flex items-center gap-2"><MapPin className="w-4 h-4" /> Delivery</h4>
-                {selectedOrder.status === 'pending' ? (
-                  <Textarea
-                    label="Address"
-                    value={editForm.customer_address}
-                    onChange={e => setEditForm(prev => ({ ...prev, customer_address: e.target.value }))}
-                    rows={4}
+            {/* Customer + Payment — compact info */}
+            {selectedOrder.status === 'pending' ? (
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    label="Name"
+                    value={editForm.customer_name}
+                    onChange={e => setEditForm(prev => ({ ...prev, customer_name: e.target.value }))}
                   />
-                ) : (
-                  <div className="pl-6 text-sm space-y-1">
-                    <p className="whitespace-pre-wrap">{selectedOrder.customer_address}</p>
-                  </div>
-                )}
+                  <Input
+                    label="Phone"
+                    value={editForm.customer_phone}
+                    onChange={e => setEditForm(prev => ({ ...prev, customer_phone: e.target.value }))}
+                  />
+                </div>
+                <Textarea
+                  label="Address"
+                  value={editForm.customer_address}
+                  onChange={e => setEditForm(prev => ({ ...prev, customer_address: e.target.value }))}
+                  rows={2}
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    label="Fee"
+                    value={editForm.total_fee ? `Rp ${editForm.total_fee.toLocaleString('id-ID')}` : ''}
+                    onChange={e => {
+                      const val = Number(e.target.value.replace(/[^0-9]/g, ''));
+                      setEditForm(prev => ({ ...prev, total_fee: val }));
+                    }}
+                  />
+                  <Select
+                    label="Setoran"
+                    value={editForm.payment_status}
+                    onChange={e => setEditForm(prev => ({ ...prev, payment_status: e.target.value as any }))}
+                    options={[
+                      { value: 'unpaid', label: 'Belum Setor' },
+                      { value: 'paid', label: 'Sudah Setor' }
+                    ]}
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <Button size="sm" variant="secondary" onClick={handleSaveChanges}>Save Changes</Button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="text-sm space-y-1.5">
+                <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+                  <span className="text-gray-400">Customer</span>
+                  <span className="font-medium text-gray-900">{selectedOrder.customer_name}</span>
+                  <span className="text-gray-400">Phone</span>
+                  <span>{selectedOrder.customer_phone}</span>
+                  <span className="text-gray-400">Address</span>
+                  <span className="whitespace-pre-wrap">{selectedOrder.customer_address}</span>
+                  <span className="text-gray-400">Fee</span>
+                  <span className="font-medium">{formatCurrency(selectedOrder.total_fee)}</span>
+                  <span className="text-gray-400">Setoran</span>
+                  <span>
+                    <Badge variant={selectedOrder.payment_status === 'paid' ? 'success' : 'warning'} size="sm">
+                      {selectedOrder.payment_status === 'paid' ? 'Sudah Setor' : 'Belum Setor'}
+                    </Badge>
+                  </span>
+                </div>
+              </div>
+            )}
 
-            {/* Courier Assignment Section */}
-            <div className="border-t pt-4">
-              <h4 className="font-semibold flex items-center gap-2 mb-3"><Truck className="w-4 h-4" /> Courier Assignment</h4>
+            {/* Courier Assignment — compact */}
+            <div className="border-t pt-2">
               {selectedOrder.status === 'pending' ? (
-                <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
-                  <label className="block text-sm font-medium text-indigo-900 mb-2">Assign to Available Courier (FIFO)</label>
+                <div className="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100">
+                  <label className="block text-xs font-medium text-indigo-900 mb-1.5">Assign Courier (FIFO)</label>
                   <div className="flex gap-2">
                     <Select
                       className="flex-1"
@@ -652,36 +634,43 @@ export function Orders() {
                       onChange={e => setAssignCourierId(e.target.value)}
                       options={availableCouriers.map(c => ({
                         value: c.id,
-                        label: `${c.name} (${c.is_online ? 'Online' : 'Offline'})` // Queue position implicit by order
+                        label: `${c.name} (${c.is_online ? 'Online' : 'Offline'})`
                       }))}
                     />
                     <Button disabled={!assignCourierId} onClick={handleAssign}>Assign</Button>
                   </div>
-                  <p className="text-xs text-indigo-600 mt-2">
-                    * Recommended: <strong>{availableCouriers[0]?.name || 'None available'}</strong> (First in Queue)
-                  </p>
+                  {availableCouriers[0] && (
+                    <p className="text-xs text-indigo-600 mt-1">
+                      Recommended: <strong>{availableCouriers[0].name}</strong>
+                    </p>
+                  )}
                 </div>
               ) : (
-                <div className="pl-6 text-sm">
-                  <p><span className="text-gray-500">Assigned To:</span> {getCourierName(selectedOrder.courier_id)}</p>
-                  {selectedOrder.assigned_at && <p><span className="text-gray-500">Time:</span> {format(new Date(selectedOrder.assigned_at), 'PPp')}</p>}
+                <div className="text-sm grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+                  <span className="text-gray-400">Courier</span>
+                  <span className="font-medium">{getCourierName(selectedOrder.courier_id)}</span>
+                  {selectedOrder.assigned_at && (
+                    <>
+                      <span className="text-gray-400">Assigned</span>
+                      <span>{format(new Date(selectedOrder.assigned_at), 'dd MMM yy, HH:mm')}</span>
+                    </>
+                  )}
                 </div>
               )}
             </div>
 
-            {/* Actions */}
-            <div className="flex justify-between items-center pt-4 border-t">
+            {/* Actions — compact */}
+            <div className="flex justify-between items-center pt-2 border-t">
               <Button
                 variant="ghost"
+                size="sm"
                 className="text-red-500 hover:text-red-700 hover:bg-red-50"
                 onClick={() => setIsCancelModalOpen(true)}
                 disabled={['delivered', 'cancelled'].includes(selectedOrder.status)}
               >
                 Cancel Order
               </Button>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setIsDetailModalOpen(false)}>Close</Button>
-              </div>
+              <Button variant="outline" size="sm" onClick={() => setIsDetailModalOpen(false)}>Close</Button>
             </div>
           </div>
         )}

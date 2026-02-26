@@ -128,15 +128,15 @@ export function CourierDashboard() {
             onClick={handleToggleOnline}
             disabled={isSuspended}
             className={cn(
-              "relative w-14 h-8 rounded-full transition-all duration-200",
-              isOnline ? "bg-green-500" : "bg-gray-300",
-              isSuspended && "opacity-50 cursor-not-allowed grayscale-[0.5]"
+              "relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+              isOnline ? "bg-green-500 focus-visible:ring-green-500" : "bg-gray-300 focus-visible:ring-gray-400",
+              isSuspended && "opacity-50 cursor-not-allowed"
             )}
           >
             <span
               className={cn(
-                "absolute top-1 w-6 h-6 bg-white rounded-full shadow transition-transform duration-200",
-                isOnline ? "translate-x-7" : "translate-x-1"
+                "pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-md ring-0 transition-transform duration-200 ease-in-out",
+                isOnline ? "translate-x-6" : "translate-x-1"
               )}
             />
           </button>

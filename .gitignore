@@ -1,4 +1,8 @@
 node_modules
 dist
 .env
-kurirdev-firebase-adminsdk.json
+kurirdev*firebase-adminsdk*.json
+vercel-import.env
+.DS_Store
+*.local
+
