@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 
 export function CourierNotifications() {
     const { user } = useAuth();
-    const { notifications, markAsRead, subscribeNotifications } = useNotificationStore();
+    const { notifications, markAsRead, markAllAsRead, subscribeNotifications } = useNotificationStore();
 
     useEffect(() => {
         if (!user?.id) return
@@ -26,7 +26,15 @@ export function CourierNotifications() {
         <div className="space-y-4">
             <div className="flex items-center justify-between mb-4">
                 <h1 className="text-xl font-bold text-gray-900">Notifications</h1>
-                {/* Optional: Mark all read button */}
+                {myNotifications.some(n => !n.is_read) && (
+    <button
+      onClick={() => user?.id && markAllAsRead(user.id)}
+      className="flex items-center gap-1 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-full transition-colors"
+    >
+      <CheckCircle className="w-3.5 h-3.5" />
+      Tandai baca semua
+    </button>
+  )}
             </div>
 
             <div className="space-y-3">
