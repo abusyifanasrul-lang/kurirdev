@@ -94,21 +94,17 @@ export function CourierDashboard() {
       {unpaidDeliveredOrdersCount > 0 && (
         <div
           onClick={() => navigate('/courier/history')}
-          className="bg-orange-50 border border-orange-200 rounded-2xl p-4 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all"
+          className="flex items-center justify-between gap-3 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 cursor-pointer active:scale-[0.98] transition-all"
         >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
-              <AlertTriangle className="h-5 w-5 text-orange-600" />
-            </div>
-            <div>
-              <p className="font-bold text-orange-900">⚠️ {unpaidDeliveredOrdersCount} order belum disetor ke admin</p>
-              <p className="text-sm text-orange-700">Setor hari ini sebelum tutup.</p>
-            </div>
+          <div className="flex items-center gap-2 min-w-0">
+            <AlertTriangle className="h-4 w-4 text-orange-500 flex-shrink-0" />
+            <p className="text-sm font-medium text-orange-800 truncate">
+              {unpaidDeliveredOrdersCount} order belum disetor
+            </p>
           </div>
-          <div className="flex items-center text-orange-600 font-semibold text-sm">
-            Lihat History
-            <ChevronRight className="h-4 w-4 ml-1" />
-          </div>
+          <span className="text-xs font-semibold text-orange-600 whitespace-nowrap flex items-center gap-1 flex-shrink-0">
+            Lihat <ChevronRight className="h-3.5 w-3.5" />
+          </span>
         </div>
       )}
 
