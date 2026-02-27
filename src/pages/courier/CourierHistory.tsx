@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import { ArrowLeft, Package, Clock, CheckCircle, XCircle, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format, isToday, isYesterday, parseISO } from 'date-fns';
@@ -6,6 +6,9 @@ import { Badge } from '@/components/ui/Badge';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useAuth } from '@/context/AuthContext';
 import { useCourierStore } from '@/stores/useCourierStore';
+import html2canvas from 'html2canvas';
+import { X } from 'lucide-react';
+import { Order } from '@/types';
 
 type StatusFilter = 'all' | 'delivered' | 'cancelled' | 'in_transit' | 'picked_up' | 'assigned';
 
@@ -29,6 +32,18 @@ export function CourierHistory() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const invoiceRef = useRef<HTMLDivElement>(null);
+
+  const handleBagikanInvoice = async () => {
+    if (!invoiceRef.current) return;
+    const canvas = await html2canvas(invoiceRef.current, { scale: 2, useCORS: true });
+    const dataUrl = canvas.toDataURL('image/png');
+    const link = document.createElement('a');
+    link.download = `Invoice-${selectedOrder?.order_number}.png`;
+    link.href = dataUrl;
+    link.click();
+  };
 
   // Filter orders assigned to this courier
   const courierOrders = useMemo(() => {
@@ -151,7 +166,7 @@ export function CourierHistory() {
                   return (
                     <div
                       key={order.id}
-                      onClick={() => navigate(`/courier/order/${order.id}`)}
+                      onClick={() => order.status === 'delivered' ? setSelectedOrder(order) : navigate(`/courier/orders/${order.id}`)}
                       className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow"
                     >
                       <div className="flex items-start justify-between mb-2">
@@ -189,6 +204,140 @@ export function CourierHistory() {
           ))
         )}
       </div>
+
+      {/* Modal Invoice */}
+      {selectedOrder && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-xl">
+            <div className="flex items-center justify-between px-4 py-3 border-b">
+              <h3 className="font-bold text-gray-900 text-sm">Invoice {selectedOrder.order_number}</h3>
+              <button onClick={() => setSelectedOrder(null)} className="p-1 hover:bg-gray-100 rounded-full">
+                <X className="w-4 h-4 text-gray-500" />
+              </button>
+            </div>
+            <div className="p-4 max-h-[60vh] overflow-y-auto">
+              {/* Preview Invoice */}
+              <div className="text-xs space-y-3 text-gray-700">
+                <div className="text-center">
+                  <p className="font-bold text-indigo-700 text-base">🛵 KurirDev</p>
+                  <p className="text-gray-500">Invoice Pengiriman</p>
+                </div>
+                <div className="space-y-1">
+                  <p><span className="font-medium">No. Order</span> : {selectedOrder.order_number}</p>
+                  <p><span className="font-medium">Tanggal</span> : {format(parseISO(selectedOrder.created_at), 'dd MMM yyyy, HH:mm')}</p>
+                  <p><span className="font-medium">Kurir</span> : {user?.name}</p>
+                </div>
+                <div className="border-t border-b border-gray-200 py-2 space-y-1">
+                  <p className="font-semibold">PENERIMA</p>
+                  <p>{selectedOrder.customer_name}</p>
+                  <p className="text-gray-500">{selectedOrder.customer_address}</p>
+                  <p className="text-gray-500">{selectedOrder.customer_phone}</p>
+                </div>
+                <div className="space-y-1.5">
+                  <p className="font-semibold">RINCIAN BIAYA</p>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Ongkir</span>
+                    <span>Rp {(selectedOrder.total_fee || 0).toLocaleString('id-ID')}</span>
+                  </div>
+                  {(selectedOrder.titik ?? 0) > 0 && (
+                    <div>
+                      <p className="text-gray-500 font-medium">Titik Tambahan</p>
+                      {Array.from({ length: selectedOrder.titik! }).map((_, i) => (
+                        <div key={i} className="flex justify-between pl-2">
+                          <span className="text-gray-400">• Titik {i + 1}</span>
+                          <span>Rp 3.000</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {(selectedOrder.beban ?? []).length > 0 && (
+                    <div>
+                      <p className="text-gray-500 font-medium">Beban Tambahan</p>
+                      {selectedOrder.beban!.map((b, i) => (
+                        <div key={i} className="flex justify-between pl-2">
+                          <span className="text-gray-400">• {b.nama}</span>
+                          <span>Rp {b.biaya.toLocaleString('id-ID')}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="border-t border-gray-300 pt-2 flex justify-between font-bold text-sm">
+                    <span>TOTAL</span>
+                    <span>Rp {((selectedOrder.total_fee || 0) + (selectedOrder.total_biaya_titik ?? 0) + (selectedOrder.total_biaya_beban ?? 0)).toLocaleString('id-ID')}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="px-4 py-3 border-t">
+              <button
+                onClick={handleBagikanInvoice}
+                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
+              >
+                📸 Bagikan Invoice ke Customer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Invoice tersembunyi untuk di-capture */}
+      {selectedOrder && (
+        <div style={{ position: 'fixed', left: '-9999px', top: '0' }}>
+          <div ref={invoiceRef} style={{ background: '#ffffff', padding: '24px', width: '320px', fontFamily: 'sans-serif', fontSize: '12px', color: '#111827' }}>
+            <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+              <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#4338ca' }}>🛵 KurirDev</div>
+              <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>Invoice Pengiriman</div>
+            </div>
+            <div style={{ marginBottom: '12px', lineHeight: '1.6' }}>
+              <div><span style={{ fontWeight: '600' }}>No. Order</span> : {selectedOrder.order_number}</div>
+              <div><span style={{ fontWeight: '600' }}>Tanggal</span> : {format(parseISO(selectedOrder.created_at), 'dd MMM yyyy, HH:mm')}</div>
+              <div><span style={{ fontWeight: '600' }}>Kurir</span> : {user?.name}</div>
+            </div>
+            <div style={{ borderTop: '1px solid #e5e7eb', borderBottom: '1px solid #e5e7eb', padding: '10px 0', marginBottom: '12px', lineHeight: '1.6' }}>
+              <div style={{ fontWeight: '600', marginBottom: '6px' }}>PENERIMA</div>
+              <div>{selectedOrder.customer_name}</div>
+              <div style={{ color: '#6b7280' }}>{selectedOrder.customer_address}</div>
+              <div style={{ color: '#6b7280' }}>{selectedOrder.customer_phone}</div>
+            </div>
+            <div style={{ marginBottom: '12px', lineHeight: '1.8' }}>
+              <div style={{ fontWeight: '600', marginBottom: '6px' }}>RINCIAN BIAYA</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#6b7280' }}>Ongkir</span>
+                <span>Rp {(selectedOrder.total_fee || 0).toLocaleString('id-ID')}</span>
+              </div>
+              {(selectedOrder.titik ?? 0) > 0 && (
+                <div>
+                  <div style={{ color: '#6b7280', fontWeight: '500', marginTop: '6px' }}>Titik Tambahan</div>
+                  {Array.from({ length: selectedOrder.titik! }).map((_, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', paddingLeft: '8px' }}>
+                      <span style={{ color: '#9ca3af' }}>• Titik {i + 1}</span>
+                      <span>Rp 3.000</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {(selectedOrder.beban ?? []).length > 0 && (
+                <div>
+                  <div style={{ color: '#6b7280', fontWeight: '500', marginTop: '6px' }}>Beban Tambahan</div>
+                  {selectedOrder.beban!.map((b, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', paddingLeft: '8px' }}>
+                      <span style={{ color: '#9ca3af' }}>• {b.nama}</span>
+                      <span>Rp {b.biaya.toLocaleString('id-ID')}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div style={{ borderTop: '2px solid #111827', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '13px' }}>
+              <span>TOTAL</span>
+              <span>Rp {((selectedOrder.total_fee || 0) + (selectedOrder.total_biaya_titik ?? 0) + (selectedOrder.total_biaya_beban ?? 0)).toLocaleString('id-ID')}</span>
+            </div>
+            <div style={{ textAlign: 'center', fontSize: '11px', color: '#9ca3af', marginTop: '16px' }}>
+              Terima kasih telah menggunakan layanan KurirDev 🙏
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
