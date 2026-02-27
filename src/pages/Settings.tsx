@@ -14,14 +14,24 @@ import type { User as UserType } from '@/types';
 import { useUserStore } from '@/stores/useUserStore';
 import { useAuth } from '@/context/AuthContext';
 import { useCourierStore } from '@/stores/useCourierStore';
+import { useSettingsStore } from '@/stores/useSettingsStore';
 import { Courier } from '@/types';
 
 export function Settings() {
   const { users, updateUser, addUser } = useUserStore();
   const { user } = useAuth();
   const { updateCourier } = useCourierStore();
+  const { commission_rate, commission_threshold, updateSettings } = useSettingsStore()
+  const [businessForm, setBusinessForm] = useState({
+    commission_rate,
+    commission_threshold,
+  })
+  const handleSaveBusinessSettings = () => {
+    updateSettings(businessForm)
+    showMessage('success', 'Business settings saved!')
+  }
 
-  const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'users'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'users' | 'business'>('profile');
 
   // Profile state
   const [profileForm, setProfileForm] = useState({
@@ -182,6 +192,7 @@ export function Settings() {
     { id: 'profile', label: 'Profile', icon: User },
     { id: 'password', label: 'Password', icon: Lock },
     { id: 'users', label: 'System Users', icon: Users },
+    { id: 'business', label: 'Business', icon: Shield },
   ] as const;
 
   const canEdit = (target: UserType) => {
@@ -380,6 +391,59 @@ export function Settings() {
               </div>
             </Card>
           )}
+
+          {/* Business Tab */}
+          {activeTab === 'business' && (
+            <Card>
+              <h3 className="text-lg font-semibold text-gray-900 mb-6">Business Settings</h3>
+              <p className="text-sm text-gray-500 mb-6">Konfigurasi komisi dan threshold ongkir</p>
+              <div className="space-y-4 max-w-md">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Commission Rate (%)
+                  </label>
+                  <p className="text-xs text-gray-400 mb-2">
+                    Persentase ongkir yang diterima kurir. Sisanya masuk ke admin.
+                  </p>
+                  <Input
+                    type="number"
+                    value={businessForm.commission_rate}
+                    onChange={e => setBusinessForm(prev => ({ ...prev, commission_rate: Number(e.target.value) }))}
+                    min={0}
+                    max={100}
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    Contoh: 80 → kurir dapat 80%, admin dapat 20%
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Minimum Threshold (Rp)
+                  </label>
+                  <p className="text-xs text-gray-400 mb-2">
+                    Ongkir di bawah atau sama dengan nilai ini → kurir dapat 100%, admin tidak dapat potongan.
+                  </p>
+                  <Input
+                    type="number"
+                    value={businessForm.commission_threshold}
+                    onChange={e => setBusinessForm(prev => ({ ...prev, commission_threshold: Number(e.target.value) }))}
+                    min={0}
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    Contoh: 5000 → ongkir ≤ Rp 5.000 tidak dipotong
+                  </p>
+                </div>
+                <div className="pt-4">
+                  <p className="text-xs text-gray-500 mb-4">
+                    Preview: Ongkir Rp 15.000 → kurir dapat Rp {Math.round(15000 * businessForm.commission_rate / 100).toLocaleString('id-ID')}, admin dapat Rp {Math.round(15000 * (100 - businessForm.commission_rate) / 100).toLocaleString('id-ID')}
+                  </p>
+                  <Button onClick={handleSaveBusinessSettings}>
+                    Simpan Pengaturan
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          )}
         </div>
       </div>
 
@@ -486,6 +550,7 @@ export function Settings() {
           </div>
         </div>
       </Modal>
+
     </div>
   );
 }

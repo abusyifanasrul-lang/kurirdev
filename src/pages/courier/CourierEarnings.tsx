@@ -6,6 +6,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useAuth } from '@/context/AuthContext';
 import { useCourierStore } from '@/stores/useCourierStore';
+import { useSettingsStore } from '@/stores/useSettingsStore';
+import { calcCourierEarning } from '@/lib/calcEarning';
 
 type Period = 'daily' | 'weekly' | 'monthly';
 
@@ -18,6 +20,8 @@ export function CourierEarnings() {
 
   const currentCourier = useMemo(() => couriers.find(c => c.id === user?.id), [couriers, user]);
   const COMMISSION_RATE = (currentCourier?.commission_rate ?? 80) / 100;
+  const { commission_rate, commission_threshold } = useSettingsStore()
+  const earningSettings = { commission_rate, commission_threshold }
 
   // All delivered orders for this courier
   const deliveredOrders = useMemo(() => {
@@ -38,7 +42,7 @@ export function CourierEarnings() {
     return {
       orders: todayOrders.length,
       totalFee: todayOrders.reduce((sum, o) => sum + (o.total_fee || 0), 0),
-      earnings: todayOrders.reduce((sum, o) => sum + (o.total_fee || 0) * COMMISSION_RATE + (o.total_biaya_titik ?? 0) + (o.total_biaya_beban ?? 0), 0),
+      earnings: todayOrders.reduce((sum, o) => sum + calcCourierEarning(o, earningSettings), 0),
     };
   }, [deliveredOrders]);
 
@@ -47,7 +51,7 @@ export function CourierEarnings() {
     return {
       orders: deliveredOrders.length,
       totalFee: deliveredOrders.reduce((sum, o) => sum + (o.total_fee || 0), 0),
-      earnings: deliveredOrders.reduce((sum, o) => sum + (o.total_fee || 0) * COMMISSION_RATE + (o.total_biaya_titik ?? 0) + (o.total_biaya_beban ?? 0), 0),
+      earnings: deliveredOrders.reduce((sum, o) => sum + calcCourierEarning(o, earningSettings), 0),
     };
   }, [deliveredOrders]);
 
@@ -67,7 +71,7 @@ export function CourierEarnings() {
         });
         return {
           label: format(date, 'dd/MM'),
-          earnings: dayOrders.reduce((sum, o) => sum + (o.total_fee || 0) * COMMISSION_RATE + (o.total_biaya_titik ?? 0) + (o.total_biaya_beban ?? 0), 0),
+          earnings: dayOrders.reduce((sum, o) => sum + calcCourierEarning(o, earningSettings), 0),
           orders: dayOrders.length,
         };
       });
@@ -85,7 +89,7 @@ export function CourierEarnings() {
         });
         return {
           label: `W${i + 1}`,
-          earnings: weekOrders.reduce((sum, o) => sum + (o.total_fee || 0) * COMMISSION_RATE + (o.total_biaya_titik ?? 0) + (o.total_biaya_beban ?? 0), 0),
+          earnings: weekOrders.reduce((sum, o) => sum + calcCourierEarning(o, earningSettings), 0),
           orders: weekOrders.length,
         };
       });
@@ -103,7 +107,7 @@ export function CourierEarnings() {
       });
       return {
         label: format(date, 'MMM'),
-        earnings: monthOrders.reduce((sum, o) => sum + (o.total_fee || 0) * COMMISSION_RATE + (o.total_biaya_titik ?? 0) + (o.total_biaya_beban ?? 0), 0),
+        earnings: monthOrders.reduce((sum, o) => sum + calcCourierEarning(o, earningSettings), 0),
         orders: monthOrders.length,
       };
     });
@@ -212,7 +216,7 @@ export function CourierEarnings() {
         ) : (
           <div className="space-y-2">
             {deliveredOrders.slice(0, 10).map((order) => {
-              const earning = (order.total_fee || 0) * COMMISSION_RATE + (order.total_biaya_titik ?? 0) + (order.total_biaya_beban ?? 0);
+              const earning = calcCourierEarning(order, earningSettings);
               return (
                 <div
                   key={order.id}

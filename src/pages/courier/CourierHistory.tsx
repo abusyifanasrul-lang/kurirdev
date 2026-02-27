@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/Badge';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useAuth } from '@/context/AuthContext';
 import { useCourierStore } from '@/stores/useCourierStore';
+import { useSettingsStore } from '@/stores/useSettingsStore';
+import { calcCourierEarning } from '@/lib/calcEarning';
 import html2canvas from 'html2canvas';
 import { X } from 'lucide-react';
 import { Order } from '@/types';
@@ -42,6 +44,8 @@ export function CourierHistory() {
 
   const currentCourier = useMemo(() => couriers.find(c => c.id === user?.id), [couriers, user?.id]);
   const COMMISSION_RATE = (currentCourier?.commission_rate ?? 80) / 100;
+  const { commission_rate, commission_threshold } = useSettingsStore()
+  const earningSettings = { commission_rate, commission_threshold }
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -109,10 +113,9 @@ export function CourierHistory() {
 
   const totalEarnings = useMemo(() => {
     const courier = couriers.find(c => c.id === user?.id);
-    const rate = (courier?.commission_rate ?? 80) / 100;
     return courierOrders
       .filter((o) => o.status === 'delivered')
-      .reduce((sum, o) => sum + (o.total_fee || 0) * rate + (o.total_biaya_titik ?? 0) + (o.total_biaya_beban ?? 0), 0);
+      .reduce((sum, o) => sum + calcCourierEarning(o, earningSettings), 0);
   }, [courierOrders, couriers, user]);
 
   return (
@@ -174,9 +177,7 @@ export function CourierHistory() {
                 {dateOrders.map((order) => {
                   const config = statusConfig[order.status] || statusConfig.pending;
                   const StatusIcon = config.icon;
-                  const courierEarning = order.status === 'delivered'
-                    ? (order.total_fee || 0) * COMMISSION_RATE + (order.total_biaya_titik ?? 0) + (order.total_biaya_beban ?? 0)
-                    : 0;
+                  const courierEarning = order.status === 'delivered' ? calcCourierEarning(order, earningSettings) : 0;
 
                   return (
                     <div
