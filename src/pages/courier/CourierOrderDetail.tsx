@@ -69,7 +69,7 @@ export function CourierOrderDetail() {
     await new Promise(r => setTimeout(r, 800));
     updateOrderStatus(order.id, nextStatus, user?.id || '', user?.name || 'Kurir');
     setIsUpdating(false);
-    if (nextStatus === 'delivered') setTimeout(() => navigate('/courier/orders'), 1500);
+    // Tidak auto-navigate, biarkan kurir tap tombol invoice dulu;
   };
 
   const handleTambahTitik = async () => {
@@ -385,7 +385,7 @@ export function CourierOrderDetail() {
 
       {/* Modal Cancel */}
       {showCancelModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 px-4 pb-8">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
           <div className="bg-white rounded-2xl p-5 w-full max-w-sm space-y-4">
             <h3 className="font-bold text-gray-900">Alasan Cancel</h3>
             <textarea
@@ -404,57 +404,59 @@ export function CourierOrderDetail() {
       )}
 
       {/* Invoice tersembunyi untuk di-capture */}
-      <div className="fixed -left-[9999px] top-0">
-        <div ref={invoiceRef} className="bg-white p-6 w-80 font-sans">
-          <div className="text-center mb-4">
-            <h2 className="text-lg font-bold text-indigo-700">🛵 KurirDev</h2>
-            <p className="text-xs text-gray-500">Invoice Pengiriman</p>
+      <div style={{ position: 'fixed', left: '-9999px', top: '0' }}>
+        <div ref={invoiceRef} style={{ background: '#ffffff', padding: '24px', width: '320px', fontFamily: 'sans-serif', fontSize: '12px', color: '#111827' }}>
+          <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+            <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#4338ca' }}>🛵 KurirDev</div>
+            <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>Invoice Pengiriman</div>
           </div>
-          <div className="text-xs space-y-1 mb-4 text-gray-600">
-            <p><span className="font-medium">No. Order</span> : {order.order_number}</p>
-            <p><span className="font-medium">Tanggal</span> : {format(parseISO(order.created_at), 'dd MMM yyyy, HH:mm')}</p>
-            <p><span className="font-medium">Kurir</span> : {user?.name}</p>
+          <div style={{ marginBottom: '12px', lineHeight: '1.6' }}>
+            <div><span style={{ fontWeight: '600' }}>No. Order</span> : {order.order_number}</div>
+            <div><span style={{ fontWeight: '600' }}>Tanggal</span> : {format(parseISO(order.created_at), 'dd MMM yyyy, HH:mm')}</div>
+            <div><span style={{ fontWeight: '600' }}>Kurir</span> : {user?.name}</div>
           </div>
-          <div className="border-t border-b border-gray-200 py-3 mb-4 text-xs space-y-1 text-gray-600">
-            <p className="font-semibold text-gray-800 mb-2">PENERIMA</p>
-            <p>{order.customer_name}</p>
-            <p>{order.customer_address}</p>
-            <p>{order.customer_phone}</p>
+          <div style={{ borderTop: '1px solid #e5e7eb', borderBottom: '1px solid #e5e7eb', padding: '10px 0', marginBottom: '12px', lineHeight: '1.6' }}>
+            <div style={{ fontWeight: '600', marginBottom: '6px' }}>PENERIMA</div>
+            <div>{order.customer_name}</div>
+            <div style={{ color: '#6b7280' }}>{order.customer_address}</div>
+            <div style={{ color: '#6b7280' }}>{order.customer_phone}</div>
           </div>
-          <div className="text-xs space-y-2 mb-4">
-            <p className="font-semibold text-gray-800">RINCIAN BIAYA</p>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Ongkir</span>
+          <div style={{ marginBottom: '12px', lineHeight: '1.8' }}>
+            <div style={{ fontWeight: '600', marginBottom: '6px' }}>RINCIAN BIAYA</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: '#6b7280' }}>Ongkir</span>
               <span>Rp {(order.total_fee || 0).toLocaleString('id-ID')}</span>
             </div>
             {titik > 0 && (
-              <>
-                <p className="text-gray-500 font-medium mt-1">Titik Tambahan</p>
+              <div>
+                <div style={{ color: '#6b7280', fontWeight: '500', marginTop: '6px' }}>Titik Tambahan</div>
                 {Array.from({ length: titik }).map((_, i) => (
-                  <div key={i} className="flex justify-between pl-2">
-                    <span className="text-gray-500">• Titik {i + 1}</span>
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', paddingLeft: '8px' }}>
+                    <span style={{ color: '#9ca3af' }}>• Titik {i + 1}</span>
                     <span>Rp 3.000</span>
                   </div>
                 ))}
-              </>
+              </div>
             )}
             {beban.length > 0 && (
-              <>
-                <p className="text-gray-500 font-medium mt-1">Beban Tambahan</p>
+              <div>
+                <div style={{ color: '#6b7280', fontWeight: '500', marginTop: '6px' }}>Beban Tambahan</div>
                 {beban.map((b, i) => (
-                  <div key={i} className="flex justify-between pl-2">
-                    <span className="text-gray-500">• {b.nama}</span>
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', paddingLeft: '8px' }}>
+                    <span style={{ color: '#9ca3af' }}>• {b.nama}</span>
                     <span>Rp {b.biaya.toLocaleString('id-ID')}</span>
                   </div>
                 ))}
-              </>
+              </div>
             )}
           </div>
-          <div className="border-t border-gray-300 pt-3 flex justify-between text-sm font-bold">
+          <div style={{ borderTop: '2px solid #111827', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '13px' }}>
             <span>TOTAL</span>
             <span>Rp {totalTagihanCustomer.toLocaleString('id-ID')}</span>
           </div>
-          <p className="text-center text-xs text-gray-400 mt-4">Terima kasih telah menggunakan layanan KurirDev 🙏</p>
+          <div style={{ textAlign: 'center', fontSize: '11px', color: '#9ca3af', marginTop: '16px' }}>
+            Terima kasih telah menggunakan layanan KurirDev 🙏
+          </div>
         </div>
       </div>
     </div>

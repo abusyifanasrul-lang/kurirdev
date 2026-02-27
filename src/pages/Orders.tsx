@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Plus, Download, Search, Bell, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
-import { format } from 'date-fns';
+import { Plus, Download, Search, Bell, ArrowUpDown, ChevronUp, ChevronDown, Printer } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
 import { requestNotificationPermission, sendMockNotification } from '@/utils/notification';
 import { sendPushNotification } from '@/services/notificationService';
 import { Header } from '@/components/layout/Header';
@@ -306,6 +306,84 @@ export function Orders() {
     link.download = `orders_export_${format(new Date(), 'yyyyMMdd')}.csv`;
     link.click();
   };
+
+  const handlePrintInvoice = (order: Order) => {
+  const titik = order.titik ?? 0;
+  const beban = order.beban ?? [];
+  const totalBiayaTitik = order.total_biaya_titik ?? 0;
+  const totalBiayaBeban = order.total_biaya_beban ?? 0;
+  const totalTagihan = (order.total_fee || 0) + totalBiayaTitik + totalBiayaBeban;
+  const courierName = getCourierName(order.courier_id) || '-';
+
+  const titikRows = titik > 0
+    ? `<div style="padding:2px 0 2px 12px;color:#6b7280;font-size:12px;display:flex;justify-content:space-between;">
+        <span>Titik Tambahan (${titik}x)</span><span>Rp ${totalBiayaTitik.toLocaleString('id-ID')}</span>
+       </div>`
+    : '';
+
+  const bebanRows = beban.map(b =>
+    `<div style="padding:2px 0 2px 12px;color:#6b7280;font-size:12px;display:flex;justify-content:space-between;">
+      <span>• ${b.nama}</span><span>Rp ${b.biaya.toLocaleString('id-ID')}</span>
+     </div>`
+  ).join('');
+
+  const printWindow = window.open('', '_blank', 'width=420,height=700');
+  if (!printWindow) return;
+
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8" />
+      <title>Invoice ${order.order_number}</title>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; color: #111; }
+        .invoice { width: 360px; margin: 0 auto; padding: 24px; }
+        .header { text-align: center; margin-bottom: 20px; }
+        .brand { font-size: 20px; font-weight: 800; color: #4f46e5; }
+        .brand-sub { font-size: 11px; color: #6b7280; margin-top: 2px; }
+        hr { border: none; border-top: 1px dashed #d1d5db; margin: 14px 0; }
+        hr.solid { border-top: 2px solid #111; }
+        .section-label { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: #6b7280; text-transform: uppercase; margin-bottom: 6px; }
+        .row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; color: #374151; }
+        .row.total { font-size: 14px; font-weight: 800; color: #111; margin-top: 10px; }
+        .footer { text-align: center; font-size: 11px; color: #9ca3af; margin-top: 20px; }
+        @media print { body { -webkit-print-color-adjust: exact; } }
+      </style>
+    </head>
+    <body>
+      <div class="invoice">
+        <div class="header">
+          <div class="brand">🛵 KurirDev</div>
+          <div class="brand-sub">Invoice Pengiriman</div>
+        </div>
+        <hr/>
+        <div class="section-label">Detail Order</div>
+        <div class="row"><span>No. Order</span><span>${order.order_number}</span></div>
+        <div class="row"><span>Tanggal</span><span>${format(parseISO(order.created_at), 'dd MMM yyyy, HH:mm')}</span></div>
+        <div class="row"><span>Kurir</span><span>${courierName}</span></div>
+        <div class="row"><span>Status</span><span>${order.status.replace('_', ' ').toUpperCase()}</span></div>
+        <hr/>
+        <div class="section-label">Penerima</div>
+        <div class="row"><span>${order.customer_name}</span></div>
+        <div class="row"><span>${order.customer_address}</span></div>
+        <div class="row"><span>${order.customer_phone}</span></div>
+        <hr class="solid"/>
+        <div class="section-label">Rincian Biaya</div>
+        <div class="row"><span>Ongkir</span><span>Rp ${(order.total_fee || 0).toLocaleString('id-ID')}</span></div>
+        ${titikRows}
+        ${bebanRows}
+        <hr class="solid"/>
+        <div class="row total"><span>TOTAL TAGIHAN</span><span>Rp ${totalTagihan.toLocaleString('id-ID')}</span></div>
+        <div class="footer">Terima kasih telah menggunakan layanan KurirDev 🙏</div>
+      </div>
+      <script>window.onload = () => { window.print(); window.onafterprint = () => window.close(); }<\/script>
+    </body>
+    </html>
+  `);
+  printWindow.document.close();
+};
 
   const formatCurrency = (val: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
 
@@ -659,6 +737,37 @@ export function Orders() {
               )}
             </div>
 
+            {/* Rincian Biaya Tambahan */}
+            {selectedOrder.status !== 'pending' && ((selectedOrder.titik ?? 0) > 0 || (selectedOrder.beban ?? []).length > 0) && (
+              <div className="border-t pt-2 text-sm space-y-1">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Rincian Biaya</p>
+                <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+                  <span className="text-gray-400">Ongkir</span>
+                  <span>{formatCurrency(selectedOrder.total_fee)}</span>
+                  {(selectedOrder.titik ?? 0) > 0 && (
+                    <>
+                      <span className="text-gray-400">Titik ({selectedOrder.titik}x)</span>
+                      <span>{formatCurrency(selectedOrder.total_biaya_titik ?? 0)}</span>
+                    </>
+                  )}
+                  {(selectedOrder.beban ?? []).map((b, i) => (
+                    <>
+                      <span key={`beban-name-${i}`} className="text-gray-400 pl-2">• {b.nama}</span>
+                      <span key={`beban-val-${i}`}>{formatCurrency(b.biaya)}</span>
+                    </>
+                  ))}
+                  <span className="text-gray-700 font-semibold border-t pt-1 mt-0.5">Total Tagihan</span>
+                  <span className="font-semibold text-gray-900 border-t pt-1 mt-0.5">
+                    {formatCurrency(
+                      (selectedOrder.total_fee || 0) +
+                      (selectedOrder.total_biaya_titik ?? 0) +
+                      (selectedOrder.total_biaya_beban ?? 0)
+                    )}
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* Actions — compact */}
             <div className="flex justify-between items-center pt-2 border-t">
               <Button
@@ -670,7 +779,19 @@ export function Orders() {
               >
                 Cancel Order
               </Button>
-              <Button variant="outline" size="sm" onClick={() => setIsDetailModalOpen(false)}>Close</Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<Printer className="h-3.5 w-3.5" />}
+                  onClick={() => handlePrintInvoice(selectedOrder)}
+                >
+                  Print Invoice
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setIsDetailModalOpen(false)}>
+                  Close
+                </Button>
+              </div>
             </div>
           </div>
         )}
