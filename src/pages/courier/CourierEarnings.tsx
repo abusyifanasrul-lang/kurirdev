@@ -35,21 +35,19 @@ export function CourierEarnings() {
       const deliveryDate = o.actual_delivery_time ? parseISO(o.actual_delivery_time) : parseISO(o.created_at);
       return isWithinInterval(deliveryDate, { start: today, end: todayEnd });
     });
-    const totalFee = todayOrders.reduce((sum, o) => sum + (o.total_fee || 0), 0);
     return {
       orders: todayOrders.length,
-      totalFee,
-      earnings: totalFee * COMMISSION_RATE,
+      totalFee: todayOrders.reduce((sum, o) => sum + (o.total_fee || 0), 0),
+      earnings: todayOrders.reduce((sum, o) => sum + (o.total_fee || 0) * COMMISSION_RATE + (o.total_biaya_titik ?? 0) + (o.total_biaya_beban ?? 0), 0),
     };
   }, [deliveredOrders]);
 
   // All-time stats
   const allTimeStats = useMemo(() => {
-    const totalFee = deliveredOrders.reduce((sum, o) => sum + (o.total_fee || 0), 0);
     return {
       orders: deliveredOrders.length,
-      totalFee,
-      earnings: totalFee * COMMISSION_RATE,
+      totalFee: deliveredOrders.reduce((sum, o) => sum + (o.total_fee || 0), 0),
+      earnings: deliveredOrders.reduce((sum, o) => sum + (o.total_fee || 0) * COMMISSION_RATE + (o.total_biaya_titik ?? 0) + (o.total_biaya_beban ?? 0), 0),
     };
   }, [deliveredOrders]);
 
@@ -67,10 +65,9 @@ export function CourierEarnings() {
           const deliveryDate = o.actual_delivery_time ? parseISO(o.actual_delivery_time) : parseISO(o.created_at);
           return isWithinInterval(deliveryDate, { start: dayStart, end: dayEnd });
         });
-        const totalFee = dayOrders.reduce((sum, o) => sum + (o.total_fee || 0), 0);
         return {
           label: format(date, 'dd/MM'),
-          earnings: totalFee * COMMISSION_RATE,
+          earnings: dayOrders.reduce((sum, o) => sum + (o.total_fee || 0) * COMMISSION_RATE + (o.total_biaya_titik ?? 0) + (o.total_biaya_beban ?? 0), 0),
           orders: dayOrders.length,
         };
       });
@@ -86,10 +83,9 @@ export function CourierEarnings() {
           const deliveryDate = o.actual_delivery_time ? parseISO(o.actual_delivery_time) : parseISO(o.created_at);
           return deliveryDate >= weekStart && deliveryDate <= weekEnd;
         });
-        const totalFee = weekOrders.reduce((sum, o) => sum + (o.total_fee || 0), 0);
         return {
           label: `W${i + 1}`,
-          earnings: totalFee * COMMISSION_RATE,
+          earnings: weekOrders.reduce((sum, o) => sum + (o.total_fee || 0) * COMMISSION_RATE + (o.total_biaya_titik ?? 0) + (o.total_biaya_beban ?? 0), 0),
           orders: weekOrders.length,
         };
       });
@@ -105,10 +101,9 @@ export function CourierEarnings() {
         const d = parseISO(o.created_at);
         return d >= monthStart && d <= monthEnd;
       });
-      const totalFee = monthOrders.reduce((sum, o) => sum + (o.total_fee || 0), 0);
       return {
         label: format(date, 'MMM'),
-        earnings: totalFee * COMMISSION_RATE,
+        earnings: monthOrders.reduce((sum, o) => sum + (o.total_fee || 0) * COMMISSION_RATE + (o.total_biaya_titik ?? 0) + (o.total_biaya_beban ?? 0), 0),
         orders: monthOrders.length,
       };
     });
@@ -217,11 +212,11 @@ export function CourierEarnings() {
         ) : (
           <div className="space-y-2">
             {deliveredOrders.slice(0, 10).map((order) => {
-              const earning = (order.total_fee || 0) * COMMISSION_RATE;
+              const earning = (order.total_fee || 0) * COMMISSION_RATE + (order.total_biaya_titik ?? 0) + (order.total_biaya_beban ?? 0);
               return (
                 <div
                   key={order.id}
-                  onClick={() => navigate(`/courier/order/${order.id}`)}
+                  onClick={() => navigate('/courier/history', { state: { highlightOrderId: order.id } })}
                   className="bg-white rounded-xl p-3 border border-gray-100 flex justify-between items-center cursor-pointer hover:shadow-sm transition-shadow"
                 >
                   <div>

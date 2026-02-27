@@ -1,6 +1,6 @@
-import { useMemo, useState, useRef } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
 import { ArrowLeft, Package, Clock, CheckCircle, XCircle, Search } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { format, isToday, isYesterday, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/Badge';
 import { useOrderStore } from '@/stores/useOrderStore';
@@ -23,6 +23,19 @@ const statusConfig: Record<string, { color: string; bg: string; icon: typeof Che
 
 export function CourierHistory() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const highlightOrderId = (location.state as any)?.highlightOrderId;
+
+  useEffect(() => {
+    if (!highlightOrderId) return;
+    const el = document.getElementById(`order-${highlightOrderId}`);
+    if (!el) return;
+    setTimeout(() => {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('ring-2', 'ring-yellow-400', 'ring-offset-2');
+      setTimeout(() => el.classList.remove('ring-2', 'ring-yellow-400', 'ring-offset-2'), 2000);
+    }, 300);
+  }, [highlightOrderId]);
   const { user } = useAuth();
   const { orders } = useOrderStore();
   const { couriers } = useCourierStore();
@@ -99,7 +112,7 @@ export function CourierHistory() {
     const rate = (courier?.commission_rate ?? 80) / 100;
     return courierOrders
       .filter((o) => o.status === 'delivered')
-      .reduce((sum, o) => sum + (o.total_fee || 0) * rate, 0);
+      .reduce((sum, o) => sum + (o.total_fee || 0) * rate + (o.total_biaya_titik ?? 0) + (o.total_biaya_beban ?? 0), 0);
   }, [courierOrders, couriers, user]);
 
   return (
@@ -161,13 +174,16 @@ export function CourierHistory() {
                 {dateOrders.map((order) => {
                   const config = statusConfig[order.status] || statusConfig.pending;
                   const StatusIcon = config.icon;
-                  const courierEarning = order.status === 'delivered' ? (order.total_fee || 0) * COMMISSION_RATE : 0;
+                  const courierEarning = order.status === 'delivered'
+                    ? (order.total_fee || 0) * COMMISSION_RATE + (order.total_biaya_titik ?? 0) + (order.total_biaya_beban ?? 0)
+                    : 0;
 
                   return (
                     <div
                       key={order.id}
+                      id={`order-${order.id}`}
                       onClick={() => order.status === 'delivered' ? setSelectedOrder(order) : navigate(`/courier/orders/${order.id}`)}
-                      className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow"
+                      className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-all duration-300"
                     >
                       <div className="flex items-start justify-between mb-2">
                         <div>
