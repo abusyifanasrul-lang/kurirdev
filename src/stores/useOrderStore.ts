@@ -19,6 +19,7 @@ interface OrderState {
   assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>
   cancelOrder: (orderId: string, reason: string, userId: string, userName: string) => Promise<void>
   updateOrder: (orderId: string, updates: Partial<Order>) => Promise<void>
+  updateBiayaTambahan: (orderId: string, titik: number, beban: { nama: string; biaya: number }[]) => Promise<void>
 
   generateOrderId: () => string
   getOrdersByCourier: (courierId: string) => Order[]
@@ -118,6 +119,17 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   updateOrder: async (orderId, updates) => {
     await updateDoc(doc(db, 'orders', orderId), {
       ...updates,
+      updated_at: new Date().toISOString()
+    })
+  },
+  updateBiayaTambahan: async (orderId, titik, beban) => {
+    const total_biaya_titik = titik * 3000;
+    const total_biaya_beban = beban.reduce((sum, b) => sum + b.biaya, 0);
+    await updateDoc(doc(db, 'orders', orderId), {
+      titik,
+      total_biaya_titik,
+      beban,
+      total_biaya_beban,
       updated_at: new Date().toISOString()
     })
   },

@@ -41,6 +41,10 @@ export interface Order {
   actual_delivery_time?: string;
   cancelled_at?: string;
   cancellation_reason?: string;
+  titik?: number;
+  total_biaya_titik?: number;
+  beban?: { nama: string; biaya: number }[];
+  total_biaya_beban?: number;
   created_at: string;
   updated_at: string;
   created_by?: string;
