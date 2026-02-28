@@ -228,18 +228,6 @@ export function CourierOrderDetail() {
           </button>
         </div>
 
-        {/* Nama Barang */}
-        {(order.item_name || order.item_price) && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-amber-800 mb-1">Nama Barang</p>
-            <p className="text-sm font-bold text-gray-900">{order.item_name || '-'}</p>
-            {(order.item_price ?? 0) > 0 && (
-              <p className="text-sm font-semibold text-amber-700 mt-0.5">Rp {(order.item_price ?? 0).toLocaleString('id-ID')}</p>
-            )}
-            <p className="text-[10px] text-amber-600 mt-1">* Tidak termasuk dalam total ongkir</p>
-          </div>
-        )}
-
         {/* Order Details + Titik & Beban */}
         <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 space-y-3">
           <h3 className="font-semibold text-gray-900 text-sm">Rincian Order</h3>
@@ -275,7 +263,7 @@ export function CourierOrderDetail() {
                 )}
               </div>
 
-              {order.item_name ? (
+              {order.item_name && !showItemForm ? (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
                   <p className="text-sm font-bold text-gray-900">{order.item_name}</p>
                   <p className="text-sm font-semibold text-yellow-700 mt-0.5">
@@ -284,7 +272,7 @@ export function CourierOrderDetail() {
                   <p className="text-[10px] text-gray-400 mt-1">* Tidak termasuk dalam total ongkir</p>
                 </div>
               ) : (
-                <p className="text-xs text-gray-400 italic">Belum ada keterangan barang</p>
+                !showItemForm && <p className="text-xs text-gray-400 italic">Belum ada keterangan barang</p>
               )}
 
               {showItemForm && order.status !== 'delivered' && (

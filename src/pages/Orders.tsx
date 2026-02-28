@@ -84,7 +84,7 @@ export function Orders() {
     customer_name: '',
     customer_phone: '',
     customer_address: '',
-    total_fee: 15000,
+    total_fee: 0,
     payment_status: 'unpaid',
     estimated_delivery_time: '',
     item_name: '',
@@ -231,7 +231,7 @@ export function Orders() {
       id: crypto.randomUUID(),
       order_number: generateOrderId(),
       ...newOrder,
-      total_fee: newOrder.total_fee || 15000,
+      total_fee: newOrder.total_fee || 0,
       status: 'pending',
       payment_status: newOrder.payment_status || 'unpaid',
       created_at: new Date().toISOString(),
@@ -245,7 +245,7 @@ export function Orders() {
       customer_name: '',
       customer_phone: '',
       customer_address: '',
-      total_fee: 15000,
+      total_fee: 0,
       estimated_delivery_time: '',
       item_name: '',
       item_price: 0,
@@ -626,9 +626,9 @@ export function Orders() {
           />
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="Fee (IDR)"
+              label="Fee Ongkir"
               type="text"
-              value={newOrder.total_fee ? `Rp ${newOrder.total_fee.toLocaleString('id-ID')}` : ''}
+              value={newOrder.total_fee !== undefined ? `Rp ${newOrder.total_fee.toLocaleString('id-ID')}` : ''}
               onChange={e => {
                 const numericValue = Number(e.target.value.replace(/[^0-9]/g, ''));
                 setNewOrder({ ...newOrder, total_fee: numericValue });
