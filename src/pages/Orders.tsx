@@ -87,7 +87,8 @@ export function Orders() {
     total_fee: 15000,
     payment_status: 'unpaid',
     estimated_delivery_time: '',
-    keterangan: '',
+    item_name: '',
+    item_price: 0,
   });
 
   // Edit Form State
@@ -246,6 +247,8 @@ export function Orders() {
       customer_address: '',
       total_fee: 15000,
       estimated_delivery_time: '',
+      item_name: '',
+      item_price: 0,
     });
   };
 
@@ -317,10 +320,11 @@ export function Orders() {
     const totalDibayarCustomer = totalOngkir + (order.item_price ?? 0);
     const courierName = getCourierName(order.courier_id) || '-';
 
-    const keteranganSection = order.keterangan
+    const keteranganSection = order.item_name
       ? `<div style="margin:16px 0;padding:12px;background:#fefce8;border:1px solid #fde047;border-radius:8px;">
-          <div style="font-size:10px;font-weight:700;letter-spacing:0.08em;color:#854d0e;text-transform:uppercase;margin-bottom:6px;">Nama Barang / Keterangan</div>
-          <div style="font-size:14px;font-weight:700;color:#1c1917;">${order.keterangan}</div>
+          <div style="font-size:10px;font-weight:700;letter-spacing:0.08em;color:#854d0e;text-transform:uppercase;margin-bottom:6px;">Nama Barang</div>
+          <div style="font-size:14px;font-weight:700;color:#1c1917;">${order.item_name}</div>
+          ${order.item_price ? `<div style="font-size:13px;font-weight:700;color:#a16207;">Rp ${order.item_price.toLocaleString('id-ID')}</div>` : ''}
           <div style="font-size:10px;color:#a16207;margin-top:4px;">* Harga barang tidak termasuk dalam total ongkir</div>
          </div>`
       : '';
@@ -604,12 +608,21 @@ export function Orders() {
           </div>
           <Input label="Phone Number" value={newOrder.customer_phone} onChange={e => setNewOrder({ ...newOrder, customer_phone: e.target.value })} />
           <Textarea label="Address" value={newOrder.customer_address} onChange={e => setNewOrder({ ...newOrder, customer_address: e.target.value })} />
-          <Textarea
-            label="Keterangan (opsional)"
-            placeholder="cth: Beli susu beruang 2 kaleng di toko Aminah"
-            value={newOrder.keterangan || ''}
-            onChange={e => setNewOrder({ ...newOrder, keterangan: e.target.value })}
-            rows={2}
+          <Input
+            label="Nama Barang (opsional)"
+            placeholder="cth: Susu beruang 2 kaleng"
+            value={newOrder.item_name || ''}
+            onChange={e => setNewOrder({ ...newOrder, item_name: e.target.value })}
+          />
+          <Input
+            label="Harga Barang (opsional)"
+            type="text"
+            placeholder="Rp 0"
+            value={newOrder.item_price ? `Rp ${newOrder.item_price.toLocaleString('id-ID')}` : ''}
+            onChange={e => {
+              const val = Number(e.target.value.replace(/[^0-9]/g, ''));
+              setNewOrder({ ...newOrder, item_price: val });
+            }}
           />
           <div className="grid grid-cols-2 gap-4">
             <Input
@@ -714,10 +727,12 @@ export function Orders() {
                   <span className="whitespace-pre-wrap">{selectedOrder.customer_address}</span>
                   <span className="text-gray-400">Fee</span>
                   <span className="font-medium">{formatCurrency(selectedOrder.total_fee)}</span>
-                  {selectedOrder.keterangan && (
+                  {(selectedOrder.item_name || selectedOrder.item_price) && (
                     <>
-                      <span className="text-gray-400">Keterangan</span>
-                      <span className="text-gray-800 font-medium">{selectedOrder.keterangan}</span>
+                      <span className="text-gray-400">Nama Barang</span>
+                      <span className="text-gray-800 font-medium">{selectedOrder.item_name || '-'}</span>
+                      <span className="text-gray-400">Harga Barang</span>
+                      <span className="text-gray-800 font-medium">{selectedOrder.item_price ? `Rp ${selectedOrder.item_price.toLocaleString('id-ID')}` : '-'}</span>
                     </>
                   )}
                   <span className="text-gray-400">Setoran</span>
