@@ -27,12 +27,16 @@ import { format, isToday, subDays, startOfDay, endOfDay, isWithinInterval } from
 // Stores
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useUserStore } from '@/stores/useUserStore';
+import { useSettingsStore } from '@/stores/useSettingsStore';
+import { calcAdminEarning } from '@/lib/calcEarning';
 
 const COLORS = ['#F59E0B', '#3B82F6', '#8B5CF6', '#06B6D4', '#22C55E', '#EF4444'];
 
 export function Dashboard() {
   const { orders, getRecentOrders } = useOrderStore();
   const { users } = useUserStore();
+  const { commission_rate, commission_threshold } = useSettingsStore();
+  const earningSettings = { commission_rate, commission_threshold };
 
   const [isConnected] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(new Date());
@@ -68,6 +72,9 @@ export function Dashboard() {
       .reduce((sum, o) => sum + (o.total_fee || 0), 0);
 
     const activeCouriersCount = (users || []).filter(u => u.role === 'courier' && u.is_active && u.is_online).length;
+    const netRevenueToday = todayOrders
+      .filter(o => o.status === 'delivered')
+      .reduce((sum, o) => sum + calcAdminEarning(o, earningSettings), 0);
 
     // Pie Chart Data
     const statusCounts = orders.reduce((acc, order) => {
@@ -83,6 +90,7 @@ export function Dashboard() {
     return {
       total_orders_today: todayOrders.length,
       total_revenue_today: revenueToday,
+      net_revenue_today: netRevenueToday,
       active_couriers: activeCouriersCount,
       pending_orders: pendingOrders.length,
       orders_by_status: pieData
@@ -136,18 +144,18 @@ export function Dashboard() {
             to="/admin/orders"
           />
           <StatCard
-            title="Revenue Today"
+            title="Gross Revenue"
             value={formatCurrency(analytics.total_revenue_today)}
             icon={<DollarSign className="h-6 w-6" />}
             trend={{ value: 8, isPositive: true }}
             to="/admin/reports"
           />
           <StatCard
-            title="Active Couriers"
-            value={analytics.active_couriers}
-            icon={<Users className="h-6 w-6" />}
-            subtitle="Out of total registered"
-            to="/admin/couriers"
+            title="Net Revenue"
+            value={formatCurrency(analytics.net_revenue_today)}
+            icon={<DollarSign className="h-6 w-6" />}
+            subtitle="Setelah komisi & threshold"
+            to="/admin/reports"
           />
           <StatCard
             title="Pending Orders"
@@ -242,7 +250,9 @@ export function Dashboard() {
             <Card className="flex flex-col h-[400px]">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Courier Queue</h3>
-                <Badge variant="info">FIFO</Badge>
+                <span className="text-sm font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                  {analytics.active_couriers} Online
+                </span>
               </div>
               <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
                 {users.filter(u => u.role === 'courier' && u.is_active && u.is_online).length === 0 ? (

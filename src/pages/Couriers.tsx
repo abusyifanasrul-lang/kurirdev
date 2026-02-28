@@ -192,13 +192,14 @@ export function Couriers() {
                 <TableHeader>Name</TableHeader>
                 <TableHeader>Status</TableHeader>
                 <TableHeader>Completed</TableHeader>
+                <TableHeader>Free Admin</TableHeader>
                 <TableHeader>Earnings</TableHeader>
                 <TableHeader>Action</TableHeader>
               </TableRow>
             </TableHead>
             <TableBody>
               {couriers.length === 0 ? (
-                <TableEmpty colSpan={5} message="No couriers found" />
+                <TableEmpty colSpan={6} message="No couriers found" />
               ) : (
                 couriers.map((courier: Courier) => (
                   <TableRow
@@ -239,8 +240,15 @@ export function Couriers() {
                     <TableCell>
                       {formatCurrency(
                         orders
+                          .filter(o => o.courier_id === courier.id && o.status === 'delivered' && o.total_fee <= commission_threshold)
+                          .reduce((sum, o) => sum + (o.total_fee || 0), 0)
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {formatCurrency(
+                        orders
                           .filter(o => o.courier_id === courier.id && o.status === 'delivered')
-                          .reduce((sum, o) => sum + (o.total_fee || 0) * ((courier.commission_rate ?? 80) / 100), 0)
+                          .reduce((sum, o) => sum + calcCourierEarning(o, earningSettings), 0)
                       )}
                       {courierUnpaidCount(courier.id) > 0 && (
                         <span className="ml-2 px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-full font-medium">
