@@ -49,6 +49,9 @@ export interface Order {
   updated_at: string;
   created_by?: string;
   notes?: string;
+  keterangan?: string;   // deskripsi barang — diisi admin saat buat order, auto-update saat kurir update item
+  item_name?: string;    // nama barang aktual — diisi kurir
+  item_price?: number;   // harga barang aktual — diisi/edit kurir, bisa berubah berkali-kali
 }
 
 export interface OrderStatusHistory {
@@ -68,6 +71,7 @@ export interface CreateOrderPayload {
   total_fee?: number;
   payment_status?: PaymentStatus;
   estimated_delivery_time?: string;
+  keterangan?: string;
 }
 
 // Courier types

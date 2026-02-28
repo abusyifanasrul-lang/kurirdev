@@ -23,12 +23,16 @@ import { useCourierStore } from '@/stores/useCourierStore';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { Courier } from '@/types';
+import { useSettingsStore } from '@/stores/useSettingsStore';
+import { calcCourierEarning, calcAdminEarning } from '@/lib/calcEarning';
 
 export function Couriers() {
   const { addCourier, updateCourier } = useCourierStore();
   const { users } = useUserStore();
   const couriers = users.filter(u => u.role === 'courier') as Courier[];
-  const { orders, getOrdersByCourier, updateOrder } = useOrderStore(); // To calculate real-time stats
+  const { orders, getOrdersByCourier, updateOrder } = useOrderStore();
+  const { commission_rate, commission_threshold } = useSettingsStore();
+  const earningSettings = { commission_rate, commission_threshold };
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isPerformanceModalOpen, setIsPerformanceModalOpen] = useState(false);
@@ -60,12 +64,7 @@ export function Couriers() {
   const totalDeliveries = orders.filter(o => o.status === 'delivered').length;
   const totalEarnings = orders
     .filter(o => o.status === 'delivered')
-    .reduce((sum, o) => {
-      // Find courier for this order to get their commission rate
-      const courier = couriers.find((c: Courier) => c.id === o.courier_id);
-      const rate = (courier?.commission_rate ?? 80) / 100;
-      return sum + (o.total_fee || 0) * rate;
-    }, 0);
+    .reduce((sum, o) => sum + calcCourierEarning(o, earningSettings), 0);
 
   const handleAddCourier = () => {
     const courierData: Courier = {
@@ -108,9 +107,7 @@ export function Couriers() {
 
     const courierOrders = getOrdersByCourier(courierId as unknown as string) || [];
     const completed = courierOrders.filter(o => o.status === 'delivered');
-    const courier = couriers.find(c => c.id === courierId as unknown as string);
-    const rate = (courier?.commission_rate ?? 80) / 100;
-    const earnings = completed.reduce((sum, o) => sum + (o.total_fee || 0) * rate, 0);
+    const earnings = completed.reduce((sum, o) => sum + calcCourierEarning(o, earningSettings), 0);
 
     // Calculate avg delivery time based on actual timestamps
     const avgTime = completed.length > 0 ? 25 : 0; // Placeholder until actual delivery timestamps are tracked
@@ -424,8 +421,9 @@ export function Couriers() {
               const unpaidTotalFee = unpaidOrders.reduce(
                 (sum, o) => sum + o.total_fee, 0
               );
-              const unpaidPlatformFee = unpaidTotalFee *
-                (1 - (selectedCourier?.commission_rate ?? 80) / 100);
+              const unpaidPlatformFee = unpaidOrders.reduce(
+                (sum, o) => sum + calcAdminEarning(o, earningSettings), 0
+              );
 
               return unpaidOrders.length > 0 && (
                 <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
@@ -494,8 +492,8 @@ export function Couriers() {
           o.payment_status === 'unpaid'
         );
         const unpaidPlatformFee = unpaidOrders.reduce(
-          (sum, o) => sum + o.total_fee, 0
-        ) * (1 - (selectedCourier.commission_rate ?? 80) / 100);
+          (sum, o) => sum + calcAdminEarning(o, earningSettings), 0
+        );
 
         return (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">

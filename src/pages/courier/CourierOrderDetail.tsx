@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Phone, MapPin, Navigation, CheckCircle, Package, Truck, Plus, X, AlertTriangle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
@@ -9,12 +9,14 @@ import { useCourierStore } from '@/stores/useCourierStore';
 import { useSessionStore } from '@/stores/useSessionStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { OrderStatus } from '@/types';
+import { useSettingsStore } from '@/stores/useSettingsStore';
+import { calcCourierEarning } from '@/lib/calcEarning';
 import html2canvas from 'html2canvas';
 
 export function CourierOrderDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { orders, updateOrderStatus, cancelOrder, updateBiayaTambahan } = useOrderStore();
+  const { orders, updateOrderStatus, cancelOrder, updateBiayaTambahan, updateItemBarang, updateOngkir } = useOrderStore();
   const { user } = useAuth();
   const { couriers } = useCourierStore();
   const { users } = useUserStore();
@@ -24,7 +26,11 @@ export function CourierOrderDetail() {
   const liveUser = users.find(u => u.id === currentUser?.id);
   const isSuspended = liveUser?.is_active === false;
   const currentCourier = useMemo(() => couriers.find(c => c.id === user?.id), [couriers, user]);
-  const commissionRate = currentCourier?.commission_rate ?? 80;
+  const { commission_rate, commission_threshold } = useSettingsStore();
+  const earningSettings = { commission_rate, commission_threshold };
+  const commissionRate = currentCourier?.commission_rate ?? commission_rate;
+
+  const order = useMemo(() => orders.find(o => o.id === id), [orders, id]);
 
   const [isUpdating, setIsUpdating] = useState(false);
   const [cancelStep, setCancelStep] = useState(0); // 0=idle, 1=confirm
@@ -34,8 +40,19 @@ export function CourierOrderDetail() {
   const [showBebanForm, setShowBebanForm] = useState(false);
   const [namaBeban, setNamaBeban] = useState('');
   const [biayaBeban, setBiayaBeban] = useState('');
+  const [showItemForm, setShowItemForm] = useState(false);
+  const [namaItem, setNamaItem] = useState('');
+  const [hargaItem, setHargaItem] = useState('');
+  const [editOngkir, setEditOngkir] = useState(false);
+  const [ongkirValue, setOngkirValue] = useState('');
 
-  const order = useMemo(() => orders.find(o => o.id === id), [orders, id]);
+  useEffect(() => {
+    if (order) {
+      setNamaItem(order.item_name || '');
+      setHargaItem(order.item_price ? String(order.item_price) : '');
+      setOngkirValue(String(order.total_fee || 0));
+    }
+  }, [order]);
 
   if (!order) return <div className="p-8 text-center">Order not found</div>;
 
@@ -94,6 +111,19 @@ export function CourierOrderDetail() {
   const handleHapusBeban = async (index: number) => {
     const newBeban = beban.filter((_, i) => i !== index);
     await updateBiayaTambahan(order.id, titik, newBeban);
+  };
+
+  const handleSimpanItem = async () => {
+    if (!namaItem || !hargaItem) return;
+    await updateItemBarang(order.id, namaItem, Number(hargaItem));
+    setShowItemForm(false);
+  };
+
+  const handleSimpanOngkir = async () => {
+    const val = Number(ongkirValue);
+    if (!val || val <= 0) return;
+    await updateOngkir(order.id, val);
+    setEditOngkir(false);
   };
 
   const handleCancelTap = () => {
@@ -209,7 +239,7 @@ export function CourierOrderDetail() {
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Pendapatanmu ({commissionRate}%)</span>
-              <span className="font-medium text-green-600">Rp {((order.total_fee || 0) * commissionRate / 100).toLocaleString('id-ID')}</span>
+              <span className="font-medium text-green-600">Rp {calcCourierEarning(order, { commission_rate: commissionRate, commission_threshold }).toLocaleString('id-ID')}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Waktu Order</span>
@@ -218,6 +248,85 @@ export function CourierOrderDetail() {
           </div>
 
           <div className="border-t border-gray-100 pt-3 space-y-3">
+
+            {/* Nama Barang / Keterangan */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Nama Barang / Keterangan</p>
+                {order.status !== 'delivered' && (
+                  <button
+                    onClick={() => { setShowItemForm(!showItemForm); setNamaItem(order.item_name || ''); setHargaItem(order.item_price ? String(order.item_price) : ''); }}
+                    className="text-xs text-indigo-600 font-medium hover:underline"
+                  >
+                    {order.item_name ? 'Edit' : '+ Tambah'}
+                  </button>
+                )}
+              </div>
+
+              {order.item_name ? (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
+                  <p className="text-sm font-bold text-gray-900">{order.item_name}</p>
+                  <p className="text-sm font-semibold text-yellow-700 mt-0.5">
+                    Rp {(order.item_price || 0).toLocaleString('id-ID')}
+                  </p>
+                  <p className="text-[10px] text-gray-400 mt-1">* Tidak termasuk dalam total ongkir</p>
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400 italic">Belum ada keterangan barang</p>
+              )}
+
+              {showItemForm && order.status !== 'delivered' && (
+                <div className="space-y-2 pt-1">
+                  <input
+                    type="text"
+                    placeholder="Nama barang (cth: susu beruang 2 kaleng)"
+                    value={namaItem}
+                    onChange={e => setNamaItem(e.target.value)}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                  />
+                  <input
+                    type="number"
+                    placeholder="Harga aktual (cth: 24000)"
+                    value={hargaItem}
+                    onChange={e => setHargaItem(e.target.value)}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                  />
+                  <div className="flex gap-2">
+                    <button onClick={() => setShowItemForm(false)} className="flex-1 py-1.5 text-xs border border-gray-200 rounded-lg text-gray-500">Batal</button>
+                    <button onClick={handleSimpanItem} className="flex-1 py-1.5 text-xs bg-indigo-600 text-white rounded-lg font-medium">Simpan</button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Edit Ongkir */}
+            <div className="border-t border-gray-100 pt-2 space-y-1">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Ongkir</p>
+                {order.status !== 'delivered' && (
+                  <button
+                    onClick={() => { setEditOngkir(!editOngkir); setOngkirValue(String(order.total_fee || 0)); }}
+                    className="text-xs text-indigo-600 font-medium hover:underline"
+                  >
+                    Edit
+                  </button>
+                )}
+              </div>
+              {editOngkir ? (
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="number"
+                    value={ongkirValue}
+                    onChange={e => setOngkirValue(e.target.value)}
+                    className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                  />
+                  <button onClick={() => setEditOngkir(false)} className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg text-gray-500">Batal</button>
+                  <button onClick={handleSimpanOngkir} className="px-3 py-1.5 text-xs bg-indigo-600 text-white rounded-lg font-medium">Simpan</button>
+                </div>
+              ) : (
+                <p className="text-sm font-medium text-gray-900">Rp {(order.total_fee || 0).toLocaleString('id-ID')}</p>
+              )}
+            </div>
 
             {/* Titik Tambahan */}
             <div>
@@ -421,6 +530,16 @@ export function CourierOrderDetail() {
             <div style={{ color: '#6b7280' }}>{order.customer_address}</div>
             <div style={{ color: '#6b7280' }}>{order.customer_phone}</div>
           </div>
+          {order.item_name && (
+            <div style={{ margin: '12px 0', padding: '10px', background: '#fefce8', border: '1px solid #fde047', borderRadius: '8px' }}>
+              <p style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em', color: '#854d0e', textTransform: 'uppercase', marginBottom: '4px' }}>
+                Nama Barang / Keterangan
+              </p>
+              <p style={{ fontSize: '13px', fontWeight: 700, color: '#1c1917' }}>{order.item_name}</p>
+              <p style={{ fontSize: '13px', fontWeight: 700, color: '#a16207' }}>Rp {(order.item_price || 0).toLocaleString('id-ID')}</p>
+              <p style={{ fontSize: '9px', color: '#a16207', marginTop: '3px' }}>* Tidak termasuk dalam total ongkir</p>
+            </div>
+          )}
           <div style={{ marginBottom: '12px', lineHeight: '1.8' }}>
             <div style={{ fontWeight: '600', marginBottom: '6px' }}>RINCIAN BIAYA</div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -451,9 +570,15 @@ export function CourierOrderDetail() {
             )}
           </div>
           <div style={{ borderTop: '2px solid #111827', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '13px' }}>
-            <span>TOTAL</span>
+            <span>TOTAL ONGKIR</span>
             <span>Rp {totalTagihanCustomer.toLocaleString('id-ID')}</span>
           </div>
+          {(order.item_price ?? 0) > 0 && (
+            <div style={{ borderTop: '1px dashed #d97706', paddingTop: '8px', marginTop: '6px', display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '13px', color: '#854d0e' }}>
+              <span>TOTAL DIBAYAR CUSTOMER</span>
+              <span>Rp {(totalTagihanCustomer + (order.item_price ?? 0)).toLocaleString('id-ID')}</span>
+            </div>
+          )}
           <div style={{ textAlign: 'center', fontSize: '11px', color: '#9ca3af', marginTop: '16px' }}>
             Terima kasih telah menggunakan layanan KurirDev 🙏
           </div>

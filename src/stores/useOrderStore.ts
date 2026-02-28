@@ -20,6 +20,8 @@ interface OrderState {
   cancelOrder: (orderId: string, reason: string, userId: string, userName: string) => Promise<void>
   updateOrder: (orderId: string, updates: Partial<Order>) => Promise<void>
   updateBiayaTambahan: (orderId: string, titik: number, beban: { nama: string; biaya: number }[]) => Promise<void>
+  updateItemBarang: (orderId: string, itemName: string, itemPrice: number) => Promise<void>
+  updateOngkir: (orderId: string, totalFee: number) => Promise<void>
 
   generateOrderId: () => string
   getOrdersByCourier: (courierId: string) => Order[]
@@ -132,6 +134,23 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
       total_biaya_beban,
       updated_at: new Date().toISOString()
     })
+  },
+
+  updateItemBarang: async (orderId, itemName, itemPrice) => {
+    const keterangan = `${itemName} Rp${itemPrice.toLocaleString('id-ID')}`;
+    await updateDoc(doc(db, 'orders', orderId), {
+      item_name: itemName,
+      item_price: itemPrice,
+      keterangan,
+      updated_at: new Date().toISOString()
+    });
+  },
+
+  updateOngkir: async (orderId, totalFee) => {
+    await updateDoc(doc(db, 'orders', orderId), {
+      total_fee: totalFee,
+      updated_at: new Date().toISOString()
+    });
   },
 
   generateOrderId: () => {

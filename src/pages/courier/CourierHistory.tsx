@@ -251,6 +251,16 @@ export function CourierHistory() {
                   <p className="text-gray-500">{selectedOrder.customer_phone}</p>
                 </div>
                 <div className="space-y-1.5">
+                  {(selectedOrder.item_name || selectedOrder.keterangan) && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 space-y-0.5">
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-yellow-800">Nama Barang / Keterangan</p>
+                      <p className="font-bold text-gray-900">{selectedOrder.item_name || selectedOrder.keterangan}</p>
+                      {(selectedOrder.item_price ?? 0) > 0 && (
+                        <p className="font-semibold text-yellow-700">Rp {(selectedOrder.item_price ?? 0).toLocaleString('id-ID')}</p>
+                      )}
+                      <p className="text-[9px] text-yellow-600">* Tidak termasuk dalam total ongkir</p>
+                    </div>
+                  )}
                   <p className="font-semibold">RINCIAN BIAYA</p>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Ongkir</span>
@@ -279,9 +289,15 @@ export function CourierHistory() {
                     </div>
                   )}
                   <div className="border-t border-gray-300 pt-2 flex justify-between font-bold text-sm">
-                    <span>TOTAL</span>
+                    <span>TOTAL ONGKIR</span>
                     <span>Rp {((selectedOrder.total_fee || 0) + (selectedOrder.total_biaya_titik ?? 0) + (selectedOrder.total_biaya_beban ?? 0)).toLocaleString('id-ID')}</span>
                   </div>
+                  {(selectedOrder.item_price ?? 0) > 0 && (
+                    <div className="border-t border-amber-300 pt-2 mt-1 flex justify-between font-bold text-sm text-amber-700">
+                      <span>TOTAL DIBAYAR CUSTOMER</span>
+                      <span>Rp {((selectedOrder.total_fee || 0) + (selectedOrder.total_biaya_titik ?? 0) + (selectedOrder.total_biaya_beban ?? 0) + (selectedOrder.item_price ?? 0)).toLocaleString('id-ID')}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -316,6 +332,16 @@ export function CourierHistory() {
               <div style={{ color: '#6b7280' }}>{selectedOrder.customer_address}</div>
               <div style={{ color: '#6b7280' }}>{selectedOrder.customer_phone}</div>
             </div>
+            {(selectedOrder.item_name || selectedOrder.keterangan) && (
+              <div style={{ margin: '12px 0', padding: '10px', background: '#fefce8', border: '1px solid #fde047', borderRadius: '8px' }}>
+                <p style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em', color: '#854d0e', textTransform: 'uppercase', marginBottom: '4px' }}>Nama Barang / Keterangan</p>
+                <p style={{ fontSize: '13px', fontWeight: 700, color: '#1c1917' }}>{selectedOrder.item_name || selectedOrder.keterangan}</p>
+                {(selectedOrder.item_price ?? 0) > 0 && (
+                  <p style={{ fontSize: '13px', fontWeight: 700, color: '#a16207' }}>Rp {(selectedOrder.item_price ?? 0).toLocaleString('id-ID')}</p>
+                )}
+                <p style={{ fontSize: '9px', color: '#a16207', marginTop: '3px' }}>* Tidak termasuk dalam total ongkir</p>
+              </div>
+            )}
             <div style={{ marginBottom: '12px', lineHeight: '1.8' }}>
               <div style={{ fontWeight: '600', marginBottom: '6px' }}>RINCIAN BIAYA</div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -346,9 +372,15 @@ export function CourierHistory() {
               )}
             </div>
             <div style={{ borderTop: '2px solid #111827', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '13px' }}>
-              <span>TOTAL</span>
+              <span>TOTAL ONGKIR</span>
               <span>Rp {((selectedOrder.total_fee || 0) + (selectedOrder.total_biaya_titik ?? 0) + (selectedOrder.total_biaya_beban ?? 0)).toLocaleString('id-ID')}</span>
             </div>
+            {(selectedOrder.item_price ?? 0) > 0 && (
+              <div style={{ borderTop: '1px dashed #d97706', paddingTop: '8px', marginTop: '6px', display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '13px', color: '#854d0e' }}>
+                <span>TOTAL DIBAYAR CUSTOMER</span>
+                <span>Rp {((selectedOrder.total_fee || 0) + (selectedOrder.total_biaya_titik ?? 0) + (selectedOrder.total_biaya_beban ?? 0) + (selectedOrder.item_price ?? 0)).toLocaleString('id-ID')}</span>
+              </div>
+            )}
             <div style={{ textAlign: 'center', fontSize: '11px', color: '#9ca3af', marginTop: '16px' }}>
               Terima kasih telah menggunakan layanan KurirDev 🙏
             </div>
