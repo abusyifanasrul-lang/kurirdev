@@ -65,7 +65,7 @@ export function CourierOrderDetail() {
       setItemList(order.items || []);
       setOngkirValue(String(order.total_fee || 0));
     }
-  }, [order]);
+  }, [order, showItemForm]);
 
   if (!order) return <div className="p-8 text-center">Order not found</div>;
 
@@ -129,7 +129,7 @@ export function CourierOrderDetail() {
   
   const handleSimpanOngkir = async () => {
     const val = Number(ongkirValue);
-    if (!val || val <= 0) return;
+    if (isNaN(val) || val < 0) return;
     await updateOngkir(order.id, val);
     setEditOngkir(false);
   };
@@ -248,7 +248,7 @@ export function CourierOrderDetail() {
                 {!isLocked && (
                   <button
                     onClick={() => { setEditOngkir(!editOngkir); setOngkirValue(String(order.total_fee || 0)); }}
-                    className="text-xs text-indigo-600 font-medium hover:underline"
+                    className="flex items-center gap-1.5 text-sm font-medium text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-full hover:bg-indigo-100"
                   >
                     {editOngkir ? 'Batal' : 'Edit'}
                   </button>
@@ -274,7 +274,9 @@ export function CourierOrderDetail() {
               </div>
             )}
             <div className="flex justify-between">
-              <span className="text-gray-500">Pendapatan Ongkir ({commissionRate}%)</span>
+              <span className="text-gray-500">
+                Pendapatan Ongkir{order.total_fee > commission_threshold ? ` (${commissionRate}%)` : ''}
+              </span>
               <span className="font-medium text-green-600">
                 Rp {(order.total_fee <= commission_threshold
                   ? order.total_fee
@@ -317,7 +319,7 @@ export function CourierOrderDetail() {
                 {!isLocked && (
                   <button
                     onClick={() => setShowItemForm(!showItemForm)}
-                    className="text-xs text-indigo-600 font-medium hover:underline"
+                    className="flex items-center gap-1.5 text-sm font-medium text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-full hover:bg-indigo-100"
                   >
                     {showItemForm ? 'Tutup' : itemList.length > 0 ? 'Edit' : '+ Tambah'}
                   </button>
