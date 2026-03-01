@@ -10,7 +10,6 @@ import { useSessionStore } from '@/stores/useSessionStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { OrderStatus } from '@/types';
 import { useSettingsStore } from '@/stores/useSettingsStore';
-import { calcCourierEarning } from '@/lib/calcEarning';
 import html2canvas from 'html2canvas';
 
 // Format angka ke tampilan Rupiah: 20000 → "Rp 20.000"
@@ -284,27 +283,7 @@ export function CourierOrderDetail() {
                 ).toLocaleString('id-ID')}
               </span>
             </div>
-            {totalBiayaTitik > 0 && (
-              <div className="flex justify-between">
-                <span className="text-gray-500">Pendapatan Titik</span>
-                <span className="font-medium text-green-600">Rp {totalBiayaTitik.toLocaleString('id-ID')}</span>
-              </div>
-            )}
-            {totalBiayaBeban > 0 && (
-              <div className="flex justify-between">
-                <span className="text-gray-500">Pendapatan Beban</span>
-                <span className="font-medium text-green-600">Rp {totalBiayaBeban.toLocaleString('id-ID')}</span>
-              </div>
-            )}
-            {(totalBiayaTitik > 0 || totalBiayaBeban > 0) && (
-              <div className="flex justify-between border-t border-gray-100 pt-1">
-                <span className="text-gray-700 font-semibold">Total Pendapatanmu</span>
-                <span className="font-bold text-green-600">
-                  Rp {calcCourierEarning(order, { commission_rate: commissionRate, commission_threshold }).toLocaleString('id-ID')}
-                </span>
-              </div>
-            )}
-            <div className="flex justify-between">
+                        <div className="flex justify-between">
               <span className="text-gray-500">Waktu Order</span>
               <span className="text-gray-700">{order.created_at ? format(parseISO(order.created_at), 'dd MMM, HH:mm') : '-'}</span>
             </div>
