@@ -47,7 +47,7 @@ export function CourierOrderDetail() {
   const [ongkirValue, setOngkirValue] = useState('');
 
   useEffect(() => {
-    if (order) {
+    if (order && !showItemForm) {
       setNamaItem(order.item_name || '');
       setHargaItem(order.item_price ? String(order.item_price) : '');
       setOngkirValue(String(order.total_fee || 0));
@@ -60,7 +60,7 @@ export function CourierOrderDetail() {
   const beban = order.beban ?? [];
   const totalBiayaTitik = order.total_biaya_titik ?? 0;
   const totalBiayaBeban = order.total_biaya_beban ?? 0;
-  const totalTagihanCustomer = (order.total_fee || 0) + totalBiayaTitik + totalBiayaBeban;
+  const totalOngkir = (order.total_fee || 0) + totalBiayaTitik + totalBiayaBeban;
 
   const statusFlow: OrderStatus[] = ['assigned', 'picked_up', 'in_transit', 'delivered'];
   const currentStepIndex = statusFlow.indexOf(order.status);
@@ -114,8 +114,9 @@ export function CourierOrderDetail() {
   };
 
   const handleSimpanItem = async () => {
-    if (!namaItem || !hargaItem) return;
-    await updateItemBarang(order.id, namaItem, Number(hargaItem));
+    const parsedHarga = Number(hargaItem);
+    if (!namaItem || !hargaItem || isNaN(parsedHarga) || parsedHarga <= 0) return;
+    await updateItemBarang(order.id, namaItem, parsedHarga);
     setShowItemForm(false);
   };
 
@@ -401,7 +402,7 @@ export function CourierOrderDetail() {
             {(titik > 0 || beban.length > 0) && (
               <div className="border-t border-gray-100 pt-2 flex justify-between text-sm font-semibold">
                 <span className="text-gray-700">Total Tagihan Customer</span>
-                <span className="text-gray-900">Rp {totalTagihanCustomer.toLocaleString('id-ID')}</span>
+                <span className="text-gray-900">Rp {totalOngkir.toLocaleString('id-ID')}</span>
               </div>
             )}
           </div>
@@ -571,12 +572,12 @@ export function CourierOrderDetail() {
           </div>
           <div style={{ borderTop: '2px solid #111827', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '13px' }}>
             <span>TOTAL ONGKIR</span>
-            <span>Rp {totalTagihanCustomer.toLocaleString('id-ID')}</span>
+            <span>Rp {totalOngkir.toLocaleString('id-ID')}</span>
           </div>
           {(order.item_price ?? 0) > 0 && (
             <div style={{ borderTop: '1px dashed #d97706', paddingTop: '8px', marginTop: '6px', display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '13px', color: '#854d0e' }}>
               <span>TOTAL DIBAYAR CUSTOMER</span>
-              <span>Rp {(totalTagihanCustomer + (order.item_price ?? 0)).toLocaleString('id-ID')}</span>
+              <span>Rp {(totalOngkir + (order.item_price ?? 0)).toLocaleString('id-ID')}</span>
             </div>
           )}
           <div style={{ textAlign: 'center', fontSize: '11px', color: '#9ca3af', marginTop: '16px' }}>

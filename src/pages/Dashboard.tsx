@@ -76,6 +76,10 @@ export function Dashboard() {
       .filter(o => o.status === 'delivered')
       .reduce((sum, o) => sum + calcAdminEarning(o, earningSettings), 0);
 
+    const belowThresholdToday = todayOrders
+      .filter(o => o.status === 'delivered' && (o.total_fee || 0) <= commission_threshold)
+      .reduce((sum, o) => sum + (o.total_fee || 0), 0);
+
     // Pie Chart Data
     const statusCounts = orders.reduce((acc, order) => {
       acc[order.status] = (acc[order.status] || 0) + 1;
@@ -91,6 +95,7 @@ export function Dashboard() {
       total_orders_today: todayOrders.length,
       total_revenue_today: revenueToday,
       net_revenue_today: netRevenueToday,
+      below_threshold_today: belowThresholdToday,
       active_couriers: activeCouriersCount,
       pending_orders: pendingOrders.length,
       orders_by_status: pieData
@@ -144,17 +149,17 @@ export function Dashboard() {
             to="/admin/orders"
           />
           <StatCard
-            title="Gross Revenue"
-            value={formatCurrency(analytics.total_revenue_today)}
-            icon={<DollarSign className="h-6 w-6" />}
-            trend={{ value: 8, isPositive: true }}
-            to="/admin/reports"
-          />
-          <StatCard
-            title="Net Revenue"
+            title="Net Revenue Admin"
             value={formatCurrency(analytics.net_revenue_today)}
             icon={<DollarSign className="h-6 w-6" />}
             subtitle="Setelah komisi & threshold"
+            to="/admin/reports"
+          />
+          <StatCard
+            title="Fee Bebas Komisi"
+            value={formatCurrency(analytics.below_threshold_today)}
+            icon={<TrendingUp className="h-6 w-6" />}
+            subtitle={`Order ≤ threshold hari ini`}
             to="/admin/reports"
           />
           <StatCard

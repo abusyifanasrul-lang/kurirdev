@@ -5,14 +5,13 @@ import { format, isToday, isYesterday, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/Badge';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useAuth } from '@/context/AuthContext';
-import { useCourierStore } from '@/stores/useCourierStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { calcCourierEarning } from '@/lib/calcEarning';
 import html2canvas from 'html2canvas';
 import { X } from 'lucide-react';
 import { Order } from '@/types';
 
-type StatusFilter = 'all' | 'delivered' | 'cancelled' | 'in_transit' | 'picked_up' | 'assigned';
+type StatusFilter = 'all' | 'delivered' | 'cancelled';
 
 const statusConfig: Record<string, { color: string; bg: string; icon: typeof CheckCircle; label: string }> = {
   delivered: { color: 'text-green-600', bg: 'bg-green-50', icon: CheckCircle, label: 'Delivered' },
@@ -40,10 +39,7 @@ export function CourierHistory() {
   }, [highlightOrderId]);
   const { user } = useAuth();
   const { orders } = useOrderStore();
-  const { couriers } = useCourierStore();
 
-  const currentCourier = useMemo(() => couriers.find(c => c.id === user?.id), [couriers, user?.id]);
-  const COMMISSION_RATE = (currentCourier?.commission_rate ?? 80) / 100;
   const { commission_rate, commission_threshold } = useSettingsStore()
   const earningSettings = { commission_rate, commission_threshold }
 
@@ -71,6 +67,9 @@ export function CourierHistory() {
         // Only orders assigned to this courier
         const isMyCourier = order.courier_id === user.id;
         if (!isMyCourier) return false;
+
+        // Only show final orders (delivered or cancelled)
+        if (order.status !== 'delivered' && order.status !== 'cancelled') return false;
 
         // Apply status filter
         if (statusFilter !== 'all' && order.status !== statusFilter) return false;
@@ -112,11 +111,10 @@ export function CourierHistory() {
     new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
 
   const totalEarnings = useMemo(() => {
-    const courier = couriers.find(c => c.id === user?.id);
     return courierOrders
       .filter((o) => o.status === 'delivered')
       .reduce((sum, o) => sum + calcCourierEarning(o, earningSettings), 0);
-  }, [courierOrders, couriers, user]);
+  }, [courierOrders, user]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -129,7 +127,7 @@ export function CourierHistory() {
           <div className="flex-1">
             <h1 className="text-lg font-bold text-gray-900">Riwayat Pengiriman</h1>
             <p className="text-xs text-gray-500">
-              {courierOrders.length} pesanan • {formatCurrency(totalEarnings)} total pendapatan
+              {courierOrders.length} riwayat • {formatCurrency(totalEarnings)} total pendapatan
             </p>
           </div>
         </div>
@@ -154,9 +152,6 @@ export function CourierHistory() {
             <option value="all">Semua</option>
             <option value="delivered">Delivered</option>
             <option value="cancelled">Cancelled</option>
-            <option value="in_transit">In Transit</option>
-            <option value="picked_up">Picked Up</option>
-            <option value="assigned">Assigned</option>
           </select>
         </div>
       </div>
@@ -251,10 +246,10 @@ export function CourierHistory() {
                   <p className="text-gray-500">{selectedOrder.customer_phone}</p>
                 </div>
                 <div className="space-y-1.5">
-                  {(selectedOrder.item_name || selectedOrder.keterangan) && (
+                  {selectedOrder.item_name && (
                     <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 space-y-0.5">
-                      <p className="text-[9px] font-bold uppercase tracking-widest text-yellow-800">Nama Barang / Keterangan</p>
-                      <p className="font-bold text-gray-900">{selectedOrder.item_name || selectedOrder.keterangan}</p>
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-yellow-800">Nama Barang</p>
+                      <p className="font-bold text-gray-900">{selectedOrder.item_name}</p>
                       {(selectedOrder.item_price ?? 0) > 0 && (
                         <p className="font-semibold text-yellow-700">Rp {(selectedOrder.item_price ?? 0).toLocaleString('id-ID')}</p>
                       )}
@@ -332,10 +327,10 @@ export function CourierHistory() {
               <div style={{ color: '#6b7280' }}>{selectedOrder.customer_address}</div>
               <div style={{ color: '#6b7280' }}>{selectedOrder.customer_phone}</div>
             </div>
-            {(selectedOrder.item_name || selectedOrder.keterangan) && (
+            {selectedOrder.item_name && (
               <div style={{ margin: '12px 0', padding: '10px', background: '#fefce8', border: '1px solid #fde047', borderRadius: '8px' }}>
-                <p style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em', color: '#854d0e', textTransform: 'uppercase', marginBottom: '4px' }}>Nama Barang / Keterangan</p>
-                <p style={{ fontSize: '13px', fontWeight: 700, color: '#1c1917' }}>{selectedOrder.item_name || selectedOrder.keterangan}</p>
+                <p style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em', color: '#854d0e', textTransform: 'uppercase', marginBottom: '4px' }}>Nama Barang</p>
+                <p style={{ fontSize: '13px', fontWeight: 700, color: '#1c1917' }}>{selectedOrder.item_name}</p>
                 {(selectedOrder.item_price ?? 0) > 0 && (
                   <p style={{ fontSize: '13px', fontWeight: 700, color: '#a16207' }}>Rp {(selectedOrder.item_price ?? 0).toLocaleString('id-ID')}</p>
                 )}

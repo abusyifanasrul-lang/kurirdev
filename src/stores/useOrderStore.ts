@@ -137,11 +137,9 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   },
 
   updateItemBarang: async (orderId, itemName, itemPrice) => {
-    const keterangan = `${itemName} Rp${itemPrice.toLocaleString('id-ID')}`;
     await updateDoc(doc(db, 'orders', orderId), {
       item_name: itemName,
       item_price: itemPrice,
-      keterangan,
       updated_at: new Date().toISOString()
     });
   },
