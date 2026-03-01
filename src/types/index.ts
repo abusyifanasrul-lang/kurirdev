@@ -51,6 +51,7 @@ export interface Order {
   notes?: string;
   item_name?: string;
   item_price?: number;
+  items?: { nama: string; harga: number }[];
 }
 
 export interface OrderStatusHistory {

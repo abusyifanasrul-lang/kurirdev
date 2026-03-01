@@ -317,17 +317,35 @@ export function Orders() {
     const totalBiayaTitik = order.total_biaya_titik ?? 0;
     const totalBiayaBeban = order.total_biaya_beban ?? 0;
     const totalOngkir = (order.total_fee || 0) + totalBiayaTitik + totalBiayaBeban;
-    const totalDibayarCustomer = totalOngkir + (order.item_price ?? 0);
-    const courierName = getCourierName(order.courier_id) || '-';
+        const courierName = getCourierName(order.courier_id) || '-';
 
-    const keteranganSection = order.item_name
-      ? `<div style="margin:16px 0;padding:12px;background:#fefce8;border:1px solid #fde047;border-radius:8px;">
-          <div style="font-size:10px;font-weight:700;letter-spacing:0.08em;color:#854d0e;text-transform:uppercase;margin-bottom:6px;">Nama Barang</div>
-          <div style="font-size:14px;font-weight:700;color:#1c1917;">${order.item_name}</div>
-          ${order.item_price ? `<div style="font-size:13px;font-weight:700;color:#a16207;">Rp ${order.item_price.toLocaleString('id-ID')}</div>` : ''}
-          <div style="font-size:10px;color:#a16207;margin-top:4px;">* Harga barang tidak termasuk dalam total ongkir</div>
-         </div>`
-      : '';
+    const totalBelanja = (order.items && order.items.length > 0)
+    ? order.items.reduce((s, i) => s + i.harga, 0)
+    : (order.item_price ?? 0);
+
+  const keteranganSection = (order.items && order.items.length > 0)
+    ? `<div style="margin:12px 0;padding:10px;background:#fefce8;border:1px solid #fde047;border-radius:8px;">
+        <div style="font-size:10px;font-weight:700;letter-spacing:0.08em;color:#854d0e;text-transform:uppercase;margin-bottom:6px;">Daftar Barang Belanja</div>
+        ${order.items.map(item => `
+          <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+            <span style="color:#1c1917;">• ${item.nama}</span>
+            <span style="color:#a16207;font-weight:600;">Rp ${item.harga.toLocaleString('id-ID')}</span>
+          </div>
+        `).join('')}
+        <div style="border-top:1px solid #fde047;margin-top:6px;padding-top:6px;display:flex;justify-content:space-between;font-weight:700;">
+          <span style="color:#854d0e;">Total Belanja</span>
+          <span style="color:#a16207;">Rp ${totalBelanja.toLocaleString('id-ID')}</span>
+        </div>
+        <div style="font-size:9px;color:#a16207;margin-top:4px;">* Tidak termasuk dalam total ongkir</div>
+      </div>`
+    : order.item_name
+    ? `<div style="margin:12px 0;padding:10px;background:#fefce8;border:1px solid #fde047;border-radius:8px;">
+        <div style="font-size:10px;font-weight:700;letter-spacing:0.08em;color:#854d0e;text-transform:uppercase;margin-bottom:6px;">Nama Barang</div>
+        <div style="font-size:14px;font-weight:700;color:#1c1917;">${order.item_name}</div>
+        ${order.item_price ? `<div style="font-size:13px;font-weight:700;color:#a16207;">Rp ${order.item_price.toLocaleString('id-ID')}</div>` : ''}
+        <div style="font-size:9px;color:#a16207;margin-top:3px;">* Tidak termasuk dalam total ongkir</div>
+      </div>`
+    : '';
 
     const titikRows = titik > 0
       ? `<div style="padding:2px 0 2px 12px;color:#6b7280;font-size:12px;display:flex;justify-content:space-between;">
@@ -391,12 +409,12 @@ export function Orders() {
           ${bebanRows}
           <hr class="solid"/>
           <div class="row total"><span>TOTAL ONGKIR</span><span>Rp ${totalOngkir.toLocaleString('id-ID')}</span></div>
-          ${order.item_price
-            ? `<div class="row total" style="color:#854d0e;margin-top:4px;">
+          ${totalBelanja > 0
+    ? `<div class="row total" style="color:#854d0e;margin-top:4px;">
                 <span>TOTAL DIBAYAR CUSTOMER</span>
-                <span>Rp ${totalDibayarCustomer.toLocaleString('id-ID')}</span>
+                <span>Rp ${(totalOngkir + totalBelanja).toLocaleString('id-ID')}</span>
                </div>`
-            : ''
+    : ''
           }
           <div class="footer">Terima kasih telah menggunakan layanan KurirDev 🙏</div>
         </div>

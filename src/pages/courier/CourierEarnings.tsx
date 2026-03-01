@@ -5,7 +5,6 @@ import { format, parseISO, startOfDay, subDays, startOfWeek, startOfMonth, isWit
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useAuth } from '@/context/AuthContext';
-import { useCourierStore } from '@/stores/useCourierStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { calcCourierEarning } from '@/lib/calcEarning';
 
@@ -15,12 +14,9 @@ export function CourierEarnings() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { orders } = useOrderStore();
-  const { couriers } = useCourierStore();
-  const [period, setPeriod] = useState<Period>('daily');
+    const [period, setPeriod] = useState<Period>('daily');
 
-  const currentCourier = useMemo(() => couriers.find(c => c.id === user?.id), [couriers, user]);
-  const COMMISSION_RATE = (currentCourier?.commission_rate ?? 80) / 100;
-  const { commission_rate, commission_threshold } = useSettingsStore()
+      const { commission_rate, commission_threshold } = useSettingsStore()
   const earningSettings = { commission_rate, commission_threshold }
 
   // All delivered orders for this courier

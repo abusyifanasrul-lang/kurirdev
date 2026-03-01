@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   Package,
   DollarSign,
-  Users,
   Clock,
   TrendingUp
 } from 'lucide-react';

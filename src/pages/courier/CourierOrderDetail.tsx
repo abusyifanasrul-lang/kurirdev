@@ -13,10 +13,22 @@ import { useSettingsStore } from '@/stores/useSettingsStore';
 import { calcCourierEarning } from '@/lib/calcEarning';
 import html2canvas from 'html2canvas';
 
+// Format angka ke tampilan Rupiah: 20000 → "Rp 20.000"
+const formatRupiah = (val: string): string => {
+  const angka = val.replace(/\D/g, '');
+  if (!angka) return '';
+  return 'Rp ' + Number(angka).toLocaleString('id-ID');
+};
+
+// Ambil angka bersih dari string Rupiah: "Rp 20.000" → "20000"
+const parseRupiah = (val: string): string => {
+  return val.replace(/\D/g, '');
+};
+
 export function CourierOrderDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { orders, updateOrderStatus, cancelOrder, updateBiayaTambahan, updateItemBarang, updateOngkir } = useOrderStore();
+  const { orders, updateOrderStatus, cancelOrder, updateBiayaTambahan, updateItems, updateOngkir } = useOrderStore();
   const { user } = useAuth();
   const { couriers } = useCourierStore();
   const { users } = useUserStore();
@@ -27,8 +39,7 @@ export function CourierOrderDetail() {
   const isSuspended = liveUser?.is_active === false;
   const currentCourier = useMemo(() => couriers.find(c => c.id === user?.id), [couriers, user]);
   const { commission_rate, commission_threshold } = useSettingsStore();
-  const earningSettings = { commission_rate, commission_threshold };
-  const commissionRate = currentCourier?.commission_rate ?? commission_rate;
+    const commissionRate = currentCourier?.commission_rate ?? commission_rate;
 
   const order = useMemo(() => orders.find(o => o.id === id), [orders, id]);
 
@@ -41,6 +52,7 @@ export function CourierOrderDetail() {
   const [namaBeban, setNamaBeban] = useState('');
   const [biayaBeban, setBiayaBeban] = useState('');
   const [showItemForm, setShowItemForm] = useState(false);
+  const [itemList, setItemList] = useState<{ nama: string; harga: number }[]>([]);
   const [namaItem, setNamaItem] = useState('');
   const [hargaItem, setHargaItem] = useState('');
   const [editOngkir, setEditOngkir] = useState(false);
@@ -48,8 +60,7 @@ export function CourierOrderDetail() {
 
   useEffect(() => {
     if (order && !showItemForm) {
-      setNamaItem(order.item_name || '');
-      setHargaItem(order.item_price ? String(order.item_price) : '');
+      setItemList(order.items || []);
       setOngkirValue(String(order.total_fee || 0));
     }
   }, [order]);
@@ -113,13 +124,7 @@ export function CourierOrderDetail() {
     await updateBiayaTambahan(order.id, titik, newBeban);
   };
 
-  const handleSimpanItem = async () => {
-    const parsedHarga = Number(hargaItem);
-    if (!namaItem || !hargaItem || isNaN(parsedHarga) || parsedHarga <= 0) return;
-    await updateItemBarang(order.id, namaItem, parsedHarga);
-    setShowItemForm(false);
-  };
-
+  
   const handleSimpanOngkir = async () => {
     const val = Number(ongkirValue);
     if (!val || val <= 0) return;
@@ -250,34 +255,59 @@ export function CourierOrderDetail() {
 
           <div className="border-t border-gray-100 pt-3 space-y-3">
 
-            {/* Nama Barang / Keterangan */}
+            {/* Daftar Barang */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Nama Barang / Keterangan</p>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Daftar Barang</p>
                 {order.status !== 'delivered' && (
                   <button
-                    onClick={() => { setShowItemForm(!showItemForm); setNamaItem(order.item_name || ''); setHargaItem(order.item_price ? String(order.item_price) : ''); }}
+                    onClick={() => setShowItemForm(!showItemForm)}
                     className="text-xs text-indigo-600 font-medium hover:underline"
                   >
-                    {order.item_name ? 'Edit' : '+ Tambah'}
+                    {showItemForm ? 'Tutup' : itemList.length > 0 ? 'Edit' : '+ Tambah'}
                   </button>
                 )}
               </div>
 
-              {order.item_name && !showItemForm ? (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
-                  <p className="text-sm font-bold text-gray-900">{order.item_name}</p>
-                  <p className="text-sm font-semibold text-yellow-700 mt-0.5">
-                    Rp {(order.item_price || 0).toLocaleString('id-ID')}
-                  </p>
-                  <p className="text-[10px] text-gray-400 mt-1">* Tidak termasuk dalam total ongkir</p>
+              {!showItemForm && itemList.length > 0 && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 space-y-1">
+                  {itemList.map((item, i) => (
+                    <div key={i} className="flex justify-between text-sm">
+                      <span className="text-gray-800 font-medium">{item.nama}</span>
+                      <span className="text-yellow-700 font-semibold">Rp {item.harga.toLocaleString('id-ID')}</span>
+                    </div>
+                  ))}
+                  <div className="border-t border-yellow-200 pt-1 flex justify-between text-sm font-bold">
+                    <span className="text-gray-700">Total Belanja</span>
+                    <span className="text-yellow-700">Rp {itemList.reduce((s, i) => s + i.harga, 0).toLocaleString('id-ID')}</span>
+                  </div>
+                  <p className="text-[10px] text-gray-400">* Tidak termasuk dalam total ongkir</p>
                 </div>
-              ) : (
-                !showItemForm && <p className="text-xs text-gray-400 italic">Belum ada keterangan barang</p>
+              )}
+
+              {!showItemForm && itemList.length === 0 && (
+                <p className="text-xs text-gray-400 italic">Belum ada barang ditambahkan</p>
               )}
 
               {showItemForm && order.status !== 'delivered' && (
                 <div className="space-y-2 pt-1">
+                  {itemList.map((item, i) => (
+                    <div key={i} className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg">
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-gray-800">{item.nama}</p>
+                            <p className="text-xs text-yellow-700">Rp {item.harga.toLocaleString('id-ID')}</p>
+                          </div>
+                          <button
+                            onClick={() => {
+                                const updated = itemList.filter((_, idx) => idx !== i);
+                                setItemList(updated);
+                              }}
+                            className="text-gray-400 hover:text-red-500"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                  ))}
                   <input
                     type="text"
                     placeholder="Nama barang (cth: susu beruang 2 kaleng)"
@@ -286,15 +316,35 @@ export function CourierOrderDetail() {
                     className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400"
                   />
                   <input
-                    type="number"
-                    placeholder="Harga aktual (cth: 24000)"
-                    value={hargaItem}
-                    onChange={e => setHargaItem(e.target.value)}
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="Harga aktual (cth: Rp 24.000)"
+                    value={hargaItem ? formatRupiah(hargaItem) : ''}
+                    onChange={e => setHargaItem(parseRupiah(e.target.value))}
                     className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400"
                   />
                   <div className="flex gap-2">
-                    <button onClick={() => setShowItemForm(false)} className="flex-1 py-1.5 text-xs border border-gray-200 rounded-lg text-gray-500">Batal</button>
-                    <button onClick={handleSimpanItem} className="flex-1 py-1.5 text-xs bg-indigo-600 text-white rounded-lg font-medium">Simpan</button>
+                    <button
+                      onClick={() => {
+                        const parsed = Number(hargaItem);
+                        if (!namaItem || isNaN(parsed) || parsed <= 0) return;
+                        setItemList([...itemList, { nama: namaItem, harga: parsed }]);
+                        setNamaItem('');
+                        setHargaItem('');
+                      }}
+                      className="flex-1 py-1.5 text-xs bg-gray-100 text-gray-700 rounded-lg font-medium"
+                    >
+                      + Tambah Barang
+                    </button>
+                    <button
+                      onClick={async () => {
+                        await updateItems(order.id, itemList);
+                        setShowItemForm(false);
+                      }}
+                      className="flex-1 py-1.5 text-xs bg-indigo-600 text-white rounded-lg font-medium"
+                    >
+                      Simpan
+                    </button>
                   </div>
                 </div>
               )}
@@ -316,9 +366,11 @@ export function CourierOrderDetail() {
               {editOngkir ? (
                 <div className="flex gap-2 items-center">
                   <input
-                    type="number"
-                    value={ongkirValue}
-                    onChange={e => setOngkirValue(e.target.value)}
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="Rp 0"
+                    value={ongkirValue ? formatRupiah(ongkirValue) : ''}
+                    onChange={e => setOngkirValue(parseRupiah(e.target.value))}
                     className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400"
                   />
                   <button onClick={() => setEditOngkir(false)} className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg text-gray-500">Batal</button>
@@ -384,10 +436,11 @@ export function CourierOrderDetail() {
                     className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-400"
                   />
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     placeholder="Biaya (Rp)"
-                    value={biayaBeban}
-                    onChange={e => setBiayaBeban(e.target.value)}
+                    value={biayaBeban ? formatRupiah(biayaBeban) : ''}
+                    onChange={e => setBiayaBeban(parseRupiah(e.target.value))}
                     className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-400"
                   />
                   <div className="flex gap-2">
@@ -531,16 +584,35 @@ export function CourierOrderDetail() {
             <div style={{ color: '#6b7280' }}>{order.customer_address}</div>
             <div style={{ color: '#6b7280' }}>{order.customer_phone}</div>
           </div>
-          {order.item_name && (
+          {(order.items && order.items.length > 0) ? (
+            <div style={{ margin: '12px 0', padding: '10px', background: '#fefce8', border: '1px solid #fde047', borderRadius: '8px' }}>
+              <p style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em', color: '#854d0e', textTransform: 'uppercase', marginBottom: '6px' }}>
+                Daftar Barang Belanja
+              </p>
+              {order.items.map((item, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+                  <span style={{ color: '#1c1917' }}>• {item.nama}</span>
+                  <span style={{ color: '#a16207', fontWeight: 600 }}>Rp {item.harga.toLocaleString('id-ID')}</span>
+                </div>
+              ))}
+              <div style={{ borderTop: '1px solid #fde047', marginTop: '6px', paddingTop: '6px', display: 'flex', justifyContent: 'space-between', fontWeight: 700 }}>
+                <span style={{ color: '#854d0e' }}>Total Belanja</span>
+                <span style={{ color: '#a16207' }}>Rp {order.items.reduce((s, i) => s + i.harga, 0).toLocaleString('id-ID')}</span>
+              </div>
+              <p style={{ fontSize: '9px', color: '#a16207', marginTop: '4px' }}>* Tidak termasuk dalam total ongkir</p>
+            </div>
+          ) : order.item_name ? (
             <div style={{ margin: '12px 0', padding: '10px', background: '#fefce8', border: '1px solid #fde047', borderRadius: '8px' }}>
               <p style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em', color: '#854d0e', textTransform: 'uppercase', marginBottom: '4px' }}>
-                Nama Barang / Keterangan
+                Nama Barang
               </p>
               <p style={{ fontSize: '13px', fontWeight: 700, color: '#1c1917' }}>{order.item_name}</p>
-              <p style={{ fontSize: '13px', fontWeight: 700, color: '#a16207' }}>Rp {(order.item_price || 0).toLocaleString('id-ID')}</p>
+              {(order.item_price ?? 0) > 0 && (
+                <p style={{ fontSize: '13px', fontWeight: 700, color: '#a16207' }}>Rp {(order.item_price ?? 0).toLocaleString('id-ID')}</p>
+              )}
               <p style={{ fontSize: '9px', color: '#a16207', marginTop: '3px' }}>* Tidak termasuk dalam total ongkir</p>
             </div>
-          )}
+          ) : null}
           <div style={{ marginBottom: '12px', lineHeight: '1.8' }}>
             <div style={{ fontWeight: '600', marginBottom: '6px' }}>RINCIAN BIAYA</div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -574,12 +646,17 @@ export function CourierOrderDetail() {
             <span>TOTAL ONGKIR</span>
             <span>Rp {totalOngkir.toLocaleString('id-ID')}</span>
           </div>
-          {(order.item_price ?? 0) > 0 && (
+          {(order.items && order.items.length > 0) ? (
+            <div style={{ borderTop: '1px dashed #d97706', paddingTop: '8px', marginTop: '6px', display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '13px', color: '#854d0e' }}>
+              <span>TOTAL DIBAYAR CUSTOMER</span>
+              <span>Rp {(totalOngkir + order.items.reduce((s, i) => s + i.harga, 0)).toLocaleString('id-ID')}</span>
+            </div>
+          ) : (order.item_price ?? 0) > 0 ? (
             <div style={{ borderTop: '1px dashed #d97706', paddingTop: '8px', marginTop: '6px', display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '13px', color: '#854d0e' }}>
               <span>TOTAL DIBAYAR CUSTOMER</span>
               <span>Rp {(totalOngkir + (order.item_price ?? 0)).toLocaleString('id-ID')}</span>
             </div>
-          )}
+          ) : null}
           <div style={{ textAlign: 'center', fontSize: '11px', color: '#9ca3af', marginTop: '16px' }}>
             Terima kasih telah menggunakan layanan KurirDev 🙏
           </div>
