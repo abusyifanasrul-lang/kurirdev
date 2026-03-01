@@ -9,7 +9,10 @@ export const sendPushNotification = async (params: SendPushParams): Promise<bool
     try {
         const response = await fetch('/api/send-notification', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'x-api-secret': import.meta.env.VITE_API_SECRET,
+            },
             body: JSON.stringify(params),
         })
 
