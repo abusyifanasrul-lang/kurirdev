@@ -58,6 +58,8 @@ export function CourierOrderDetail() {
   const [editOngkir, setEditOngkir] = useState(false);
   const [ongkirValue, setOngkirValue] = useState('');
 
+  const isLocked = order?.status === 'delivered' || isSuspended;
+
   useEffect(() => {
     if (order && !showItemForm) {
       setItemList(order.items || []);
@@ -239,14 +241,67 @@ export function CourierOrderDetail() {
           <h3 className="font-semibold text-gray-900 text-sm">Rincian Order</h3>
 
           <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
+            <div className="flex justify-between items-center">
               <span className="text-gray-500">Ongkir</span>
-              <span className="font-medium">Rp {(order.total_fee || 0).toLocaleString('id-ID')}</span>
+              <div className="flex items-center gap-2">
+                <span className="font-medium">Rp {(order.total_fee || 0).toLocaleString('id-ID')}</span>
+                {!isLocked && (
+                  <button
+                    onClick={() => { setEditOngkir(!editOngkir); setOngkirValue(String(order.total_fee || 0)); }}
+                    className="text-xs text-indigo-600 font-medium hover:underline"
+                  >
+                    {editOngkir ? 'Batal' : 'Edit'}
+                  </button>
+                )}
+              </div>
             </div>
+            {editOngkir && !isLocked && (
+              <div className="mt-2 space-y-2">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Rp 0"
+                  value={ongkirValue ? formatRupiah(ongkirValue) : ''}
+                  onChange={e => setOngkirValue(parseRupiah(e.target.value))}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                />
+                <button
+                  onClick={handleSimpanOngkir}
+                  className="w-full py-2 text-sm bg-indigo-600 text-white rounded-lg font-medium"
+                >
+                  Simpan Ongkir
+                </button>
+              </div>
+            )}
             <div className="flex justify-between">
-              <span className="text-gray-500">Pendapatanmu ({commissionRate}%)</span>
-              <span className="font-medium text-green-600">Rp {calcCourierEarning(order, { commission_rate: commissionRate, commission_threshold }).toLocaleString('id-ID')}</span>
+              <span className="text-gray-500">Pendapatan Ongkir ({commissionRate}%)</span>
+              <span className="font-medium text-green-600">
+                Rp {(order.total_fee <= commission_threshold
+                  ? order.total_fee
+                  : order.total_fee * (commissionRate / 100)
+                ).toLocaleString('id-ID')}
+              </span>
             </div>
+            {totalBiayaTitik > 0 && (
+              <div className="flex justify-between">
+                <span className="text-gray-500">Pendapatan Titik</span>
+                <span className="font-medium text-green-600">Rp {totalBiayaTitik.toLocaleString('id-ID')}</span>
+              </div>
+            )}
+            {totalBiayaBeban > 0 && (
+              <div className="flex justify-between">
+                <span className="text-gray-500">Pendapatan Beban</span>
+                <span className="font-medium text-green-600">Rp {totalBiayaBeban.toLocaleString('id-ID')}</span>
+              </div>
+            )}
+            {(totalBiayaTitik > 0 || totalBiayaBeban > 0) && (
+              <div className="flex justify-between border-t border-gray-100 pt-1">
+                <span className="text-gray-700 font-semibold">Total Pendapatanmu</span>
+                <span className="font-bold text-green-600">
+                  Rp {calcCourierEarning(order, { commission_rate: commissionRate, commission_threshold }).toLocaleString('id-ID')}
+                </span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span className="text-gray-500">Waktu Order</span>
               <span className="text-gray-700">{order.created_at ? format(parseISO(order.created_at), 'dd MMM, HH:mm') : '-'}</span>
@@ -259,7 +314,7 @@ export function CourierOrderDetail() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Daftar Barang</p>
-                {order.status !== 'delivered' && (
+                {!isLocked && (
                   <button
                     onClick={() => setShowItemForm(!showItemForm)}
                     className="text-xs text-indigo-600 font-medium hover:underline"
@@ -289,7 +344,7 @@ export function CourierOrderDetail() {
                 <p className="text-xs text-gray-400 italic">Belum ada barang ditambahkan</p>
               )}
 
-              {showItemForm && order.status !== 'delivered' && (
+              {showItemForm && !isLocked && (
                 <div className="space-y-2 pt-1">
                   {itemList.map((item, i) => (
                     <div key={i} className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg">
@@ -350,41 +405,11 @@ export function CourierOrderDetail() {
               )}
             </div>
 
-            {/* Edit Ongkir */}
-            <div className="border-t border-gray-100 pt-2 space-y-1">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Ongkir</p>
-                {order.status !== 'delivered' && (
-                  <button
-                    onClick={() => { setEditOngkir(!editOngkir); setOngkirValue(String(order.total_fee || 0)); }}
-                    className="text-xs text-indigo-600 font-medium hover:underline"
-                  >
-                    Edit
-                  </button>
-                )}
-              </div>
-              {editOngkir ? (
-                <div className="flex gap-2 items-center">
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="Rp 0"
-                    value={ongkirValue ? formatRupiah(ongkirValue) : ''}
-                    onChange={e => setOngkirValue(parseRupiah(e.target.value))}
-                    className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400"
-                  />
-                  <button onClick={() => setEditOngkir(false)} className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg text-gray-500">Batal</button>
-                  <button onClick={handleSimpanOngkir} className="px-3 py-1.5 text-xs bg-indigo-600 text-white rounded-lg font-medium">Simpan</button>
-                </div>
-              ) : (
-                <p className="text-sm font-medium text-gray-900">Rp {(order.total_fee || 0).toLocaleString('id-ID')}</p>
-              )}
-            </div>
-
+            
             {/* Titik Tambahan */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-700">Titik Tambahan</span>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Titik Tambahan</p>
                 <div className="flex items-center gap-2">
                   {titik > 0 && (
                     <button onClick={handleHapusTitik} className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 text-lg font-bold">−</button>
@@ -406,7 +431,7 @@ export function CourierOrderDetail() {
             {/* Beban Tambahan */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-700">Beban Tambahan</span>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Beban Tambahan</p>
                 <button onClick={() => setShowBebanForm(true)} className="flex items-center gap-1.5 text-sm font-medium text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-full">
                   <Plus className="h-3.5 w-3.5" /> Beban
                 </button>
@@ -451,13 +476,26 @@ export function CourierOrderDetail() {
               )}
             </div>
 
-            {/* Total Tagihan Customer */}
-            {(titik > 0 || beban.length > 0) && (
-              <div className="border-t border-gray-100 pt-2 flex justify-between text-sm font-semibold">
-                <span className="text-gray-700">Total Tagihan Customer</span>
-                <span className="text-gray-900">Rp {totalOngkir.toLocaleString('id-ID')}</span>
+            {/* Ringkasan Tagihan */}
+          <div className="border-t-2 border-gray-200 pt-3 mt-1 space-y-1.5">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Ringkasan Tagihan</p>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">Total Ongkir</span>
+              <span className="font-medium">Rp {totalOngkir.toLocaleString('id-ID')}</span>
+            </div>
+            {itemList.length > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Total Belanja</span>
+                <span className="font-medium">Rp {itemList.reduce((s, i) => s + i.harga, 0).toLocaleString('id-ID')}</span>
               </div>
             )}
+            <div className="flex justify-between text-sm font-bold border-t border-gray-100 pt-2 mt-1">
+              <span className="text-gray-800">Total Dibayar Customer</span>
+              <span className="text-indigo-700">
+                Rp {(totalOngkir + itemList.reduce((s, i) => s + i.harga, 0)).toLocaleString('id-ID')}
+              </span>
+            </div>
+          </div>
           </div>
         </div>
 
@@ -528,7 +566,7 @@ export function CourierOrderDetail() {
         </div>
 
         {/* Tombol Cancel — jauh di bawah */}
-        {order.status !== 'delivered' && !isSuspended && (
+        {!isLocked && !isSuspended && (
           <button
             onClick={handleCancelTap}
             className={cn(
