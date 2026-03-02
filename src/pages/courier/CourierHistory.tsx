@@ -229,90 +229,87 @@ export function CourierHistory() {
             </div>
             <div className="p-4 max-h-[60vh] overflow-y-auto">
               {/* Preview Invoice */}
-              <div className="text-xs space-y-3 text-gray-700">
-                <div className="text-center">
-                  <p className="font-bold text-indigo-700 text-base">🛵 KurirDev</p>
-                  <p className="text-gray-500">Invoice Pengiriman</p>
+              <div className="text-xs space-y-0 text-gray-700">
+                <div className="text-center pb-3 border-b-2 border-gray-900 mb-3">
+                  <p className="font-extrabold text-indigo-700 text-lg">🛵 KurirDev</p>
+                  <p className="text-gray-500 text-[10px] tracking-widest uppercase">Invoice Pengiriman</p>
+                  <p className="font-bold text-gray-900 text-sm mt-2">{selectedOrder.order_number}</p>
+                  <p className="text-gray-500 mt-0.5">{format(parseISO(selectedOrder.created_at), 'dd MMM yyyy, HH:mm')}</p>
+                  <p className="text-gray-500">Kurir: {user?.name}</p>
                 </div>
-                <div className="space-y-1">
-                  <p><span className="font-medium">No. Order</span> : {selectedOrder.order_number}</p>
-                  <p><span className="font-medium">Tanggal</span> : {format(parseISO(selectedOrder.created_at), 'dd MMM yyyy, HH:mm')}</p>
-                  <p><span className="font-medium">Kurir</span> : {user?.name}</p>
-                </div>
-                <div className="border-t border-b border-gray-200 py-2 space-y-1">
-                  <p className="font-semibold">PENERIMA</p>
-                  <p>{selectedOrder.customer_name}</p>
-                  <p className="text-gray-500">{selectedOrder.customer_address}</p>
+                <div className="pb-3 border-b border-dashed border-gray-300 mb-3">
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Kepada</p>
+                  <p className="font-bold text-gray-900">{selectedOrder.customer_name}</p>
+                  <p className="text-gray-500 mt-0.5">{selectedOrder.customer_address}</p>
                   <p className="text-gray-500">{selectedOrder.customer_phone}</p>
                 </div>
-                <div className="space-y-1.5">
-                  {(selectedOrder.items && selectedOrder.items.length > 0) ? (
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 space-y-0.5">
-                      <p className="text-[9px] font-bold uppercase tracking-widest text-yellow-800">Daftar Barang Belanja</p>
-                      {selectedOrder.items.map((item, i) => (
-                        <div key={i} className="flex justify-between text-sm">
-                          <span className="text-gray-800">{item.nama}</span>
-                          <span className="text-yellow-700 font-semibold">Rp {item.harga.toLocaleString('id-ID')}</span>
-                        </div>
-                      ))}
-                      <div className="border-t border-yellow-200 pt-1 flex justify-between text-sm font-bold">
-                        <span className="text-gray-700">Total Belanja</span>
-                        <span className="text-yellow-700">Rp {selectedOrder.items.reduce((s, i) => s + i.harga, 0).toLocaleString('id-ID')}</span>
+                {(selectedOrder.items && selectedOrder.items.length > 0) && (
+                  <div className="pb-3 border-b border-dashed border-gray-300 mb-3">
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Daftar Belanja</p>
+                    {selectedOrder.items.map((item, i) => (
+                      <div key={i} className="flex justify-between py-0.5">
+                        <span className="text-gray-700">{item.nama}</span>
+                        <span className="font-semibold text-gray-900">Rp {item.harga.toLocaleString('id-ID')}</span>
                       </div>
-                      <p className="text-[9px] text-yellow-600">* Tidak termasuk dalam total ongkir</p>
+                    ))}
+                    <div className="flex justify-between pt-1.5 mt-1 border-t border-gray-200 font-bold">
+                      <span className="text-gray-700">Total Belanja</span>
+                      <span className="text-gray-900">Rp {selectedOrder.items.reduce((s, i) => s + i.harga, 0).toLocaleString('id-ID')}</span>
                     </div>
-                  ) : selectedOrder.item_name ? (
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 space-y-0.5">
-                      <p className="text-[9px] font-bold uppercase tracking-widest text-yellow-800">Nama Barang</p>
-                      <p className="font-bold text-gray-900">{selectedOrder.item_name}</p>
-                      {(selectedOrder.item_price ?? 0) > 0 && (
-                        <p className="font-semibold text-yellow-700">Rp {(selectedOrder.item_price ?? 0).toLocaleString('id-ID')}</p>
-                      )}
-                      <p className="text-[9px] text-yellow-600">* Tidak termasuk dalam total ongkir</p>
+                  </div>
+                )}
+                {(!selectedOrder.items || selectedOrder.items.length === 0) && selectedOrder.item_name && (
+                  <div className="pb-3 border-b border-dashed border-gray-300 mb-3">
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Barang</p>
+                    <div className="flex justify-between">
+                      <span className="text-gray-700">{selectedOrder.item_name}</span>
+                      {(selectedOrder.item_price ?? 0) > 0 && <span className="font-semibold text-gray-900">Rp {(selectedOrder.item_price ?? 0).toLocaleString('id-ID')}</span>}
                     </div>
-                  ) : null}
-                  <p className="font-semibold">RINCIAN BIAYA</p>
-                  <div className="flex justify-between">
+                  </div>
+                )}
+                <div className="pb-3 mb-3">
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Biaya Pengiriman</p>
+                  <div className="flex justify-between py-0.5">
                     <span className="text-gray-500">Ongkir</span>
                     <span>Rp {(selectedOrder.total_fee || 0).toLocaleString('id-ID')}</span>
                   </div>
-                  {(selectedOrder.titik ?? 0) > 0 && (
-                    <div>
-                      <p className="text-gray-500 font-medium">Titik Tambahan</p>
-                      {Array.from({ length: selectedOrder.titik! }).map((_, i) => (
-                        <div key={i} className="flex justify-between pl-2">
-                          <span className="text-gray-400">• Titik {i + 1}</span>
-                          <span>Rp 3.000</span>
-                        </div>
-                      ))}
+                  {(selectedOrder.titik ?? 0) > 0 && Array.from({ length: selectedOrder.titik! }).map((_, i) => (
+                    <div key={i} className="flex justify-between py-0.5 pl-2">
+                      <span className="text-gray-400">• Titik {i + 1}</span>
+                      <span>Rp 3.000</span>
                     </div>
-                  )}
-                  {(selectedOrder.beban ?? []).length > 0 && (
-                    <div>
-                      <p className="text-gray-500 font-medium">Beban Tambahan</p>
-                      {selectedOrder.beban!.map((b, i) => (
-                        <div key={i} className="flex justify-between pl-2">
-                          <span className="text-gray-400">• {b.nama}</span>
-                          <span>Rp {b.biaya.toLocaleString('id-ID')}</span>
-                        </div>
-                      ))}
+                  ))}
+                  {(selectedOrder.beban ?? []).map((b, i) => (
+                    <div key={i} className="flex justify-between py-0.5 pl-2">
+                      <span className="text-gray-400">• {b.nama}</span>
+                      <span>Rp {b.biaya.toLocaleString('id-ID')}</span>
                     </div>
-                  )}
-                  <div className="border-t border-gray-300 pt-2 flex justify-between font-bold text-sm">
-                    <span>TOTAL ONGKIR</span>
+                  ))}
+                  <div className="flex justify-between pt-1.5 mt-1 border-t border-gray-200 font-bold text-sm">
+                    <span>Total Ongkir</span>
                     <span>Rp {((selectedOrder.total_fee || 0) + (selectedOrder.total_biaya_titik ?? 0) + (selectedOrder.total_biaya_beban ?? 0)).toLocaleString('id-ID')}</span>
                   </div>
-                  {(selectedOrder.items && selectedOrder.items.length > 0) ? (
-                    <div className="border-t border-amber-300 pt-2 mt-1 flex justify-between font-bold text-sm text-amber-700">
-                      <span>TOTAL DIBAYAR CUSTOMER</span>
+                </div>
+                {(selectedOrder.items && selectedOrder.items.length > 0) && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    <div className="flex justify-between font-extrabold text-sm text-amber-800">
+                      <span>TOTAL DIBAYAR</span>
                       <span>Rp {((selectedOrder.total_fee || 0) + (selectedOrder.total_biaya_titik ?? 0) + (selectedOrder.total_biaya_beban ?? 0) + selectedOrder.items.reduce((s, i) => s + i.harga, 0)).toLocaleString('id-ID')}</span>
                     </div>
-                  ) : (selectedOrder.item_price ?? 0) > 0 ? (
-                    <div className="border-t border-amber-300 pt-2 mt-1 flex justify-between font-bold text-sm text-amber-700">
-                      <span>TOTAL DIBAYAR CUSTOMER</span>
+                    <p className="text-[9px] text-amber-600 mt-1">Ongkir + Total Belanja</p>
+                  </div>
+                )}
+                {(!selectedOrder.items || selectedOrder.items.length === 0) && (selectedOrder.item_price ?? 0) > 0 && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    <div className="flex justify-between font-extrabold text-sm text-amber-800">
+                      <span>TOTAL DIBAYAR</span>
                       <span>Rp {((selectedOrder.total_fee || 0) + (selectedOrder.total_biaya_titik ?? 0) + (selectedOrder.total_biaya_beban ?? 0) + (selectedOrder.item_price ?? 0)).toLocaleString('id-ID')}</span>
                     </div>
-                  ) : null}
+                    <p className="text-[9px] text-amber-600 mt-1">Ongkir + Harga Barang</p>
+                  </div>
+                )}
+                <div className="text-center text-gray-400 text-[10px] pt-3 mt-2 border-t border-dashed border-gray-200">
+                  Terima kasih telah menggunakan layanan KurirDev 🙏
                 </div>
               </div>
             </div>
@@ -331,67 +328,105 @@ export function CourierHistory() {
       {/* Invoice tersembunyi untuk di-capture */}
       {selectedOrder && (
         <div style={{ position: 'fixed', left: '-9999px', top: '0' }}>
-          <div ref={invoiceRef} style={{ background: '#ffffff', padding: '24px', width: '320px', fontFamily: 'sans-serif', fontSize: '12px', color: '#111827' }}>
-            <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-              <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#4338ca' }}>🛵 KurirDev</div>
-              <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>Invoice Pengiriman</div>
+          <div ref={invoiceRef} style={{ background: '#ffffff', padding: '24px', width: '320px', fontFamily: 'Arial, sans-serif', fontSize: '12px', color: '#111827' }}>
+
+            {/* Header */}
+            <div style={{ textAlign: 'center', paddingBottom: '12px', borderBottom: '2px solid #111827', marginBottom: '14px' }}>
+              <div style={{ fontSize: '20px', fontWeight: '800', color: '#4338ca' }}>🛵 KurirDev</div>
+              <div style={{ fontSize: '10px', color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '2px' }}>Invoice Pengiriman</div>
+              <div style={{ fontSize: '14px', fontWeight: '700', color: '#111827', marginTop: '10px' }}>{selectedOrder.order_number}</div>
+              <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>{format(parseISO(selectedOrder.created_at), 'dd MMM yyyy, HH:mm')}</div>
+              <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '1px' }}>Kurir: {user?.name}</div>
             </div>
-            <div style={{ marginBottom: '12px', lineHeight: '1.6' }}>
-              <div><span style={{ fontWeight: '600' }}>No. Order</span> : {selectedOrder.order_number}</div>
-              <div><span style={{ fontWeight: '600' }}>Tanggal</span> : {format(parseISO(selectedOrder.created_at), 'dd MMM yyyy, HH:mm')}</div>
-              <div><span style={{ fontWeight: '600' }}>Kurir</span> : {user?.name}</div>
+
+            {/* Kepada */}
+            <div style={{ paddingBottom: '12px', borderBottom: '1px dashed #d1d5db', marginBottom: '14px' }}>
+              <div style={{ fontSize: '9px', fontWeight: '700', letterSpacing: '0.1em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '6px' }}>Kepada</div>
+              <div style={{ fontWeight: '700', fontSize: '13px', color: '#111827' }}>{selectedOrder.customer_name}</div>
+              <div style={{ color: '#4b5563', marginTop: '2px', lineHeight: '1.5' }}>{selectedOrder.customer_address}</div>
+              <div style={{ color: '#4b5563', marginTop: '2px' }}>{selectedOrder.customer_phone}</div>
             </div>
-            <div style={{ borderTop: '1px solid #e5e7eb', borderBottom: '1px solid #e5e7eb', padding: '10px 0', marginBottom: '12px', lineHeight: '1.6' }}>
-              <div><span style={{ fontWeight: '600' }}>PENERIMA</span></div>
-              <div>{selectedOrder.customer_name}</div>
-              <div style={{ color: '#6b7280' }}>{selectedOrder.customer_address}</div>
-              <div style={{ color: '#6b7280' }}>{selectedOrder.customer_phone}</div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+
+            {/* Daftar Belanja — format baru */}
+            {(selectedOrder.items && selectedOrder.items.length > 0) && (
+              <div style={{ paddingBottom: '12px', borderBottom: '1px dashed #d1d5db', marginBottom: '14px' }}>
+                <div style={{ fontSize: '9px', fontWeight: '700', letterSpacing: '0.1em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '8px' }}>Daftar Belanja</div>
+                {selectedOrder.items.map((item, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <span style={{ color: '#374151', flex: 1, paddingRight: '8px' }}>{item.nama}</span>
+                    <span style={{ color: '#111827', fontWeight: '600', whiteSpace: 'nowrap' }}>Rp {item.harga.toLocaleString('id-ID')}</span>
+                  </div>
+                ))}
+                <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '6px', marginTop: '6px', borderTop: '1px solid #e5e7eb', fontWeight: '700' }}>
+                  <span style={{ color: '#374151' }}>Total Belanja</span>
+                  <span style={{ color: '#111827' }}>Rp {selectedOrder.items.reduce((s, i) => s + i.harga, 0).toLocaleString('id-ID')}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Barang — format lama (fallback) */}
+            {(!selectedOrder.items || selectedOrder.items.length === 0) && selectedOrder.item_name && (
+              <div style={{ paddingBottom: '12px', borderBottom: '1px dashed #d1d5db', marginBottom: '14px' }}>
+                <div style={{ fontSize: '9px', fontWeight: '700', letterSpacing: '0.1em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '6px' }}>Barang</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#374151' }}>{selectedOrder.item_name}</span>
+                  {(selectedOrder.item_price ?? 0) > 0 && (
+                    <span style={{ fontWeight: '600', color: '#111827' }}>Rp {(selectedOrder.item_price ?? 0).toLocaleString('id-ID')}</span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Biaya Pengiriman */}
+            <div style={{ marginBottom: '14px' }}>
+              <div style={{ fontSize: '9px', fontWeight: '700', letterSpacing: '0.1em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '8px' }}>Biaya Pengiriman</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <span style={{ color: '#374151' }}>Ongkir</span>
                 <span>Rp {(selectedOrder.total_fee || 0).toLocaleString('id-ID')}</span>
               </div>
-            </div>
-            <>
-              {(selectedOrder.titik ?? 0) > 0 && (
-                <div>
-                  <div style={{ color: '#6b7280', fontWeight: '500', marginTop: '6px' }}>Titik Tambahan</div>
-                  {Array.from({ length: selectedOrder.titik! }).map((_, i) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', paddingLeft: '8px' }}>
-                      <span style={{ color: '#9ca3af' }}>• Titik {i + 1}</span>
-                      <span>Rp 3.000</span>
-                    </div>
-                  ))}
+              {(selectedOrder.titik ?? 0) > 0 && Array.from({ length: selectedOrder.titik! }).map((_, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', paddingLeft: '8px' }}>
+                  <span style={{ color: '#9ca3af' }}>• Titik {i + 1}</span>
+                  <span>Rp 3.000</span>
                 </div>
-              )}
-              {(selectedOrder.beban ?? []).length > 0 && (
-                <div>
-                  <div style={{ color: '#6b7280', fontWeight: '500', marginTop: '6px' }}>Beban Tambahan</div>
-                  {selectedOrder.beban!.map((b, i) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', paddingLeft: '8px' }}>
-                      <span style={{ color: '#9ca3af' }}>• {b.nama}</span>
-                      <span>Rp {b.biaya.toLocaleString('id-ID')}</span>
-                    </div>
-                  ))}
+              ))}
+              {(selectedOrder.beban ?? []).map((b, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', paddingLeft: '8px' }}>
+                  <span style={{ color: '#9ca3af' }}>• {b.nama}</span>
+                  <span>Rp {b.biaya.toLocaleString('id-ID')}</span>
                 </div>
-              )}
-            </>
-            <div style={{ borderTop: '2px solid #111827', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '13px' }}>
-              <span>TOTAL ONGKIR</span>
-              <span>Rp {((selectedOrder.total_fee || 0) + (selectedOrder.total_biaya_titik ?? 0) + (selectedOrder.total_biaya_beban ?? 0)).toLocaleString('id-ID')}</span>
+              ))}
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '6px', marginTop: '6px', borderTop: '1px solid #e5e7eb', fontWeight: '700', fontSize: '13px' }}>
+                <span>Total Ongkir</span>
+                <span>Rp {((selectedOrder.total_fee || 0) + (selectedOrder.total_biaya_titik ?? 0) + (selectedOrder.total_biaya_beban ?? 0)).toLocaleString('id-ID')}</span>
+              </div>
             </div>
-            {(selectedOrder.items && selectedOrder.items.length > 0) ? (
-              <div style={{ borderTop: '1px dashed #d97706', paddingTop: '8px', marginTop: '6px', display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '13px', color: '#854d0e' }}>
-                <span>TOTAL DIBAYAR CUSTOMER</span>
-                <span>Rp {((selectedOrder.total_fee || 0) + (selectedOrder.total_biaya_titik ?? 0) + (selectedOrder.total_biaya_beban ?? 0) + selectedOrder.items.reduce((s, i) => s + i.harga, 0)).toLocaleString('id-ID')}</span>
+
+            {/* Total Dibayar */}
+            {(selectedOrder.items && selectedOrder.items.length > 0) && (
+              <div style={{ background: '#fef3c7', borderRadius: '8px', padding: '10px 12px', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '800', fontSize: '14px', color: '#92400e' }}>
+                  <span>TOTAL DIBAYAR</span>
+                  <span>Rp {((selectedOrder.total_fee || 0) + (selectedOrder.total_biaya_titik ?? 0) + (selectedOrder.total_biaya_beban ?? 0) + selectedOrder.items.reduce((s, i) => s + i.harga, 0)).toLocaleString('id-ID')}</span>
+                </div>
+                <div style={{ fontSize: '9px', color: '#b45309', marginTop: '3px' }}>Ongkir + Total Belanja</div>
               </div>
-            ) : (selectedOrder.item_price ?? 0) > 0 ? (
-              <div style={{ borderTop: '1px dashed #d97706', paddingTop: '8px', marginTop: '6px', display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '13px', color: '#854d0e' }}>
-                <span>TOTAL DIBAYAR CUSTOMER</span>
-                <span>Rp {((selectedOrder.total_fee || 0) + (selectedOrder.total_biaya_titik ?? 0) + (selectedOrder.total_biaya_beban ?? 0) + (selectedOrder.item_price ?? 0)).toLocaleString('id-ID')}</span>
+            )}
+            {(!selectedOrder.items || selectedOrder.items.length === 0) && (selectedOrder.item_price ?? 0) > 0 && (
+              <div style={{ background: '#fef3c7', borderRadius: '8px', padding: '10px 12px', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '800', fontSize: '14px', color: '#92400e' }}>
+                  <span>TOTAL DIBAYAR</span>
+                  <span>Rp {((selectedOrder.total_fee || 0) + (selectedOrder.total_biaya_titik ?? 0) + (selectedOrder.total_biaya_beban ?? 0) + (selectedOrder.item_price ?? 0)).toLocaleString('id-ID')}</span>
+                </div>
+                <div style={{ fontSize: '9px', color: '#b45309', marginTop: '3px' }}>Ongkir + Harga Barang</div>
               </div>
-            ) : null}
-            <div style={{ textAlign: 'center', fontSize: '11px', color: '#9ca3af', marginTop: '16px' }}>
+            )}
+
+            {/* Footer */}
+            <div style={{ textAlign: 'center', fontSize: '11px', color: '#9ca3af', borderTop: '1px dashed #e5e7eb', paddingTop: '12px' }}>
               Terima kasih telah menggunakan layanan KurirDev 🙏
             </div>
+
           </div>
         </div>
       )}
