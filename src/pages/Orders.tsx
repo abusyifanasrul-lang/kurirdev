@@ -87,8 +87,7 @@ export function Orders() {
     total_fee: 0,
     payment_status: 'unpaid',
     estimated_delivery_time: '',
-    item_name: '',
-    item_price: 0,
+    items: [] as { nama: string; harga: number }[],
   });
 
   // Edit Form State
@@ -247,8 +246,7 @@ export function Orders() {
       customer_address: '',
       total_fee: 0,
       estimated_delivery_time: '',
-      item_name: '',
-      item_price: 0,
+      items: [],
     });
   };
 
@@ -626,22 +624,55 @@ export function Orders() {
           </div>
           <Input label="Phone Number" value={newOrder.customer_phone} onChange={e => setNewOrder({ ...newOrder, customer_phone: e.target.value })} />
           <Textarea label="Address" value={newOrder.customer_address} onChange={e => setNewOrder({ ...newOrder, customer_address: e.target.value })} />
-          <Input
-            label="Nama Barang (opsional)"
-            placeholder="cth: Susu beruang 2 kaleng"
-            value={newOrder.item_name || ''}
-            onChange={e => setNewOrder({ ...newOrder, item_name: e.target.value })}
-          />
-          <Input
-            label="Harga Barang (opsional)"
-            type="text"
-            placeholder="Rp 0"
-            value={newOrder.item_price ? `Rp ${newOrder.item_price.toLocaleString('id-ID')}` : ''}
-            onChange={e => {
-              const val = Number(e.target.value.replace(/[^0-9]/g, ''));
-              setNewOrder({ ...newOrder, item_price: val });
-            }}
-          />
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-gray-700">Daftar Barang (opsional)</p>
+            {(newOrder.items || []).length > 0 && (
+              <div className="space-y-1">
+                {(newOrder.items || []).map((item, i) => (
+                  <div key={i} className="flex items-center justify-between bg-gray-50 px-3 py-1.5 rounded-lg text-sm">
+                    <span className="text-gray-800">{item.nama}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-600">Rp {item.harga.toLocaleString('id-ID')}</span>
+                      <button
+                        type="button"
+                        onClick={() => setNewOrder({ ...newOrder, items: (newOrder.items || []).filter((_, idx) => idx !== i) })}
+                        className="text-gray-400 hover:text-red-500"
+                      >✕</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Nama barang"
+                id="new_item_nama"
+                className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400"
+              />
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="Harga (Rp)"
+                id="new_item_harga"
+                className="w-32 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const namaEl = document.getElementById('new_item_nama') as HTMLInputElement;
+                  const hargaEl = document.getElementById('new_item_harga') as HTMLInputElement;
+                  const nama = namaEl?.value.trim();
+                  const harga = Number((hargaEl?.value || '').replace(/[^0-9]/g, ''));
+                  if (!nama) return;
+                  setNewOrder({ ...newOrder, items: [...(newOrder.items || []), { nama, harga }] });
+                  if (namaEl) namaEl.value = '';
+                  if (hargaEl) hargaEl.value = '';
+                }}
+                className="px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-lg font-medium"
+              >+ Tambah</button>
+            </div>
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <Input
               label="Fee Ongkir"
@@ -745,12 +776,28 @@ export function Orders() {
                   <span className="whitespace-pre-wrap">{selectedOrder.customer_address}</span>
                   <span className="text-gray-400">Fee</span>
                   <span className="font-medium">{formatCurrency(selectedOrder.total_fee)}</span>
-                  {(selectedOrder.item_name || selectedOrder.item_price) && (
+                  {((selectedOrder.items && selectedOrder.items.length > 0) || selectedOrder.item_name) && (
                     <>
-                      <span className="text-gray-400">Nama Barang</span>
-                      <span className="text-gray-800 font-medium">{selectedOrder.item_name || '-'}</span>
-                      <span className="text-gray-400">Harga Barang</span>
-                      <span className="text-gray-800 font-medium">{selectedOrder.item_price ? `Rp ${selectedOrder.item_price.toLocaleString('id-ID')}` : '-'}</span>
+                      <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Daftar Barang</span>
+                      {(selectedOrder.items && selectedOrder.items.length > 0) ? (
+                        <div className="space-y-0.5">
+                          {selectedOrder.items.map((item, i) => (
+                            <div key={i} className="flex justify-between text-sm">
+                              <span className="text-gray-800">{item.nama}</span>
+                              <span className="text-gray-600 font-medium">Rp {item.harga.toLocaleString('id-ID')}</span>
+                            </div>
+                          ))}
+                          <div className="flex justify-between text-sm font-semibold border-t border-gray-100 pt-1 mt-1">
+                            <span className="text-gray-700">Total Belanja</span>
+                            <span className="text-gray-800">Rp {selectedOrder.items.reduce((s, i) => s + i.harga, 0).toLocaleString('id-ID')}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-800">{selectedOrder.item_name || '-'}</span>
+                          <span className="text-gray-600 font-medium">{selectedOrder.item_price ? `Rp ${selectedOrder.item_price.toLocaleString('id-ID')}` : '-'}</span>
+                        </div>
+                      )}
                     </>
                   )}
                   <span className="text-gray-400">Setoran</span>
@@ -828,7 +875,7 @@ export function Orders() {
                       (selectedOrder.total_biaya_beban ?? 0)
                     )}
                   </span>
-                  {(selectedOrder.item_price ?? 0) > 0 && (
+                  {((selectedOrder.items && selectedOrder.items.length > 0) || (selectedOrder.item_price ?? 0) > 0) && (
                     <>
                       <span className="text-amber-800 font-bold border-t pt-1 mt-0.5">Total Dibayar Customer</span>
                       <span className="font-bold text-amber-800 border-t pt-1 mt-0.5">
@@ -836,7 +883,9 @@ export function Orders() {
                           (selectedOrder.total_fee || 0) +
                           (selectedOrder.total_biaya_titik ?? 0) +
                           (selectedOrder.total_biaya_beban ?? 0) +
-                          (selectedOrder.item_price ?? 0)
+                          ((selectedOrder.items && selectedOrder.items.length > 0)
+                            ? selectedOrder.items.reduce((s, i) => s + i.harga, 0)
+                            : (selectedOrder.item_price ?? 0))
                         )}
                       </span>
                     </>
