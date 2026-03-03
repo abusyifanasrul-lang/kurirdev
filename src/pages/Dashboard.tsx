@@ -262,7 +262,9 @@ export function Dashboard() {
                 {users.filter(u => u.role === 'courier' && u.is_active && u.is_online).length === 0 ? (
                   <p className="text-sm text-gray-500 text-center py-4">No online couriers in queue</p>
                 ) : (
-                  users.filter(u => u.role === 'courier' && u.is_active && u.is_online).map((courier, index) => (
+                  [...users.filter(u => u.role === 'courier' && u.is_active && u.is_online)]
+                    .sort((a, b) => ((a as any).queue_position ?? 999) - ((b as any).queue_position ?? 999))
+                    .map((courier, index) => (
                     <div key={courier.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
                       <div className="flex items-center gap-3">
                         <div className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 font-bold text-xs">

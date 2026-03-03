@@ -207,9 +207,9 @@ export function Orders() {
       <ChevronDown className="h-3 w-3 ml-1 text-indigo-600" />;
   };
 
-  const availableCouriers = users.filter(u =>
-    u.role === 'courier' && u.is_active === true && u.is_online === true
-  );
+  const availableCouriers = users
+    .filter(u => u.role === 'courier' && u.is_active === true && u.is_online === true)
+    .sort((a, b) => ((a as any).queue_position ?? 999) - ((b as any).queue_position ?? 999));
 
   // Sync edit form when order selected
   useEffect(() => {
@@ -250,13 +250,13 @@ export function Orders() {
     });
   };
 
-  const handleAssign = () => {
+  const handleAssign = async () => {
     if (!selectedOrder || !assignCourierId) return;
 
     const courier = availableCouriers.find(c => c.id === assignCourierId);
     if (courier) {
       assignCourier(selectedOrder.id, courier.id, courier.name, user?.id || "1", user?.name || 'Admin');
-      rotateQueue(courier.id); // Validating FIFO logic
+      await rotateQueue(courier.id); // FIFO: pindahkan kurir ke belakang antrian di Firestore
 
       // Send push notification to courier (non-blocking)
       const courierData = users.find(u => u.id === courier.id);

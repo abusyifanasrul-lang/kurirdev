@@ -14,7 +14,7 @@ interface CourierState {
   updateCourierStatus: (id: string, data: Partial<Courier>) => Promise<void>
   removeCourier: (id: string) => Promise<void>
   getAvailableCouriers: () => Courier[]
-  rotateQueue: (id: string) => void
+  rotateQueue: (assignedCourierId: string) => Promise<void>
 }
 
 const INITIAL_QUEUE: Courier[] = [
@@ -116,9 +116,24 @@ export const useCourierStore = create<CourierState>()(
         ) as Courier[]
       },
 
-      rotateQueue: (id) => {
+      rotateQueue: async (assignedCourierId) => {
+        const { users, updateUserQueuePosition } = useUserStore.getState()
+        const allCouriers = users.filter(u => u.role === 'courier') as (Courier & { queue_position?: number })[]
+        if (allCouriers.length === 0) return
+        const sorted = [...allCouriers].sort((a, b) =>
+          (a.queue_position ?? 999) - (b.queue_position ?? 999)
+        )
+        const maxPosition = sorted.length
+        const assignedCourier = sorted.find(c => c.id === assignedCourierId)
+        if (!assignedCourier) return
+        const assignedCurrentPos = assignedCourier.queue_position ?? 1
+        const updatePromises = sorted
+          .filter(c => c.id !== assignedCourierId && (c.queue_position ?? 999) > assignedCurrentPos)
+          .map(c => updateUserQueuePosition(c.id, (c.queue_position ?? 999) - 1))
+        updatePromises.push(updateUserQueuePosition(assignedCourierId, maxPosition))
+        await Promise.all(updatePromises)
         set((state) => {
-          const index = state.queue.findIndex(c => c.id === id)
+          const index = state.queue.findIndex(c => c.id === assignedCourierId)
           if (index === -1) return state
           const newQueue = [...state.queue]
           const [courier] = newQueue.splice(index, 1)

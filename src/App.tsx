@@ -5,7 +5,6 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { seedOrders } from '@/lib/firebaseOrderSeeder';
-import { seedUsers } from '@/lib/firebaseUserSeeder';
 import { onForegroundMessage, refreshFCMToken } from '@/lib/fcm';
 
 // Loading Skeleton
@@ -167,13 +166,18 @@ function PWAUpdateBanner() {
 
 export function App() {
   const subscribeUsers = useUserStore(state => state.subscribeUsers)
+  const initQueuePositions = useUserStore(state => state.initQueuePositions)
   const subscribeOrders = useOrderStore(state => state.subscribeOrders)
 
   useEffect(() => {
-    seedUsers()
     seedOrders()
     const unsubUsers = subscribeUsers()
     const unsubOrders = subscribeOrders()
+
+    // Inisialisasi queue_position untuk kurir yang belum punya field ini di Firestore
+    setTimeout(() => {
+      initQueuePositions().catch(console.error)
+    }, 2000)
 
     // 1. Refresh FCM Token if logged in as courier (Tahap 4)
     const currentUserStr = sessionStorage.getItem('user-session');
