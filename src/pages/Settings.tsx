@@ -4,18 +4,15 @@ import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
 import { Modal } from '@/components/ui/Modal';
 import { Badge } from '@/components/ui/Badge';
 import type { User as UserType } from '@/types';
 
 // Store
-// Store
 import { useUserStore } from '@/stores/useUserStore';
 import { useAuth } from '@/context/AuthContext';
 import { useCourierStore } from '@/stores/useCourierStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
-import { Courier } from '@/types';
 
 export function Settings() {
   const { users, updateUser, addUser } = useUserStore();
@@ -93,46 +90,18 @@ export function Settings() {
   };
 
   const handleAddUser = () => {
-    const parsedRole = newUser.role as 'admin' | 'courier';
-
-    if (parsedRole === 'courier') {
-      // Use CourierStore to ensure sync (it calls addUser internally)
-      const courierData: Courier = {
-        id: crypto.randomUUID(),
-        name: newUser.name,
-        email: newUser.email,
-        password: newUser.password, // In real app, hash this
-        role: 'courier',
-        phone: newUser.phone,
-        is_active: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        // Courier specific defaults
-        is_online: false,
-        vehicle_type: 'motorcycle',
-        plate_number: '',
-        commission_rate: 80,
-      };
-      useCourierStore.getState().addCourier(courierData);
-    } else {
-      // Normal admin add
-      const userData: UserType = {
-        id: crypto.randomUUID(),
-        name: newUser.name,
-        email: newUser.email,
-        role: 'admin', // Enforce admin, or use parsedRole if extended
-        phone: newUser.phone,
-        is_active: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      // For Admin, we invoke addUser directly (UserStore)
-      // Note: addUser in UserStore doesn't handle password currently for mock, 
-      // but we should arguably store it if we had auth logic relying on it there.
-      // But useCourierStore relies on syncing to useUserStore which expects User object.
-      // We'll stick to basic UserType.
-      addUser(userData);
-    }
+    // Normal admin add
+    const userData: UserType = {
+      id: crypto.randomUUID(),
+      name: newUser.name,
+      email: newUser.email,
+      role: 'admin', // Enforce admin
+      phone: newUser.phone,
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    addUser(userData);
 
     setIsAddUserModalOpen(false);
     setNewUser({ name: '', email: '', password: '', role: 'admin', phone: '' });
@@ -451,7 +420,7 @@ export function Settings() {
       <Modal
         isOpen={isAddUserModalOpen}
         onClose={() => setIsAddUserModalOpen(false)}
-        title="Add New User"
+        title="Add New Admin"
       >
         <div className="space-y-4">
           <Input
@@ -475,16 +444,7 @@ export function Settings() {
               onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
               placeholder="Min 8 chars"
             />
-            <Select
-              label="Role"
-              value={newUser.role}
-              onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
-              options={[
-                { value: 'admin', label: 'Admin' },
-                { value: 'courier', label: 'Courier' }
-              ]}
-            />
-          </div>
+                      </div>
           <Input
             label="Phone"
             value={newUser.phone}

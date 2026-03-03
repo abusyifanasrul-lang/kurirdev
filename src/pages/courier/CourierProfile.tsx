@@ -37,6 +37,16 @@ export function CourierProfile() {
     [couriers, user?.id]
   );
 
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission>(
+    typeof Notification !== 'undefined' ? Notification.permission : 'default'
+  );
+
+  const handleRequestNotifPermission = async () => {
+    if (typeof Notification === 'undefined') return;
+    const result = await Notification.requestPermission();
+    setNotifPermission(result);
+  };
+
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
@@ -97,8 +107,10 @@ export function CourierProfile() {
             <h2 className="text-xl font-bold text-gray-900">{user?.name || 'Kurir'}</h2>
             <p className="text-sm text-gray-500">Kurir</p>
             <div className="flex items-center gap-1 mt-1">
-              <span className="w-2 h-2 bg-green-500 rounded-full" />
-              <span className="text-xs text-green-600">Aktif</span>
+              <span className={`w-2 h-2 rounded-full ${isSuspended ? 'bg-red-500' : 'bg-green-500'}`} />
+              <span className={`text-xs ${isSuspended ? 'text-red-600' : 'text-green-600'}`}>
+                {isSuspended ? 'Disuspend' : 'Aktif'}
+              </span>
             </div>
           </div>
         </div>
@@ -302,17 +314,73 @@ export function CourierProfile() {
           )}
         </div>
 
-        {/* Notifikasi Push Placeholder */}
-        <div className="flex items-center justify-between p-4 opacity-50 cursor-not-allowed grayscale">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
-              <Bell className="h-5 w-5 text-gray-400" />
+        {/* Notifikasi Push — Status */}
+        <div className="flex flex-col">
+          <div className="flex items-center justify-between p-4">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                notifPermission === 'granted' ? 'bg-green-50' :
+                notifPermission === 'denied' ? 'bg-red-50' : 'bg-yellow-50'
+              }`}>
+                <Bell className={`h-5 w-5 ${
+                  notifPermission === 'granted' ? 'text-green-600' :
+                  notifPermission === 'denied' ? 'text-red-500' : 'text-yellow-500'
+                }`} />
+              </div>
+              <div className="text-left">
+                <p className="font-medium text-gray-900">Notifikasi Order</p>
+                <p className={`text-sm font-medium ${
+                  notifPermission === 'granted' ? 'text-green-600' :
+                  notifPermission === 'denied' ? 'text-red-500' : 'text-yellow-500'
+                }`}>
+                  {notifPermission === 'granted' ? '✅ Diizinkan' :
+                   notifPermission === 'denied' ? '❌ Diblokir' : '⚠️ Belum diizinkan'}
+                </p>
+              </div>
             </div>
-            <div className="text-left">
-              <p className="font-medium text-gray-900">Notifikasi Push</p>
-              <p className="text-sm text-gray-500">Segera hadir</p>
-            </div>
+            {notifPermission === 'default' && (
+              <button
+                onClick={handleRequestNotifPermission}
+                className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-full hover:bg-indigo-100"
+              >
+                Izinkan
+              </button>
+            )}
           </div>
+
+          {/* Warning jika diblokir */}
+          {notifPermission === 'denied' && (
+            <div className="mx-4 mb-4 p-3 bg-red-50 border border-red-200 rounded-xl space-y-2">
+              <p className="text-sm font-semibold text-red-700">
+                ⚠️ Notifikasi order diblokir!
+              </p>
+              <p className="text-xs text-red-600">
+                Kamu tidak akan mendapat notifikasi saat ada order baru. Aktifkan notifikasi dengan langkah berikut:
+              </p>
+              <div className="text-xs text-red-700 space-y-1 bg-white rounded-lg p-2 border border-red-100">
+                <p className="font-semibold mb-1">Di Chrome Android:</p>
+                <p>1. Ketuk ikon 🔒 di address bar browser</p>
+                <p>2. Ketuk "Izin situs"</p>
+                <p>3. Aktifkan <span className="font-semibold">Notifikasi</span></p>
+                <p className="font-semibold mt-2 mb-1">Atau via Pengaturan HP:</p>
+                <p>1. Buka <span className="font-semibold">Pengaturan</span> HP</p>
+                <p>2. Cari & ketuk <span className="font-semibold">Aplikasi → Chrome</span></p>
+                <p>3. Ketuk <span className="font-semibold">Notifikasi</span> → Aktifkan</p>
+              </div>
+              <p className="text-xs text-red-500 italic">
+                Setelah mengaktifkan, muat ulang halaman ini.
+              </p>
+            </div>
+          )}
+
+          {/* Info jika belum diputuskan */}
+          {notifPermission === 'default' && (
+            <div className="mx-4 mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
+              <p className="text-xs text-yellow-700">
+                Izinkan notifikasi agar kamu bisa menerima order baru secara real-time.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
