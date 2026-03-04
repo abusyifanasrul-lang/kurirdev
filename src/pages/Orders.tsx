@@ -25,6 +25,7 @@ import {
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useCourierStore } from '@/stores/useCourierStore';
 import { useUserStore } from '@/stores/useUserStore';
+import { useNotificationStore } from '@/stores/useNotificationStore';
 import { useAuth } from '@/context/AuthContext';
 import type { Order, CreateOrderPayload, PaymentStatus } from '@/types';
 
@@ -54,6 +55,7 @@ export function Orders() {
   const { orders, addOrder, assignCourier, cancelOrder, generateOrderId, updateOrder } = useOrderStore();
   const { rotateQueue } = useCourierStore();
   const { users } = useUserStore();
+  const { addNotification } = useNotificationStore();
   const { user } = useAuth(); // Current admin user
 
   const getCourierName = (courierId?: string) => {
@@ -257,28 +259,47 @@ export function Orders() {
 
     const courier = availableCouriers.find(c => c.id === assignCourierId);
     if (courier) {
-      assignCourier(selectedOrder.id, courier.id, courier.name, user?.id || "1", user?.name || 'Admin');
-      await rotateQueue(courier.id); // FIFO: pindahkan kurir ke belakang antrian di Firestore
+      // Simpan instruksi (notes) ke order jika ada perubahan
+      if (selectedOrder.notes !== undefined) {
+        updateOrder(selectedOrder.id, { notes: selectedOrder.notes });
+      }
 
-      // Send push notification to courier (non-blocking)
+      assignCourier(selectedOrder.id, courier.id, courier.name, user?.id || "1", user?.name || 'Admin');
+      await rotateQueue(courier.id);
+
+      // Buat teks instruksi
+      const notes = (selectedOrder.notes || '').toLowerCase().trim();
+      const instruksi = notes === 'sls' || notes === 'selesai'
+        ? '✅ Barang sudah siap, langsung ambil!'
+        : notes.includes('cek langsung')
+        ? '🔍 Cek dulu ke penjual sebelum ambil'
+        : notes.includes('pesan langsung')
+        ? '🛒 Kamu yang pesan di tempat'
+        : notes === 'pss' || notes === 'posisi'
+        ? '📍 Admin minta update posisimu'
+        : notes
+        ? `📋 ${selectedOrder.notes}` 
+        : 'Segera proses!';
+
+      const notifTitle = `🛵 Order Baru — ${selectedOrder.order_number}`;
+      const notifBody = `${selectedOrder.customer_name} • ${instruksi}`;
+
+      // Simpan ke Firestore agar muncul di halaman notifikasi
+      await addNotification({
+        user_id: courier.id,
+        user_name: courier.name,
+        title: notifTitle,
+        body: notifBody,
+        data: { orderId: selectedOrder.id, type: 'order_assigned' },
+      });
+
+      // Kirim push notification ke HP kurir
       const courierData = users.find(u => u.id === courier.id);
       if (courierData?.fcm_token) {
-        const notes = (selectedOrder.notes || '').toLowerCase().trim();
-        const instruksi = notes === 'sls' || notes === 'selesai'
-          ? '✅ Barang sudah siap, langsung ambil!'
-          : notes.includes('cek langsung')
-          ? '🔍 Cek dulu ke penjual sebelum ambil'
-          : notes.includes('pesan langsung')
-          ? '🛒 Kamu yang pesan di tempat'
-          : notes === 'pss' || notes === 'posisi'
-          ? '📍 Admin minta update posisimu'
-          : notes
-          ? `📋 ${selectedOrder.notes}` 
-          : 'Segera proses!';
         sendPushNotification({
           token: courierData.fcm_token,
-          title: `🛵 Order Baru — ${selectedOrder.order_number}`,
-          body: `${selectedOrder.customer_name} • ${instruksi}`,
+          title: notifTitle,
+          body: notifBody,
           data: { orderId: selectedOrder.id, type: 'order_assigned' }
         }).catch(console.error);
       }
@@ -728,20 +749,6 @@ export function Orders() {
               { value: 'paid', label: 'Sudah Setor' }
             ]}
           />
-          <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-gray-700">Instruksi untuk Kurir</label>
-            <select
-              value={newOrder.notes || ''}
-              onChange={e => setNewOrder({ ...newOrder, notes: e.target.value })}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400 bg-white"
-            >
-              <option value="">— Tidak ada instruksi khusus —</option>
-              <option value="sls">✅ sls — Barang sudah selesai, tinggal diambil</option>
-              <option value="cek langsung">🔍 cek langsung — Admin sudah pesan, kurir cek ke penjual</option>
-              <option value="pesan langsung">🛒 pesan langsung — Kurir yang pesan di tempat</option>
-              <option value="pss">📍 pss — Minta kurir update posisi sekarang</option>
-            </select>
-          </div>
           <div className="flex justify-end gap-2 pt-4">
             <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>Cancel</Button>
             <Button onClick={handleCreateOrder}>Create Order</Button>
@@ -874,6 +881,20 @@ export function Orders() {
                       Recommended: <strong>{availableCouriers[0].name}</strong>
                     </p>
                   )}
+                  <div className="mt-2 space-y-1">
+                    <label className="block text-xs font-medium text-indigo-900">Instruksi untuk Kurir</label>
+                    <select
+                      value={selectedOrder?.notes || ''}
+                      onChange={e => setSelectedOrder(selectedOrder ? { ...selectedOrder, notes: e.target.value } : null)}
+                      className="w-full border border-indigo-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400 bg-white"
+                    >
+                      <option value="">— Tidak ada instruksi khusus —</option>
+                      <option value="sls">✅ sls — Barang sudah siap, langsung ambil</option>
+                      <option value="cek langsung">🔍 cek langsung — Admin sudah pesan, kurir cek ke penjual</option>
+                      <option value="pesan langsung">🛒 pesan langsung — Kurir yang pesan di tempat</option>
+                      <option value="pss">📍 pss — Minta kurir update posisi sekarang</option>
+                    </select>
+                  </div>
                 </div>
               ) : (
                 <div className="text-sm grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
