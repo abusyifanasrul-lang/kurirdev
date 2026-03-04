@@ -197,6 +197,39 @@ export function CourierOrderDetail() {
         </span>
       </div>
 
+      {/* Banner Instruksi Admin */}
+      {order.notes && (() => {
+        const notes = order.notes.toLowerCase().trim();
+        const isSls = notes === 'sls' || notes === 'selesai';
+        const isCekLangsung = notes.includes('cek langsung');
+        const isPesanLangsung = notes.includes('pesan langsung');
+        const isPss = notes === 'pss' || notes === 'posisi';
+        const isKnownCode = isSls || isCekLangsung || isPesanLangsung || isPss;
+
+        const config = isSls
+          ? { bg: 'bg-green-50', border: 'border-green-400', icon: '✅', label: 'BARANG SUDAH SIAP', desc: 'Langsung ambil ke penjual, tidak perlu nunggu.', text: 'text-green-800' }
+          : isCekLangsung
+          ? { bg: 'bg-yellow-50', border: 'border-yellow-400', icon: '🔍', label: 'CEK LANGSUNG', desc: 'Admin sudah pesan. Cek ke penjual apakah sudah selesai, lalu lapor ke admin.', text: 'text-yellow-800' }
+          : isPesanLangsung
+          ? { bg: 'bg-orange-50', border: 'border-orange-400', icon: '🛒', label: 'PESAN LANGSUNG', desc: 'Kamu yang pesan di tempat. Jangan lupa update daftar barang & harga di app.', text: 'text-orange-800' }
+          : isPss
+          ? { bg: 'bg-blue-50', border: 'border-blue-400', icon: '📍', label: 'INFO POSISI DIMINTA', desc: 'Admin minta update posisimu sekarang. Balas ke admin via WhatsApp.', text: 'text-blue-800' }
+          : { bg: 'bg-gray-50', border: 'border-gray-300', icon: '📋', label: 'CATATAN ADMIN', desc: order.notes, text: 'text-gray-800' };
+
+        return (
+          <div className={`mx-4 mt-1 px-4 py-3 rounded-xl border-l-4 ${config.bg} ${config.border}`}>
+            <div className={`flex items-center gap-2 font-bold text-sm ${config.text}`}>
+              <span>{config.icon}</span>
+              <span>{config.label}</span>
+            </div>
+            <p className={`text-xs mt-1 ${config.text} opacity-80`}>{config.desc}</p>
+            {!isKnownCode && (
+              <p className="text-[10px] text-gray-400 mt-1 italic">Catatan dari admin</p>
+            )}
+          </div>
+        );
+      })()}
+
       <div className="px-4 space-y-3">
 
         {/* Customer Info compact */}

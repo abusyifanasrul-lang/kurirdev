@@ -88,6 +88,7 @@ export function Orders() {
     payment_status: 'unpaid',
     estimated_delivery_time: '',
     items: [] as { nama: string; harga: number }[],
+    notes: '',
   });
 
   // Edit Form State
@@ -247,6 +248,7 @@ export function Orders() {
       total_fee: 0,
       estimated_delivery_time: '',
       items: [],
+      notes: '',
     });
   };
 
@@ -261,10 +263,22 @@ export function Orders() {
       // Send push notification to courier (non-blocking)
       const courierData = users.find(u => u.id === courier.id);
       if (courierData?.fcm_token) {
+        const notes = (selectedOrder.notes || '').toLowerCase().trim();
+        const instruksi = notes === 'sls' || notes === 'selesai'
+          ? '✅ Barang sudah siap, langsung ambil!'
+          : notes.includes('cek langsung')
+          ? '🔍 Cek dulu ke penjual sebelum ambil'
+          : notes.includes('pesan langsung')
+          ? '🛒 Kamu yang pesan di tempat'
+          : notes === 'pss' || notes === 'posisi'
+          ? '📍 Admin minta update posisimu'
+          : notes
+          ? `📋 ${selectedOrder.notes}` 
+          : 'Segera proses!';
         sendPushNotification({
           token: courierData.fcm_token,
-          title: 'Order Baru 🚀',
-          body: `Order ${selectedOrder.order_number} - ${selectedOrder.customer_name} telah di-assign ke kamu`,
+          title: `🛵 Order Baru — ${selectedOrder.order_number}`,
+          body: `${selectedOrder.customer_name} • ${instruksi}`,
           data: { orderId: selectedOrder.id, type: 'order_assigned' }
         }).catch(console.error);
       }
@@ -714,6 +728,20 @@ export function Orders() {
               { value: 'paid', label: 'Sudah Setor' }
             ]}
           />
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-gray-700">Instruksi untuk Kurir</label>
+            <select
+              value={newOrder.notes || ''}
+              onChange={e => setNewOrder({ ...newOrder, notes: e.target.value })}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400 bg-white"
+            >
+              <option value="">— Tidak ada instruksi khusus —</option>
+              <option value="sls">✅ sls — Barang sudah selesai, tinggal diambil</option>
+              <option value="cek langsung">🔍 cek langsung — Admin sudah pesan, kurir cek ke penjual</option>
+              <option value="pesan langsung">🛒 pesan langsung — Kurir yang pesan di tempat</option>
+              <option value="pss">📍 pss — Minta kurir update posisi sekarang</option>
+            </select>
+          </div>
           <div className="flex justify-end gap-2 pt-4">
             <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>Cancel</Button>
             <Button onClick={handleCreateOrder}>Create Order</Button>

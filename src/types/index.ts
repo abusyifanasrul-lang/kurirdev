@@ -73,6 +73,7 @@ export interface CreateOrderPayload {
   payment_status?: PaymentStatus;
   estimated_delivery_time?: string;
   items?: { nama: string; harga: number }[];
+  notes?: string;
 }
 
 // Courier types
