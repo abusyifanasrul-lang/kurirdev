@@ -174,7 +174,8 @@ export function App() {
     const unsubUsers = subscribeUsers()
     const unsubOrders = subscribeOrders()
 
-    // Inisialisasi queue_position untuk kurir yang belum punya field ini di Firestore
+    // Inisialisasi queue_position — hanya untuk kurir baru yang belum punya posisi
+    // Flag di localStorage mencegah overwrite saat reload/deploy
     setTimeout(() => {
       initQueuePositions().catch(console.error)
     }, 2000)

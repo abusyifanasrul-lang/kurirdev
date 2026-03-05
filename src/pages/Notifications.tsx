@@ -167,51 +167,96 @@ export function Notifications() {
 
             {/* Quick Templates */}
             <div className="mt-6 pt-6 border-t border-gray-200">
-              <h4 className="text-sm font-medium text-gray-700 mb-3">Quick Templates</h4>
+              <h4 className="text-sm font-medium text-gray-700 mb-3">Template Cepat</h4>
               <div className="space-y-2">
                 <button
                   className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm transition-colors flex items-start gap-3"
                   onClick={() => {
-                    setNotificationTitle('New Order Reminder');
-                    setNotificationBody('You have pending orders waiting for pickup. Please check your app.');
+                    setNotificationTitle('📍 Update Posisi');
+                    setNotificationBody('Kak, lagi di mana sekarang? Tolong update posisi atau status terakhir di aplikasi ya, biar kita bisa koordinasi 🙏');
                   }}
                 >
                   <div className="p-1.5 bg-blue-100 rounded-md text-blue-600 mt-0.5">
                     <Info className="w-4 h-4" />
                   </div>
                   <div>
-                    <p className="font-medium">New Order Reminder</p>
-                    <p className="text-gray-500 text-xs mt-1">Remind courier about pending orders</p>
+                    <p className="font-medium">Update Posisi</p>
+                    <p className="text-gray-500 text-xs mt-1">Minta kurir update keberadaan atau status terakhir</p>
                   </div>
                 </button>
                 <button
                   className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm transition-colors flex items-start gap-3"
                   onClick={() => {
-                    setNotificationTitle('Urgent: High Priority Order');
-                    setNotificationBody('You have a high priority order. Please deliver as soon as possible.');
+                    setNotificationTitle('💬 Konfirmasi Harga Barang');
+                    setNotificationBody('Kak, jangan lupa tanya harga barangnya dulu ke customer sebelum dibeli. Kalau sudah deal, update di aplikasi ya 👍');
+                  }}
+                >
+                  <div className="p-1.5 bg-indigo-100 rounded-md text-indigo-600 mt-0.5">
+                    <Info className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="font-medium">Konfirmasi Harga Barang</p>
+                    <p className="text-gray-500 text-xs mt-1">Kurir belum update harga barang di aplikasi</p>
+                  </div>
+                </button>
+                <button
+                  className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm transition-colors flex items-start gap-3"
+                  onClick={() => {
+                    setNotificationTitle('⏳ Customer Lagi Menunggu');
+                    setNotificationBody('Kak, customer-nya udah nanya estimasi nih. Tolong update status di aplikasi, atau kabarin kira-kira sampai jam berapa 🙏');
+                  }}
+                >
+                  <div className="p-1.5 bg-yellow-100 rounded-md text-yellow-600 mt-0.5">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="font-medium">Customer Menunggu</p>
+                    <p className="text-gray-500 text-xs mt-1">Customer tanya estimasi — minta kurir update status</p>
+                  </div>
+                </button>
+                <button
+                  className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm transition-colors flex items-start gap-3"
+                  onClick={() => {
+                    setNotificationTitle('🚨 Barang Tidak Tersedia');
+                    setNotificationBody('Kak, kalau barangnya kosong atau harganya beda jauh — jangan beli dulu. Hubungi admin sekarang ya, kita koordinasi sama customer-nya langsung');
                   }}
                 >
                   <div className="p-1.5 bg-red-100 rounded-md text-red-600 mt-0.5">
                     <AlertTriangle className="w-4 h-4" />
                   </div>
                   <div>
-                    <p className="font-medium">High Priority Alert</p>
-                    <p className="text-gray-500 text-xs mt-1">Alert for urgent deliveries</p>
+                    <p className="font-medium">Barang Tidak Tersedia</p>
+                    <p className="text-gray-500 text-xs mt-1">Instruksi darurat jika stok kosong atau harga berubah drastis</p>
                   </div>
                 </button>
                 <button
                   className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm transition-colors flex items-start gap-3"
                   onClick={() => {
-                    setNotificationTitle('Great Job Today!');
-                    setNotificationBody('Thank you for your hard work today. Keep up the excellent service!');
+                    setNotificationTitle('💰 Pengingat Setoran');
+                    setNotificationBody('Kak, masih ada setoran yang belum masuk nih. Kalau sudah disetor, konfirmasi ke admin ya biar langsung dicatat 🙏');
                   }}
                 >
-                  <div className="p-1.5 bg-yellow-100 rounded-md text-yellow-600 mt-0.5">
+                  <div className="p-1.5 bg-purple-100 rounded-md text-purple-600 mt-0.5">
+                    <Bell className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="font-medium">Pengingat Setoran</p>
+                    <p className="text-gray-500 text-xs mt-1">Kurir punya order unpaid yang belum disetor ke admin</p>
+                  </div>
+                </button>
+                <button
+                  className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm transition-colors flex items-start gap-3"
+                  onClick={() => {
+                    setNotificationTitle('🌟 Terima Kasih Hari Ini!');
+                    setNotificationBody('Makasih banyak Kak, hari ini udah kerja keras! Istirahat yang cukup ya. Semangat lagi besok 💪');
+                  }}
+                >
+                  <div className="p-1.5 bg-green-100 rounded-md text-green-600 mt-0.5">
                     <Smile className="w-4 h-4" />
                   </div>
                   <div>
-                    <p className="font-medium">Appreciation Message</p>
-                    <p className="text-gray-500 text-xs mt-1">Send thank you message</p>
+                    <p className="font-medium">Apresiasi Kurir</p>
+                    <p className="text-gray-500 text-xs mt-1">Motivasi setelah hari yang sibuk</p>
                   </div>
                 </button>
               </div>

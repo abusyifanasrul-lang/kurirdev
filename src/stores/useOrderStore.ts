@@ -5,7 +5,6 @@ import {
   onSnapshot
 } from 'firebase/firestore'
 import { Order, OrderStatus, OrderStatusHistory } from '@/types'
-import { useNotificationStore } from './useNotificationStore'
 import { sendMockNotification } from '@/utils/notification'
 
 interface OrderState {
@@ -94,19 +93,10 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   assignCourier: async (orderId, courierId, courierName, userId, userName) => {
     await get().updateOrderStatus(orderId, 'assigned', userId, userName, `Assigned to ${courierName}`)
 
-    const order = get().orders.find(o => o.id === orderId)
     await updateDoc(doc(db, 'orders', orderId), {
       courier_id: courierId,
       assigned_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
-    })
-
-    useNotificationStore.getState().addNotification({
-      user_id: courierId,
-      user_name: courierName,
-      title: 'New Order Assigned',
-      body: `Order ${order?.order_number} has been assigned to you.`,
-      data: { orderId }
     })
   },
 
