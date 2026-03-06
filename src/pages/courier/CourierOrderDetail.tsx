@@ -85,9 +85,9 @@ export function CourierOrderDetail() {
 
   const getNextStatusButton = () => {
     switch (getNextStatus()) {
-      case 'picked_up': return { label: 'Pick Up Order', color: 'bg-green-600 hover:bg-green-700' };
-      case 'in_transit': return { label: 'Mulai Antar', color: 'bg-green-600 hover:bg-green-700' };
-      case 'delivered': return { label: 'Tandai Terkirim', color: 'bg-green-600 hover:bg-green-700' };
+      case 'picked_up': return { label: 'GAS 🛵 Menuju Penjual', color: 'bg-green-600 hover:bg-green-700' };
+      case 'in_transit': return { label: 'GAS 🛵 Menuju Customer', color: 'bg-green-600 hover:bg-green-700' };
+      case 'delivered': return { label: 'CEKLIS ✅ Tandai Terkirim', color: 'bg-green-600 hover:bg-green-700' };
       default: return null;
     }
   };
@@ -176,10 +176,10 @@ export function CourierOrderDetail() {
   };
 
   const statusSteps = [
-    { status: 'assigned', label: 'Assigned', icon: Package },
-    { status: 'picked_up', label: 'Picked Up', icon: CheckCircle },
-    { status: 'in_transit', label: 'On The Way', icon: Truck },
-    { status: 'delivered', label: 'Delivered', icon: CheckCircle },
+    { status: 'assigned', label: 'Diterima', icon: Package },
+    { status: 'picked_up', label: 'GAS — Penjual', icon: CheckCircle },
+    { status: 'in_transit', label: 'GAS — Customer', icon: Truck },
+    { status: 'delivered', label: 'CEKLIS ✅', icon: CheckCircle },
   ];
 
   const nextStatusButton = getNextStatusButton();

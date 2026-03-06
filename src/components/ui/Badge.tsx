@@ -49,14 +49,19 @@ export function getStatusBadgeVariant(status: string): BadgeProps['variant'] {
   return statusVariants[status] || 'default';
 }
 
-export function getStatusLabel(status: string): string {
-  const statusLabels: Record<string, string> = {
-    pending: 'Pending',
-    assigned: 'Assigned',
-    picked_up: 'Picked Up',
-    in_transit: 'In Transit',
-    delivered: 'Delivered',
-    cancelled: 'Cancelled',
+export function getStatusLabel(status: string, context?: 'admin' | 'courier'): string {
+  const adminLabels: Record<string, string> = {
+    pending: '⏳ Menunggu Kurir',
+    assigned: '📲 Kurir Ditugaskan',
+    picked_up: '🛵 GAS — Menuju Penjual',
+    in_transit: '🛵 GAS — Menuju Customer',
+    delivered: '✅ CEKLIS — Terkirim',
+    cancelled: '❌ CANCEL — Dibatalkan',
   };
-  return statusLabels[status] || status;
+  const courierLabels: Record<string, string> = {
+    ...adminLabels,
+    assigned: '📲 Order Diterima',
+  };
+  const labels = context === 'courier' ? courierLabels : adminLabels;
+  return labels[status] || status;
 }

@@ -21,7 +21,7 @@ export function CourierOrders() {
   // Or maybe show all but filter by status tab?
   // Let's keep logic similar to before but allow filtering.
   // Actually, usually "History" has delivered/cancelled. "Orders" has active.
-  // But let's follow the existing UI tabs: "All", "Assigned", "Picked Up", "In Transit".
+  // But let's follow the existing UI tabs: "All", "Assigned", "Gas — Penjual", "Gas — Customer".
 
   const filteredOrders = myOrders.filter((order) => {
     // Search
@@ -45,10 +45,10 @@ export function CourierOrders() {
   });
 
   const filters = [
-    { key: 'all', label: 'Active' },
-    { key: 'assigned', label: 'Assigned' },
-    { key: 'picked_up', label: 'Picked Up' },
-    { key: 'in_transit', label: 'In Transit' },
+    { key: 'all', label: 'Aktif' },
+    { key: 'assigned', label: 'Order Diterima' },
+    { key: 'picked_up', label: 'GAS — Penjual' },
+    { key: 'in_transit', label: 'GAS — Customer' },
   ];
 
   return (
@@ -100,7 +100,7 @@ export function CourierOrders() {
                   <div className="flex items-center gap-2 mb-1">
                     <p className="font-semibold text-gray-900">{order.order_number}</p>
                     <Badge variant={getStatusBadgeVariant(order.status)} size="sm">
-                      {getStatusLabel(order.status)}
+                      {getStatusLabel(order.status, 'courier')}
                     </Badge>
                   </div>
                   <p className="text-sm font-medium text-gray-700">{order.customer_name}</p>

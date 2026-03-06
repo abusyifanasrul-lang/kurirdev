@@ -14,12 +14,12 @@ import { Order } from '@/types';
 type StatusFilter = 'all' | 'delivered' | 'cancelled';
 
 const statusConfig: Record<string, { color: string; bg: string; icon: typeof CheckCircle; label: string }> = {
-  delivered: { color: 'text-green-600', bg: 'bg-green-50', icon: CheckCircle, label: 'Delivered' },
-  cancelled: { color: 'text-red-600', bg: 'bg-red-50', icon: XCircle, label: 'Cancelled' },
-  in_transit: { color: 'text-blue-600', bg: 'bg-blue-50', icon: Package, label: 'In Transit' },
-  picked_up: { color: 'text-orange-600', bg: 'bg-orange-50', icon: Package, label: 'Picked Up' },
-  assigned: { color: 'text-indigo-600', bg: 'bg-indigo-50', icon: Clock, label: 'Assigned' },
-  pending: { color: 'text-gray-600', bg: 'bg-gray-50', icon: Clock, label: 'Pending' },
+  delivered: { color: 'text-green-600', bg: 'bg-green-50', icon: CheckCircle, label: '✅ CEKLIS — Terkirim' },
+  cancelled: { color: 'text-red-600', bg: 'bg-red-50', icon: XCircle, label: '❌ CANCEL — Dibatalkan' },
+  in_transit: { color: 'text-blue-600', bg: 'bg-blue-50', icon: Package, label: 'GAS — Customer' },
+  picked_up: { color: 'text-orange-600', bg: 'bg-orange-50', icon: Package, label: 'GAS — Penjual' },
+  assigned: { color: 'text-indigo-600', bg: 'bg-indigo-50', icon: Clock, label: 'Order Diterima' },
+  pending: { color: 'text-gray-600', bg: 'bg-gray-50', icon: Clock, label: 'Menunggu Kurir' },
 };
 
 export function CourierHistory() {
@@ -150,8 +150,8 @@ export function CourierHistory() {
             className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             <option value="all">Semua</option>
-            <option value="delivered">Delivered</option>
-            <option value="cancelled">Cancelled</option>
+            <option value="delivered">✅ CEKLIS — Terkirim</option>
+            <option value="cancelled">❌ CANCEL — Dibatalkan</option>
           </select>
         </div>
       </div>

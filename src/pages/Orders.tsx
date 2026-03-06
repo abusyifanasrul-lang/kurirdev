@@ -29,13 +29,13 @@ import { useAuth } from '@/context/AuthContext';
 import type { Order, CreateOrderPayload, PaymentStatus } from '@/types';
 
 const statusOptions = [
-  { value: '', label: 'All Status' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'assigned', label: 'Assigned' },
-  { value: 'picked_up', label: 'Picked Up' },
-  { value: 'in_transit', label: 'In Transit' },
-  { value: 'delivered', label: 'Delivered' },
-  { value: 'cancelled', label: 'Cancelled' },
+  { value: '', label: 'Semua Status' },
+  { value: 'pending', label: '⏳ Menunggu Kurir' },
+  { value: 'assigned', label: '📲 Kurir Ditugaskan' },
+  { value: 'picked_up', label: '🛵 GAS — Menuju Penjual' },
+  { value: 'in_transit', label: '🛵 GAS — Menuju Customer' },
+  { value: 'delivered', label: '✅ CEKLIS — Terkirim' },
+  { value: 'cancelled', label: '❌ CANCEL — Dibatalkan' },
 ];
 
 const searchCategories = [
