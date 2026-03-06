@@ -213,6 +213,9 @@ export function Orders() {
     .filter(u => u.role === 'courier' && u.is_active === true && u.is_online === true)
     .sort((a, b) => ((a as any).queue_position ?? 999) - ((b as any).queue_position ?? 999));
 
+  const courierWaitingOrder = (courierId: string) =>
+    orders.find(o => o.courier_id === courierId && o.is_waiting === true);
+
   // Sync edit form when order selected
   useEffect(() => {
     if (selectedOrder) {
@@ -860,16 +863,24 @@ export function Orders() {
                       placeholder="Select Courier..."
                       value={assignCourierId}
                       onChange={e => setAssignCourierId(e.target.value)}
-                      options={availableCouriers.map(c => ({
-                        value: c.id,
-                        label: `${c.name} (${c.is_online ? 'Online' : 'Offline'})`
-                      }))}
+                      options={availableCouriers.map(c => {
+                        const waiting = courierWaitingOrder(c.id);
+                        return {
+                          value: c.id,
+                          label: waiting
+                            ? `${c.name} 📝 PENDING — ${waiting.order_number}` 
+                            : `${c.name} (Online)` 
+                        };
+                      })}
                     />
                     <Button disabled={!assignCourierId} onClick={handleAssign}>Assign</Button>
                   </div>
                   {availableCouriers[0] && (
                     <p className="text-xs text-indigo-600 mt-1">
                       Recommended: <strong>{availableCouriers[0].name}</strong>
+                      {courierWaitingOrder(availableCouriers[0].id) && (
+                        <span className="ml-1 text-yellow-600">📝 sedang PENDING di penjual</span>
+                      )}
                     </p>
                   )}
                   <div className="mt-2 space-y-1">

@@ -22,6 +22,7 @@ interface OrderState {
   updateItemBarang: (orderId: string, itemName: string, itemPrice: number) => Promise<void>
   updateItems: (orderId: string, items: { nama: string; harga: number }[]) => Promise<void>
   updateOngkir: (orderId: string, totalFee: number) => Promise<void>
+  updateOrderWaiting: (orderId: string, isWaiting: boolean) => Promise<void>
 
   generateOrderId: () => string
   getOrdersByCourier: (courierId: string) => Order[]
@@ -145,6 +146,13 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   updateOngkir: async (orderId, totalFee) => {
     await updateDoc(doc(db, 'orders', orderId), {
       total_fee: totalFee,
+      updated_at: new Date().toISOString()
+    });
+  },
+
+  updateOrderWaiting: async (orderId, isWaiting) => {
+    await updateDoc(doc(db, 'orders', orderId), {
+      is_waiting: isWaiting,
       updated_at: new Date().toISOString()
     });
   },

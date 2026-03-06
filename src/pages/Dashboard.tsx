@@ -276,6 +276,7 @@ export function Dashboard() {
                       )}
                       {onlineQueue.map((courier, index) => {
                         const status = (courier as any).courier_status ?? 'on'
+                        const waitingOrder = orders.find(o => o.courier_id === courier.id && o.is_waiting === true)
                         return (
                           <div key={courier.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
                             <div className="flex items-center gap-3">
@@ -287,6 +288,11 @@ export function Dashboard() {
                                 <span className={`text-xs font-semibold ${status === 'stay' ? 'text-blue-600' : 'text-green-600'}`}>
                                   {status === 'stay' ? '\u{1F3E0} STAY' : '\u{1F680} ON'}
                                 </span>
+                                {waitingOrder && (
+                                  <span className="block text-xs text-yellow-600 font-semibold">
+                                    📝 PENDING — {waitingOrder.order_number}
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </div>

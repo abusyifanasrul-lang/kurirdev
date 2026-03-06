@@ -27,7 +27,7 @@ const parseRupiah = (val: string): string => {
 export function CourierOrderDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { orders, updateOrderStatus, cancelOrder, updateBiayaTambahan, updateItems, updateOngkir } = useOrderStore();
+  const { orders, updateOrderStatus, cancelOrder, updateBiayaTambahan, updateItems, updateOngkir, updateOrderWaiting } = useOrderStore();
   const { user } = useAuth();
   const { couriers } = useCourierStore();
   const { users } = useUserStore();
@@ -46,7 +46,8 @@ export function CourierOrderDetail() {
   const [cancelStep, setCancelStep] = useState(0); // 0=idle, 1=confirm
   const [cancelTimer, setCancelTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
-  const [cancelReason, setCancelReason] = useState('');
+  const [cancelReasonType, setCancelReasonType] = useState<'customer' | 'item_unavailable' | 'other' | ''>('');
+  const [cancelReasonText, setCancelReasonText] = useState('');
   const [showBebanForm, setShowBebanForm] = useState(false);
   const [namaBeban, setNamaBeban] = useState('');
   const [biayaBeban, setBiayaBeban] = useState('');
@@ -145,9 +146,21 @@ export function CourierOrderDetail() {
     }
   };
 
+  const handleToggleWaiting = async () => {
+    const newVal = !(order.is_waiting ?? false);
+    await updateOrderWaiting(order.id, newVal);
+  };
+
   const handleConfirmCancel = async () => {
-    if (!cancelReason.trim()) return;
-    await cancelOrder(order.id, cancelReason, user?.id || '', user?.name || 'Kurir');
+    if (!cancelReasonType) return;
+    const reasonLabel =
+      cancelReasonType === 'customer' ? 'Dibatalkan oleh customer' :
+      cancelReasonType === 'item_unavailable' ? 'Barang tidak tersedia / habis' :
+      'Lainnya';
+    const fullReason = cancelReasonText.trim()
+      ? `${reasonLabel}: ${cancelReasonText.trim()}` 
+      : reasonLabel;
+    await cancelOrder(order.id, fullReason, user?.id || '', user?.name || 'Kurir');
     setShowCancelModal(false);
     navigate('/courier/orders');
   };
@@ -559,23 +572,40 @@ export function CourierOrderDetail() {
               </button>
             </div>
           ) : (
-            nextStatusButton && (
-              <button
-                onClick={handleUpdateStatus}
-                disabled={isUpdating}
-                className={cn("w-full py-3 rounded-xl font-semibold text-white transition-all", nextStatusButton.color, isUpdating && "opacity-70 cursor-not-allowed")}
-              >
-                {isUpdating ? (
+            <div className="space-y-2">
+              {(order.status === 'picked_up' || order.status === 'in_transit') && (
+                <button
+                  onClick={handleToggleWaiting}
+                  className={cn(
+                    "w-full py-2.5 rounded-xl font-semibold text-sm border transition-all",
+                    order.is_waiting
+                      ? "bg-yellow-500 text-white border-yellow-500"
+                      : "bg-yellow-50 text-yellow-700 border-yellow-300 hover:bg-yellow-100"
+                  )}
+                >
                   <span className="flex items-center justify-center gap-2">
-                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                    Memperbarui...
+                    📝 {order.is_waiting ? "Menunggu di Penjual — Tap untuk Lanjut" : "Tandai: Menunggu di Penjual (PENDING)"}
                   </span>
-                ) : nextStatusButton.label}
-              </button>
-            )
+                </button>
+              )}
+              {nextStatusButton && !order.is_waiting && (
+                <button
+                  onClick={handleUpdateStatus}
+                  disabled={isUpdating}
+                  className={cn("w-full py-3 rounded-xl font-semibold text-white transition-all", nextStatusButton.color, isUpdating && "opacity-70 cursor-not-allowed")}
+                >
+                  {isUpdating ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Memperbarui...
+                    </span>
+                  ) : nextStatusButton.label}
+                </button>
+              )}
+            </div>
           )}
         </div>
 
@@ -603,16 +633,49 @@ export function CourierOrderDetail() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
           <div className="bg-white rounded-2xl p-5 w-full max-w-sm space-y-4">
             <h3 className="font-bold text-gray-900">Alasan Cancel</h3>
-            <textarea
-              value={cancelReason}
-              onChange={e => setCancelReason(e.target.value)}
-              placeholder="Jelaskan alasan cancel order ini..."
-              className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-1 focus:ring-red-400 resize-none"
-              rows={3}
-            />
+            <div className="space-y-2">
+              {[
+                { value: 'customer', label: 'Dibatalkan oleh customer' },
+                { value: 'item_unavailable', label: 'Barang tidak tersedia / habis' },
+                { value: 'other', label: 'Lainnya' },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => setCancelReasonType(opt.value as 'customer' | 'item_unavailable' | 'other')}
+                  className={cn(
+                    "w-full text-left px-4 py-2.5 rounded-xl text-sm border transition-all",
+                    cancelReasonType === opt.value
+                      ? "bg-red-50 border-red-400 text-red-700 font-semibold"
+                      : "border-gray-200 text-gray-700 hover:bg-gray-50"
+                  )}
+                >
+                  {cancelReasonType === opt.value ? '● ' : '○ '}{opt.label}
+                </button>
+              ))}
+            </div>
+            {cancelReasonType && (
+              <textarea
+                value={cancelReasonText}
+                onChange={e => setCancelReasonText(e.target.value)}
+                placeholder="Keterangan tambahan (opsional)..."
+                className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-1 focus:ring-red-400 resize-none"
+                rows={2}
+              />
+            )}
             <div className="flex gap-3">
-              <button onClick={() => setShowCancelModal(false)} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600">Batal</button>
-              <button onClick={handleConfirmCancel} disabled={!cancelReason.trim()} className="flex-1 py-2.5 bg-red-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">Konfirmasi Cancel</button>
+              <button
+                onClick={() => { setShowCancelModal(false); setCancelReasonType(''); setCancelReasonText(''); }}
+                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleConfirmCancel}
+                disabled={!cancelReasonType}
+                className="flex-1 py-2.5 bg-red-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50"
+              >
+                Konfirmasi Cancel
+              </button>
             </div>
           </div>
         </div>

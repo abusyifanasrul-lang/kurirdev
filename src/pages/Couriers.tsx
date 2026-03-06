@@ -225,16 +225,22 @@ export function Couriers() {
                         </Badge>
                         {courier.is_active && (() => {
                           const status = (courier as any).courier_status ?? (courier.is_online ? 'on' : 'off')
-                          if (status === 'on') return (
-                            <span className="text-xs text-green-600 font-semibold">{'\u{1F680}'} ON</span>
-                          )
-                          if (status === 'stay') return (
-                            <span className="text-xs text-blue-600 font-semibold">{'\u{1F3E0}'} STAY</span>
-                          )
+                          const waitingOrder = orders.find(o => o.courier_id === courier.id && o.is_waiting === true)
                           return (
-                            <span className="text-xs text-red-500 font-semibold">
-                              {'\u{1F534}'} OFF{(courier as any).off_reason ? ` • ${(courier as any).off_reason}` : ''}
-                            </span>
+                            <>
+                              {status === 'on' && <span className="text-xs text-green-600 font-semibold">{'\u{1F680}'} ON</span>}
+                              {status === 'stay' && <span className="text-xs text-blue-600 font-semibold">{'\u{1F3E0}'} STAY</span>}
+                              {status !== 'on' && status !== 'stay' && (
+                                <span className="text-xs text-red-500 font-semibold">
+                                  {'\u{1F534}'} OFF{(courier as any).off_reason ? ` • ${(courier as any).off_reason}` : ''}
+                                </span>
+                              )}
+                              {waitingOrder && (
+                                <span className="text-xs text-yellow-600 font-semibold">
+                                  📝 PENDING — {waitingOrder.order_number}
+                                </span>
+                              )}
+                            </>
                           )
                         })()}
                       </div>

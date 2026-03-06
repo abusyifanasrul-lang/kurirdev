@@ -55,6 +55,8 @@ export interface Order {
   item_name?: string;
   item_price?: number;
   items?: { nama: string; harga: number }[];
+  is_waiting?: boolean;
+  cancel_reason_type?: 'customer' | 'item_unavailable' | 'other';
 }
 
 export interface OrderStatusHistory {
