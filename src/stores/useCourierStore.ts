@@ -15,6 +15,8 @@ interface CourierState {
   removeCourier: (id: string) => Promise<void>
   getAvailableCouriers: () => Courier[]
   rotateQueue: (assignedCourierId: string) => Promise<void>
+  setCourierOffline: (courierId: string, reason: string) => Promise<void>
+  setCourierOnline: (courierId: string, status: 'on' | 'stay') => Promise<void>
 }
 
 const INITIAL_QUEUE: Courier[] = [
@@ -117,8 +119,8 @@ export const useCourierStore = create<CourierState>()(
       },
 
       rotateQueue: async (assignedCourierId) => {
-        const { users, updateUserQueuePosition } = useUserStore.getState()
-        const allCouriers = users.filter(u => u.role === 'courier') as (Courier & { queue_position?: number })[]
+        const userStore = useUserStore.getState()
+        const allCouriers = userStore.users.filter(u => u.role === 'courier') as (Courier & { queue_position?: number })[]
         if (allCouriers.length === 0) return
         const sorted = [...allCouriers].sort((a, b) =>
           (a.queue_position ?? 999) - (b.queue_position ?? 999)
@@ -129,8 +131,8 @@ export const useCourierStore = create<CourierState>()(
         const assignedCurrentPos = assignedCourier.queue_position ?? 1
         const updatePromises = sorted
           .filter(c => c.id !== assignedCourierId && (c.queue_position ?? 999) > assignedCurrentPos)
-          .map(c => updateUserQueuePosition(c.id, (c.queue_position ?? 999) - 1))
-        updatePromises.push(updateUserQueuePosition(assignedCourierId, maxPosition))
+          .map(c => userStore.updateUserQueuePosition(c.id, (c.queue_position ?? 999) - 1))
+        updatePromises.push(userStore.updateUserQueuePosition(assignedCourierId, maxPosition))
         await Promise.all(updatePromises)
         set((state) => {
           const index = state.queue.findIndex(c => c.id === assignedCourierId)
@@ -140,6 +142,43 @@ export const useCourierStore = create<CourierState>()(
           newQueue.push(courier)
           return { queue: newQueue }
         })
+      },
+
+      setCourierOffline: async (courierId, reason) => {
+        const userStore = useUserStore.getState()
+        const allCouriers = userStore.users.filter(u => u.role === 'courier') as (Courier & { queue_position?: number })[]
+
+        // Set kurir ini offline dan hapus queue_position
+        await userStore.updateUser(courierId, {
+          is_online: false,
+          courier_status: 'off',
+          off_reason: reason,
+          queue_position: null as any,
+        })
+
+        // Kurir yang posisinya di belakang kurir ini → geser maju 1
+        const offCourier = allCouriers.find(c => c.id === courierId)
+        if (offCourier?.queue_position != null) {
+          const updatePromises = allCouriers
+            .filter(c => c.id !== courierId && (c.queue_position ?? 0) > (offCourier.queue_position ?? 0))
+            .map(c => userStore.updateUserQueuePosition(c.id, (c.queue_position ?? 0) - 1))
+          await Promise.all(updatePromises)
+        }
+      },
+
+      setCourierOnline: async (courierId, status) => {
+        const userStore = useUserStore.getState()
+        const allCouriers = userStore.users.filter(u => u.role === 'courier') as (Courier & { queue_position?: number })[]
+
+        // Posisi baru = posisi tertinggi saat ini + 1 (masuk paling belakang)
+        const maxPos = allCouriers.reduce((max, c) => Math.max(max, c.queue_position ?? 0), 0)
+
+        await userStore.updateUser(courierId, {
+          is_online: true,
+          courier_status: status,
+          off_reason: '',
+        })
+        await userStore.updateUserQueuePosition(courierId, maxPos + 1)
       },
     }),
     {

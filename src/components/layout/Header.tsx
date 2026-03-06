@@ -3,11 +3,12 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/context/AuthContext';
 import { useNotificationStore } from '@/stores/useNotificationStore';
+import { useNavigate } from 'react-router-dom';
 
 interface HeaderProps {
   title: string;
   subtitle?: string;
-  isConnected?: boolean;
+  isConnected?: boolean | undefined;
   onRefresh?: () => void;
   showSearch?: boolean;
   searchValue?: string;
@@ -32,6 +33,7 @@ export function Header({
   // We need the current user to filter notifications
   const { user } = useAuth();
   const { notifications } = useNotificationStore();
+  const navigate = useNavigate();
 
   // Calculate unread for THIS user
   const userUnreadCount = notifications.filter(n => n.user_id === user?.id && !n.is_read).length;
@@ -57,13 +59,15 @@ export function Header({
 
         {/* Actions Section */}
         <div className="flex items-center gap-2 lg:gap-4">
-          <div
-            className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${isConnected ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
-              }`}
-          >
-            {isConnected ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
-            <span className="hidden md:inline">{isConnected ? 'Connected' : 'Disconnected'}</span>
-          </div>
+          {isConnected !== undefined && (
+            <div
+              className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${isConnected ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+                }`}
+            >
+              {isConnected ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
+              <span className="hidden md:inline">{isConnected ? 'Connected' : 'Disconnected'}</span>
+            </div>
+          )}
 
           {showSearch && onSearchChange && (
             <div className="hidden lg:block w-64">
@@ -84,16 +88,7 @@ export function Header({
 
           <button
             className="relative p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-            onClick={() => {
-              // For now, just mark all as read when clicked? 
-              // Or maybe navigate to notifications page?
-              // If we are on Admin, Notifications is a page.
-              // If we are on Courier, it might be a modal or page.
-              // Let's just hook it to markAllAsRead for this user for simplicity in this demo header
-              // or just leave it visual.
-              // Per requirements: "Add Notification Tab & Badge" usually implies navigation.
-              // But for now let's just show badge.
-            }}
+            onClick={() => navigate('/admin/notifications')}
           >
             <Bell className="h-5 w-5" />
             {userUnreadCount > 0 && (

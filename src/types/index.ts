@@ -9,6 +9,8 @@ export interface User {
   is_active: boolean;
   is_online?: boolean;
   fcm_token?: string;
+  courier_status?: 'on' | 'stay' | 'off';
+  off_reason?: string;
   created_at: string;
   updated_at: string;
   created_by?: string;
