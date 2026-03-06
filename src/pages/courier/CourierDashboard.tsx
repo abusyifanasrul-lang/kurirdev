@@ -17,7 +17,7 @@ export function CourierDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { orders } = useOrderStore();
-  const { } = useCourierStore();
+  const { setCourierOffline, setCourierOnline } = useCourierStore();
   const { users } = useUserStore();
   const { user: currentUser } = useSessionStore();
 
@@ -29,6 +29,19 @@ export function CourierDashboard() {
   const isOnline = liveUser?.is_online ?? false;
 
   const [isConnected, setIsConnected] = useState(true);
+  const [showOffModal, setShowOffModal] = useState(false);
+  const [selectedOffReason, setSelectedOffReason] = useState('');
+  const [customOffReason, setCustomOffReason] = useState('');
+
+  const courierStatus = (liveUser as any)?.courier_status ?? (isOnline ? 'on' : 'off');
+
+  const OFF_REASONS = [
+    { value: 'Makan', label: '🍽️ Makan' },
+    { value: 'BAB/BAK', label: '🚽 BAB/BAK' },
+    { value: 'Isi Bensin', label: '⛽ Isi Bensin' },
+    { value: 'Masalah Kendaraan', label: '🔧 Masalah Kendaraan' },
+    { value: 'Lainnya', label: '📝 Lainnya' },
+  ];
 
   // Derived Stats
   const myOrders = useMemo(() => orders.filter((o: Order) => o.courier_id === user?.id), [orders, user?.id]);
@@ -63,12 +76,27 @@ export function CourierDashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleToggleOnline = async () => {
-    if (user?.id) {
-      const newStatus = !isOnline;
-      await useUserStore.getState().updateUser(user.id, { is_online: newStatus });
-      useSessionStore.getState().updateUser({ is_online: newStatus });
-    }
+  const handleSetOn = async () => {
+    if (!user?.id || isSuspended) return;
+    await setCourierOnline(user.id, 'on');
+    useSessionStore.getState().updateUser({ is_online: true });
+  };
+
+  const handleSetStay = async () => {
+    if (!user?.id || isSuspended) return;
+    await setCourierOnline(user.id, 'stay');
+    useSessionStore.getState().updateUser({ is_online: true });
+  };
+
+  const handleConfirmOff = async () => {
+    if (!user?.id) return;
+    const reason = selectedOffReason === 'Lainnya' ? customOffReason : selectedOffReason;
+    if (!reason) return;
+    await setCourierOffline(user.id, reason);
+    useSessionStore.getState().updateUser({ is_online: false });
+    setShowOffModal(false);
+    setSelectedOffReason('');
+    setCustomOffReason('');
   };
 
   const formatCurrency = (value: number) => {
@@ -108,43 +136,53 @@ export function CourierDashboard() {
         </div>
       )}
 
-      {/* Online/Offline Toggle */}
+      {/* Status Toggle — ON / STAY / OFF */}
       <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-gray-500">Your Status</p>
-            <p className={cn(
-              "text-lg font-bold",
-              isOnline ? "text-green-600" : "text-gray-500"
-            )}>
-              {isOnline ? "Online" : "Offline"}
-            </p>
-          </div>
-          <button
-            onClick={handleToggleOnline}
-            disabled={isSuspended}
-            className={cn(
-              "relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
-              isOnline ? "bg-green-500 focus-visible:ring-green-500" : "bg-gray-300 focus-visible:ring-gray-400",
-              isSuspended && "opacity-50 cursor-not-allowed"
-            )}
-          >
-            <span
-              className={cn(
-                "pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-md ring-0 transition-transform duration-200 ease-in-out",
-                isOnline ? "translate-x-6" : "translate-x-1"
-              )}
-            />
-          </button>
-        </div>
+        <p className="text-sm text-gray-500 mb-3">Status Kamu</p>
         {isSuspended ? (
-          <p className="text-xs text-red-500 mt-2 font-medium">
-            Tidak bisa online: Akun sedang disuspend
-          </p>
-        ) : !isOnline && (
-          <p className="text-xs text-gray-500 mt-2">
-            Turn online to receive new orders
-          </p>
+          <p className="text-xs text-red-500 font-medium">Akun sedang disuspend — tidak bisa mengubah status</p>
+        ) : (
+          <div className="flex gap-2">
+            <button
+              onClick={handleSetOn}
+              disabled={isSuspended}
+              className={cn(
+                "flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all",
+                courierStatus === 'on'
+                  ? "bg-green-500 text-white border-green-500"
+                  : "bg-white text-gray-500 border-gray-200 hover:border-green-300"
+              )}
+            >
+              🚀 ON
+            </button>
+            <button
+              onClick={handleSetStay}
+              disabled={isSuspended}
+              className={cn(
+                "flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all",
+                courierStatus === 'stay'
+                  ? "bg-blue-500 text-white border-blue-500"
+                  : "bg-white text-gray-500 border-gray-200 hover:border-blue-300"
+              )}
+            >
+              🏠 STAY
+            </button>
+            <button
+              onClick={() => setShowOffModal(true)}
+              disabled={isSuspended}
+              className={cn(
+                "flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all",
+                courierStatus === 'off'
+                  ? "bg-red-500 text-white border-red-500"
+                  : "bg-white text-gray-500 border-gray-200 hover:border-red-300"
+              )}
+            >
+              🔴 OFF
+            </button>
+          </div>
+        )}
+        {courierStatus === 'off' && (liveUser as any)?.off_reason && (
+          <p className="text-xs text-gray-400 mt-2 italic">Alasan: {(liveUser as any).off_reason}</p>
         )}
       </div>
 
@@ -215,6 +253,55 @@ export function CourierDashboard() {
           </div>
         )}
       </div>
+
+      {/* Modal Alasan OFF */}
+      {showOffModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl p-5 w-full max-w-sm space-y-4">
+            <h3 className="font-bold text-gray-900">Alasan Offline</h3>
+            <div className="space-y-2">
+              {OFF_REASONS.map(r => (
+                <button
+                  key={r.value}
+                  onClick={() => setSelectedOffReason(r.value)}
+                  className={cn(
+                    "w-full text-left px-4 py-2.5 rounded-xl border text-sm font-medium transition-all",
+                    selectedOffReason === r.value
+                      ? "bg-red-50 border-red-400 text-red-700"
+                      : "bg-gray-50 border-gray-200 text-gray-700 hover:border-gray-300"
+                  )}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+            {selectedOffReason === 'Lainnya' && (
+              <input
+                type="text"
+                placeholder="Jelaskan alasan..."
+                value={customOffReason}
+                onChange={e => setCustomOffReason(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-red-400"
+              />
+            )}
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowOffModal(false); setSelectedOffReason(''); setCustomOffReason(''); }}
+                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleConfirmOff}
+                disabled={!selectedOffReason || (selectedOffReason === 'Lainnya' && !customOffReason)}
+                className="flex-1 py-2.5 bg-red-500 text-white rounded-xl text-sm font-semibold disabled:opacity-50"
+              >
+                Konfirmasi OFF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

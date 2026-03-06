@@ -219,19 +219,24 @@ export function Couriers() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-col gap-1">
                         <Badge variant={courier.is_active ? 'success' : 'danger'}>
                           {courier.is_active ? 'Active' : 'Suspended'}
                         </Badge>
-                        {courier.is_active && courier.is_online && (
-                          <span className="flex items-center gap-1 text-xs text-green-600 font-medium">
-                            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                            Online
-                          </span>
-                        )}
-                        {courier.is_active && !courier.is_online && (
-                          <span className="text-xs text-gray-400">Offline</span>
-                        )}
+                        {courier.is_active && (() => {
+                          const status = (courier as any).courier_status ?? (courier.is_online ? 'on' : 'off')
+                          if (status === 'on') return (
+                            <span className="text-xs text-green-600 font-semibold">{'\u{1F680}'} ON</span>
+                          )
+                          if (status === 'stay') return (
+                            <span className="text-xs text-blue-600 font-semibold">{'\u{1F3E0}'} STAY</span>
+                          )
+                          return (
+                            <span className="text-xs text-red-500 font-semibold">
+                              {'\u{1F534}'} OFF{(courier as any).off_reason ? ` • ${(courier as any).off_reason}` : ''}
+                            </span>
+                          )
+                        })()}
                       </div>
                     </TableCell>
                     <TableCell>

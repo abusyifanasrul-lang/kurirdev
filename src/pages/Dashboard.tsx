@@ -259,31 +259,63 @@ export function Dashboard() {
                 </span>
               </div>
               <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
-                {users.filter(u => u.role === 'courier' && u.is_active && u.is_online).length === 0 ? (
-                  <p className="text-sm text-gray-500 text-center py-4">No online couriers in queue</p>
-                ) : (
-                  [...users.filter(u => u.role === 'courier' && u.is_active && u.is_online)]
+                {(() => {
+                  const activeCouriers = users.filter(u => u.role === 'courier' && u.is_active)
+                  const onlineQueue = [...activeCouriers.filter(u => u.is_online)]
                     .sort((a, b) => ((a as any).queue_position ?? 999) - ((b as any).queue_position ?? 999))
-                    .map((courier, index) => (
-                    <div key={courier.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 font-bold text-xs">
-                          {index + 1}
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-900 text-sm">{courier.name}</p>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            <div className={`w-2 h-2 rounded-full ${courier.is_online ? 'bg-green-500' : 'bg-gray-400'}`} />
-                            <span className="text-xs text-gray-500">{courier.is_online ? 'Online' : 'Offline'}</span>
+                  const offlineCouriers = activeCouriers.filter(u => !u.is_online)
+
+                  if (activeCouriers.length === 0) return (
+                    <p className="text-sm text-gray-500 text-center py-4">No couriers registered</p>
+                  )
+
+                  return (
+                    <>
+                      {onlineQueue.length === 0 && (
+                        <p className="text-sm text-gray-500 text-center py-4">No online couriers in queue</p>
+                      )}
+                      {onlineQueue.map((courier, index) => {
+                        const status = (courier as any).courier_status ?? 'on'
+                        return (
+                          <div key={courier.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 font-bold text-xs">
+                                {index + 1}
+                              </div>
+                              <div>
+                                <p className="font-medium text-gray-900 text-sm">{courier.name}</p>
+                                <span className={`text-xs font-semibold ${status === 'stay' ? 'text-blue-600' : 'text-green-600'}`}>
+                                  {status === 'stay' ? '\u{1F3E0} STAY' : '\u{1F680} ON'}
+                                </span>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        {/* Could add actionable status here later */}
-                      </div>
-                    </div>
-                  ))
-                )}
+                        )
+                      })}
+                      {offlineCouriers.length > 0 && (
+                        <>
+                          <div className="border-t border-dashed border-gray-200 my-2" />
+                          {offlineCouriers.map(courier => (
+                            <div key={courier.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 opacity-60">
+                              <div className="flex items-center gap-3">
+                                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-200 text-gray-400 font-bold text-xs">
+                                  —
+                                </div>
+                                <div>
+                                  <p className="font-medium text-gray-600 text-sm">{courier.name}</p>
+                                  <span className="text-xs text-red-500 font-semibold">� OFF</span>
+                                  {(courier as any).off_reason && (
+                                    <span className="text-xs text-gray-400 ml-1">• {(courier as any).off_reason}</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </>
+                      )}
+                    </>
+                  )
+                })()}
               </div>
             </Card>
 
