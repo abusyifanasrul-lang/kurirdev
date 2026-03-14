@@ -182,12 +182,19 @@ export function App() {
 
     // 1. Refresh FCM Token if logged in as courier (Tahap 4)
     const currentUserStr = sessionStorage.getItem('user-session');
+    let fcmRefreshInterval: ReturnType<typeof setInterval> | null = null;
     if (currentUserStr) {
       try {
         const sessionData = JSON.parse(currentUserStr);
         const currentUser = sessionData.state?.user;
         if (currentUser?.role === 'courier') {
+          // Refresh sekali saat app dibuka
           refreshFCMToken(currentUser.id).catch(console.error);
+          // Refresh periodik setiap 7 hari (dalam milidetik)
+          const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+          fcmRefreshInterval = setInterval(() => {
+            refreshFCMToken(currentUser.id).catch(console.error);
+          }, SEVEN_DAYS_MS);
         }
       } catch (e) {
         // ignore parse error
@@ -215,6 +222,7 @@ export function App() {
       unsubUsers()
       unsubOrders()
       unsubFCM()
+      if (fcmRefreshInterval) clearInterval(fcmRefreshInterval)
     }
   }, [])
 
