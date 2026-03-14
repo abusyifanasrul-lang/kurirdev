@@ -326,23 +326,70 @@ export function Orders() {
   };
 
   const handleExportCSV = () => {
-    const headers = ['Order ID', 'Date', 'Customer', 'Phone', 'Address', 'Status', 'Courier', 'Fee'];
-    const rows = filteredOrders.map(o => [
-      o.order_number,
-      format(new Date(o.created_at), 'yyyy-MM-dd HH:mm'),
-      `"${o.customer_name}"`, // Quote to handle commas
-      o.customer_phone,
-      `"${o.customer_address}"`,
-      o.status,
-      getCourierName(o.courier_id) || 'Unassigned',
-      o.total_fee
-    ]);
+    const DELIM = ';';
+    const q = (val: any) => `"${String(val ?? '').replace(/"/g, '""')}"`;
 
-    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const headers = [
+      'Order ID', 'Tanggal', 'Customer', 'Telepon', 'Alamat',
+      'Status', 'Kurir', 'Ongkir',
+      'Titik', 'Total Biaya Beban', 'Total Ongkir',
+      'Nama Barang', 'Total Belanja', 'Total Dibayar Customer',
+      'Status Bayar', 'Instruksi Admin',
+      'Jenis Cancel', 'Alasan Cancel',
+      'Waktu Selesai', 'Waktu Cancel',
+      'ID Teknis', 'Courier ID'
+    ];
+
+    const rows = filteredOrders.map(o => {
+      const totalBiayaTitik = o.total_biaya_titik ?? 0;
+      const totalBiayaBeban = o.total_biaya_beban ?? 0;
+      const totalOngkir = (o.total_fee || 0) + totalBiayaTitik + totalBiayaBeban;
+
+      const namaBarang = o.items && o.items.length > 0
+        ? o.items.map(i => `${i.nama} (Rp ${i.harga.toLocaleString('id-ID')})`).join(' | ')
+        : o.item_name || '';
+      const totalBelanja = o.items && o.items.length > 0
+        ? o.items.reduce((s, i) => s + i.harga, 0)
+        : (o.item_price ?? 0);
+      const totalDibayar = totalOngkir + totalBelanja;
+
+      const cancelTypeLabel =
+        o.cancel_reason_type === 'customer' ? 'Dibatalkan customer' :
+        o.cancel_reason_type === 'item_unavailable' ? 'Barang tidak tersedia' :
+        o.cancel_reason_type === 'other' ? 'Lainnya' : '';
+
+      return [
+        q(o.order_number),
+        q(format(new Date(o.created_at), 'dd/MM/yyyy HH:mm')),
+        q(o.customer_name),
+        q(o.customer_phone),
+        q(o.customer_address),
+        q(getStatusLabel(o.status)),
+        q(getCourierName(o.courier_id) || 'Belum Assign'),
+        o.total_fee || 0,
+        o.titik ?? 0,
+        totalBiayaBeban,
+        totalOngkir,
+        q(namaBarang),
+        totalBelanja > 0 ? totalBelanja : '',
+        totalBelanja > 0 ? totalDibayar : totalOngkir,
+        q(o.payment_status === 'paid' ? 'Sudah Setor' : 'Belum Setor'),
+        q(o.notes || ''),
+        q(cancelTypeLabel),
+        q(o.cancellation_reason || ''),
+        q(o.actual_delivery_time ? format(new Date(o.actual_delivery_time), 'dd/MM/yyyy HH:mm') : ''),
+        q(o.cancelled_at ? format(new Date(o.cancelled_at), 'dd/MM/yyyy HH:mm') : ''),
+        q(o.id),
+        q(o.courier_id || ''),
+      ];
+    });
+
+    const BOM = '\uFEFF';
+    const csvContent = BOM + [headers.join(DELIM), ...rows.map(r => r.join(DELIM))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `orders_export_${format(new Date(), 'yyyyMMdd')}.csv`;
+    link.download = `orders_export_${format(new Date(), 'yyyyMMdd_HHmm')}.csv`;
     link.click();
   };
 
