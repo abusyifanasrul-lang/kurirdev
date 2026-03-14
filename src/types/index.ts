@@ -56,6 +56,8 @@ export interface Order {
   item_price?: number;
   items?: { nama: string; harga: number }[];
   is_waiting?: boolean;
+  applied_commission_rate?: number;
+  applied_commission_threshold?: number;
   cancel_reason_type?: 'customer' | 'item_unavailable' | 'other';
 }
 
@@ -84,7 +86,6 @@ export interface CreateOrderPayload {
 export interface Courier extends User {
   vehicle_type?: 'motorcycle' | 'car' | 'bicycle' | 'van';
   plate_number?: string;
-  commission_rate?: number; // 0-100, default 80 (80% to courier)
 }
 
 export interface CourierPerformance {

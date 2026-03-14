@@ -5,7 +5,6 @@ import { format, parseISO } from 'date-fns';
 import { cn } from '@/utils/cn';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useAuth } from '@/context/AuthContext';
-import { useCourierStore } from '@/stores/useCourierStore';
 import { useSessionStore } from '@/stores/useSessionStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { OrderStatus } from '@/types';
@@ -29,20 +28,20 @@ export function CourierOrderDetail() {
   const navigate = useNavigate();
   const { orders, updateOrderStatus, cancelOrder, updateBiayaTambahan, updateItems, updateOngkir, updateOrderWaiting } = useOrderStore();
   const { user } = useAuth();
-  const { couriers } = useCourierStore();
   const { users } = useUserStore();
   const { user: currentUser } = useSessionStore();
   const invoiceRef = useRef<HTMLDivElement>(null);
 
   const liveUser = users.find(u => u.id === currentUser?.id);
   const isSuspended = liveUser?.is_active === false;
-  const currentCourier = useMemo(() => couriers.find(c => c.id === user?.id), [couriers, user]);
   const { commission_rate, commission_threshold } = useSettingsStore();
-    const commissionRate = currentCourier?.commission_rate ?? commission_rate;
+    const commissionRate = commission_rate;
 
   const order = useMemo(() => orders.find(o => o.id === id), [orders, id]);
 
   const [isUpdating, setIsUpdating] = useState(false);
+  const [showWaReminder, setShowWaReminder] = useState(false);
+  const [isWaitingUpdating, setIsWaitingUpdating] = useState(false);
   const [cancelStep, setCancelStep] = useState(0); // 0=idle, 1=confirm
   const [cancelTimer, setCancelTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -99,7 +98,10 @@ export function CourierOrderDetail() {
     await new Promise(r => setTimeout(r, 800));
     updateOrderStatus(order.id, nextStatus, user?.id || '', user?.name || 'Kurir');
     setIsUpdating(false);
-    // Tidak auto-navigate, biarkan kurir tap tombol invoice dulu;
+    if (nextStatus === 'picked_up') {
+      setShowWaReminder(true);
+      setTimeout(() => setShowWaReminder(false), 6000);
+    }
   };
 
   const handleTambahTitik = async () => {
@@ -147,8 +149,11 @@ export function CourierOrderDetail() {
   };
 
   const handleToggleWaiting = async () => {
+    if (isWaitingUpdating) return;
+    setIsWaitingUpdating(true);
     const newVal = !(order.is_waiting ?? false);
     await updateOrderWaiting(order.id, newVal);
+    setIsWaitingUpdating(false);
   };
 
   const handleConfirmCancel = async () => {
@@ -160,7 +165,7 @@ export function CourierOrderDetail() {
     const fullReason = cancelReasonText.trim()
       ? `${reasonLabel}: ${cancelReasonText.trim()}` 
       : reasonLabel;
-    await cancelOrder(order.id, fullReason, user?.id || '', user?.name || 'Kurir');
+    await cancelOrder(order.id, fullReason, user?.id || '', user?.name || 'Kurir', cancelReasonType);
     setShowCancelModal(false);
     navigate('/courier/orders');
   };
@@ -242,6 +247,18 @@ export function CourierOrderDetail() {
           </div>
         );
       })()}
+
+      {showWaReminder && (
+        <div className="mx-4 mt-1 px-4 py-3 rounded-xl border-l-4 bg-green-50 border-green-500 animate-pulse">
+          <div className="flex items-center gap-2 font-bold text-sm text-green-800">
+            <span>📲</span>
+            <span>JANGAN LUPA WA CUSTOMER SEKARANG!</span>
+          </div>
+          <p className="text-xs mt-1 text-green-700 opacity-80">
+            Kabari customer bahwa kamu sedang dalam perjalanan ke penjual.
+          </p>
+        </div>
+      )}
 
       <div className="px-4 space-y-3">
 
@@ -576,6 +593,7 @@ export function CourierOrderDetail() {
               {(order.status === 'picked_up' || order.status === 'in_transit') && (
                 <button
                   onClick={handleToggleWaiting}
+                  disabled={isWaitingUpdating}
                   className={cn(
                     "w-full py-2.5 rounded-xl font-semibold text-sm border transition-all",
                     order.is_waiting

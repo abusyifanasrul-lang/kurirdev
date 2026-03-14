@@ -6,14 +6,17 @@ interface EarningSettings {
 }
 
 export const calcCourierEarning = (order: Order, settings: EarningSettings): number => {
-  const rate = settings.commission_rate / 100
-  const ongkirKurir = order.total_fee <= settings.commission_threshold
+  const effectiveRate = (order.applied_commission_rate ?? settings.commission_rate) / 100
+  const effectiveThreshold = order.applied_commission_threshold ?? settings.commission_threshold
+  const ongkirKurir = order.total_fee <= effectiveThreshold
     ? order.total_fee
-    : order.total_fee * rate
+    : order.total_fee * effectiveRate
   return ongkirKurir + (order.total_biaya_titik ?? 0) + (order.total_biaya_beban ?? 0)
 }
 
 export const calcAdminEarning = (order: Order, settings: EarningSettings): number => {
-  if (order.total_fee <= settings.commission_threshold) return 0
-  return order.total_fee * (1 - settings.commission_rate / 100)
+  const effectiveRate = (order.applied_commission_rate ?? settings.commission_rate) / 100
+  const effectiveThreshold = order.applied_commission_threshold ?? settings.commission_threshold
+  if (order.total_fee <= effectiveThreshold) return 0
+  return order.total_fee * (1 - effectiveRate)
 }

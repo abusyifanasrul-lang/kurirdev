@@ -237,7 +237,7 @@ export function CourierDashboard() {
                     <div className="flex items-center gap-2 mb-1">
                       <p className="font-semibold text-gray-900">{order.order_number}</p>
                       <Badge variant={getStatusBadgeVariant(order.status)} size="sm">
-                        {getStatusLabel(order.status)}
+                        {getStatusLabel(order.status, 'courier')}
                       </Badge>
                     </div>
                     <p className="text-sm font-medium text-gray-700">{order.customer_name}</p>

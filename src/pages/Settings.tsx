@@ -24,6 +24,21 @@ export function Settings() {
     commission_threshold,
   })
   const handleSaveBusinessSettings = () => {
+    if (
+      isNaN(businessForm.commission_rate) ||
+      businessForm.commission_rate < 0 ||
+      businessForm.commission_rate > 100
+    ) {
+      showMessage('error', 'Commission rate harus antara 0 dan 100.')
+      return
+    }
+    if (
+      isNaN(businessForm.commission_threshold) ||
+      businessForm.commission_threshold < 0
+    ) {
+      showMessage('error', 'Threshold tidak boleh bernilai negatif.')
+      return
+    }
     updateSettings(businessForm)
     showMessage('success', 'Business settings saved!')
   }

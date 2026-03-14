@@ -6,6 +6,7 @@ import {
 } from 'firebase/firestore'
 import { Order, OrderStatus, OrderStatusHistory } from '@/types'
 import { sendMockNotification } from '@/utils/notification'
+import { useSettingsStore } from '@/stores/useSettingsStore'
 
 interface OrderState {
   orders: Order[]
@@ -16,7 +17,7 @@ interface OrderState {
   addOrder: (order: Order) => Promise<void>
   updateOrderStatus: (orderId: string, status: OrderStatus, userId: string, userName: string, notes?: string) => Promise<void>
   assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>
-  cancelOrder: (orderId: string, reason: string, userId: string, userName: string) => Promise<void>
+  cancelOrder: (orderId: string, reason: string, userId: string, userName: string, cancelReasonType?: string) => Promise<void>
   updateOrder: (orderId: string, updates: Partial<Order>) => Promise<void>
   updateBiayaTambahan: (orderId: string, titik: number, beban: { nama: string; biaya: number }[]) => Promise<void>
   updateItemBarang: (orderId: string, itemName: string, itemPrice: number) => Promise<void>
@@ -66,6 +67,16 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
       updates.actual_delivery_time = new Date().toISOString()
     }
 
+    if (status === 'delivered' || status === 'cancelled') {
+      updates.is_waiting = false
+    }
+
+    if (status === 'delivered') {
+      const { commission_rate, commission_threshold } = useSettingsStore.getState()
+      updates.applied_commission_rate = commission_rate
+      updates.applied_commission_threshold = commission_threshold
+    }
+
     await updateDoc(doc(db, 'orders', orderId), updates)
 
     const newHistory: OrderStatusHistory = {
@@ -101,10 +112,11 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     })
   },
 
-  cancelOrder: async (orderId, reason, userId, userName) => {
+  cancelOrder: async (orderId, reason, userId, userName, cancelReasonType) => {
     await get().updateOrderStatus(orderId, 'cancelled', userId, userName, reason)
     await updateDoc(doc(db, 'orders', orderId), {
       cancellation_reason: reason,
+      cancel_reason_type: cancelReasonType ?? null,
       cancelled_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     })

@@ -18,6 +18,7 @@ import { jsPDF } from 'jspdf';
 import { Header } from '@/components/layout/Header';
 import { Card, StatCard } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { useSettingsStore } from '@/stores/useSettingsStore';
 import { Input } from '@/components/ui/Input';
 
 // Stores
@@ -31,6 +32,7 @@ export function Reports() {
   const { orders } = useOrderStore();
   const { couriers } = useCourierStore();
   const { users } = useUserStore();
+  const { commission_rate } = useSettingsStore();
   const courierMap = Object.fromEntries(
     users.filter(u => u.role === 'courier').map(u => [u.id, u.name])
   );
@@ -125,8 +127,7 @@ export function Reports() {
     // Calculate Net Revenue (Gross - Courier Payouts)
     let totalCourierPayout = 0;
     deliveredOrders.forEach(o => {
-      const courier = couriers.find(c => c.id === o.courier_id);
-      const rate = (courier?.commission_rate ?? 80) / 100;
+      const rate = commission_rate / 100;
       totalCourierPayout += (o.total_fee || 0) * rate;
     });
     const netRevenue = totalRevenue - totalCourierPayout;
