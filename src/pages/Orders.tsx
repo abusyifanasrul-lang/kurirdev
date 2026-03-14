@@ -336,8 +336,7 @@ export function Orders() {
       'Nama Barang', 'Total Belanja', 'Total Dibayar Customer',
       'Status Bayar', 'Instruksi Admin',
       'Jenis Cancel', 'Alasan Cancel',
-      'Waktu Selesai', 'Waktu Cancel',
-      'ID Teknis', 'Courier ID'
+      'Waktu Selesai', 'Waktu Cancel'
     ];
 
     const rows = filteredOrders.map(o => {
@@ -379,8 +378,6 @@ export function Orders() {
         q(o.cancellation_reason || ''),
         q(o.actual_delivery_time ? format(new Date(o.actual_delivery_time), 'dd/MM/yyyy HH:mm') : ''),
         q(o.cancelled_at ? format(new Date(o.cancelled_at), 'dd/MM/yyyy HH:mm') : ''),
-        q(o.id),
-        q(o.courier_id || ''),
       ];
     });
 
