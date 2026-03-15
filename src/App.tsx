@@ -6,7 +6,6 @@ import { useOrderStore } from '@/stores/useOrderStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { seedOrders } from '@/lib/firebaseOrderSeeder';
 import { onForegroundMessage, refreshFCMToken } from '@/lib/fcm';
-import { backfillCourierSummary } from '@/lib/backfillCourierSummary';
 
 // Loading Skeleton
 function LoadingScreen() {
@@ -172,15 +171,6 @@ export function App() {
 
   useEffect(() => {
     seedOrders()
-    // TEMPORARY — hapus setelah backfill selesai
-    if (!localStorage.getItem('backfill_done_v1')) {
-      setTimeout(() => {
-        backfillCourierSummary().then(() => {
-          localStorage.setItem('backfill_done_v1', new Date().toISOString())
-          console.log('✅ Backfill done — hapus trigger ini dari App.tsx')
-        }).catch(console.error)
-      }, 5000) // tunggu 5 detik agar Firestore sempat connect
-    }
     const unsubUsers = subscribeUsers()
     const unsubOrders = subscribeOrders()
 

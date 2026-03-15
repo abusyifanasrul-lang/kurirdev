@@ -50,7 +50,6 @@ export function Couriers() {
     email: '',
     password: '',
     phone: '',
-    commission_rate: 80,
     vehicle_type: 'motorcycle' as Courier['vehicle_type'],
     plate_number: '',
   });
@@ -76,7 +75,6 @@ export function Couriers() {
       is_online: false,
       vehicle_type: newCourier.vehicle_type,
       plate_number: newCourier.plate_number,
-      commission_rate: newCourier.commission_rate,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -88,7 +86,6 @@ export function Couriers() {
       email: '',
       password: '',
       phone: '',
-      commission_rate: 80,
       vehicle_type: 'motorcycle',
       plate_number: ''
     });
@@ -326,15 +323,6 @@ export function Couriers() {
               placeholder="B 1234 XYZ"
             />
           </div>
-          <Input
-            label="Commission Rate (%)"
-            type="number"
-            value={newCourier.commission_rate}
-            onChange={(e) => setNewCourier({ ...newCourier, commission_rate: Number(e.target.value) })}
-            placeholder="80"
-            min={0}
-            max={100}
-          />
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>
               Cancel
@@ -447,7 +435,7 @@ export function Couriers() {
                     <p>{unpaidOrders.length} order belum disetor</p>
                     <p>Total ongkir: {formatCurrency(unpaidTotalFee)}</p>
                     <p className="font-bold">
-                      Harus disetor ({100 - (selectedCourier?.commission_rate ?? 80)}%): {formatCurrency(unpaidPlatformFee)}
+                      Harus disetor ({100 - commission_rate}%): {formatCurrency(unpaidPlatformFee)}
                     </p>
                   </div>
                   <button
