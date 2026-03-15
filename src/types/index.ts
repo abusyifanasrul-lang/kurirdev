@@ -15,6 +15,10 @@ export interface User {
   updated_at: string;
   created_by?: string;
   queue_position?: number;
+  total_deliveries_alltime?: number;
+  total_earnings_alltime?: number;
+  unpaid_count?: number;
+  unpaid_amount?: number;
 }
 
 export interface AuthState {

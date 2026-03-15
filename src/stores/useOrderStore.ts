@@ -2,11 +2,12 @@ import { create } from 'zustand'
 import { db } from '@/lib/firebase'
 import {
   collection, doc, setDoc, updateDoc,
-  onSnapshot
+  onSnapshot, increment
 } from 'firebase/firestore'
 import { Order, OrderStatus, OrderStatusHistory } from '@/types'
 import { sendMockNotification } from '@/utils/notification'
 import { useSettingsStore } from '@/stores/useSettingsStore'
+import { calcCourierEarning } from '@/lib/calcEarning'
 
 interface OrderState {
   orders: Order[]
@@ -75,6 +76,17 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
       const { commission_rate, commission_threshold } = useSettingsStore.getState()
       updates.applied_commission_rate = commission_rate
       updates.applied_commission_threshold = commission_threshold
+
+      if (order.courier_id) {
+        const courierEarning = calcCourierEarning(order, { commission_rate, commission_threshold })
+        await updateDoc(doc(db, 'users', order.courier_id), {
+          total_deliveries_alltime: increment(1),
+          total_earnings_alltime: increment(courierEarning),
+          unpaid_count: increment(1),
+          unpaid_amount: increment(courierEarning),
+          updated_at: new Date().toISOString()
+        })
+      }
     }
 
     await updateDoc(doc(db, 'orders', orderId), updates)
@@ -123,6 +135,18 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   },
 
   updateOrder: async (orderId, updates) => {
+    if (updates.payment_status === 'paid') {
+      const order = get().orders.find(o => o.id === orderId)
+      if (order && order.payment_status === 'unpaid' && order.courier_id) {
+        const { commission_rate, commission_threshold } = useSettingsStore.getState()
+        const courierEarning = calcCourierEarning(order, { commission_rate, commission_threshold })
+        await updateDoc(doc(db, 'users', order.courier_id), {
+          unpaid_count: increment(-1),
+          unpaid_amount: increment(-courierEarning),
+          updated_at: new Date().toISOString()
+        })
+      }
+    }
     await updateDoc(doc(db, 'orders', orderId), {
       ...updates,
       updated_at: new Date().toISOString()

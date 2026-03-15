@@ -63,10 +63,7 @@ export function CourierDashboard() {
     [myOrders]
   );
 
-  const unpaidDeliveredOrdersCount = useMemo(() =>
-    myOrders.filter((o: Order) => o.status === 'delivered' && o.payment_status === 'unpaid').length,
-    [myOrders]
-  );
+  const unpaidDeliveredOrdersCount = (liveUser as any)?.unpaid_count ?? 0;
 
   // Polling simulation
   useEffect(() => {

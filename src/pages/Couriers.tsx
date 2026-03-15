@@ -39,12 +39,10 @@ export function Couriers() {
   const [showSettleConfirm, setShowSettleConfirm] = useState(false);
   const [selectedCourier, setSelectedCourier] = useState<Courier | null>(null);
 
-  const courierUnpaidCount = (courierId: string) =>
-    orders.filter(o =>
-      o.courier_id === courierId &&
-      o.status === 'delivered' &&
-      o.payment_status === 'unpaid'
-    ).length;
+  const courierUnpaidCount = (courierId: string) => {
+    const courier = couriers.find(c => c.id === courierId)
+    return (courier as any)?.unpaid_count ?? 0
+  }
 
   // Form state
   const [newCourier, setNewCourier] = useState({
@@ -246,7 +244,7 @@ export function Couriers() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {orders.filter(o => o.courier_id === courier.id && o.status === 'delivered').length}
+                      {(courier as any).total_deliveries_alltime ?? 0}
                     </TableCell>
                     <TableCell>
                       {formatCurrency(
@@ -256,11 +254,7 @@ export function Couriers() {
                       )}
                     </TableCell>
                     <TableCell>
-                      {formatCurrency(
-                        orders
-                          .filter(o => o.courier_id === courier.id && o.status === 'delivered')
-                          .reduce((sum, o) => sum + calcCourierEarning(o, earningSettings), 0)
-                      )}
+                      {formatCurrency((courier as any).total_earnings_alltime ?? 0)}
                       {courierUnpaidCount(courier.id) > 0 && (
                         <span className="ml-2 px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-full font-medium">
                           ⚠️ {courierUnpaidCount(courier.id)} belum setor

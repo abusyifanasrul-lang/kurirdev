@@ -6,6 +6,7 @@ import { useOrderStore } from '@/stores/useOrderStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { seedOrders } from '@/lib/firebaseOrderSeeder';
 import { onForegroundMessage, refreshFCMToken } from '@/lib/fcm';
+import { backfillCourierSummary } from '@/lib/backfillCourierSummary';
 
 // Loading Skeleton
 function LoadingScreen() {
@@ -171,6 +172,10 @@ export function App() {
 
   useEffect(() => {
     seedOrders()
+    // TEMPORARY — hapus setelah backfill selesai
+    backfillCourierSummary().then(() => {
+      console.log('✅ Backfill done — hapus trigger ini dari App.tsx')
+    }).catch(console.error)
     const unsubUsers = subscribeUsers()
     const unsubOrders = subscribeOrders()
 
