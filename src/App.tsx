@@ -173,9 +173,12 @@ export function App() {
   useEffect(() => {
     seedOrders()
     // TEMPORARY — hapus setelah backfill selesai
-    backfillCourierSummary().then(() => {
-      console.log('✅ Backfill done — hapus trigger ini dari App.tsx')
-    }).catch(console.error)
+    if (!localStorage.getItem('backfill_done_v1')) {
+      backfillCourierSummary().then(() => {
+        localStorage.setItem('backfill_done_v1', new Date().toISOString())
+        console.log('✅ Backfill done — hapus trigger ini dari App.tsx')
+      }).catch(console.error)
+    }
     const unsubUsers = subscribeUsers()
     const unsubOrders = subscribeOrders()
 
