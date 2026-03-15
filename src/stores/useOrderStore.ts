@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { db } from '@/lib/firebase'
 import {
   collection, doc, setDoc, updateDoc,
-  onSnapshot, increment
+  onSnapshot, increment, getDocs, query, where, orderBy
 } from 'firebase/firestore'
 import { Order, OrderStatus, OrderStatusHistory } from '@/types'
 import { sendMockNotification } from '@/utils/notification'
@@ -15,6 +15,10 @@ interface OrderState {
   isLoading: boolean
 
   subscribeOrders: () => () => void
+  subscribeActiveOrders: () => () => void
+  fetchOrdersByCourier: (courierId: string) => Promise<void>
+  courierOrders: Order[]
+  isFetchingCourierOrders: boolean
   addOrder: (order: Order) => Promise<void>
   updateOrderStatus: (orderId: string, status: OrderStatus, userId: string, userName: string, notes?: string) => Promise<void>
   assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>
@@ -33,8 +37,10 @@ interface OrderState {
 
 export const useOrderStore = create<OrderState>()((set, get) => ({
   orders: [],
+  courierOrders: [],
   statusHistory: {},
   isLoading: true,
+  isFetchingCourierOrders: false,
 
   subscribeOrders: () => {
     const unsub = onSnapshot(collection(db, 'orders'), (snapshot) => {
@@ -42,6 +48,36 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
       set({ orders, isLoading: false })
     })
     return unsub
+  },
+
+  subscribeActiveOrders: () => {
+    const q = query(
+      collection(db, 'orders'),
+      where('status', 'not-in', ['delivered', 'cancelled'])
+    )
+    const unsub = onSnapshot(q, (snapshot) => {
+      const orders = snapshot.docs.map(d => d.data() as Order)
+      set({ orders, isLoading: false })
+    })
+    return unsub
+  },
+
+  fetchOrdersByCourier: async (courierId) => {
+    set({ isFetchingCourierOrders: true })
+    try {
+      const q = query(
+        collection(db, 'orders'),
+        where('courier_id', '==', courierId),
+        where('status', 'in', ['delivered', 'cancelled']),
+        orderBy('created_at', 'desc')
+      )
+      const snapshot = await getDocs(q)
+      const courierOrders = snapshot.docs.map(d => d.data() as Order)
+      set({ courierOrders, isFetchingCourierOrders: false })
+    } catch (error) {
+      console.error('fetchOrdersByCourier error:', error)
+      set({ isFetchingCourierOrders: false })
+    }
   },
 
   addOrder: async (order) => {

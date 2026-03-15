@@ -37,8 +37,14 @@ export function CourierHistory() {
       setTimeout(() => el.classList.remove('ring-2', 'ring-yellow-400', 'ring-offset-2'), 2000);
     }, 300);
   }, [highlightOrderId]);
+  const { courierOrders, fetchOrdersByCourier, isFetchingCourierOrders } = useOrderStore();
   const { user } = useAuth();
-  const { orders } = useOrderStore();
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchOrdersByCourier(user.id)
+    }
+  }, [user?.id])
 
   const { commission_rate, commission_threshold } = useSettingsStore()
   const earningSettings = { commission_rate, commission_threshold }
@@ -59,10 +65,10 @@ export function CourierHistory() {
   };
 
   // Filter orders assigned to this courier
-  const courierOrders = useMemo(() => {
+  const filteredOrders = useMemo(() => {
     if (!user) return [];
 
-    return orders
+    return courierOrders
       .filter((order) => {
         // Only orders assigned to this courier
         const isMyCourier = order.courier_id === user.id;
@@ -87,7 +93,7 @@ export function CourierHistory() {
         return true;
       })
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  }, [orders, user, statusFilter, searchQuery]);
+  }, [courierOrders, user, statusFilter, searchQuery]);
 
   // Group orders by date
   const groupedOrders = useMemo(() => {
@@ -115,6 +121,17 @@ export function CourierHistory() {
       .filter((o) => o.status === 'delivered')
       .reduce((sum, o) => sum + calcCourierEarning(o, earningSettings), 0);
   }, [courierOrders, user]);
+
+  if (isFetchingCourierOrders && courierOrders.length === 0) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-4 border-green-200 border-t-green-600 rounded-full animate-spin" />
+          <p className="text-sm text-gray-500">Memuat riwayat...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
