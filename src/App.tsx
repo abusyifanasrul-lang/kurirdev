@@ -174,10 +174,12 @@ export function App() {
     seedOrders()
     // TEMPORARY — hapus setelah backfill selesai
     if (!localStorage.getItem('backfill_done_v1')) {
-      backfillCourierSummary().then(() => {
-        localStorage.setItem('backfill_done_v1', new Date().toISOString())
-        console.log('✅ Backfill done — hapus trigger ini dari App.tsx')
-      }).catch(console.error)
+      setTimeout(() => {
+        backfillCourierSummary().then(() => {
+          localStorage.setItem('backfill_done_v1', new Date().toISOString())
+          console.log('✅ Backfill done — hapus trigger ini dari App.tsx')
+        }).catch(console.error)
+      }, 5000) // tunggu 5 detik agar Firestore sempat connect
     }
     const unsubUsers = subscribeUsers()
     const unsubOrders = subscribeOrders()
