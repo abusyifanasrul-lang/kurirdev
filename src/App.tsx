@@ -167,7 +167,7 @@ function PWAUpdateBanner() {
 export function App() {
   const subscribeUsers = useUserStore(state => state.subscribeUsers)
   const initQueuePositions = useUserStore(state => state.initQueuePositions)
-  const subscribeOrders = useOrderStore(state => state.subscribeOrders)
+  const subscribeOrders = useOrderStore(state => state.subscribeActiveOrders)
 
   useEffect(() => {
     seedOrders()
