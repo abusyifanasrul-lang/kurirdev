@@ -16,7 +16,13 @@ import { Order } from '@/types';
 export function CourierDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { orders } = useOrderStore();
+  const { orders, courierOrders, fetchOrdersByCourier } = useOrderStore();
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchOrdersByCourier(user.id)
+    }
+  }, [user?.id])
   const { setCourierOffline, setCourierOnline } = useCourierStore();
   const { users } = useUserStore();
   const { user: currentUser } = useSessionStore();
@@ -52,15 +58,15 @@ export function CourierDashboard() {
   );
 
   const completedToday = useMemo(() =>
-    myOrders.filter((o: Order) => o.status === 'delivered' && isToday(new Date(o.created_at))).length,
-    [myOrders]
+    courierOrders.filter((o: Order) => o.status === 'delivered' && isToday(new Date(o.created_at))).length,
+    [courierOrders]
   );
 
   const todayEarnings = useMemo(() =>
-    myOrders
+    courierOrders
       .filter((o: Order) => o.status === 'delivered' && isToday(new Date(o.created_at)))
       .reduce((sum: number, o: Order) => sum + (o.total_fee || 0), 0),
-    [myOrders]
+    [courierOrders]
   );
 
   const unpaidDeliveredOrdersCount = (liveUser as any)?.unpaid_count ?? 0;

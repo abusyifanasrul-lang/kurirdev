@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { ArrowLeft, TrendingUp, DollarSign, Package, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO, startOfDay, subDays, startOfWeek, startOfMonth, isWithinInterval, endOfDay } from 'date-fns';
@@ -13,7 +13,13 @@ type Period = 'daily' | 'weekly' | 'monthly';
 export function CourierEarnings() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { orders } = useOrderStore();
+  const { courierOrders, fetchOrdersByCourier } = useOrderStore();
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchOrdersByCourier(user.id)
+    }
+  }, [user?.id])
     const [period, setPeriod] = useState<Period>('daily');
 
       const { commission_rate, commission_threshold } = useSettingsStore()
@@ -22,10 +28,8 @@ export function CourierEarnings() {
   // All delivered orders for this courier
   const deliveredOrders = useMemo(() => {
     if (!user) return [];
-    return orders.filter(
-      (o) => o.courier_id === user.id && o.status === 'delivered'
-    );
-  }, [orders, user]);
+    return courierOrders.filter((o) => o.status === 'delivered');
+  }, [courierOrders, user]);
 
   // Today's stats
   const todayStats = useMemo(() => {
