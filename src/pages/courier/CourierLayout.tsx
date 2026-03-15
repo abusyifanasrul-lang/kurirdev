@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { Home, Package, History, DollarSign, User, LogOut, Bell } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/context/AuthContext';
+import { useOrderStore } from '@/stores/useOrderStore';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import { useSessionStore } from '@/stores/useSessionStore';
 
@@ -10,6 +11,17 @@ export function CourierLayout() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { user: currentUser } = useSessionStore();
+  const { fetchActiveOrdersByCourier, fetchOrdersByCourier } = useOrderStore();
+
+  useEffect(() => {
+    if (!user?.id) return
+    fetchActiveOrdersByCourier(user.id)
+    fetchOrdersByCourier(user.id)
+    const pollInterval = setInterval(() => {
+      fetchActiveOrdersByCourier(user.id)
+    }, 60000)
+    return () => clearInterval(pollInterval)
+  }, [user?.id])
   const { notifications } = useNotificationStore();
   const unreadCount = notifications.filter(n => n.user_id === currentUser?.id && !n.is_read).length;
 

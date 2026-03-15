@@ -22,6 +22,11 @@ interface OrderState {
   historicalOrders: Order[]
   isFetchingHistory: boolean
   fetchOrdersByDateRange: (start: Date, end: Date) => Promise<void>
+  activeOrdersByCourier: Order[]
+  isFetchingActiveOrders: boolean
+  currentOrder: Order | null
+  fetchActiveOrdersByCourier: (courierId: string) => Promise<void>
+  subscribeOrderById: (orderId: string) => () => void
   addOrder: (order: Order) => Promise<void>
   updateOrderStatus: (orderId: string, status: OrderStatus, userId: string, userName: string, notes?: string) => Promise<void>
   assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>
@@ -46,6 +51,9 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   isLoading: true,
   isFetchingCourierOrders: false,
   isFetchingHistory: false,
+  activeOrdersByCourier: [],
+  isFetchingActiveOrders: false,
+  currentOrder: null,
 
   subscribeOrders: () => {
     const unsub = onSnapshot(collection(db, 'orders'), (snapshot) => {
@@ -70,6 +78,8 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   fetchOrdersByCourier: async (courierId) => {
     set({ isFetchingCourierOrders: true })
     try {
+      const sevenDaysAgo = new Date()
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
       const q = query(
         collection(db, 'orders'),
         where('courier_id', '==', courierId),
@@ -77,7 +87,8 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
         orderBy('created_at', 'desc')
       )
       const snapshot = await getDocs(q)
-      const courierOrders = snapshot.docs.map(d => d.data() as Order)
+      const allOrders = snapshot.docs.map(d => d.data() as Order)
+      const courierOrders = allOrders.filter(o => new Date(o.created_at) >= sevenDaysAgo)
       set({ courierOrders, isFetchingCourierOrders: false })
     } catch (error) {
       console.error('fetchOrdersByCourier error:', error)
@@ -103,6 +114,34 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     }
   },
 
+  fetchActiveOrdersByCourier: async (courierId) => {
+    set({ isFetchingActiveOrders: true })
+    try {
+      const q = query(
+        collection(db, 'orders'),
+        where('courier_id', '==', courierId),
+        where('status', 'in', ['assigned', 'picked_up', 'in_transit'])
+      )
+      const snapshot = await getDocs(q)
+      const activeOrdersByCourier = snapshot.docs.map(d => d.data() as Order)
+      set({ activeOrdersByCourier, isFetchingActiveOrders: false })
+    } catch (error) {
+      console.error('fetchActiveOrdersByCourier error:', error)
+      set({ isFetchingActiveOrders: false })
+    }
+  },
+
+  subscribeOrderById: (orderId) => {
+    const unsub = onSnapshot(doc(db, 'orders', orderId), (snapshot) => {
+      if (snapshot.exists()) {
+        set({ currentOrder: snapshot.data() as Order })
+      } else {
+        set({ currentOrder: null })
+      }
+    })
+    return unsub
+  },
+
   addOrder: async (order) => {
     await setDoc(doc(db, 'orders', order.id), order)
     sendMockNotification(
@@ -114,6 +153,8 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
 
   updateOrderStatus: async (orderId, status, userId, userName, notes) => {
     const order = get().orders.find(o => o.id === orderId)
+      || get().currentOrder
+      || get().activeOrdersByCourier.find(o => o.id === orderId)
     if (!order) return
 
     const updates: Partial<Order> = {

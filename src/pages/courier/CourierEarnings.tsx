@@ -1,25 +1,20 @@
 import { useMemo, useState, useEffect } from 'react';
 import { ArrowLeft, TrendingUp, DollarSign, Package, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { format, parseISO, startOfDay, subDays, startOfWeek, startOfMonth, isWithinInterval, endOfDay } from 'date-fns';
+import { format, parseISO, startOfDay, subDays, startOfWeek, isWithinInterval, endOfDay } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useAuth } from '@/context/AuthContext';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { calcCourierEarning } from '@/lib/calcEarning';
 
-type Period = 'daily' | 'weekly' | 'monthly';
+type Period = 'daily' | 'weekly';
 
 export function CourierEarnings() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { courierOrders, fetchOrdersByCourier } = useOrderStore();
+  const { courierOrders } = useOrderStore();
 
-  useEffect(() => {
-    if (user?.id) {
-      fetchOrdersByCourier(user.id)
-    }
-  }, [user?.id])
     const [period, setPeriod] = useState<Period>('daily');
 
       const { commission_rate, commission_threshold } = useSettingsStore()
@@ -96,22 +91,7 @@ export function CourierEarnings() {
       return weeks;
     }
 
-    // Monthly - last 6 months
-    const months = Array.from({ length: 6 }, (_, i) => {
-      const date = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
-      const monthStart = startOfMonth(date);
-      const monthEnd = endOfDay(new Date(date.getFullYear(), date.getMonth() + 1, 0));
-      const monthOrders = deliveredOrders.filter((o) => {
-        const d = parseISO(o.created_at);
-        return d >= monthStart && d <= monthEnd;
-      });
-      return {
-        label: format(date, 'MMM'),
-        earnings: monthOrders.reduce((sum, o) => sum + calcCourierEarning(o, earningSettings), 0),
-        orders: monthOrders.length,
-      };
-    });
-    return months;
+    return [];
   }, [deliveredOrders, period]);
 
   const formatCurrency = (val: number) =>
@@ -150,7 +130,7 @@ export function CourierEarnings() {
           <div className="bg-white/10 backdrop-blur rounded-xl p-3">
             <div className="flex items-center gap-2 mb-1">
               <TrendingUp className="w-4 h-4 text-indigo-200" />
-              <span className="text-xs text-indigo-200">Total Semua</span>
+              <span className="text-xs text-indigo-200">7 Hari Terakhir</span>
             </div>
             <p className="text-lg font-bold break-words leading-tight">{formatCurrency(allTimeStats.earnings)}</p>
             <p className="text-xs text-indigo-200">{allTimeStats.orders} pesanan</p>
@@ -161,7 +141,7 @@ export function CourierEarnings() {
       {/* Period Selector */}
       <div className="p-4">
         <div className="flex bg-white rounded-lg border border-gray-200 p-1">
-          {(['daily', 'weekly', 'monthly'] as Period[]).map((p) => (
+          {(['daily', 'weekly'] as Period[]).map((p) => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
@@ -170,7 +150,7 @@ export function CourierEarnings() {
                 : 'text-gray-600 hover:bg-gray-50'
                 }`}
             >
-              {p === 'daily' ? 'Harian' : p === 'weekly' ? 'Mingguan' : 'Bulanan'}
+              {p === 'daily' ? 'Harian' : 'Mingguan'}
             </button>
           ))}
         </div>

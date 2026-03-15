@@ -76,7 +76,7 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
 // PWA Update Banner Component
 function PWAUpdateBanner() {
   const { user, isAuthenticated } = useAuth();
-  const { orders } = useOrderStore();
+  const { orders, activeOrdersByCourier } = useOrderStore();
   const [showBanner, setShowBanner] = useState(false);
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
 
@@ -116,8 +116,8 @@ function PWAUpdateBanner() {
 
     // Strict condition: Check if courier is actively processing an order
     if (isAuthenticated && user?.role === 'courier') {
-      const activeOrders = orders.filter(
-        (o) => o.courier_id === user.id && (o.status === 'picked_up' || o.status === 'in_transit')
+      const activeOrders = activeOrdersByCourier.filter(
+        (o) => o.status === 'picked_up' || o.status === 'in_transit'
       );
       if (activeOrders.length > 0) {
         return; // Suppress banner to prevent disrupting active operations
@@ -172,13 +172,30 @@ export function App() {
   useEffect(() => {
     seedOrders()
     const unsubUsers = subscribeUsers()
-    const unsubOrders = subscribeOrders()
 
-    // Inisialisasi queue_position — hanya untuk kurir baru yang belum punya posisi
-    // Flag di localStorage mencegah overwrite saat reload/deploy
-    setTimeout(() => {
-      initQueuePositions().catch(console.error)
-    }, 2000)
+    // Cek apakah user adalah kurir — kurir tidak pakai global listener
+    let isCourier = false
+    try {
+      const sessionData = JSON.parse(sessionStorage.getItem('user-session') || '{}')
+      isCourier = sessionData.state?.user?.role === 'courier'
+    } catch (e) {}
+
+    // Admin: global listener aktif dengan Page Visibility API
+    // Kurir: tidak ada global listener — pakai polling di CourierLayout
+    let unsubOrders: (() => void) | null = null
+    if (!isCourier) {
+      unsubOrders = subscribeOrders()
+    }
+
+    const handleVisibilityChange = () => {
+      if (isCourier) return
+      if (document.hidden) {
+        if (unsubOrders) { unsubOrders(); unsubOrders = null }
+      } else {
+        if (!unsubOrders) { unsubOrders = subscribeOrders() }
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
 
     // 1. Refresh FCM Token if logged in as courier (Tahap 4)
     const currentUserStr = sessionStorage.getItem('user-session');
@@ -220,8 +237,9 @@ export function App() {
 
     return () => {
       unsubUsers()
-      unsubOrders()
+      if (unsubOrders) unsubOrders()
       unsubFCM()
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
       if (fcmRefreshInterval) clearInterval(fcmRefreshInterval)
     }
   }, [])

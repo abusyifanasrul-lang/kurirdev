@@ -9,13 +9,13 @@ import { useAuth } from '@/context/AuthContext';
 export function CourierOrders() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { orders } = useOrderStore(); // Global orders
+  const { activeOrdersByCourier } = useOrderStore();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<string>('all');
 
-  // Filter orders for THIS courier
-  const myOrders = orders.filter(o => o.courier_id === user?.id);
+  // activeOrdersByCourier sudah difilter per kurir dan hanya status aktif
+  const myOrders = activeOrdersByCourier;
 
   // Active orders typically exclude delivered/cancelled for the "Orders" tab? 
   // Or maybe show all but filter by status tab?
@@ -35,10 +35,8 @@ export function CourierOrders() {
     if (activeFilter !== 'all') {
       matchesFilter = order.status === activeFilter;
     } else {
-      // If "All" in Orders tab, maybe hide delivered/cancelled?
-      // Let's hide delivered/cancelled from "Orders" tab generally, as they go to History.
-      // But the previous code had them. Let's stick to active statuses for this view.
-      matchesFilter = ['assigned', 'picked_up', 'in_transit'].includes(order.status);
+      // activeOrdersByCourier sudah difilter hanya status aktif
+      matchesFilter = true;
     }
 
     return matchesSearch && matchesFilter;

@@ -16,13 +16,8 @@ import { Order } from '@/types';
 export function CourierDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { orders, courierOrders, fetchOrdersByCourier } = useOrderStore();
+  const { courierOrders, activeOrdersByCourier } = useOrderStore();
 
-  useEffect(() => {
-    if (user?.id) {
-      fetchOrdersByCourier(user.id)
-    }
-  }, [user?.id])
   const { setCourierOffline, setCourierOnline } = useCourierStore();
   const { users } = useUserStore();
   const { user: currentUser } = useSessionStore();
@@ -50,12 +45,9 @@ export function CourierDashboard() {
   ];
 
   // Derived Stats
-  const myOrders = useMemo(() => orders.filter((o: Order) => o.courier_id === user?.id), [orders, user?.id]);
+  const myOrders = activeOrdersByCourier;
 
-  const activeOrders = useMemo(() =>
-    myOrders.filter((o: Order) => ['assigned', 'picked_up', 'in_transit'].includes(o.status)),
-    [myOrders]
-  );
+  const activeOrders = myOrders;
 
   const completedToday = useMemo(() =>
     courierOrders.filter((o: Order) => o.status === 'delivered' && isToday(new Date(o.created_at))).length,

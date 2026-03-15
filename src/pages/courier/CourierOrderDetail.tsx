@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Phone, MapPin, Navigation, CheckCircle, Package, Truck, Plus, X, AlertTriangle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
@@ -26,7 +26,7 @@ const parseRupiah = (val: string): string => {
 export function CourierOrderDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { orders, updateOrderStatus, cancelOrder, updateBiayaTambahan, updateItems, updateOngkir, updateOrderWaiting } = useOrderStore();
+  const { orders, activeOrdersByCourier, currentOrder, subscribeOrderById, updateOrderStatus, cancelOrder, updateBiayaTambahan, updateItems, updateOngkir, updateOrderWaiting } = useOrderStore();
   const { user } = useAuth();
   const { users } = useUserStore();
   const { user: currentUser } = useSessionStore();
@@ -37,7 +37,15 @@ export function CourierOrderDetail() {
   const { commission_rate, commission_threshold } = useSettingsStore();
     const commissionRate = commission_rate;
 
-  const order = useMemo(() => orders.find(o => o.id === id), [orders, id]);
+  useEffect(() => {
+    if (!id) return
+    const unsub = subscribeOrderById(id)
+    return () => unsub()
+  }, [id])
+
+  const order = (currentOrder?.id === id ? currentOrder : null)
+    || activeOrdersByCourier.find(o => o.id === id)
+    || null;
 
   const [isUpdating, setIsUpdating] = useState(false);
   const [showWaReminder, setShowWaReminder] = useState(false);

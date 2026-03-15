@@ -37,14 +37,8 @@ export function CourierHistory() {
       setTimeout(() => el.classList.remove('ring-2', 'ring-yellow-400', 'ring-offset-2'), 2000);
     }, 300);
   }, [highlightOrderId]);
-  const { courierOrders, fetchOrdersByCourier, isFetchingCourierOrders } = useOrderStore();
+  const { courierOrders, isFetchingCourierOrders } = useOrderStore();
   const { user } = useAuth();
-
-  useEffect(() => {
-    if (user?.id) {
-      fetchOrdersByCourier(user.id)
-    }
-  }, [user?.id])
 
   const { commission_rate, commission_threshold } = useSettingsStore()
   const earningSettings = { commission_rate, commission_threshold }
