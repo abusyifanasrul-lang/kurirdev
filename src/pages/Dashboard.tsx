@@ -32,7 +32,7 @@ import { calcAdminEarning } from '@/lib/calcEarning';
 const COLORS = ['#F59E0B', '#3B82F6', '#8B5CF6', '#06B6D4', '#22C55E', '#EF4444'];
 
 export function Dashboard() {
-  const { orders, getRecentOrders } = useOrderStore();
+  const { orders, getRecentOrders, historicalOrders, fetchOrdersByDateRange, isFetchingHistory } = useOrderStore();
   const { users } = useUserStore();
   const { commission_rate, commission_threshold } = useSettingsStore();
   const earningSettings = { commission_rate, commission_threshold };
@@ -40,13 +40,25 @@ export function Dashboard() {
   const [isConnected] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(new Date());
 
-  // Simulate polling/refresh
+  useEffect(() => {
+    const end = new Date()
+    const start = subDays(end, 7)
+    fetchOrdersByDateRange(start, end)
+  }, [])
+
   useEffect(() => {
     const interval = setInterval(() => {
       setLastUpdated(new Date());
     }, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [])
+
+  const allOrders = useMemo(() => {
+    const map = new Map<string, import('@/types').Order>()
+    historicalOrders.forEach(o => map.set(o.id, o))
+    orders.forEach(o => map.set(o.id, o)) // active overwrite historical
+    return Array.from(map.values())
+  }, [orders, historicalOrders])
 
   const handleRefresh = () => {
     setLastUpdated(new Date());
@@ -62,7 +74,7 @@ export function Dashboard() {
 
   // --- Derived Analytics ---
   const analytics = useMemo(() => {
-    const todayOrders = (orders || []).filter(o => isToday(new Date(o.created_at)));
+    const todayOrders = (allOrders || []).filter(o => isToday(new Date(o.created_at)));
     const pendingOrders = (orders || []).filter(o => o.status === 'pending');
 
     // Revenue: Sum of total_fee for 'delivered' orders today
@@ -80,7 +92,7 @@ export function Dashboard() {
       .reduce((sum, o) => sum + (o.total_fee || 0), 0);
 
     // Pie Chart Data
-    const statusCounts = orders.reduce((acc, order) => {
+    const statusCounts = allOrders.reduce((acc, order) => {
       acc[order.status] = (acc[order.status] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
@@ -99,7 +111,7 @@ export function Dashboard() {
       pending_orders: pendingOrders.length,
       orders_by_status: pieData
     };
-  }, [orders, users]);
+  }, [orders, allOrders, users]);
 
   const revenueChartData = useMemo(() => {
     // Last 7 days
@@ -109,7 +121,7 @@ export function Dashboard() {
       const start = startOfDay(date);
       const end = endOfDay(date);
 
-      const dayOrders = (orders || []).filter(o =>
+      const dayOrders = (allOrders || []).filter(o =>
         isWithinInterval(new Date(o.created_at), { start, end })
       );
 
@@ -124,7 +136,7 @@ export function Dashboard() {
       });
     }
     return data;
-  }, [orders]);
+  }, [allOrders]);
 
   const recentOrders = getRecentOrders(5);
 

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Download, Calendar, TrendingUp, DollarSign, Package, Award, Filter } from 'lucide-react';
 import { format, subDays, isWithinInterval, parseISO, startOfDay, endOfDay, eachDayOfInterval } from 'date-fns';
 import {
@@ -29,7 +29,7 @@ import { useUserStore } from '@/stores/useUserStore';
 const COLORS = ['#F59E0B', '#3B82F6', '#8B5CF6', '#06B6D4', '#22C55E', '#EF4444'];
 
 export function Reports() {
-  const { orders } = useOrderStore();
+  const { historicalOrders, fetchOrdersByDateRange, isFetchingHistory } = useOrderStore();
   const { couriers } = useCourierStore();
   const { users } = useUserStore();
   const { commission_rate } = useSettingsStore();
@@ -42,10 +42,19 @@ export function Reports() {
     end: format(new Date(), 'yyyy-MM-dd'),
   });
 
+  useEffect(() => {
+    const end = endOfDay(parseISO(format(new Date(), 'yyyy-MM-dd')))
+    const start = startOfDay(parseISO(format(subDays(new Date(), 7), 'yyyy-MM-dd')))
+    fetchOrdersByDateRange(start, end)
+  }, [])
+
   const [appliedRange, setAppliedRange] = useState(dateRange);
 
   const handleApplyFilter = () => {
     setAppliedRange(dateRange);
+    const start = startOfDay(parseISO(dateRange.start))
+    const end = endOfDay(parseISO(dateRange.end))
+    fetchOrdersByDateRange(start, end)
   };
 
   // --- Analytics Calculation ---
@@ -54,7 +63,7 @@ export function Reports() {
     const end = endOfDay(parseISO(appliedRange.end));
 
     // 1. Filter Orders in Range
-    const filteredOrders = orders.filter((o) => {
+    const filteredOrders = historicalOrders.filter((o) => {
       const dateStr = (o.status === 'delivered' && o.actual_delivery_time) ? o.actual_delivery_time : o.created_at;
       if (!dateStr) return false;
       const date = parseISO(dateStr);
@@ -148,7 +157,7 @@ export function Reports() {
       couriersList,
       filteredOrdersCount: filteredOrders.length
     };
-  }, [orders, couriers, appliedRange]);
+  }, [historicalOrders, couriers, appliedRange]);
 
 
   const formatCurrency = (value: number) => {
@@ -375,8 +384,8 @@ export function Reports() {
                 className="flex-1 min-w-0"
               />
             </div>
-            <Button variant="secondary" size="sm" onClick={handleApplyFilter} leftIcon={<Filter className="h-4 w-4" />}>
-              Apply Filter
+            <Button variant="secondary" size="sm" onClick={handleApplyFilter} leftIcon={<Filter className="h-4 w-4" />} disabled={isFetchingHistory}>
+              {isFetchingHistory ? 'Loading...' : 'Apply Filter'}
             </Button>
           </div>
         </Card>

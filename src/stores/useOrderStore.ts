@@ -19,6 +19,9 @@ interface OrderState {
   fetchOrdersByCourier: (courierId: string) => Promise<void>
   courierOrders: Order[]
   isFetchingCourierOrders: boolean
+  historicalOrders: Order[]
+  isFetchingHistory: boolean
+  fetchOrdersByDateRange: (start: Date, end: Date) => Promise<void>
   addOrder: (order: Order) => Promise<void>
   updateOrderStatus: (orderId: string, status: OrderStatus, userId: string, userName: string, notes?: string) => Promise<void>
   assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>
@@ -38,9 +41,11 @@ interface OrderState {
 export const useOrderStore = create<OrderState>()((set, get) => ({
   orders: [],
   courierOrders: [],
+  historicalOrders: [],
   statusHistory: {},
   isLoading: true,
   isFetchingCourierOrders: false,
+  isFetchingHistory: false,
 
   subscribeOrders: () => {
     const unsub = onSnapshot(collection(db, 'orders'), (snapshot) => {
@@ -77,6 +82,24 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     } catch (error) {
       console.error('fetchOrdersByCourier error:', error)
       set({ isFetchingCourierOrders: false })
+    }
+  },
+
+  fetchOrdersByDateRange: async (start, end) => {
+    set({ isFetchingHistory: true })
+    try {
+      const q = query(
+        collection(db, 'orders'),
+        where('created_at', '>=', start.toISOString()),
+        where('created_at', '<=', end.toISOString()),
+        orderBy('created_at', 'desc')
+      )
+      const snapshot = await getDocs(q)
+      const historicalOrders = snapshot.docs.map(d => d.data() as Order)
+      set({ historicalOrders, isFetchingHistory: false })
+    } catch (error) {
+      console.error('fetchOrdersByDateRange error:', error)
+      set({ isFetchingHistory: false })
     }
   },
 
