@@ -107,7 +107,7 @@ export function Layout() {
           <div className="p-1.5 bg-indigo-600 rounded-lg">
             <Truck className="h-5 w-5" />
           </div>
-          <span className="font-bold">DeliveryPro</span>
+          <span className="font-bold">KurirDev</span>
         </div>
 
         <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center font-semibold">
@@ -143,7 +143,7 @@ export function Layout() {
               <Truck className="h-6 w-6" />
             </div>
             <div>
-              <h1 className="font-bold text-lg">DeliveryPro</h1>
+              <h1 className="font-bold text-lg">KurirDev</h1>
               <p className="text-xs text-gray-400">Admin Dashboard</p>
             </div>
           </div>
