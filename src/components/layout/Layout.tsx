@@ -41,16 +41,14 @@ export function Layout() {
   const { fetchAllActiveOrders, fetchOrdersByDateRange } = useOrderStore();
 
   useEffect(() => {
-    fetchAllActiveOrders()
-
-    // Refresh historical orders setiap 5 menit
-    const refreshHistorical = () => {
+    const refreshAll = () => {
+      fetchAllActiveOrders()
       const end = new Date()
       const start = subDays(end, 7)
       fetchOrdersByDateRange(start, end)
     }
-    refreshHistorical()
-    const historicalInterval = setInterval(refreshHistorical, 300000)
+
+    refreshAll()
 
     const getInterval = () => {
       const hour = new Date().getHours()
@@ -58,14 +56,14 @@ export function Layout() {
     }
 
     let adminPollInterval = setInterval(() => {
-      fetchAllActiveOrders()
+      refreshAll()
     }, getInterval())
 
     // Re-set interval setiap jam agar interval malam/siang otomatis berganti
     const hourlyCheck = setInterval(() => {
       clearInterval(adminPollInterval)
       adminPollInterval = setInterval(() => {
-        fetchAllActiveOrders()
+        refreshAll()
       }, getInterval())
     }, 60000)
 
@@ -73,9 +71,9 @@ export function Layout() {
       if (document.hidden) {
         clearInterval(adminPollInterval)
       } else {
-        fetchAllActiveOrders()
+        refreshAll()
         adminPollInterval = setInterval(() => {
-          fetchAllActiveOrders()
+          refreshAll()
         }, getInterval())
       }
     }
@@ -84,7 +82,6 @@ export function Layout() {
     return () => {
       clearInterval(adminPollInterval)
       clearInterval(hourlyCheck)
-      clearInterval(historicalInterval)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [])
