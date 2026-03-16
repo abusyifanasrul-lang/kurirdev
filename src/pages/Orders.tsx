@@ -51,7 +51,7 @@ type SortField = 'order_number' | 'customer_name' | 'status' | 'courier_id' | 'p
 type SortOrder = 'asc' | 'desc';
 
 export function Orders() {
-  const { orders, addOrder, assignCourier, cancelOrder, generateOrderId, updateOrder } = useOrderStore();
+  const { orders, addOrder, assignCourier, cancelOrder, generateOrderId, updateOrder, fetchAllActiveOrders } = useOrderStore();
   const { rotateQueue } = useCourierStore();
   const { users } = useUserStore();
   const { addNotification } = useNotificationStore();
@@ -306,23 +306,26 @@ export function Orders() {
         }).catch(console.error);
       }
 
+      await fetchAllActiveOrders();
       setIsDetailModalOpen(false);
       setAssignCourierId('');
     }
   };
 
-  const handleCancel = () => {
+  const handleCancel = async () => {
     if (!selectedOrder) return;
     cancelOrder(selectedOrder.id, cancelReason, user?.id || "1", user?.name || 'Admin');
     setIsCancelModalOpen(false);
     setIsDetailModalOpen(false);
     setCancelReason('');
+    await fetchAllActiveOrders();
   };
 
-  const handleSaveChanges = () => {
+  const handleSaveChanges = async () => {
     if (!selectedOrder) return;
     updateOrder(selectedOrder.id, editForm);
     setSelectedOrder({ ...selectedOrder, ...editForm });
+    await fetchAllActiveOrders();
   };
 
   const handleExportCSV = () => {
@@ -650,9 +653,10 @@ export function Orders() {
                           <Button
                             size="sm"
                             className="bg-orange-500 hover:bg-orange-600 text-white h-7 px-2 text-[10px]"
-                            onClick={(e) => {
+                            onClick={async (e) => {
                               e.stopPropagation();
-                              updateOrder(order.id, { payment_status: 'paid' });
+                              await updateOrder(order.id, { payment_status: 'paid' });
+                              await fetchAllActiveOrders();
                             }}
                           >
                             Konfirmasi Setor
