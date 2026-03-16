@@ -266,7 +266,7 @@ export function Orders() {
         updateOrder(selectedOrder.id, { notes: selectedOrder.notes });
       }
 
-      assignCourier(selectedOrder.id, courier.id, courier.name, user?.id || "1", user?.name || 'Admin');
+      await assignCourier(selectedOrder.id, courier.id, courier.name, user?.id || "1", user?.name || 'Admin');
       await rotateQueue(courier.id);
 
       // Buat teks instruksi
