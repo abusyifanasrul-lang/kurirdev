@@ -45,7 +45,9 @@ export function CourierDashboard() {
   ];
 
   // Derived Stats
-  const myOrders = activeOrdersByCourier;
+  const myOrders = [...activeOrdersByCourier].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
 
   const activeOrders = myOrders;
 

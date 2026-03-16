@@ -15,7 +15,9 @@ export function CourierOrders() {
   const [activeFilter, setActiveFilter] = useState<string>('all');
 
   // activeOrdersByCourier sudah difilter per kurir dan hanya status aktif
-  const myOrders = activeOrdersByCourier;
+  const myOrders = [...activeOrdersByCourier].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
 
   // Active orders typically exclude delivered/cancelled for the "Orders" tab? 
   // Or maybe show all but filter by status tab?
