@@ -122,7 +122,7 @@ export const useCourierStore = create<CourierState>()(
         const sorted = [...allCouriers].sort((a, b) =>
           (a.queue_position ?? 999) - (b.queue_position ?? 999)
         )
-        const maxPosition = sorted.length
+        const maxPosition = sorted.reduce((max, c) => Math.max(max, c.queue_position ?? 0), 0)
         const assignedCourier = sorted.find(c => c.id === assignedCourierId)
         if (!assignedCourier) return
         const assignedCurrentPos = assignedCourier.queue_position ?? 1
