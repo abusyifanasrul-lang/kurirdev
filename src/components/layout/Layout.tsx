@@ -41,10 +41,41 @@ export function Layout() {
 
   useEffect(() => {
     fetchAllActiveOrders()
-    const adminPollInterval = setInterval(() => {
+
+    const getInterval = () => {
+      const hour = new Date().getHours()
+      return (hour >= 0 && hour < 7) ? 60000 : 20000
+    }
+
+    let adminPollInterval = setInterval(() => {
       fetchAllActiveOrders()
-    }, 20000)
-    return () => clearInterval(adminPollInterval)
+    }, getInterval())
+
+    // Re-set interval setiap jam agar interval malam/siang otomatis berganti
+    const hourlyCheck = setInterval(() => {
+      clearInterval(adminPollInterval)
+      adminPollInterval = setInterval(() => {
+        fetchAllActiveOrders()
+      }, getInterval())
+    }, 60000)
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        clearInterval(adminPollInterval)
+      } else {
+        fetchAllActiveOrders()
+        adminPollInterval = setInterval(() => {
+          fetchAllActiveOrders()
+        }, getInterval())
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      clearInterval(adminPollInterval)
+      clearInterval(hourlyCheck)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
   }, [])
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);

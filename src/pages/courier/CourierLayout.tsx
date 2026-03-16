@@ -4,6 +4,7 @@ import { Home, Package, History, DollarSign, User, LogOut, Bell } from 'lucide-r
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/context/AuthContext';
 import { useOrderStore } from '@/stores/useOrderStore';
+import { useUserStore } from '@/stores/useUserStore';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import { useSessionStore } from '@/stores/useSessionStore';
 
@@ -11,17 +12,44 @@ export function CourierLayout() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { user: currentUser } = useSessionStore();
+  const { users } = useUserStore();
+  const liveUser = users.find(u => u.id === user?.id);
+  const courierStatus = (liveUser as any)?.courier_status ?? 'on';
+  const isOff = courierStatus === 'off';
   const { fetchActiveOrdersByCourier, fetchOrdersByCourier } = useOrderStore();
 
   useEffect(() => {
     if (!user?.id) return
     fetchActiveOrdersByCourier(user.id)
     fetchOrdersByCourier(user.id)
-    const pollInterval = setInterval(() => {
-      fetchActiveOrdersByCourier(user.id)
+
+    let pollInterval: ReturnType<typeof setInterval> | null = setInterval(() => {
+      if (!isOff && !document.hidden) {
+        fetchActiveOrdersByCourier(user.id)
+      }
     }, 15000)
-    return () => clearInterval(pollInterval)
-  }, [user?.id])
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        if (pollInterval) { clearInterval(pollInterval); pollInterval = null }
+      } else {
+        if (!isOff) fetchActiveOrdersByCourier(user.id)
+        if (!pollInterval) {
+          pollInterval = setInterval(() => {
+            if (!isOff && !document.hidden) {
+              fetchActiveOrdersByCourier(user.id)
+            }
+          }, 15000)
+        }
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      if (pollInterval) clearInterval(pollInterval)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [user?.id, isOff])
   const { notifications } = useNotificationStore();
   const unreadCount = notifications.filter(n => n.user_id === currentUser?.id && !n.is_read).length;
 

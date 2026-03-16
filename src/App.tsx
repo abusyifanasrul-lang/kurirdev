@@ -4,7 +4,6 @@ import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useUserStore } from '@/stores/useUserStore';
-import { seedOrders } from '@/lib/firebaseOrderSeeder';
 import { onForegroundMessage, refreshFCMToken } from '@/lib/fcm';
 
 // Loading Skeleton
@@ -169,7 +168,6 @@ export function App() {
   const initQueuePositions = useUserStore(state => state.initQueuePositions)
 
   useEffect(() => {
-    seedOrders()
     const unsubUsers = subscribeUsers()
 
     setTimeout(() => {

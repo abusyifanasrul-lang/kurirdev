@@ -59,7 +59,8 @@ export function Orders() {
 
   useEffect(() => {
     const end = new Date()
-    const start = subDays(end, 30)
+    const start = new Date()
+    start.setDate(start.getDate() - 14)
     fetchOrdersByDateRange(start, end)
   }, [])
 
