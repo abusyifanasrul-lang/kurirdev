@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Plus, Download, Search, Bell, ArrowUpDown, ChevronUp, ChevronDown, Printer } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, subDays } from 'date-fns';
 import { sendPushNotification } from '@/services/notificationService';
 import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/Card';
@@ -51,17 +51,30 @@ type SortField = 'order_number' | 'customer_name' | 'status' | 'courier_id' | 'p
 type SortOrder = 'asc' | 'desc';
 
 export function Orders() {
-  const { orders, addOrder, assignCourier, cancelOrder, generateOrderId, updateOrder, fetchAllActiveOrders } = useOrderStore();
+  const { orders, historicalOrders, fetchOrdersByDateRange, addOrder, assignCourier, cancelOrder, generateOrderId, updateOrder, fetchAllActiveOrders } = useOrderStore();
   const { rotateQueue } = useCourierStore();
   const { users } = useUserStore();
   const { addNotification } = useNotificationStore();
   const { user } = useAuth(); // Current admin user
+
+  useEffect(() => {
+    const end = new Date()
+    const start = subDays(end, 30)
+    fetchOrdersByDateRange(start, end)
+  }, [])
 
   const getCourierName = (courierId?: string) => {
     if (!courierId) return null;
     const courier = users.find(u => u.id === courierId);
     return courier?.name || null;
   };
+
+  const allOrders = useMemo(() => {
+    const map = new Map<string, import('@/types').Order>()
+    historicalOrders.forEach(o => map.set(o.id, o))
+    orders.forEach(o => map.set(o.id, o))
+    return Array.from(map.values())
+  }, [orders, historicalOrders])
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchCategory, setSearchCategory] = useState('all');
@@ -140,7 +153,7 @@ export function Orders() {
 
   // Derived State
   const filteredOrders = useMemo(() => {
-    return orders
+    return allOrders
       .filter((order) => {
         const matchesStatus = !statusFilter || order.status === statusFilter;
 
@@ -193,7 +206,7 @@ export function Orders() {
         if (aValue > bValue) return order === 'asc' ? 1 : -1;
         return 0;
       });
-  }, [orders, searchQuery, searchCategory, statusFilter, dateFilter, sortConfig]);
+  }, [allOrders, searchQuery, searchCategory, statusFilter, dateFilter, sortConfig]);
 
   const handleSort = (field: SortField) => {
     setSortConfig(prev => ({
@@ -214,7 +227,7 @@ export function Orders() {
     .sort((a, b) => ((a as any).queue_position ?? 999) - ((b as any).queue_position ?? 999));
 
   const courierWaitingOrder = (courierId: string) =>
-    orders.find(o => o.courier_id === courierId && o.is_waiting === true);
+    allOrders.find(o => o.courier_id === courierId && o.is_waiting === true);
 
   // Sync edit form when order selected
   useEffect(() => {

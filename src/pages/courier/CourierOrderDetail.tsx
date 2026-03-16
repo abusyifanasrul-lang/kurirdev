@@ -445,7 +445,13 @@ export function CourierOrderDetail() {
                     </button>
                     <button
                       onClick={async () => {
-                        await updateItems(order.id, itemList);
+                        const currentItems = namaItem && Number(hargaItem) > 0
+                          ? [...itemList, { nama: namaItem, harga: Number(hargaItem) }]
+                          : itemList;
+                        await updateItems(order.id, currentItems);
+                        setItemList(currentItems);
+                        setNamaItem('');
+                        setHargaItem('');
                         setShowItemForm(false);
                       }}
                       className="flex-1 py-1.5 text-xs bg-indigo-600 text-white rounded-lg font-medium"
