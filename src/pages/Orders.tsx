@@ -230,7 +230,7 @@ export function Orders() {
   }, [selectedOrder]);
 
   // Handlers
-  const handleCreateOrder = () => {
+  const handleCreateOrder = async () => {
     const orderData: Order = {
       id: crypto.randomUUID(),
       order_number: generateOrderId(),
@@ -243,7 +243,8 @@ export function Orders() {
       created_by: user?.id || "1",
     };
 
-    addOrder(orderData);
+    await addOrder(orderData);
+    await fetchAllActiveOrders();
     setIsCreateModalOpen(false);
     setNewOrder({
       customer_name: '',
