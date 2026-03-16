@@ -26,6 +26,7 @@ interface OrderState {
   isFetchingActiveOrders: boolean
   currentOrder: Order | null
   fetchActiveOrdersByCourier: (courierId: string) => Promise<void>
+  fetchAllActiveOrders: () => Promise<void>
   subscribeOrderById: (orderId: string) => () => void
   addOrder: (order: Order) => Promise<void>
   updateOrderStatus: (orderId: string, status: OrderStatus, userId: string, userName: string, notes?: string) => Promise<void>
@@ -128,6 +129,20 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     } catch (error) {
       console.error('fetchActiveOrdersByCourier error:', error)
       set({ isFetchingActiveOrders: false })
+    }
+  },
+
+  fetchAllActiveOrders: async () => {
+    try {
+      const q = query(
+        collection(db, 'orders'),
+        where('status', 'not-in', ['delivered', 'cancelled'])
+      )
+      const snapshot = await getDocs(q)
+      const orders = snapshot.docs.map(d => d.data() as Order)
+      set({ orders, isLoading: false })
+    } catch (error) {
+      console.error('fetchAllActiveOrders error:', error)
     }
   },
 

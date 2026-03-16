@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/context/AuthContext';
+import { useOrderStore } from '@/stores/useOrderStore';
 
 interface NavItem {
   path: string;
@@ -36,6 +37,16 @@ export function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { fetchAllActiveOrders } = useOrderStore();
+
+  useEffect(() => {
+    fetchAllActiveOrders()
+    const adminPollInterval = setInterval(() => {
+      fetchAllActiveOrders()
+    }, 20000)
+    return () => clearInterval(adminPollInterval)
+  }, [])
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 

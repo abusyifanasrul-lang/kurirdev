@@ -167,35 +167,10 @@ function PWAUpdateBanner() {
 export function App() {
   const subscribeUsers = useUserStore(state => state.subscribeUsers)
   const initQueuePositions = useUserStore(state => state.initQueuePositions)
-  const subscribeOrders = useOrderStore(state => state.subscribeActiveOrders)
 
   useEffect(() => {
     seedOrders()
     const unsubUsers = subscribeUsers()
-
-    // Cek apakah user adalah kurir — kurir tidak pakai global listener
-    let isCourier = false
-    try {
-      const sessionData = JSON.parse(sessionStorage.getItem('user-session') || '{}')
-      isCourier = sessionData.state?.user?.role === 'courier'
-    } catch (e) {}
-
-    // Admin: global listener aktif dengan Page Visibility API
-    // Kurir: tidak ada global listener — pakai polling di CourierLayout
-    let unsubOrders: (() => void) | null = null
-    if (!isCourier) {
-      unsubOrders = subscribeOrders()
-    }
-
-    const handleVisibilityChange = () => {
-      if (isCourier) return
-      if (document.hidden) {
-        if (unsubOrders) { unsubOrders(); unsubOrders = null }
-      } else {
-        if (!unsubOrders) { unsubOrders = subscribeOrders() }
-      }
-    }
-    document.addEventListener('visibilitychange', handleVisibilityChange)
 
     // 1. Refresh FCM Token if logged in as courier (Tahap 4)
     const currentUserStr = sessionStorage.getItem('user-session');
@@ -237,9 +212,7 @@ export function App() {
 
     return () => {
       unsubUsers()
-      if (unsubOrders) unsubOrders()
       unsubFCM()
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
       if (fcmRefreshInterval) clearInterval(fcmRefreshInterval)
     }
   }, [])
