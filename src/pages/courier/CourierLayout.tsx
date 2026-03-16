@@ -19,7 +19,7 @@ export function CourierLayout() {
     fetchOrdersByCourier(user.id)
     const pollInterval = setInterval(() => {
       fetchActiveOrdersByCourier(user.id)
-    }, 60000)
+    }, 15000)
     return () => clearInterval(pollInterval)
   }, [user?.id])
   const { notifications } = useNotificationStore();
