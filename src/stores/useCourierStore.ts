@@ -167,15 +167,21 @@ export const useCourierStore = create<CourierState>()(
         const userStore = useUserStore.getState()
         const allCouriers = userStore.users.filter(u => u.role === 'courier') as (Courier & { queue_position?: number })[]
 
-        // Posisi baru = posisi tertinggi saat ini + 1 (masuk paling belakang)
-        const maxPos = allCouriers.reduce((max, c) => Math.max(max, c.queue_position ?? 0), 0)
+        const thisCourier = allCouriers.find(c => c.id === courierId)
+        const alreadyHasPosition = (thisCourier?.queue_position ?? 0) > 0
 
         await userStore.updateUser(courierId, {
           is_online: true,
           courier_status: status,
           off_reason: '',
         })
-        await userStore.updateUserQueuePosition(courierId, maxPos + 1)
+
+        // Hanya assign posisi baru jika kurir belum punya posisi
+        // (kurir baru online dari OFF, bukan sekadar ganti ON ↔ STAY)
+        if (!alreadyHasPosition) {
+          const maxPos = allCouriers.reduce((max, c) => Math.max(max, c.queue_position ?? 0), 0)
+          await userStore.updateUserQueuePosition(courierId, maxPos + 1)
+        }
       },
     }),
     {
