@@ -172,6 +172,10 @@ export function App() {
     seedOrders()
     const unsubUsers = subscribeUsers()
 
+    setTimeout(() => {
+      initQueuePositions().catch(console.error)
+    }, 2000)
+
     // 1. Refresh FCM Token if logged in as courier (Tahap 4)
     const currentUserStr = sessionStorage.getItem('user-session');
     let fcmRefreshInterval: ReturnType<typeof setInterval> | null = null;
