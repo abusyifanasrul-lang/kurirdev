@@ -143,24 +143,14 @@ export const useCourierStore = create<CourierState>()(
 
       setCourierOffline: async (courierId, reason) => {
         const userStore = useUserStore.getState()
-        const allCouriers = userStore.users.filter(u => u.role === 'courier') as (Courier & { queue_position?: number })[]
 
-        // Set kurir ini offline dan hapus queue_position
+        // Pertahankan queue_position saat OFF — posisi tidak berubah
+        // is_online = false sudah cukup untuk exclude dari Courier Queue aktif
         await userStore.updateUser(courierId, {
           is_online: false,
           courier_status: 'off',
           off_reason: reason,
-          queue_position: null as any,
         })
-
-        // Kurir yang posisinya di belakang kurir ini → geser maju 1
-        const offCourier = allCouriers.find(c => c.id === courierId)
-        if (offCourier?.queue_position != null) {
-          const updatePromises = allCouriers
-            .filter(c => c.id !== courierId && (c.queue_position ?? 0) > (offCourier.queue_position ?? 0))
-            .map(c => userStore.updateUserQueuePosition(c.id, (c.queue_position ?? 0) - 1))
-          await Promise.all(updatePromises)
-        }
       },
 
       setCourierOnline: async (courierId, status) => {

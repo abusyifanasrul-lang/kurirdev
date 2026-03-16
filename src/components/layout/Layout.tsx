@@ -16,6 +16,7 @@ import {
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/context/AuthContext';
 import { useOrderStore } from '@/stores/useOrderStore';
+import { subDays } from 'date-fns';
 
 interface NavItem {
   path: string;
@@ -37,10 +38,19 @@ export function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
-  const { fetchAllActiveOrders } = useOrderStore();
+  const { fetchAllActiveOrders, fetchOrdersByDateRange } = useOrderStore();
 
   useEffect(() => {
     fetchAllActiveOrders()
+
+    // Refresh historical orders setiap 5 menit
+    const refreshHistorical = () => {
+      const end = new Date()
+      const start = subDays(end, 7)
+      fetchOrdersByDateRange(start, end)
+    }
+    refreshHistorical()
+    const historicalInterval = setInterval(refreshHistorical, 300000)
 
     const getInterval = () => {
       const hour = new Date().getHours()
@@ -74,6 +84,7 @@ export function Layout() {
     return () => {
       clearInterval(adminPollInterval)
       clearInterval(hourlyCheck)
+      clearInterval(historicalInterval)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [])
