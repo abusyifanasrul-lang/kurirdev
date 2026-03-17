@@ -15,8 +15,6 @@ import {
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/context/AuthContext';
-import { useOrderStore } from '@/stores/useOrderStore';
-import { subDays } from 'date-fns';
 
 interface NavItem {
   path: string;
@@ -38,53 +36,7 @@ export function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
-  const { fetchAllActiveOrders, fetchOrdersByDateRange } = useOrderStore();
 
-  useEffect(() => {
-    const refreshAll = () => {
-      fetchAllActiveOrders()
-      const end = new Date()
-      const start = subDays(end, 7)
-      fetchOrdersByDateRange(start, end)
-    }
-
-    refreshAll()
-
-    const getInterval = () => {
-      const hour = new Date().getHours()
-      return (hour >= 0 && hour < 7) ? 60000 : 20000
-    }
-
-    let adminPollInterval = setInterval(() => {
-      refreshAll()
-    }, getInterval())
-
-    // Re-set interval setiap jam agar interval malam/siang otomatis berganti
-    const hourlyCheck = setInterval(() => {
-      clearInterval(adminPollInterval)
-      adminPollInterval = setInterval(() => {
-        refreshAll()
-      }, getInterval())
-    }, 60000)
-
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        clearInterval(adminPollInterval)
-      } else {
-        refreshAll()
-        adminPollInterval = setInterval(() => {
-          refreshAll()
-        }, getInterval())
-      }
-    }
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-
-    return () => {
-      clearInterval(adminPollInterval)
-      clearInterval(hourlyCheck)
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-    }
-  }, [])
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
