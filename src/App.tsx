@@ -5,6 +5,9 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { onForegroundMessage, refreshFCMToken } from '@/lib/fcm';
+import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { Order } from '@/types';
 
 // Loading Skeleton
 function LoadingScreen() {
@@ -170,6 +173,24 @@ export function App() {
   useEffect(() => {
     const unsubUsers = subscribeUsers()
 
+    const { setOrders } = useOrderStore.getState()
+    const threeDaysAgo = new Date()
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3)
+
+    const unsubOrders = onSnapshot(
+      query(
+        collection(db, 'orders'),
+        where('created_at', '>=', threeDaysAgo.toISOString()),
+        orderBy('created_at', 'desc'),
+        limit(200)
+      ),
+      (snapshot) => {
+        const orders = snapshot.docs
+          .map(d => d.data() as Order)
+        setOrders(orders)
+      }
+    )
+
     setTimeout(() => {
       initQueuePositions().catch(console.error)
     }, 2000)
@@ -214,6 +235,7 @@ export function App() {
 
     return () => {
       unsubUsers()
+      unsubOrders()
       unsubFCM()
       if (fcmRefreshInterval) clearInterval(fcmRefreshInterval)
     }

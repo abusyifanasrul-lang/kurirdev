@@ -60,7 +60,7 @@ export function Orders() {
   useEffect(() => {
     const end = new Date()
     const start = new Date()
-    start.setDate(start.getDate() - 14)
+    start.setDate(start.getDate() - 3)
     fetchOrdersByDateRange(start, end)
   }, [])
 

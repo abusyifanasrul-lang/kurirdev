@@ -38,6 +38,7 @@ interface OrderState {
   updateItems: (orderId: string, items: { nama: string; harga: number }[]) => Promise<void>
   updateOngkir: (orderId: string, totalFee: number) => Promise<void>
   updateOrderWaiting: (orderId: string, isWaiting: boolean) => Promise<void>
+  setOrders: (orders: Order[]) => void
 
   generateOrderId: () => string
   getOrdersByCourier: (courierId: string) => Order[]
@@ -326,5 +327,9 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     return [...get().orders]
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, limit)
+  },
+
+  setOrders: (orders: Order[]) => {
+    set({ orders, isLoading: false })
   }
 }))
