@@ -39,6 +39,7 @@ interface OrderState {
   updateOngkir: (orderId: string, totalFee: number) => Promise<void>
   updateOrderWaiting: (orderId: string, isWaiting: boolean) => Promise<void>
   setOrders: (orders: Order[]) => void
+  setActiveOrdersByCourier: (orders: Order[]) => void
 
   generateOrderId: () => string
   getOrdersByCourier: (courierId: string) => Order[]
@@ -331,5 +332,9 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
 
   setOrders: (orders: Order[]) => {
     set({ orders, isLoading: false })
+  },
+
+  setActiveOrdersByCourier: (orders: Order[]) => {
+    set({ activeOrdersByCourier: orders, isFetchingActiveOrders: false })
   }
 }))

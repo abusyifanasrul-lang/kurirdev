@@ -4,52 +4,44 @@ import { Home, Package, History, DollarSign, User, LogOut, Bell } from 'lucide-r
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/context/AuthContext';
 import { useOrderStore } from '@/stores/useOrderStore';
-import { useUserStore } from '@/stores/useUserStore';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import { useSessionStore } from '@/stores/useSessionStore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { Order } from '@/types';
 
 export function CourierLayout() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { user: currentUser } = useSessionStore();
-  const { users } = useUserStore();
-  const liveUser = users.find(u => u.id === user?.id);
-  const courierStatus = (liveUser as any)?.courier_status ?? 'on';
-  const isOff = courierStatus === 'off';
-  const { fetchActiveOrdersByCourier, fetchOrdersByCourier } = useOrderStore();
+  const { fetchOrdersByCourier } = useOrderStore();
 
   useEffect(() => {
     if (!user?.id) return
-    fetchActiveOrdersByCourier(user.id)
+
+    // Active orders kurir — realtime
+    const unsubActive = onSnapshot(
+      query(
+        collection(db, 'orders'),
+        where('courier_id', '==', user.id),
+        where('status', 'in', ['assigned', 'picked_up', 'in_transit'])
+      ),
+      (snapshot) => {
+        const activeOrders = snapshot.docs
+          .map(d => d.data() as Order)
+        useOrderStore.getState()
+          .setActiveOrdersByCourier(activeOrders)
+      }
+    )
+
+    // History orders kurir — one-time fetch
+    // tidak perlu realtime, cukup saat mount
     fetchOrdersByCourier(user.id)
 
-    let pollInterval: ReturnType<typeof setInterval> | null = setInterval(() => {
-      if (!isOff && !document.hidden) {
-        fetchActiveOrdersByCourier(user.id)
-      }
-    }, 15000)
-
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        if (pollInterval) { clearInterval(pollInterval); pollInterval = null }
-      } else {
-        if (!isOff) fetchActiveOrdersByCourier(user.id)
-        if (!pollInterval) {
-          pollInterval = setInterval(() => {
-            if (!isOff && !document.hidden) {
-              fetchActiveOrdersByCourier(user.id)
-            }
-          }, 15000)
-        }
-      }
-    }
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-
     return () => {
-      if (pollInterval) clearInterval(pollInterval)
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      unsubActive()
     }
-  }, [user?.id, isOff])
+  }, [user?.id])
   const { notifications } = useNotificationStore();
   const unreadCount = notifications.filter(n => n.user_id === currentUser?.id && !n.is_read).length;
 
