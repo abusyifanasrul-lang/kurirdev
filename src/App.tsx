@@ -191,6 +191,29 @@ export function App() {
       }
     )
 
+    const unsubActive = onSnapshot(
+      query(
+        collection(db, 'orders'),
+        where('status', 'not-in', ['delivered', 'cancelled']),
+        limit(50)
+      ),
+      (snapshot) => {
+        const activeOrders = snapshot.docs
+          .map(d => d.data() as Order)
+        // Merge dengan orders yang sudah ada
+        // hindari duplikat berdasarkan id
+        const currentOrders = useOrderStore
+          .getState().orders
+        const merged = [
+          ...activeOrders,
+          ...currentOrders.filter(o =>
+            !activeOrders.find(a => a.id === o.id)
+          )
+        ]
+        useOrderStore.getState().setOrders(merged)
+      }
+    )
+
     setTimeout(() => {
       initQueuePositions().catch(console.error)
     }, 2000)
@@ -236,6 +259,7 @@ export function App() {
     return () => {
       unsubUsers()
       unsubOrders()
+      unsubActive()
       unsubFCM()
       if (fcmRefreshInterval) clearInterval(fcmRefreshInterval)
     }
