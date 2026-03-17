@@ -4,11 +4,9 @@ import { Package, ChevronRight, Search } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
 import { useOrderStore } from '@/stores/useOrderStore';
-import { useAuth } from '@/context/AuthContext';
 
 export function CourierOrders() {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { activeOrdersByCourier } = useOrderStore();
 
   const [searchQuery, setSearchQuery] = useState('');

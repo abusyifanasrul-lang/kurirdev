@@ -26,7 +26,7 @@ const parseRupiah = (val: string): string => {
 export function CourierOrderDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { orders, activeOrdersByCourier, currentOrder, subscribeOrderById, updateOrderStatus, cancelOrder, updateBiayaTambahan, updateItems, updateOngkir, updateOrderWaiting } = useOrderStore();
+  const { activeOrdersByCourier, currentOrder, subscribeOrderById, updateOrderStatus, cancelOrder, updateBiayaTambahan, updateItems, updateOngkir, updateOrderWaiting } = useOrderStore();
   const { user } = useAuth();
   const { users } = useUserStore();
   const { user: currentUser } = useSessionStore();

@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Plus, Download, Search, Bell, ArrowUpDown, ChevronUp, ChevronDown, Printer } from 'lucide-react';
-import { format, parseISO, subDays } from 'date-fns';
+import { Plus, Download, Search, ArrowUpDown, ChevronUp, ChevronDown, Printer } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
 import { sendPushNotification } from '@/services/notificationService';
 import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/Card';

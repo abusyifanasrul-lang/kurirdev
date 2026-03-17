@@ -32,7 +32,7 @@ import { calcAdminEarning } from '@/lib/calcEarning';
 const COLORS = ['#F59E0B', '#3B82F6', '#8B5CF6', '#06B6D4', '#22C55E', '#EF4444'];
 
 export function Dashboard() {
-  const { orders, historicalOrders, fetchOrdersByDateRange, isFetchingHistory } = useOrderStore();
+  const { orders, historicalOrders, fetchOrdersByDateRange } = useOrderStore();
   const { users } = useUserStore();
   const { commission_rate, commission_threshold } = useSettingsStore();
   const earningSettings = { commission_rate, commission_threshold };

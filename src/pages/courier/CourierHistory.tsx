@@ -58,37 +58,6 @@ export function CourierHistory() {
     link.click();
   };
 
-  // Filter orders assigned to this courier
-  const filteredOrders = useMemo(() => {
-    if (!user) return [];
-
-    return courierOrders
-      .filter((order) => {
-        // Only orders assigned to this courier
-        const isMyCourier = order.courier_id === user.id;
-        if (!isMyCourier) return false;
-
-        // Only show final orders (delivered or cancelled)
-        if (order.status !== 'delivered' && order.status !== 'cancelled') return false;
-
-        // Apply status filter
-        if (statusFilter !== 'all' && order.status !== statusFilter) return false;
-
-        // Apply search filter
-        if (searchQuery) {
-          const q = searchQuery.toLowerCase();
-          return (
-            order.order_number.toLowerCase().includes(q) ||
-            order.customer_name.toLowerCase().includes(q) ||
-            order.customer_address.toLowerCase().includes(q)
-          );
-        }
-
-        return true;
-      })
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  }, [courierOrders, user, statusFilter, searchQuery]);
-
   // Group orders by date
   const groupedOrders = useMemo(() => {
     const groups: Record<string, typeof courierOrders> = {};

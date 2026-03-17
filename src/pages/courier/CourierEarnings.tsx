@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { ArrowLeft, TrendingUp, DollarSign, Package, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO, startOfDay, subDays, startOfWeek, isWithinInterval, endOfDay } from 'date-fns';
