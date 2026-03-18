@@ -173,44 +173,20 @@ export function App() {
   useEffect(() => {
     const unsubUsers = subscribeUsers()
 
-    const { setOrders } = useOrderStore.getState()
-    const threeDaysAgo = new Date()
-    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3)
+    const sevenDaysAgo = new Date()
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
 
     const unsubOrders = onSnapshot(
       query(
         collection(db, 'orders'),
-        where('created_at', '>=', threeDaysAgo.toISOString()),
+        where('created_at', '>=', sevenDaysAgo.toISOString()),
         orderBy('created_at', 'desc'),
-        limit(200)
+        limit(300)
       ),
       (snapshot) => {
         const orders = snapshot.docs
           .map(d => d.data() as Order)
-        setOrders(orders)
-      }
-    )
-
-    const unsubActive = onSnapshot(
-      query(
-        collection(db, 'orders'),
-        where('status', 'not-in', ['delivered', 'cancelled']),
-        limit(50)
-      ),
-      (snapshot) => {
-        const activeOrders = snapshot.docs
-          .map(d => d.data() as Order)
-        // Merge dengan orders yang sudah ada
-        // hindari duplikat berdasarkan id
-        const currentOrders = useOrderStore
-          .getState().orders
-        const merged = [
-          ...activeOrders,
-          ...currentOrders.filter(o =>
-            !activeOrders.find(a => a.id === o.id)
-          )
-        ]
-        useOrderStore.getState().setOrders(merged)
+        useOrderStore.getState().setOrders(orders)
       }
     )
 
@@ -259,7 +235,6 @@ export function App() {
     return () => {
       unsubUsers()
       unsubOrders()
-      unsubActive()
       unsubFCM()
       if (fcmRefreshInterval) clearInterval(fcmRefreshInterval)
     }
