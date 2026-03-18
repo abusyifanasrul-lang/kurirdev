@@ -3,11 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { useOrderStore } from '@/stores/useOrderStore';
-import { useUserStore } from '@/stores/useUserStore';
 import { onForegroundMessage, refreshFCMToken } from '@/lib/fcm';
-import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { Order } from '@/types';
+import { AppListeners } from '@/components/AppListeners';
 
 // Loading Skeleton
 function LoadingScreen() {
@@ -167,32 +164,7 @@ function PWAUpdateBanner() {
 }
 
 export function App() {
-  const subscribeUsers = useUserStore(state => state.subscribeUsers)
-  const initQueuePositions = useUserStore(state => state.initQueuePositions)
-
   useEffect(() => {
-    const unsubUsers = subscribeUsers()
-
-    const sevenDaysAgo = new Date()
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-
-    const unsubOrders = onSnapshot(
-      query(
-        collection(db, 'orders'),
-        where('created_at', '>=', sevenDaysAgo.toISOString()),
-        orderBy('created_at', 'desc'),
-        limit(300)
-      ),
-      (snapshot) => {
-        const orders = snapshot.docs
-          .map(d => d.data() as Order)
-        useOrderStore.getState().setOrders(orders)
-      }
-    )
-
-    setTimeout(() => {
-      initQueuePositions().catch(console.error)
-    }, 2000)
 
     // 1. Refresh FCM Token if logged in as courier (Tahap 4)
     const currentUserStr = sessionStorage.getItem('user-session');
@@ -233,8 +205,6 @@ export function App() {
     });
 
     return () => {
-      unsubUsers()
-      unsubOrders()
       unsubFCM()
       if (fcmRefreshInterval) clearInterval(fcmRefreshInterval)
     }
@@ -243,6 +213,7 @@ export function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
+        <AppListeners />
         <PWAUpdateBanner />
         <BrowserRouter>
           <Suspense fallback={<LoadingScreen />}>
