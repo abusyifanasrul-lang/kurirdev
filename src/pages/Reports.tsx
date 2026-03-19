@@ -42,12 +42,6 @@ export function Reports() {
     end: format(new Date(), 'yyyy-MM-dd'),
   });
 
-  useEffect(() => {
-    const end = endOfDay(parseISO(format(new Date(), 'yyyy-MM-dd')))
-    const start = startOfDay(parseISO(format(subDays(new Date(), 7), 'yyyy-MM-dd')))
-    fetchOrdersByDateRange(start, end)
-  }, [])
-
   const [appliedRange, setAppliedRange] = useState(dateRange);
 
   const handleApplyFilter = () => {

@@ -32,19 +32,13 @@ import { calcAdminEarning } from '@/lib/calcEarning';
 const COLORS = ['#F59E0B', '#3B82F6', '#8B5CF6', '#06B6D4', '#22C55E', '#EF4444'];
 
 export function Dashboard() {
-  const { orders, historicalOrders, fetchOrdersByDateRange } = useOrderStore();
+  const { orders } = useOrderStore();
   const { users } = useUserStore();
   const { commission_rate, commission_threshold } = useSettingsStore();
   const earningSettings = { commission_rate, commission_threshold };
 
   const [isConnected] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(new Date());
-
-  useEffect(() => {
-    const end = new Date()
-    const start = subDays(end, 7)
-    fetchOrdersByDateRange(start, end)
-  }, [])
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -55,10 +49,9 @@ export function Dashboard() {
 
   const allOrders = useMemo(() => {
     const map = new Map<string, import('@/types').Order>()
-    historicalOrders.forEach(o => map.set(o.id, o))
-    orders.forEach(o => map.set(o.id, o)) // active overwrite historical
+    orders.forEach(o => map.set(o.id, o))
     return Array.from(map.values())
-  }, [orders, historicalOrders])
+  }, [orders])
 
   const handleRefresh = () => {
     setLastUpdated(new Date());

@@ -51,18 +51,11 @@ type SortField = 'order_number' | 'customer_name' | 'status' | 'courier_id' | 'p
 type SortOrder = 'asc' | 'desc';
 
 export function Orders() {
-  const { orders, historicalOrders, fetchOrdersByDateRange, addOrder, assignCourier, cancelOrder, generateOrderId, updateOrder, fetchAllActiveOrders } = useOrderStore();
+  const { orders, historicalOrders, addOrder, assignCourier, cancelOrder, generateOrderId, updateOrder, fetchAllActiveOrders } = useOrderStore();
   const { rotateQueue } = useCourierStore();
   const { users } = useUserStore();
   const { addNotification } = useNotificationStore();
   const { user } = useAuth(); // Current admin user
-
-  useEffect(() => {
-    const end = new Date()
-    const start = new Date()
-    start.setDate(start.getDate() - 3)
-    fetchOrdersByDateRange(start, end)
-  }, [])
 
   const getCourierName = (courierId?: string) => {
     if (!courierId) return null;
