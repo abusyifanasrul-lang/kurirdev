@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { useUserStore } from '@/stores/useUserStore'
 import { useOrderStore } from '@/stores/useOrderStore'
+import { useNotificationStore } from '@/stores/useNotificationStore'
 import { collection, query, where,
          orderBy, limit, onSnapshot }
   from 'firebase/firestore'
@@ -16,6 +17,10 @@ export function AppListeners() {
   const initQueuePositions = useUserStore(
     state => state.initQueuePositions
   )
+  const subscribeAllNotifications =
+    useNotificationStore(
+      state => state.subscribeAllNotifications
+    )
 
   useEffect(() => {
     // Semua user butuh subscribeUsers
@@ -52,6 +57,12 @@ export function AppListeners() {
     )
 
     return () => unsubOrders()
+  }, [user?.role])
+
+  useEffect(() => {
+    if (!user || user.role !== 'admin') return
+    const unsub = subscribeAllNotifications()
+    return () => unsub()
   }, [user?.role])
 
   return null

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Send, Bell, CheckCircle, Clock, AlertTriangle, Info, Smile } from 'lucide-react';
 import { format, isSameDay, parseISO } from 'date-fns';
 import { Header } from '@/components/layout/Header';
@@ -15,7 +15,7 @@ import { useUserStore } from '@/stores/useUserStore';
 export function Notifications() {
   const { user } = useAuth(); // Current tab-isolated admin session
   const { users } = useUserStore(); // To select recipient
-  const { notifications, addNotification, subscribeAllNotifications } = useNotificationStore();
+  const { notifications, addNotification } = useNotificationStore();
 
   const [selectedCourierId, setSelectedCourierId] = useState('');
   const [notificationTitle, setNotificationTitle] = useState('');
@@ -24,12 +24,6 @@ export function Notifications() {
   const [successMessage, setSuccessMessage] = useState('');
 
   const activeCouriers = users.filter(u => u.role === 'courier' && u.is_active);
-
-  // Admin subscribe ke semua notifikasi
-  useEffect(() => {
-    const unsub = subscribeAllNotifications()
-    return () => unsub()
-  }, [])
 
   // Filter notifications to show history of what ADMIN sent (or all if we want transparency)
   // Let's show all for now to monitor system.
