@@ -57,13 +57,13 @@ export function AppListeners() {
     )
 
     return () => unsubOrders()
-  }, [user?.role])
+  }, [user?.id])
 
   useEffect(() => {
     if (!user || user.role !== 'admin') return
     const unsub = subscribeAllNotifications()
     return () => unsub()
-  }, [user?.role])
+  }, [user?.id])
 
   return null
 }
