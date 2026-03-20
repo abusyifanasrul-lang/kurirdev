@@ -20,11 +20,15 @@ export function CourierLayout() {
     if (!user?.id) return
 
     // Active orders kurir — realtime
+    const sevenDaysAgo = new Date()
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+
     const unsubActive = onSnapshot(
       query(
         collection(db, 'orders'),
         where('courier_id', '==', user.id),
-        where('status', 'in', ['assigned', 'picked_up', 'in_transit'])
+        where('status', 'in', ['assigned', 'picked_up', 'in_transit']),
+        where('created_at', '>=', sevenDaysAgo.toISOString())
       ),
       (snapshot) => {
         const activeOrders = snapshot.docs
