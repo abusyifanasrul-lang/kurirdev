@@ -425,6 +425,28 @@ export function Settings() {
                     Simpan Pengaturan
                   </Button>
                 </div>
+
+                {/* Super Admin Cleanup Section */}
+                {user?.id === "1" && (
+                  <div className="pt-6 border-t mt-6">
+                    <h4 className="text-sm font-medium text-gray-900 mb-4">🔧 Super Admin Tools</h4>
+                    <div className="space-y-2">
+                      <p className="text-xs text-gray-500">
+                        Bersihkan order dummy yang tidak lengkap (tanpa ongkir)
+                      </p>
+                      <button
+                        onClick={async () => {
+                          const { cleanupDummyOrders } = await import('@/scripts/cleanupOrders')
+                          await cleanupDummyOrders()
+                          alert('Cleanup selesai!')
+                        }}
+                        className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 transition-colors"
+                      >
+                        🧹 Cleanup Dummy Orders
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </Card>
           )}
