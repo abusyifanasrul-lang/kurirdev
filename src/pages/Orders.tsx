@@ -1006,6 +1006,30 @@ export function Orders() {
                       {selectedOrder.payment_status === 'paid' ? 'Sudah Setor' : 'Belum Setor'}
                     </Badge>
                   </span>
+                  {selectedOrder.status === 'cancelled' && (
+                    <>
+                      <span className="text-gray-400">
+                        Alasan Cancel
+                      </span>
+                      <span className="text-red-600 font-medium">
+                        {selectedOrder.cancellation_reason || 'Tidak ada alasan'}
+                      </span>
+                      {selectedOrder.cancel_reason_type && (
+                        <>
+                          <span className="text-gray-400">
+                            Dibatalkan oleh
+                          </span>
+                          <span className="capitalize">
+                            {selectedOrder.cancel_reason_type === 'customer'
+                              ? 'Permintaan Customer'
+                              : selectedOrder.cancel_reason_type === 'item_unavailable'
+                                ? 'Barang Tidak Tersedia'
+                                : 'Lainnya'}
+                          </span>
+                        </>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
             )}
