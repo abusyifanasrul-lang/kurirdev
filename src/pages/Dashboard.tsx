@@ -53,9 +53,18 @@ export function Dashboard() {
 
   useEffect(() => {
     const loadHistoricalCache = async () => {
-      const end = format(subDays(new Date(), 1), 'yyyy-MM-dd')
-      const start = format(subDays(new Date(), 6), 'yyyy-MM-dd')
-      const { orders: cached } = await getCachedOrdersByRange(start, end)
+      const end = format(
+        subDays(new Date(), 1), 'yyyy-MM-dd'
+      )
+      const start = format(
+        subDays(new Date(), 6), 'yyyy-MM-dd'
+      )
+      console.log('Loading cache for range:',
+        start, 'to', end)
+      const { orders: cached } =
+        await getCachedOrdersByRange(start, end)
+      console.log('Cached orders found:',
+        cached.length)
       if (cached.length > 0) {
         setCachedHistorical(cached)
       }
