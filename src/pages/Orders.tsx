@@ -55,7 +55,7 @@ type SortField = 'order_number' | 'customer_name' | 'status' | 'courier_id' | 'p
 type SortOrder = 'asc' | 'desc';
 
 export function Orders() {
-  const { orders, historicalOrders, addOrder, assignCourier, cancelOrder, generateOrderId, updateOrder } = useOrderStore();
+  const { orders, historicalOrders, fetchOrdersByDateRange, addOrder, assignCourier, cancelOrder, generateOrderId, updateOrder } = useOrderStore();
   const { rotateQueue } = useCourierStore();
   const { users } = useUserStore();
   const { addNotification } = useNotificationStore();
