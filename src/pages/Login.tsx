@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Truck, User, Users, Eye, EyeOff, Loader2, Mail, Lock } from 'lucide-react';
 import { cn } from '@/utils/cn';
@@ -23,18 +23,19 @@ export function Login() {
   const handleRoleSelect = (role: RoleType) => {
     setSelectedRole(role);
     setError('');
-    // Pre-fill demo credentials
-    if (role === 'admin') {
-      setEmail('admin@delivery.com');
-      setPassword('admin123');
-    } else if (role === 'courier') {
-      setEmail('siti@courier.com');
-      setPassword('courier123');
-    }
   };
 
   const { users } = useUserStore();
   const { login: sessionLogin } = useSessionStore();
+
+  // Load saved email on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('lastLoginEmail');
+    if (saved) {
+      setEmail(saved);
+      setRememberMe(true);
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,6 +62,13 @@ export function Login() {
       if (foundUser && isValidPassword) {
         // 3. Establish Session (sessionStorage)
         sessionLogin(foundUser);
+
+        // 4. Remember Me logic
+        if (rememberMe) {
+          localStorage.setItem('lastLoginEmail', email);
+        } else {
+          localStorage.removeItem('lastLoginEmail');
+        }
 
         // Request FCM permission for couriers
         if (selectedRole === 'courier') {
@@ -286,9 +294,10 @@ export function Login() {
                     />
                     <span className="text-sm text-gray-600">Remember me</span>
                   </label>
-                  <a href="#" className="text-sm text-indigo-600 hover:text-indigo-800">
-                    Forgot password?
-                  </a>
+                  <p className="text-xs text-gray-500 text-center mt-1">
+                    Lupa password? Hubungi admin untuk
+                    mereset password Anda.
+                  </p>
                 </div>
 
                 <button
