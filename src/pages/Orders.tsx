@@ -60,11 +60,17 @@ export function Orders() {
   const { users } = useUserStore();
   const { addNotification } = useNotificationStore();
   const { user } = useAuth(); // Current admin user
+  const { commission_rate, commission_threshold } = useSettingsStore();
 
   // Cache State
   const [cacheStatus, setCacheStatus] = useState<'idle' | 'checking' | 'missing' | 'loading' | 'loaded'>('idle')
   const [missingDates, setMissingDates] = useState<string[]>([])
   const [cachedOrders, setCachedOrders] = useState<Order[]>([])
+
+  // Bulk Settlement State
+  const [showBulkSettle, setShowBulkSettle] = useState(false)
+  const [bulkSettleCourierId, setBulkSettleCourierId] = useState<string>('')
+  const [bulkSettleCourierName, setBulkSettleCourierName] = useState<string>('')
 
   const getCourierName = (courierId?: string) => {
     if (!courierId) return null;
@@ -83,6 +89,13 @@ export function Orders() {
     orders.forEach(o => map.set(o.id, o))
     return Array.from(map.values())
   }, [orders, historicalOrders, cachedOrders, cacheStatus])
+
+  const calcPlatformFee = (order: Order) => {
+    const rate = order.applied_commission_rate ?? commission_rate
+    const threshold = order.applied_commission_threshold ?? commission_threshold
+    if (order.total_fee <= threshold) return 0
+    return order.total_fee * (1 - rate / 100)
+  }
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchCategory, setSearchCategory] = useState('all');
@@ -840,9 +853,15 @@ export function Orders() {
                           <Button
                             size="sm"
                             className="bg-orange-500 hover:bg-orange-600 text-white h-7 px-2 text-[10px]"
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              await updateOrder(order.id, { payment_status: 'paid' });
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              const courierName = users.find(
+                                u => u.id === order.courier_id
+                              )?.name || 'Kurir'
+                              setBulkSettleCourierId(
+                                order.courier_id || '')
+                              setBulkSettleCourierName(courierName)
+                              setShowBulkSettle(true)
                             }}
                           >
                             Konfirmasi Setor
@@ -1324,6 +1343,119 @@ export function Orders() {
           </div>
         </div>
       </Modal>
+
+      {/* Bulk Settlement Modal */}
+      {showBulkSettle && (() => {
+        const unpaidOrders = orders.filter(o =>
+          o.courier_id === bulkSettleCourierId &&
+          o.status === 'delivered' &&
+          o.payment_status === 'unpaid'
+        )
+        const totalPlatformFee = unpaidOrders
+          .reduce((sum, o) =>
+            sum + calcPlatformFee(o), 0)
+
+        return (
+          <div className="fixed inset-0
+            bg-black/50 flex items-center
+            justify-center z-50 px-4">
+            <div className="bg-white rounded-xl
+              p-6 w-full max-w-md">
+
+              <h3 className="font-bold text-lg mb-1">
+                💰 Konfirmasi Setoran
+              </h3>
+              <p className="text-sm text-gray-500 mb-4">
+                Kurir: {bulkSettleCourierName}
+              </p>
+
+              {/* List order belum disetor */}
+              <div className="space-y-2 mb-4
+                max-h-64 overflow-y-auto">
+                {unpaidOrders.length === 0 ? (
+                  <p className="text-sm text-gray-500
+                    text-center py-4">
+                    Tidak ada order belum disetor
+                  </p>
+                ) : (
+                  unpaidOrders.map(o => (
+                    <div key={o.id}
+                      className="flex justify-between
+                      items-center text-sm bg-gray-50
+                      px-3 py-2 rounded-lg">
+                      <span className="font-medium">
+                        {o.order_number}
+                      </span>
+                      <div className="text-right">
+                        <p className="text-gray-500
+                          text-xs">
+                          Ongkir: {formatCurrency(
+                            o.total_fee)}
+                        </p>
+                        <p className="font-semibold
+                          text-orange-600">
+                          Setor: {formatCurrency(
+                            calcPlatformFee(o))}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Total */}
+              {unpaidOrders.length > 0 && (
+                <div className="border-t pt-3 mb-4">
+                  <div className="flex justify-between
+                    font-bold">
+                    <span>Total Disetor</span>
+                    <span className="text-orange-600">
+                      {formatCurrency(totalPlatformFee)}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-400
+                    mt-1">
+                    {unpaidOrders.length} order ·
+                    menggunakan rate saat pengiriman
+                  </p>
+                </div>
+              )}
+
+              {/* Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowBulkSettle(false)}
+                  className="flex-1 py-2.5 border
+                    border-gray-200 rounded-xl
+                    text-sm text-gray-600"
+                >
+                  Batal
+                </button>
+                <button
+                  disabled={unpaidOrders.length === 0}
+                  onClick={async () => {
+                    await Promise.all(
+                      unpaidOrders.map(o =>
+                        updateOrder(o.id,
+                          { payment_status: 'paid' })
+                      )
+                    )
+                    setShowBulkSettle(false)
+                  }}
+                  className="flex-1 py-2.5
+                    bg-orange-500 hover:bg-orange-600
+                    text-white rounded-xl text-sm
+                    font-semibold disabled:opacity-50
+                    transition"
+                >
+                  Konfirmasi Setor Semua
+                </button>
+              </div>
+
+            </div>
+          </div>
+        )
+      })()}
     </div>
   );
 }

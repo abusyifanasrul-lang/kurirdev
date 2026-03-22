@@ -9,6 +9,8 @@ import { useCourierStore } from '@/stores/useCourierStore';
 import { useAuth } from '@/context/AuthContext';
 import { useSessionStore } from '@/stores/useSessionStore';
 import { useUserStore } from '@/stores/useUserStore';
+import { useSettingsStore } from '@/stores/useSettingsStore';
+import { calcCourierEarning } from '@/lib/calcEarning';
 import { Order } from '@/types';
 
 // Removed unused CourierOrder interface as we use global Order type
@@ -21,6 +23,7 @@ export function CourierDashboard() {
   const { setCourierOffline, setCourierOnline } = useCourierStore();
   const { users } = useUserStore();
   const { user: currentUser } = useSessionStore();
+  const { commission_rate, commission_threshold } = useSettingsStore();
 
   // Real-time suspended check from useUserStore
   const liveUser = users.find(u => u.id === currentUser?.id);
@@ -64,6 +67,21 @@ export function CourierDashboard() {
   );
 
   const unpaidDeliveredOrdersCount = (liveUser as any)?.unpaid_count ?? 0;
+
+  const unpaidTotalEarnings = useMemo(() => {
+    return courierOrders
+      .filter(o =>
+        o.status === 'delivered' &&
+        o.payment_status === 'unpaid'
+      )
+      .reduce((sum, o) => {
+        const rate = o.applied_commission_rate ?? commission_rate
+        const threshold = o.applied_commission_threshold ?? commission_threshold
+        return sum + calcCourierEarning(
+          o, { commission_rate: rate, commission_threshold: threshold }
+        )
+      }, 0)
+  }, [courierOrders, commission_rate, commission_threshold])
 
   // Polling simulation
   useEffect(() => {
@@ -125,6 +143,9 @@ export function CourierDashboard() {
             <AlertTriangle className="h-4 w-4 text-orange-500 flex-shrink-0" />
             <p className="text-sm font-medium text-orange-800 truncate">
               {unpaidDeliveredOrdersCount} order belum disetor
+              <span className="text-xs font-normal text-orange-600 ml-1">
+                · Total: {formatCurrency(unpaidTotalEarnings)}
+              </span>
             </p>
           </div>
           <span className="text-xs font-semibold text-orange-600 whitespace-nowrap flex items-center gap-1 flex-shrink-0">
