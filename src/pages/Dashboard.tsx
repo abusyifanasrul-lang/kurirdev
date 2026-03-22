@@ -24,7 +24,7 @@ import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Ba
 import { format, isToday, subDays, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 
 // Cache
-import { getCachedOrdersByRange } from '@/lib/orderCache';
+import { getOrdersForWeek } from '@/lib/orderCache';
 
 // Stores
 import { useOrderStore } from '@/stores/useOrderStore';
@@ -52,31 +52,23 @@ export function Dashboard() {
   }, [])
 
   useEffect(() => {
-    const loadHistoricalCache = async () => {
-      const end = format(
-        subDays(new Date(), 1), 'yyyy-MM-dd'
-      )
-      const start = format(
-        subDays(new Date(), 6), 'yyyy-MM-dd'
-      )
-      console.log('Loading cache for range:',
-        start, 'to', end)
-      const { orders: cached } =
-        await getCachedOrdersByRange(start, end)
-      console.log('Cached orders found:',
-        cached.length)
-      if (cached.length > 0) {
-        setCachedHistorical(cached)
+    const loadWeekOrders = async () => {
+      const weekOrders = await getOrdersForWeek()
+      if (weekOrders.length > 0) {
+        setCachedHistorical(weekOrders)
       }
     }
-    loadHistoricalCache()
+    loadWeekOrders()
   }, [])
 
   const allOrders = useMemo(() => {
     const map = new Map<string, Order>()
-    // Data lama dari cache (prioritas lebih rendah)
-    cachedHistorical.forEach(o => map.set(o.id, o))
-    // Data realtime dari store (override cache)
+    // Data pekan ini dari IndexedDB
+    cachedHistorical.forEach(o =>
+      map.set(o.id, o)
+    )
+    // Data realtime dari store
+    // (override IndexedDB jika lebih baru)
     orders.forEach(o => map.set(o.id, o))
     return Array.from(map.values())
   }, [orders, cachedHistorical])
