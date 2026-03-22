@@ -206,27 +206,12 @@ export function Orders() {
         const matchesStatus = !statusFilter || order.status === statusFilter;
 
         const orderDate = new Date(order.created_at);
-        
-        // Parse filter date sebagai WIB
-        // bukan UTC
-        let start: Date | null = null
-        let end: Date | null = null
-        
-        if (dateFilter.start) {
-          const [y, m, d] = dateFilter.start
-            .split('-').map(Number)
-          start = new Date(y, m - 1, d, 0, 0, 0)
-        }
-        if (dateFilter.end) {
-          const [y, m, d] = dateFilter.end
-            .split('-').map(Number)
-          end = new Date(y, m - 1, d, 23, 59, 59)
-        }
+        const start = dateFilter.start ? new Date(dateFilter.start) : null;
+        const end = dateFilter.end ? new Date(dateFilter.end) : null;
+        if (end) end.setHours(23, 59, 59); // inclusive end date
 
-        const matchesDateStart = !start ||
-          orderDate >= start
-        const matchesDateEnd = !end ||
-          orderDate <= end
+        const matchesDateStart = !start || orderDate >= start;
+        const matchesDateEnd = !end || orderDate <= end;
 
         // Advanced Search Logic
         const q = searchQuery.toLowerCase();
@@ -644,44 +629,60 @@ export function Orders() {
 
   const formatCurrency = (val: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
 
-  const handleDateFilterChange = async (
-    start: string, end: string
-  ) => {
+  const handleDateFilterChange = async (start: string, end: string) => {
     setDateFilter({ start, end })
-
-    // Jika tidak ada filter tanggal
-    // → pakai data normal dari allOrders
-    if (!start && !end) {
+    const today = format(new Date(), 'yyyy-MM-dd')
+    if (!start || start === today) {
       setCacheStatus('idle')
       setCachedOrders([])
       return
     }
-
-    // Jika filter mencakup hari ini
-    // → tidak perlu fetch dari cache
-    // → allOrders sudah include hari ini
-    //   dari localDBOrders + store
-    const today = format(
-      new Date(), 'yyyy-MM-dd'
-    )
-    if (!start || start === today ||
-        end === today) {
-      setCacheStatus('idle')
-      setCachedOrders([])
-      return
-    }
-
-    // Filter ke tanggal yang lebih lama
-    // → cek IndexedDB dulu
     setCacheStatus('checking')
-    const { orders, missingDates } =
-      await getCachedOrdersByRange(start, end)
-
+    const { orders, missingDates } = await getCachedOrdersByRange(start, end)
     if (missingDates.length === 0) {
       setCachedOrders(orders)
       setCacheStatus('loaded')
     } else {
       setMissingDates(missingDates)
+      setCacheStatus('missing')
+    }
+  }
+
+  const handleFetchAndCache = async () => {
+    setCacheStatus('loading')
+    try {
+      const start = new Date(dateFilter.start)
+      const end = new Date(dateFilter.end)
+
+      // Fetch dari Firestore
+      await fetchOrdersByDateRange(start, end)
+
+      // Ambil data terbaru langsung dari store
+      // (bukan dari historicalOrders state
+      // yang belum re-render)
+      const freshOrders = useOrderStore
+        .getState().historicalOrders
+
+      // Simpan ke cache per tanggal
+      for (const date of missingDates) {
+        const dayOrders = freshOrders
+          .filter(o =>
+            o.created_at.startsWith(date)
+          )
+        await cacheOrdersByDate(date, dayOrders)
+      }
+
+      // Baca dari cache untuk konfirmasi
+      const { orders: cached } =
+        await getCachedOrdersByRange(
+          dateFilter.start,
+          dateFilter.end
+        )
+      setCachedOrders(cached)
+      setCacheStatus('loaded')
+
+    } catch (error) {
+      console.error('Cache error:', error)
       setCacheStatus('missing')
     }
   }
