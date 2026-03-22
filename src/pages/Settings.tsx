@@ -13,6 +13,11 @@ import { useUserStore } from '@/stores/useUserStore';
 import { useAuth } from '@/context/AuthContext';
 import { useCourierStore } from '@/stores/useCourierStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
+import {
+  clearAllCache,
+  getCacheMeta,
+  isInitialSyncCompleted
+} from '@/lib/orderCache';
 
 export function Settings() {
   const { users, updateUser, addUser } = useUserStore();
@@ -71,11 +76,54 @@ export function Settings() {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Cache sync state
+  const [cacheMeta, setCacheMeta] = useState<{
+    last_sync: string
+    total_records: number
+    sync_completed: boolean
+    last_delta_sync: string
+  } | null>(null)
+  const [isSyncing, setIsSyncing] = useState(false)
+  const [syncMessage, setSyncMessage] = useState('')
+
   // Helper to show msg
   const showMessage = (type: 'success' | 'error', text: string) => {
     setMessage({ type, text });
     setTimeout(() => setMessage(null), 3000);
   };
+
+  // Load cache metadata on mount
+  useEffect(() => {
+    setCacheMeta(getCacheMeta())
+  }, [])
+
+  // Handle cache resync
+  const handleResync = async () => {
+    if (isSyncing) return
+    const confirm = window.confirm(
+      'Reset dan sinkronisasi ulang semua ' +
+      'data lokal dari server? ' +
+      'Proses ini membutuhkan beberapa detik.'
+    )
+    if (!confirm) return
+
+    setIsSyncing(true)
+    setSyncMessage('Menghapus cache lokal...')
+
+    try {
+      await clearAllCache()
+      setSyncMessage(
+        'Cache dihapus. Reload aplikasi ' +
+        'untuk memulai sinkronisasi ulang.'
+      )
+      setTimeout(() => {
+        window.location.reload()
+      }, 2000)
+    } catch (error) {
+      setSyncMessage('Gagal mereset cache.')
+      setIsSyncing(false)
+    }
+  }
 
   const handleUpdateProfile = async () => {
     if (!user) return;
@@ -566,6 +614,109 @@ export function Settings() {
           </div>
         </div>
       </Modal>
+
+      {/* Cache Management Section - Super Admin Only */}
+      {user?.id === "1" && (
+        <div className="max-w-4xl mx-auto p-4 lg:p-8">
+          <div className="bg-gray-50 border
+            border-gray-200 rounded-xl p-5">
+
+            <h3 className="font-semibold
+              text-gray-900 mb-1 flex
+              items-center gap-2">
+              🗄️ Data Lokal (Cache)
+            </h3>
+            <p className="text-xs text-gray-500
+              mb-4">
+              Data historis tersimpan lokal
+              untuk menghemat penggunaan server.
+            </p>
+
+            {/* Status Cache */}
+            <div className="space-y-2 mb-4
+              text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-500">
+                  Status
+                </span>
+                <span className={
+                  cacheMeta?.sync_completed
+                    ? 'text-green-600 font-medium'
+                    : 'text-orange-600 font-medium'
+                }>
+                  {cacheMeta?.sync_completed
+                    ? '✅ Tersinkronisasi'
+                    : '⚠️ Belum sinkron'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">
+                  Total record lokal
+                </span>
+                <span className="font-medium">
+                  {cacheMeta?.total_records ?? 0}
+                  {' '}order
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">
+                  Sinkronisasi terakhir
+                </span>
+                <span className="text-xs
+                  text-gray-600">
+                  {cacheMeta?.last_sync
+                    ? new Date(cacheMeta.last_sync)
+                        .toLocaleString('id-ID')
+                    : 'Belum pernah'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">
+                  Delta sync terakhir
+                </span>
+                <span className="text-xs
+                  text-gray-600">
+                  {cacheMeta?.last_delta_sync
+                    ? new Date(
+                        cacheMeta.last_delta_sync
+                      ).toLocaleString('id-ID')
+                    : 'Belum pernah'}
+                </span>
+              </div>
+            </div>
+
+            {/* Sync Message */}
+            {syncMessage && (
+              <p className="text-sm text-blue-600
+                mb-3 bg-blue-50 px-3 py-2
+                rounded-lg">
+                {syncMessage}
+              </p>
+            )}
+
+            {/* Tombol Sinkronisasi Ulang */}
+            <button
+              onClick={handleResync}
+              disabled={isSyncing}
+              className="w-full py-2.5
+                bg-red-600 hover:bg-red-700
+                disabled:opacity-50
+                text-white text-sm font-medium
+                rounded-xl transition"
+            >
+              {isSyncing
+                ? '⏳ Memproses...'
+                : '🔄 Sinkronisasi Ulang Data'}
+            </button>
+
+            <p className="text-xs text-gray-400
+              mt-2 text-center">
+              Hanya gunakan jika data tidak
+              sinkron dengan server
+            </p>
+          </div>
+        </div>
+      )}
 
     </div>
   );
