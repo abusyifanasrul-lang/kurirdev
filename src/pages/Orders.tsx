@@ -86,6 +86,10 @@ export function Orders() {
 
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [assignCourierId, setAssignCourierId] = useState<string>('');
+  const [formError, setFormError] = useState('');
+  const [editItems, setEditItems] = useState<{ nama: string; harga: number }[]>([]);
+  const [editItemNama, setEditItemNama] = useState('');
+  const [editItemHarga, setEditItemHarga] = useState('');
 
   // Form State
   const [newOrder, setNewOrder] = useState<CreateOrderPayload>({
@@ -234,10 +238,28 @@ export function Orders() {
         payment_status: selectedOrder.payment_status,
       });
     }
-  }, [selectedOrder]);
+  }, [selectedOrder?.id]);
+
+  useEffect(() => {
+    if (selectedOrder) {
+      setEditItems(selectedOrder.items || []);
+    }
+  }, [selectedOrder?.id]);
 
   // Handlers
   const handleCreateOrder = async () => {
+    const missing = [];
+    if (!newOrder.customer_name?.trim())
+      missing.push('Nama customer');
+    if (!newOrder.customer_phone?.trim())
+      missing.push('Nomor telepon');
+    if (!newOrder.customer_address?.trim())
+      missing.push('Alamat');
+    if (missing.length > 0) {
+      setFormError(`Wajib diisi: ${missing.join(', ')}`);
+      return;
+    }
+    setFormError('');
     const orderData: Order = {
       id: crypto.randomUUID(),
       order_number: generateOrderId(),
@@ -252,6 +274,7 @@ export function Orders() {
 
     await addOrder(orderData);
     setIsCreateModalOpen(false);
+    setFormError('');
     setNewOrder({
       customer_name: '',
       customer_phone: '',
@@ -328,8 +351,15 @@ export function Orders() {
 
   const handleSaveChanges = async () => {
     if (!selectedOrder) return;
-    updateOrder(selectedOrder.id, editForm);
-    setSelectedOrder({ ...selectedOrder, ...editForm });
+    updateOrder(selectedOrder.id, {
+      ...editForm,
+      items: editItems
+    });
+    setSelectedOrder({
+      ...selectedOrder,
+      ...editForm,
+      items: editItems
+    });
   };
 
   const handleExportCSV = () => {
@@ -699,7 +729,7 @@ export function Orders() {
       </div>
 
       {/* CREATE ORDER MODAL */}
-      <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} title="New Order" size="lg">
+      <Modal isOpen={isCreateModalOpen} onClose={() => { setIsCreateModalOpen(false); setFormError(''); }} title="New Order" size="lg">
         <div className="space-y-4">
           <div className="relative">
             <Input label="Customer Name" value={newOrder.customer_name} onChange={e => handleCustomerNameChange(e.target.value)} />
@@ -794,8 +824,13 @@ export function Orders() {
               { value: 'paid', label: 'Sudah Setor' }
             ]}
           />
+          {formError && (
+            <p className="text-sm text-red-500 mb-2">
+              {formError}
+            </p>
+          )}
           <div className="flex justify-end gap-2 pt-4">
-            <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setIsCreateModalOpen(false); setFormError(''); }}>Cancel</Button>
             <Button onClick={handleCreateOrder}>Create Order</Button>
           </div>
         </div>
@@ -853,6 +888,67 @@ export function Orders() {
                       { value: 'paid', label: 'Sudah Setor' }
                     ]}
                   />
+                </div>
+
+                {/* Daftar Belanja */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Daftar Belanja (opsional)
+                  </label>
+
+                  {/* List items yang sudah ada */}
+                  {editItems.map((item, i) => (
+                    <div key={i} className="flex items-center justify-between text-sm bg-gray-50 px-3 py-2 rounded-lg">
+                      <span>{item.nama}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500">
+                          Rp {item.harga.toLocaleString('id-ID')}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setEditItems(
+                            editItems.filter((_, idx) => idx !== i)
+                          )}
+                          className="text-red-400 hover:text-red-600 text-xs"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Input tambah item */}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Nama barang"
+                      value={editItemNama}
+                      onChange={e => setEditItemNama(e.target.value)}
+                      className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    />
+                    <input
+                      type="number"
+                      placeholder="Harga"
+                      value={editItemHarga}
+                      onChange={e => setEditItemHarga(e.target.value)}
+                      className="w-28 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!editItemNama || !editItemHarga) return;
+                        setEditItems([...editItems, {
+                          nama: editItemNama,
+                          harga: Number(editItemHarga)
+                        }]);
+                        setEditItemNama('');
+                        setEditItemHarga('');
+                      }}
+                      className="px-3 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700"
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
                 <div className="flex justify-end">
                   <Button size="sm" variant="secondary" onClick={handleSaveChanges}>Save Changes</Button>
