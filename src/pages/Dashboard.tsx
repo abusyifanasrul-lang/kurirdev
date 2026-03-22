@@ -23,6 +23,9 @@ import { Card, StatCard } from '@/components/ui/Card';
 import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
 import { format, isToday, subDays, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 
+// Cache
+import { getCachedOrdersByRange } from '@/lib/orderCache';
+
 // Stores
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useUserStore } from '@/stores/useUserStore';
@@ -39,6 +42,7 @@ export function Dashboard() {
 
   const [isConnected] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(new Date());
+  const [cachedHistorical, setCachedHistorical] = useState<Order[]>([]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -47,11 +51,26 @@ export function Dashboard() {
     return () => clearInterval(interval);
   }, [])
 
+  useEffect(() => {
+    const loadHistoricalCache = async () => {
+      const end = format(subDays(new Date(), 1), 'yyyy-MM-dd')
+      const start = format(subDays(new Date(), 6), 'yyyy-MM-dd')
+      const { orders: cached } = await getCachedOrdersByRange(start, end)
+      if (cached.length > 0) {
+        setCachedHistorical(cached)
+      }
+    }
+    loadHistoricalCache()
+  }, [])
+
   const allOrders = useMemo(() => {
-    const map = new Map<string, import('@/types').Order>()
+    const map = new Map<string, Order>()
+    // Data lama dari cache (prioritas lebih rendah)
+    cachedHistorical.forEach(o => map.set(o.id, o))
+    // Data realtime dari store (override cache)
     orders.forEach(o => map.set(o.id, o))
     return Array.from(map.values())
-  }, [orders])
+  }, [orders, cachedHistorical])
 
   const handleRefresh = () => {
     setLastUpdated(new Date());
