@@ -29,6 +29,7 @@ import { useOrderStore } from '@/stores/useOrderStore';
 import { useCourierStore } from '@/stores/useCourierStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { useNotificationStore } from '@/stores/useNotificationStore';
+import { useSettingsStore } from '@/stores/useSettingsStore';
 import { useAuth } from '@/context/AuthContext';
 import type { Order, CreateOrderPayload, PaymentStatus } from '@/types';
 
