@@ -90,6 +90,7 @@ export function Orders() {
   const [editItems, setEditItems] = useState<{ nama: string; harga: number }[]>([]);
   const [editItemNama, setEditItemNama] = useState('');
   const [editItemHarga, setEditItemHarga] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
 
   // Form State
   const [newOrder, setNewOrder] = useState<CreateOrderPayload>({
@@ -260,30 +261,38 @@ export function Orders() {
       return;
     }
     setFormError('');
-    const orderData: Order = {
-      id: crypto.randomUUID(),
-      order_number: generateOrderId(),
-      ...newOrder,
-      total_fee: newOrder.total_fee || 0,
-      status: 'pending',
-      payment_status: newOrder.payment_status || 'unpaid',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      created_by: user?.id || "1",
-    };
+    if (isCreating) return;
+    setIsCreating(true);
+    try {
+      const orderData: Order = {
+        id: crypto.randomUUID(),
+        order_number: generateOrderId(),
+        ...newOrder,
+        total_fee: newOrder.total_fee || 0,
+        status: 'pending',
+        payment_status: newOrder.payment_status || 'unpaid',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        created_by: user?.id || "1",
+      };
 
-    await addOrder(orderData);
-    setIsCreateModalOpen(false);
-    setFormError('');
-    setNewOrder({
-      customer_name: '',
-      customer_phone: '',
-      customer_address: '',
-      total_fee: 0,
-      estimated_delivery_time: '',
-      items: [],
-      notes: '',
-    });
+      await addOrder(orderData);
+      setIsCreateModalOpen(false);
+      setFormError('');
+      setNewOrder({
+        customer_name: '',
+        customer_phone: '',
+        customer_address: '',
+        total_fee: 0,
+        estimated_delivery_time: '',
+        items: [],
+        notes: '',
+      });
+    } catch (error) {
+      setFormError('Gagal membuat order. Cek koneksi internet.');
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const handleAssign = async () => {
@@ -729,7 +738,7 @@ export function Orders() {
       </div>
 
       {/* CREATE ORDER MODAL */}
-      <Modal isOpen={isCreateModalOpen} onClose={() => { setIsCreateModalOpen(false); setFormError(''); }} title="New Order" size="lg">
+      <Modal isOpen={isCreateModalOpen} onClose={() => { setIsCreateModalOpen(false); setFormError(''); setIsCreating(false); }} title="New Order" size="lg">
         <div className="space-y-4">
           <div className="relative">
             <Input label="Customer Name" value={newOrder.customer_name} onChange={e => handleCustomerNameChange(e.target.value)} />
@@ -830,8 +839,10 @@ export function Orders() {
             </p>
           )}
           <div className="flex justify-end gap-2 pt-4">
-            <Button variant="outline" onClick={() => { setIsCreateModalOpen(false); setFormError(''); }}>Cancel</Button>
-            <Button onClick={handleCreateOrder}>Create Order</Button>
+            <Button variant="outline" onClick={() => { setIsCreateModalOpen(false); setFormError(''); setIsCreating(false); }}>Cancel</Button>
+            <Button onClick={handleCreateOrder} disabled={isCreating} isLoading={isCreating}>
+              {isCreating ? 'Menyimpan...' : 'Create Order'}
+            </Button>
           </div>
         </div>
       </Modal>
