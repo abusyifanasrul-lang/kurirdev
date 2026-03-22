@@ -648,15 +648,12 @@ export function Orders() {
   ) => {
     setDateFilter({ start, end })
 
-    // Jika tidak ada filter → reset
     if (!start && !end) {
       setCacheStatus('idle')
       setCachedOrders([])
       return
     }
 
-    // Jika filter hari ini → pakai
-    // allOrders yang sudah ada
     const today = format(
       new Date(), 'yyyy-MM-dd'
     )
@@ -666,31 +663,56 @@ export function Orders() {
       return
     }
 
-    // Filter ke tanggal lain →
-    // ambil dari IndexedDB langsung
     setCacheStatus('checking')
     try {
-      const { localDB } = await import(
-        '@/lib/orderCache'
-      )
-      // Query langsung dari IndexedDB
-      // berdasarkan _date field
+      // Import localDB langsung
+      const { localDB } =
+        await import('@/lib/orderCache')
+
+      // Gunakan where().between() dengan
+      // cara yang berbeda
       const results = await localDB.orders
         .where('_date')
-        .between(start, end, true, true)
+        .between(
+          start,
+          end || start,
+          true,
+          true
+        )
         .toArray()
 
+      console.log('Filter results:',
+        results.length, start, end)
+
       if (results.length > 0) {
-        const orders = results.map(
-          ({ _date, ...o }) => o as Order
+        const filtered = results.map(
+          ({ _date, ...o }) =>
+            o as Order
         )
-        setCachedOrders(orders)
+        setCachedOrders(filtered)
         setCacheStatus('loaded')
       } else {
-        // Tidak ada di IndexedDB →
-        // perlu fetch dari Firestore
-        setMissingDates([start])
-        setCacheStatus('missing')
+        // Coba filter manual sebagai fallback
+        const allLocal = await localDB
+          .orders.toArray()
+        const manual = allLocal.filter(o =>
+          o._date >= start &&
+          o._date <= (end || start)
+        )
+        console.log('Manual filter:',
+          manual.length)
+
+        if (manual.length > 0) {
+          setCachedOrders(
+            manual.map(({ _date, ...o }) =>
+              o as Order
+            )
+          )
+          setCacheStatus('loaded')
+        } else {
+          setMissingDates([start])
+          setCacheStatus('missing')
+        }
       }
     } catch (error) {
       console.error('Filter error:', error)
