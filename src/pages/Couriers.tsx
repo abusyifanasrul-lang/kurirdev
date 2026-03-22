@@ -103,9 +103,20 @@ export function Couriers() {
     });
   };
 
-  const handleToggleSuspend = (courier: Courier) => {
-    // Toggle active status: if true then false, if false then true
-    updateCourier(courier.id, { is_active: !courier.is_active });
+  const handleToggleSuspend = async (courier: Courier) => {
+    const { setCourierOffline, setCourierOnline } = useCourierStore.getState();
+
+    if (courier.is_active) {
+      // Suspend: keluarkan dari antrian
+      // Gunakan alasan khusus suspend
+      await setCourierOffline(courier.id, 'suspended');
+      await updateCourier(courier.id, { is_active: false });
+    } else {
+      // Un-suspend: masukkan ke posisi terakhir
+      await updateCourier(courier.id, { is_active: true });
+      await setCourierOnline(courier.id, 'off');
+      // Set off dulu — kurir perlu manual toggle ON saat siap bekerja
+    }
   };
 
   const getCourierStats = (courierId: number) => {

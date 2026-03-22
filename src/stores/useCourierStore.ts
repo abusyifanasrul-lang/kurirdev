@@ -143,22 +143,36 @@ export const useCourierStore = create<CourierState>()(
 
       setCourierOffline: async (courierId, reason) => {
         const userStore = useUserStore.getState()
+        const allCouriers = userStore.users.filter(u => u.role === 'courier') as (Courier & { queue_position?: number })[]
 
-        // Pertahankan queue_position saat OFF — posisi tidak berubah
-        // is_online = false sudah cukup untuk exclude dari Courier Queue aktif
+        const thisCourier = allCouriers.find(c => c.id === courierId)
+        const currentPos = thisCourier?.queue_position ?? 0
+
+        // Update status offline
         await userStore.updateUser(courierId, {
           is_online: false,
           courier_status: 'off',
           off_reason: reason,
+          queue_position: null as any,
         })
+
+        // Geser posisi kurir lain yang di belakangnya
+        if (currentPos > 0) {
+          const shiftPromises = allCouriers
+            .filter(c => c.id !== courierId && (c.queue_position ?? 0) > currentPos)
+            .map(c => userStore.updateUserQueuePosition(c.id, (c.queue_position ?? 0) - 1))
+          await Promise.all(shiftPromises)
+        }
       },
 
       setCourierOnline: async (courierId, status) => {
         const userStore = useUserStore.getState()
         const allCouriers = userStore.users.filter(u => u.role === 'courier') as (Courier & { queue_position?: number })[]
 
-        const thisCourier = allCouriers.find(c => c.id === courierId)
-        const alreadyHasPosition = (thisCourier?.queue_position ?? 0) > 0
+        // Hitung posisi terakhir
+        const maxPos = allCouriers
+          .filter(c => c.id !== courierId)
+          .reduce((max, c) => Math.max(max, c.queue_position ?? 0), 0)
 
         await userStore.updateUser(courierId, {
           is_online: true,
@@ -166,12 +180,8 @@ export const useCourierStore = create<CourierState>()(
           off_reason: '',
         })
 
-        // Hanya assign posisi baru jika kurir belum punya posisi
-        // (kurir baru online dari OFF, bukan sekadar ganti ON ↔ STAY)
-        if (!alreadyHasPosition) {
-          const maxPos = allCouriers.reduce((max, c) => Math.max(max, c.queue_position ?? 0), 0)
-          await userStore.updateUserQueuePosition(courierId, maxPos + 1)
-        }
+        // Selalu masuk ke posisi terakhir
+        await userStore.updateUserQueuePosition(courierId, maxPos + 1)
       },
     }),
     {
