@@ -4,7 +4,10 @@ import { format, parseISO } from 'date-fns';
 import { sendPushNotification } from '@/services/notificationService';
 import {
   getCachedOrdersByRange,
-  cacheOrdersByDate
+  cacheOrdersByDate,
+  getOrdersForWeek,
+  getUnpaidOrdersByCourier,
+  markAsPaidInLocalDB
 } from '@/lib/orderCache';
 import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/Card';
@@ -72,6 +75,10 @@ export function Orders() {
   const [showBulkSettle, setShowBulkSettle] = useState(false)
   const [bulkSettleCourierId, setBulkSettleCourierId] = useState<string>('')
   const [bulkSettleCourierName, setBulkSettleCourierName] = useState<string>('')
+  const [bulkUnpaidOrders, setBulkUnpaidOrders] = useState<Order[]>([])
+
+  // Local DB State for weekly orders
+  const [localDBOrders, setLocalDBOrders] = useState<Order[]>([])
 
   const getCourierName = (courierId?: string) => {
     if (!courierId) return null;
@@ -80,16 +87,30 @@ export function Orders() {
   };
 
   const allOrders = useMemo(() => {
-    if (cacheStatus === 'loaded' && cachedOrders.length > 0) {
-      const storeIds = new Set(orders.map(o => o.id))
-      const uniqueCached = cachedOrders.filter(o => !storeIds.has(o.id))
-      return [...orders, ...uniqueCached]
-    }
-    const map = new Map<string, import('@/types').Order>()
-    historicalOrders.forEach(o => map.set(o.id, o))
+    // Gabungkan: IndexedDB (pekan ini) +
+    // Zustand (aktif)
+    const map = new Map<string, Order>()
+
+    // IndexedDB data (pekan ini, final)
+    localDBOrders.forEach(o =>
+      map.set(o.id, o)
+    )
+
+    // Zustand data (aktif, realtime)
+    // Override IndexedDB jika ada update
     orders.forEach(o => map.set(o.id, o))
+
+    // Cache data (dari filter tanggal manual)
+    if (cacheStatus === 'loaded' &&
+        cachedOrders.length > 0) {
+      cachedOrders.forEach(o =>
+        map.set(o.id, o)
+      )
+    }
+
     return Array.from(map.values())
-  }, [orders, historicalOrders, cachedOrders, cacheStatus])
+  }, [orders, localDBOrders,
+      cachedOrders, cacheStatus])
 
   const calcPlatformFee = (order: Order) => {
     const rate = order.applied_commission_rate ?? commission_rate
@@ -255,6 +276,21 @@ export function Orders() {
 
   const courierWaitingOrder = (courierId: string) =>
     allOrders.find(o => o.courier_id === courierId && o.is_waiting === true);
+
+  useEffect(() => {
+    const loadWeekOrders = async () => {
+      const weekOrders = await getOrdersForWeek()
+      setLocalDBOrders(weekOrders)
+    }
+    loadWeekOrders()
+
+    // Refresh setiap 30 detik untuk
+    // menangkap perubahan dari mirror write
+    const interval = setInterval(
+      loadWeekOrders, 30000
+    )
+    return () => clearInterval(interval)
+  }, [])
 
   // Sync edit form when order selected
   useEffect(() => {
@@ -854,7 +890,7 @@ export function Orders() {
                           <Button
                             size="sm"
                             className="bg-orange-500 hover:bg-orange-600 text-white h-7 px-2 text-[10px]"
-                            onClick={(e) => {
+                            onClick={async (e) => {
                               e.stopPropagation()
                               const courierName = users.find(
                                 u => u.id === order.courier_id
@@ -862,6 +898,13 @@ export function Orders() {
                               setBulkSettleCourierId(
                                 order.courier_id || '')
                               setBulkSettleCourierName(courierName)
+
+                              // Load unpaid dari IndexedDB
+                              const unpaid =
+                                await getUnpaidOrdersByCourier(
+                                  order.courier_id || ''
+                                )
+                              setBulkUnpaidOrders(unpaid)
                               setShowBulkSettle(true)
                             }}
                           >
@@ -1347,11 +1390,8 @@ export function Orders() {
 
       {/* Bulk Settlement Modal */}
       {showBulkSettle && (() => {
-        const unpaidOrders = orders.filter(o =>
-          o.courier_id === bulkSettleCourierId &&
-          o.status === 'delivered' &&
-          o.payment_status === 'unpaid'
-        )
+        // GANTI: unpaidOrders dari state bulkUnpaidOrders
+        const unpaidOrders = bulkUnpaidOrders
         const totalPlatformFee = unpaidOrders
           .reduce((sum, o) =>
             sum + calcPlatformFee(o), 0)
@@ -1436,11 +1476,15 @@ export function Orders() {
                   disabled={unpaidOrders.length === 0}
                   onClick={async () => {
                     await Promise.all(
-                      unpaidOrders.map(o =>
-                        updateOrder(o.id,
+                      unpaidOrders.map(async o => {
+                        await updateOrder(o.id,
                           { payment_status: 'paid' })
-                      )
+                        await markAsPaidInLocalDB(o.id)
+                      })
                     )
+                    // Refresh local orders
+                    const weekOrders = await getOrdersForWeek()
+                    setLocalDBOrders(weekOrders)
                     setShowBulkSettle(false)
                   }}
                   className="flex-1 py-2.5
