@@ -112,10 +112,10 @@ export function Couriers() {
       await setCourierOffline(courier.id, 'suspended');
       await updateCourier(courier.id, { is_active: false });
     } else {
-      // Un-suspend: masukkan ke posisi terakhir
+      // Un-suspend: aktifkan + set ON langsung
       await updateCourier(courier.id, { is_active: true });
-      await setCourierOnline(courier.id, 'off');
-      // Set off dulu — kurir perlu manual toggle ON saat siap bekerja
+      await setCourierOnline(courier.id, 'on');
+      // 'on' bukan 'off' — kurir langsung siap terima order
     }
   };
 

@@ -5,6 +5,7 @@ import { cn } from '@/utils/cn';
 import { useAuth } from '@/context/AuthContext';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useNotificationStore } from '@/stores/useNotificationStore';
+import { useUserStore } from '@/stores/useUserStore';
 import { useSessionStore } from '@/stores/useSessionStore';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -13,8 +14,12 @@ import { Order } from '@/types';
 export function CourierLayout() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { users } = useUserStore();
   const { user: currentUser } = useSessionStore();
   const { fetchOrdersByCourier } = useOrderStore();
+  
+  const liveUser = users.find(u => u.id === currentUser?.id);
+  const isSuspended = liveUser?.is_active === false;
 
   useEffect(() => {
     if (!user?.id) return
@@ -106,7 +111,7 @@ export function CourierLayout() {
       </header>
 
       {/* Account Suspended Banner */}
-      {user?.is_active === false && (
+      {isSuspended && (
         <div className="bg-orange-500 text-white px-4 py-3 sticky top-[72px] z-30 flex items-center gap-2 shadow-md">
           <div className="bg-white/20 p-1 rounded-full">
             <Bell className="h-4 w-4" />
