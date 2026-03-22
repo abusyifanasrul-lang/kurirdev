@@ -603,17 +603,36 @@ export function Orders() {
     try {
       const start = new Date(dateFilter.start)
       const end = new Date(dateFilter.end)
+
+      // Fetch dari Firestore
       await fetchOrdersByDateRange(start, end)
+
+      // Ambil data terbaru langsung dari store
+      // (bukan dari historicalOrders state
+      // yang belum re-render)
+      const freshOrders = useOrderStore
+        .getState().historicalOrders
+
+      // Simpan ke cache per tanggal
       for (const date of missingDates) {
-        const dayOrders = historicalOrders
-          .filter(o => o.created_at.startsWith(date))
+        const dayOrders = freshOrders
+          .filter(o =>
+            o.created_at.startsWith(date)
+          )
         await cacheOrdersByDate(date, dayOrders)
       }
-      const { orders } = await getCachedOrdersByRange(dateFilter.start, dateFilter.end)
-      setCachedOrders(orders)
+
+      // Baca dari cache untuk konfirmasi
+      const { orders: cached } =
+        await getCachedOrdersByRange(
+          dateFilter.start,
+          dateFilter.end
+        )
+      setCachedOrders(cached)
       setCacheStatus('loaded')
+
     } catch (error) {
-      console.error('Cache fetch error:', error)
+      console.error('Cache error:', error)
       setCacheStatus('missing')
     }
   }
