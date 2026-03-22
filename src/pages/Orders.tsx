@@ -569,7 +569,7 @@ export function Orders() {
     <div className="min-h-screen">
       <Header
         title="Orders"
-        subtitle={`${filteredOrders.length} records found`}
+        subtitle="Kelola semua pesanan"
         actions={
           <div className="flex gap-2">
             <Button variant="outline" leftIcon={<Download className="h-4 w-4" />} onClick={handleExportCSV}>
@@ -583,6 +583,22 @@ export function Orders() {
       />
 
       <div className="p-4 lg:p-8">
+        {/* Records Count */}
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-sm text-gray-500">
+            Menampilkan{' '}
+            <span className="font-semibold text-gray-900">
+              {filteredOrders.length}
+            </span>
+            {' '}order
+            {filteredOrders.length !== allOrders.length && (
+              <span className="text-gray-400">
+                {' '}dari {allOrders.length} total
+              </span>
+            )}
+          </p>
+        </div>
+
         {/* Filters */}
         <Card className="mb-6">
           <div className="flex flex-col lg:flex-row flex-wrap gap-4">
