@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { User, Lock, Users, Plus, CheckCircle, AlertCircle, Shield, Edit2, UserX, RefreshCw } from 'lucide-react';
+import { User, Lock, Users, Plus, CheckCircle, AlertCircle, Shield, Edit2, UserX, RefreshCw, Eye, EyeOff } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -66,6 +66,7 @@ export function Settings() {
 
   const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'admin', phone: '' });
   const [editUserForm, setEditUserForm] = useState({ name: '', email: '', phone: '', password: '' });
+  const [showPassword, setShowPassword] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -474,13 +475,22 @@ export function Settings() {
             placeholder="user@example.com"
           />
           <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Password"
-              type="password"
-              value={newUser.password}
-              onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-              placeholder="Min 8 chars"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                value={newUser.password}
+                onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                placeholder="Min 8 chars"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
                       </div>
           <Input
             label="Phone"
@@ -528,13 +538,22 @@ export function Settings() {
           />
           <div className="pt-2 border-t mt-2">
             <h4 className="text-sm font-medium text-gray-900 mb-2">Reset Password</h4>
-            <Input
-              label="New Password"
-              type="password"
-              placeholder="Leave blank to keep current"
-              value={editUserForm.password}
-              onChange={(e) => setEditUserForm({ ...editUserForm, password: e.target.value })}
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="Leave blank to keep current"
+                value={editUserForm.password}
+                onChange={(e) => setEditUserForm({ ...editUserForm, password: e.target.value })}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t">
