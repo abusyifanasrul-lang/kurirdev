@@ -38,25 +38,62 @@ export function AppListeners() {
     // Hanya Admin yang butuh subscribeOrders
     if (!user || user.role !== 'admin') return
 
-    const sevenDaysAgo = new Date()
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+    const todayStart = new Date()
+    todayStart.setHours(0, 0, 0, 0)
 
-    const unsubOrders = onSnapshot(
+    // Query 1: order hari ini
+    const unsubToday = onSnapshot(
       query(
         collection(db, 'orders'),
-        where('created_at', '>=',
-          sevenDaysAgo.toISOString()),
+        where('created_at', '>=', todayStart.toISOString()),
         orderBy('created_at', 'desc'),
-        limit(300)
+        limit(100)
       ),
       (snapshot) => {
-        const orders = snapshot.docs
-          .map(d => d.data() as Order)
-        useOrderStore.getState().setOrders(orders)
+        const todayOrders = snapshot.docs.map(d => d.data() as Order)
+        // merge ke store
+        const current = useOrderStore.getState().orders
+        const activeIds = new Set(
+          current
+            .filter(o => !['delivered', 'cancelled'].includes(o.status))
+            .map(o => o.id)
+        )
+        const merged = [
+          ...todayOrders,
+          ...current.filter(o =>
+            activeIds.has(o.id) &&
+            !todayOrders.find(t => t.id === o.id)
+          )
+        ]
+        useOrderStore.getState().setOrders(merged)
       }
     )
 
-    return () => unsubOrders()
+    // Query 2: order aktif (belum selesai)
+    // tanpa filter tanggal — tangkap order lama yang masih aktif
+    const unsubActive = onSnapshot(
+      query(
+        collection(db, 'orders'),
+        where('status', 'not-in', ['delivered', 'cancelled']),
+        limit(50)
+      ),
+      (snapshot) => {
+        const activeOrders = snapshot.docs.map(d => d.data() as Order)
+        const current = useOrderStore.getState().orders
+        const merged = [
+          ...activeOrders,
+          ...current.filter(o =>
+            !activeOrders.find(a => a.id === o.id)
+          )
+        ]
+        useOrderStore.getState().setOrders(merged)
+      }
+    )
+
+    return () => {
+      unsubToday()
+      unsubActive()
+    }
   }, [user?.id])
 
   useEffect(() => {
