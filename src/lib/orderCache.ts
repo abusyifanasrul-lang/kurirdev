@@ -1,6 +1,21 @@
 import Dexie, { Table } from 'dexie'
 import { Order } from '@/types'
 
+// Helper function untuk konversi UTC ke local timezone
+function getLocalDateStr(
+  isoString: string
+): string {
+  const date = new Date(isoString)
+  const year = date.getFullYear()
+  const month = String(
+    date.getMonth() + 1
+  ).padStart(2, '0')
+  const day = String(
+    date.getDate()
+  ).padStart(2, '0')
+  return `${year}-${month}-${day}` 
+}
+
 // Tambahkan di bagian atas setelah import:
 interface DBMeta {
   last_sync: string        // ISO timestamp
@@ -78,7 +93,7 @@ export async function getCachedOrdersByRange(
   const current = new Date(start)
   const endDate = new Date(end)
   while (current <= endDate) {
-    dates.push(current.toISOString().split('T')[0])
+    dates.push(getLocalDateStr(current.toISOString()))
     current.setDate(current.getDate() + 1)
   }
   const missingDates: string[] = []
@@ -133,7 +148,7 @@ export async function syncAllFinalOrders(
   if (finalOrders.length > 0) {
     const tagged = finalOrders.map(o => ({
       ...o,
-      _date: o.created_at.split('T')[0]
+      _date: getLocalDateStr(o.created_at)
     }))
     await localDB.orders.bulkPut(tagged)
   }
@@ -171,7 +186,7 @@ export async function deltaSyncYesterday(
   if (finalOrders.length > 0) {
     const tagged = finalOrders.map(o => ({
       ...o,
-      _date: o.created_at.split('T')[0]
+      _date: getLocalDateStr(o.created_at)
     }))
     await localDB.orders.bulkPut(tagged)
   }
@@ -191,7 +206,7 @@ export async function moveToLocalDB(
 ): Promise<void> {
   await localDB.orders.put({
     ...order,
-    _date: order.created_at.split('T')[0]
+    _date: getLocalDateStr(order.created_at)
   })
   const total = await localDB.orders.count()
   saveMeta({ total_records: total })
@@ -214,8 +229,9 @@ export async function getOrdersForWeek()
   const diff = day === 0 ? 6 : day - 1
   monday.setDate(monday.getDate() - diff)
   monday.setHours(0, 0, 0, 0)
-  const startStr = monday
-    .toISOString().split('T')[0]
+  const startStr = getLocalDateStr(
+    monday.toISOString()
+  )
 
   const orders = await localDB.orders
     .where('_date')
