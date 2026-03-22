@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Eye, ToggleLeft, ToggleRight, TrendingUp, Package, DollarSign, Phone, Mail, Award, Truck, Hash } from 'lucide-react';
+import { Plus, Eye, EyeOff, ToggleLeft, ToggleRight, TrendingUp, Package, DollarSign, Phone, Mail, Award, Truck, Hash } from 'lucide-react';
 import { format } from 'date-fns';
 import { Header } from '@/components/layout/Header';
 import { Card, StatCard } from '@/components/ui/Card';
@@ -37,7 +37,18 @@ export function Couriers() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isPerformanceModalOpen, setIsPerformanceModalOpen] = useState(false);
   const [showSettleConfirm, setShowSettleConfirm] = useState(false);
+  const [showCourierPassword, setShowCourierPassword] = useState(false);
   const [selectedCourier, setSelectedCourier] = useState<Courier | null>(null);
+
+  const getVehicleLabel = (type?: string) => {
+    const map: Record<string, string> = {
+      motorcycle: 'Motor',
+      car: 'Mobil',
+      bicycle: 'Sepeda',
+      van: 'Van/Pick Up'
+    }
+    return map[type ?? ''] ?? type ?? '-'
+  }
 
   const courierUnpaidCount = (courierId: string) => {
     const courier = couriers.find(c => c.id === courierId)
@@ -81,6 +92,7 @@ export function Couriers() {
 
     addCourier(courierData);
     setIsAddModalOpen(false);
+    setShowCourierPassword(false);
     setNewCourier({
       name: '',
       email: '',
@@ -291,13 +303,25 @@ export function Couriers() {
             onChange={(e) => setNewCourier({ ...newCourier, email: e.target.value })}
             placeholder="courier@example.com"
           />
-          <Input
-            label="Password"
-            type="password"
-            value={newCourier.password}
-            onChange={(e) => setNewCourier({ ...newCourier, password: e.target.value })}
-            placeholder="Min 8 characters"
-          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <div className="relative">
+            <input
+              type={showCourierPassword ? 'text' : 'password'}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              value={newCourier.password}
+              onChange={(e) => setNewCourier({ ...newCourier, password: e.target.value })}
+              placeholder="Min 8 characters"
+            />
+            <button
+              type="button"
+              onClick={() => setShowCourierPassword(!showCourierPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              {showCourierPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+            </div>
+          </div>
           <Input
             label="Phone Number"
             value={newCourier.phone}
@@ -306,14 +330,14 @@ export function Couriers() {
           />
           <div className="grid grid-cols-2 gap-4">
             <Select
-              label="Vehicle Type"
+              label="Jenis Kendaraan"
               value={newCourier.vehicle_type}
               onChange={(e) => setNewCourier({ ...newCourier, vehicle_type: e.target.value as Courier['vehicle_type'] })}
               options={[
-                { value: 'motorcycle', label: 'Motorcycle' },
-                { value: 'car', label: 'Car' },
-                { value: 'bicycle', label: 'Bicycle' },
-                { value: 'van', label: 'Van' },
+                { value: 'motorcycle', label: 'Motor' },
+                { value: 'car', label: 'Mobil' },
+                { value: 'bicycle', label: 'Sepeda' },
+                { value: 'van', label: 'Van/Pick Up' },
               ]}
             />
             <Input
@@ -324,7 +348,7 @@ export function Couriers() {
             />
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>
+            <Button variant="outline" onClick={() => { setIsAddModalOpen(false); setShowCourierPassword(false); }}>
               Cancel
             </Button>
             <Button
@@ -359,7 +383,7 @@ export function Couriers() {
                     <span className="flex items-center gap-1"><Mail className="w-3 h-3" /> {selectedCourier.email}</span>
                     <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {selectedCourier.phone}</span>
                     {selectedCourier.vehicle_type && (
-                      <span className="flex items-center gap-1 capitalize"><Truck className="w-3 h-3" /> {selectedCourier.vehicle_type}</span>
+                      <span className="flex items-center gap-1 capitalize"><Truck className="w-3 h-3" /> {getVehicleLabel(selectedCourier.vehicle_type)}</span>
                     )}
                     {selectedCourier.plate_number && (
                       <span className="flex items-center gap-1 uppercase"><Hash className="w-3 h-3" /> {selectedCourier.plate_number}</span>
