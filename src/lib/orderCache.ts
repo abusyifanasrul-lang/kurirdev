@@ -224,18 +224,25 @@ export async function removeFromLocalDB(
 // Ambil order pekan ini dari IndexedDB
 export async function getOrdersForWeek()
   : Promise<import('@/types').Order[]> {
-  const monday = new Date()
-  const day = monday.getDay()
-  const diff = day === 0 ? 6 : day - 1
-  monday.setDate(monday.getDate() - diff)
-  monday.setHours(0, 0, 0, 0)
+  
+  // 7 hari terakhir dari hari ini
+  const today = new Date()
+  const sevenDaysAgo = new Date()
+  sevenDaysAgo.setDate(
+    today.getDate() - 6
+  )
+  sevenDaysAgo.setHours(0, 0, 0, 0)
+
   const startStr = getLocalDateStr(
-    monday.toISOString()
+    sevenDaysAgo.toISOString()
+  )
+  const endStr = getLocalDateStr(
+    today.toISOString()
   )
 
   const orders = await localDB.orders
     .where('_date')
-    .aboveOrEqual(startStr)
+    .between(startStr, endStr, true, true)
     .toArray()
 
   return orders.map(({ _date, ...o }) =>
