@@ -25,6 +25,7 @@ import { useUserStore } from '@/stores/useUserStore';
 import { Courier } from '@/types';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { calcCourierEarning, calcAdminEarning } from '@/lib/calcEarning';
+import { markAsPaidInLocalDB } from '@/lib/orderCache';
 
 export function Couriers() {
   const { addCourier, updateCourier } = useCourierStore();
@@ -546,10 +547,14 @@ export function Couriers() {
                   Batal
                 </button>
                 <button
-                  onClick={() => {
-                    unpaidOrders.forEach(o =>
-                      updateOrder(o.id, { payment_status: 'paid' })
-                    );
+                  onClick={async () => {
+                    await Promise.all(
+                      unpaidOrders.map(async o => {
+                        await updateOrder(o.id,
+                          { payment_status: 'paid' })
+                        await markAsPaidInLocalDB(o.id)
+                      })
+                    )
                     setShowSettleConfirm(false);
                   }}
                   className="flex-1 py-2 bg-green-500 text-white rounded-lg font-semibold"
