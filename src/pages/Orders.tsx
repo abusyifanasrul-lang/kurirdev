@@ -112,6 +112,12 @@ export function Orders() {
   }, [orders, localDBOrders,
       cachedOrders, cacheStatus])
 
+  // Debug logs
+  console.log('allOrders count:', allOrders.length)
+  console.log('localDBOrders count:', localDBOrders.length)
+  console.log('orders (store) count:', orders.length)
+  console.log('sample created_at:', allOrders[0]?.created_at)
+
   const calcPlatformFee = (order: Order) => {
     const rate = order.applied_commission_rate ?? commission_rate
     const threshold = order.applied_commission_threshold ?? commission_threshold
@@ -212,6 +218,15 @@ export function Orders() {
 
         const matchesDateStart = !start || orderDate >= start;
         const matchesDateEnd = !end || orderDate <= end;
+
+        // Debug log for filtered orders
+        if (!matchesDateStart || !matchesDateEnd) {
+          console.log('Filtered out:',
+            order.order_number,
+            order.created_at,
+            'start:', dateFilter.start,
+            'end:', dateFilter.end)
+        }
 
         // Advanced Search Logic
         const q = searchQuery.toLowerCase();
