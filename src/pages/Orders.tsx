@@ -61,6 +61,11 @@ export function Orders() {
   const { addNotification } = useNotificationStore();
   const { user } = useAuth(); // Current admin user
 
+  // Cache State
+  const [cacheStatus, setCacheStatus] = useState<'idle' | 'checking' | 'missing' | 'loading' | 'loaded'>('idle')
+  const [missingDates, setMissingDates] = useState<string[]>([])
+  const [cachedOrders, setCachedOrders] = useState<Order[]>([])
+
   const getCourierName = (courierId?: string) => {
     if (!courierId) return null;
     const courier = users.find(u => u.id === courierId);
@@ -131,11 +136,6 @@ export function Orders() {
   const [cancelReason, setCancelReason] = useState('');
   const [nameSuggestions, setNameSuggestions] = useState<Array<{ name: string, phone: string, address: string }>>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
-
-  // Cache State
-  const [cacheStatus, setCacheStatus] = useState<'idle' | 'checking' | 'missing' | 'loading' | 'loaded'>('idle')
-  const [missingDates, setMissingDates] = useState<string[]>([])
-  const [cachedOrders, setCachedOrders] = useState<Order[]>([])
 
   const handleCustomerNameChange = (value: string) => {
     setNewOrder({ ...newOrder, customer_name: value })
