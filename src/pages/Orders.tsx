@@ -2,6 +2,10 @@ import { useState, useMemo, useEffect } from 'react';
 import { Plus, Download, Search, ArrowUpDown, ChevronUp, ChevronDown, Printer } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { sendPushNotification } from '@/services/notificationService';
+import {
+  getCachedOrdersByRange,
+  cacheOrdersByDate
+} from '@/lib/orderCache';
 import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -64,11 +68,16 @@ export function Orders() {
   };
 
   const allOrders = useMemo(() => {
+    if (cacheStatus === 'loaded' && cachedOrders.length > 0) {
+      const storeIds = new Set(orders.map(o => o.id))
+      const uniqueCached = cachedOrders.filter(o => !storeIds.has(o.id))
+      return [...orders, ...uniqueCached]
+    }
     const map = new Map<string, import('@/types').Order>()
     historicalOrders.forEach(o => map.set(o.id, o))
     orders.forEach(o => map.set(o.id, o))
     return Array.from(map.values())
-  }, [orders, historicalOrders])
+  }, [orders, historicalOrders, cachedOrders, cacheStatus])
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchCategory, setSearchCategory] = useState('all');
@@ -122,6 +131,11 @@ export function Orders() {
   const [cancelReason, setCancelReason] = useState('');
   const [nameSuggestions, setNameSuggestions] = useState<Array<{ name: string, phone: string, address: string }>>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
+
+  // Cache State
+  const [cacheStatus, setCacheStatus] = useState<'idle' | 'checking' | 'missing' | 'loading' | 'loaded'>('idle')
+  const [missingDates, setMissingDates] = useState<string[]>([])
+  const [cachedOrders, setCachedOrders] = useState<Order[]>([])
 
   const handleCustomerNameChange = (value: string) => {
     setNewOrder({ ...newOrder, customer_name: value })
@@ -565,6 +579,45 @@ export function Orders() {
 
   const formatCurrency = (val: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
 
+  const handleDateFilterChange = async (start: string, end: string) => {
+    setDateFilter({ start, end })
+    const today = format(new Date(), 'yyyy-MM-dd')
+    if (!start || start === today) {
+      setCacheStatus('idle')
+      setCachedOrders([])
+      return
+    }
+    setCacheStatus('checking')
+    const { orders, missingDates } = await getCachedOrdersByRange(start, end)
+    if (missingDates.length === 0) {
+      setCachedOrders(orders)
+      setCacheStatus('loaded')
+    } else {
+      setMissingDates(missingDates)
+      setCacheStatus('missing')
+    }
+  }
+
+  const handleFetchAndCache = async () => {
+    setCacheStatus('loading')
+    try {
+      const start = new Date(dateFilter.start)
+      const end = new Date(dateFilter.end)
+      await fetchOrdersByDateRange(start, end)
+      for (const date of missingDates) {
+        const dayOrders = historicalOrders
+          .filter(o => o.created_at.startsWith(date))
+        await cacheOrdersByDate(date, dayOrders)
+      }
+      const { orders } = await getCachedOrdersByRange(dateFilter.start, dateFilter.end)
+      setCachedOrders(orders)
+      setCacheStatus('loaded')
+    } catch (error) {
+      console.error('Cache fetch error:', error)
+      setCacheStatus('missing')
+    }
+  }
+
   return (
     <div className="min-h-screen">
       <Header
@@ -628,11 +681,67 @@ export function Orders() {
               />
             </div>
             <div className="flex gap-2 w-full lg:w-auto">
-              <Input type="date" value={dateFilter.start} onChange={(e) => setDateFilter({ ...dateFilter, start: e.target.value })} />
-              <Input type="date" value={dateFilter.end} onChange={(e) => setDateFilter({ ...dateFilter, end: e.target.value })} />
+              <Input type="date" value={dateFilter.start} onChange={(e) => handleDateFilterChange(e.target.value, dateFilter.end)} />
+              <Input type="date" value={dateFilter.end} onChange={(e) => handleDateFilterChange(dateFilter.start, e.target.value)} />
             </div>
           </div>
         </Card>
+
+        {/* Cache Status UI */}
+        {cacheStatus === 'missing' && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">📦</span>
+              <div className="flex-1">
+                <p className="font-medium text-amber-800 text-sm">
+                  Data belum tersimpan lokal
+                </p>
+                <p className="text-amber-700 text-xs mt-1">
+                  {missingDates.length} hari belum di-cache
+                </p>
+                <p className="text-amber-600 text-xs mt-1">
+                  Setelah diambil, data tersimpan permanen di perangkat ini.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2 mt-3">
+              <button
+                onClick={handleFetchAndCache}
+                className="flex-1 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition"
+              >
+                Ambil Data dari Server
+              </button>
+              <button
+                onClick={() => {
+                  setDateFilter({ start: '', end: '' })
+                  setCacheStatus('idle')
+                  setCachedOrders([])
+                }}
+                className="px-4 py-2 border border-amber-300 text-amber-700 text-sm rounded-lg"
+              >
+                Batal
+              </button>
+            </div>
+          </div>
+        )}
+
+        {cacheStatus === 'loading' && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4 flex items-center gap-3">
+            <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            <p className="text-blue-700 text-sm">
+              Mengambil data dari server...
+            </p>
+          </div>
+        )}
+
+        {cacheStatus === 'loaded' && (
+          <div className="flex items-center gap-2 text-xs text-gray-400 mb-3">
+            <span>📦</span>
+            <span>
+              Data dari cache lokal ({cachedOrders.length} order)
+            </span>
+          </div>
+        )}
 
         {/* Orders Table */}
         <Card padding="none" className="hidden lg:block">
