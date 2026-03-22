@@ -8,6 +8,10 @@ import { Order, OrderStatus, OrderStatusHistory } from '@/types'
 import { sendMockNotification } from '@/utils/notification'
 import { useSettingsStore } from '@/stores/useSettingsStore'
 import { calcCourierEarning } from '@/lib/calcEarning'
+import {
+  moveToLocalDB,
+  markAsPaidInLocalDB
+} from '@/lib/orderCache'
 
 interface OrderState {
   orders: Order[]
@@ -171,6 +175,22 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
 
     await updateDoc(doc(db, 'orders', orderId), updates)
 
+    // Mirror write ke IndexedDB
+    // jika order sudah final
+    const updatedOrder = {
+      ...order,
+      ...updates
+    }
+    if (
+      updatedOrder.status === 'delivered' ||
+      updatedOrder.status === 'cancelled'
+    ) {
+      moveToLocalDB(updatedOrder as Order)
+        .catch(err => console.error(
+          'Mirror write error:', err
+        ))
+    }
+
     const newHistory: OrderStatusHistory = {
       id: crypto.randomUUID(),
       order_id: orderId,
@@ -231,6 +251,15 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
       ...updates,
       updated_at: new Date().toISOString()
     })
+
+    // Mirror write ke IndexedDB
+    // jika payment dikonfirmasi
+    if (updates.payment_status === 'paid') {
+      markAsPaidInLocalDB(orderId)
+        .catch(err => console.error(
+          'Mirror paid error:', err
+        ))
+    }
   },
   updateBiayaTambahan: async (orderId, titik, beban) => {
     const total_biaya_titik = titik * 3000;
