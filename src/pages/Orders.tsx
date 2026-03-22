@@ -282,14 +282,28 @@ export function Orders() {
       const weekOrders = await getOrdersForWeek()
       setLocalDBOrders(weekOrders)
     }
+
+    // Load pertama kali
     loadWeekOrders()
+
+    // Listen jika IndexedDB baru diisi
+    // oleh initial/delta sync
+    window.addEventListener(
+      'indexeddb-synced', loadWeekOrders
+    )
 
     // Refresh setiap 30 detik untuk
     // menangkap perubahan dari mirror write
     const interval = setInterval(
       loadWeekOrders, 30000
     )
-    return () => clearInterval(interval)
+
+    return () => {
+      window.removeEventListener(
+        'indexeddb-synced', loadWeekOrders
+      )
+      clearInterval(interval)
+    }
   }, [])
 
   // Sync edit form when order selected

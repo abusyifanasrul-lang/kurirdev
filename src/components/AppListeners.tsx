@@ -195,6 +195,13 @@ export function AppListeners() {
           )
           console.log(`Initial sync: ${count}
             orders cached`)
+
+          // Notify semua komponen bahwa
+          // IndexedDB sudah terisi
+          window.dispatchEvent(
+            new CustomEvent('indexeddb-synced')
+          )
+
           // Cek storage setelah sync
           await checkStorageBudget()
           return
@@ -227,6 +234,10 @@ export function AppListeners() {
           )
           console.log(`Delta sync: ${count}
             orders cached`)
+
+          window.dispatchEvent(
+            new CustomEvent('indexeddb-synced')
+          )
         }
 
         // Cek storage setelah sync
