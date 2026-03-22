@@ -3,11 +3,80 @@ import { useAuth } from '@/context/AuthContext'
 import { useUserStore } from '@/stores/useUserStore'
 import { useOrderStore } from '@/stores/useOrderStore'
 import { useNotificationStore } from '@/stores/useNotificationStore'
-import { collection, query, where,
-         orderBy, limit, onSnapshot }
-  from 'firebase/firestore'
+import {
+  collection, query, where,
+  orderBy, limit, onSnapshot,
+  getDocs
+} from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import {
+  isInitialSyncCompleted,
+  syncAllFinalOrders,
+  needsDeltaSync,
+  deltaSyncYesterday,
+  moveToLocalDB,
+  checkIntegrity,
+  getCacheMeta
+} from '@/lib/orderCache'
 import { Order } from '@/types'
+
+// Fungsi fetch helper di luar komponen AppListeners
+async function fetchFinalOrders(
+  start: Date,
+  end: Date
+): Promise<Order[]> {
+  const q = query(
+    collection(db, 'orders'),
+    where('created_at', '>=',
+      start.toISOString()),
+    where('created_at', '<=',
+      end.toISOString()),
+    where('status', 'in',
+      ['delivered', 'cancelled']),
+    orderBy('created_at', 'desc')
+  )
+  const snapshot = await getDocs(q)
+  return snapshot.docs
+    .map(d => d.data() as Order)
+}
+
+// Storage budget check
+async function checkStorageBudget() {
+  if (!navigator.storage?.estimate) return
+  try {
+    const { usage, quota } =
+      await navigator.storage.estimate()
+    if (!usage || !quota) return
+    const usagePercent = (usage / quota) * 100
+    if (usagePercent > 80) {
+      console.warn(`Storage ${usagePercent.toFixed(1)}%
+        used — consider pruning`)
+      // Hapus order > 1 tahun yang
+      // sudah final dan paid
+      const oneYearAgo = new Date()
+      oneYearAgo.setFullYear(
+        oneYearAgo.getFullYear() - 1
+      )
+      const cutoff = oneYearAgo
+        .toISOString().split('T')[0]
+      const { localDB } = await import(
+        '@/lib/orderCache'
+      )
+      await localDB.orders
+        .where('_date')
+        .below(cutoff)
+        .filter(o =>
+          o.payment_status === 'paid' &&
+          (o.status === 'delivered' ||
+           o.status === 'cancelled')
+        )
+        .delete()
+      console.log('Pruning completed')
+    }
+  } catch (err) {
+    console.error('Storage check error:', err)
+  }
+}
 
 export function AppListeners() {
   const { user } = useAuth()
@@ -66,6 +135,23 @@ export function AppListeners() {
           )
         ]
         useOrderStore.getState().setOrders(merged)
+
+        // Mirror write ke IndexedDB
+        // untuk order yang sudah final
+        snapshot.docChanges().forEach(change => {
+          const order = change.doc.data() as Order
+          if (
+            order.status === 'delivered' ||
+            order.status === 'cancelled'
+          ) {
+            // Fire and forget — tidak perlu await
+            moveToLocalDB(order).catch(
+              err => console.error(
+                'Mirror write error:', err
+              )
+            )
+          }
+        })
       }
     )
 
@@ -94,6 +180,67 @@ export function AppListeners() {
       unsubToday()
       unsubActive()
     }
+  }, [user?.id])
+
+  useEffect(() => {
+    if (!user) return
+
+    const runSync = async () => {
+      try {
+        // INITIAL SYNC — device baru
+        if (!isInitialSyncCompleted()) {
+          console.log('Running initial sync...')
+          const count = await syncAllFinalOrders(
+            fetchFinalOrders
+          )
+          console.log(`Initial sync: ${count}
+            orders cached`)
+          // Cek storage setelah sync
+          await checkStorageBudget()
+          return
+        }
+
+        // INTEGRITY CHECK — deteksi rusak
+        const { ok, localCount, metaCount } =
+          await checkIntegrity()
+        if (!ok) {
+          console.warn(`Integrity check failed:
+            local=${localCount},
+            meta=${metaCount}`)
+          // Re-sync jika selisih > 10 records
+          if (Math.abs(localCount - metaCount)
+              > 10) {
+            await syncAllFinalOrders(
+              fetchFinalOrders
+            )
+            // Cek storage setelah sync
+            await checkStorageBudget()
+            return
+          }
+        }
+
+        // DELTA SYNC — setiap hari
+        if (needsDeltaSync()) {
+          console.log('Running delta sync...')
+          const count = await deltaSyncYesterday(
+            fetchFinalOrders
+          )
+          console.log(`Delta sync: ${count}
+            orders cached`)
+        }
+
+        // Cek storage setelah sync
+        await checkStorageBudget()
+
+      } catch (error) {
+        console.error('Sync error:', error)
+      }
+    }
+
+    // Delay 3 detik agar listener lain
+    // sudah aktif dulu
+    const timer = setTimeout(runSync, 3000)
+    return () => clearTimeout(timer)
   }, [user?.id])
 
   useEffect(() => {
