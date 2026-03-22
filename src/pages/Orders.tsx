@@ -643,21 +643,57 @@ export function Orders() {
 
   const formatCurrency = (val: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
 
-  const handleDateFilterChange = async (start: string, end: string) => {
+  const handleDateFilterChange = async (
+    start: string, end: string
+  ) => {
     setDateFilter({ start, end })
-    const today = format(new Date(), 'yyyy-MM-dd')
-    if (!start || start === today) {
+
+    // Jika tidak ada filter → reset
+    if (!start && !end) {
       setCacheStatus('idle')
       setCachedOrders([])
       return
     }
+
+    // Jika filter hari ini → pakai
+    // allOrders yang sudah ada
+    const today = format(
+      new Date(), 'yyyy-MM-dd'
+    )
+    if (start === today || !start) {
+      setCacheStatus('idle')
+      setCachedOrders([])
+      return
+    }
+
+    // Filter ke tanggal lain →
+    // ambil dari IndexedDB langsung
     setCacheStatus('checking')
-    const { orders, missingDates } = await getCachedOrdersByRange(start, end)
-    if (missingDates.length === 0) {
-      setCachedOrders(orders)
-      setCacheStatus('loaded')
-    } else {
-      setMissingDates(missingDates)
+    try {
+      const { localDB } = await import(
+        '@/lib/orderCache'
+      )
+      // Query langsung dari IndexedDB
+      // berdasarkan _date field
+      const results = await localDB.orders
+        .where('_date')
+        .between(start, end, true, true)
+        .toArray()
+
+      if (results.length > 0) {
+        const orders = results.map(
+          ({ _date, ...o }) => o as Order
+        )
+        setCachedOrders(orders)
+        setCacheStatus('loaded')
+      } else {
+        // Tidak ada di IndexedDB →
+        // perlu fetch dari Firestore
+        setMissingDates([start])
+        setCacheStatus('missing')
+      }
+    } catch (error) {
+      console.error('Filter error:', error)
       setCacheStatus('missing')
     }
   }
