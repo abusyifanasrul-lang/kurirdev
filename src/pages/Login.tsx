@@ -17,24 +17,31 @@ export function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [showForgotInfo, setShowForgotInfo] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
   const handleRoleSelect = (role: RoleType) => {
     setSelectedRole(role);
     setError('');
+    
+    // Load saved email for selected role
+    const saved = localStorage.getItem(`lastLoginEmail_${role}`);
+    if (saved) {
+      setEmail(saved);
+      setRememberMe(true);
+    } else {
+      setEmail('');
+      setRememberMe(false);
+    }
   };
 
   const { users } = useUserStore();
   const { login: sessionLogin } = useSessionStore();
 
-  // Load saved email on mount
+  // Clean up old non-role-aware key
   useEffect(() => {
-    const saved = localStorage.getItem('lastLoginEmail');
-    if (saved) {
-      setEmail(saved);
-      setRememberMe(true);
-    }
+    localStorage.removeItem('lastLoginEmail');
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -65,9 +72,9 @@ export function Login() {
 
         // 4. Remember Me logic
         if (rememberMe) {
-          localStorage.setItem('lastLoginEmail', email);
+          localStorage.setItem(`lastLoginEmail_${foundUser.role}`, email);
         } else {
-          localStorage.removeItem('lastLoginEmail');
+          localStorage.removeItem(`lastLoginEmail_${foundUser.role}`);
         }
 
         // Request FCM permission for couriers
@@ -294,11 +301,20 @@ export function Login() {
                     />
                     <span className="text-sm text-gray-600">Remember me</span>
                   </label>
-                  <p className="text-xs text-gray-500 text-center mt-1">
-                    Lupa password? Hubungi admin untuk
-                    mereset password Anda.
-                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotInfo(!showForgotInfo)}
+                    className="text-sm text-indigo-600 hover:underline"
+                  >
+                    Forgot password?
+                  </button>
                 </div>
+                {showForgotInfo && (
+                  <p className="text-xs text-gray-500 text-center mt-1">
+                    Hubungi admin untuk mereset
+                    password Anda.
+                  </p>
+                )}
 
                 <button
                   type="submit"
