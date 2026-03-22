@@ -283,8 +283,39 @@ export async function checkIntegrity()
 // Reset semua cache (untuk manual sync)
 export async function clearAllCache()
   : Promise<void> {
-  await localDB.orders.clear()
-  localStorage.removeItem(META_KEY)
+  try {
+    // Hapus semua records via Dexie
+    await localDB.orders.clear()
+  } catch (e) {
+    console.error('Dexie clear error:', e)
+  }
+
+  try {
+    // Hapus database IndexedDB sepenuhnya
+    // menggunakan native API sebagai fallback
+    await new Promise<void>(
+      (resolve, reject) => {
+        const req = indexedDB.deleteDatabase(
+          'KurirDevCache'
+        )
+        req.onsuccess = () => resolve()
+        req.onerror = () => reject(req.error)
+        req.onblocked = () => {
+          console.warn('IndexedDB delete blocked')
+          resolve()
+        }
+      }
+    )
+  } catch (e) {
+    console.error('IndexedDB delete error:', e)
+  }
+
+  // Hapus semua localStorage keys
+  // yang terkait KurirDev cache
+  localStorage.removeItem('kurirdev_db_meta')
+  localStorage.removeItem(
+    'pwa_update_dismissed'
+  )
 }
 
 // Ambil metadata untuk ditampilkan

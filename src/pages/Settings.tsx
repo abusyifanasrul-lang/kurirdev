@@ -18,10 +18,12 @@ import {
   getCacheMeta,
   isInitialSyncCompleted
 } from '@/lib/orderCache';
+import { useNavigate } from 'react-router-dom';
 
 export function Settings() {
   const { users, updateUser, addUser } = useUserStore();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const { updateCourier } = useCourierStore();
   const { commission_rate, commission_threshold, updateSettings } = useSettingsStore()
   const [businessForm, setBusinessForm] = useState({
@@ -100,26 +102,26 @@ export function Settings() {
   // Handle cache resync
   const handleResync = async () => {
     if (isSyncing) return
-    const confirm = window.confirm(
+    const confirmed = window.confirm(
       'Reset dan sinkronisasi ulang semua ' +
       'data lokal dari server? ' +
-      'Proses ini membutuhkan beberapa detik.'
+      'Anda akan logout otomatis.'
     )
-    if (!confirm) return
+    if (!confirmed) return
 
     setIsSyncing(true)
     setSyncMessage('Menghapus cache lokal...')
 
     try {
       await clearAllCache()
-      setSyncMessage(
-        'Cache dihapus. Reload aplikasi ' +
-        'untuk memulai sinkronisasi ulang.'
-      )
-      setTimeout(() => {
-        window.location.reload()
-      }, 2000)
+      setSyncMessage('Cache dihapus. Logout...')
+      // Logout dulu agar fresh saat login ulang
+      setTimeout(async () => {
+        await logout()
+        navigate('/')
+      }, 1000)
     } catch (error) {
+      console.error('Resync error:', error)
       setSyncMessage('Gagal mereset cache.')
       setIsSyncing(false)
     }
