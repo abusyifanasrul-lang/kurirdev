@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Plus, Eye, EyeOff, ToggleLeft, ToggleRight, TrendingUp, Package, DollarSign, Phone, Mail, Award, Truck, Hash } from 'lucide-react';
 import { format } from 'date-fns';
 import { Header } from '@/components/layout/Header';
@@ -25,7 +25,7 @@ import { useUserStore } from '@/stores/useUserStore';
 import { Courier } from '@/types';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { calcCourierEarning, calcAdminEarning } from '@/lib/calcEarning';
-import { markAsPaidInLocalDB } from '@/lib/orderCache';
+import { markAsPaidInLocalDB, getUnpaidOrdersByCourier } from '@/lib/orderCache';
 
 export function Couriers() {
   const { addCourier, updateCourier } = useCourierStore();
@@ -40,6 +40,7 @@ export function Couriers() {
   const [showSettleConfirm, setShowSettleConfirm] = useState(false);
   const [showCourierPassword, setShowCourierPassword] = useState(false);
   const [selectedCourier, setSelectedCourier] = useState<Courier | null>(null);
+  const [courierUnpaidOrders, setCourierUnpaidOrders] = useState<Order[]>([]);
 
   const getVehicleLabel = (type?: string) => {
     const map: Record<string, string> = {
@@ -55,6 +56,14 @@ export function Couriers() {
     const courier = couriers.find(c => c.id === courierId)
     return (courier as any)?.unpaid_count ?? 0
   }
+
+  useEffect(() => {
+    if (!selectedCourier) {
+      setCourierUnpaidOrders([])
+      return
+    }
+    getUnpaidOrdersByCourier(selectedCourier.id).then(setCourierUnpaidOrders)
+  }, [selectedCourier?.id])
 
   // Form state
   const [newCourier, setNewCourier] = useState({
@@ -450,11 +459,7 @@ export function Couriers() {
 
             {/* Tagihan Setoran */}
             {(() => {
-              const unpaidOrders = orders.filter(o =>
-                o.courier_id === selectedCourier?.id &&
-                o.status === 'delivered' &&
-                o.payment_status === 'unpaid'
-              );
+              const unpaidOrders = courierUnpaidOrders
               const unpaidTotalFee = unpaidOrders.reduce(
                 (sum, o) => sum + o.total_fee, 0
               );
@@ -523,11 +528,7 @@ export function Couriers() {
 
       {/* Konfirmasi Dialog */}
       {showSettleConfirm && selectedCourier && (() => {
-        const unpaidOrders = orders.filter(o =>
-          o.courier_id === selectedCourier.id &&
-          o.status === 'delivered' &&
-          o.payment_status === 'unpaid'
-        );
+        const unpaidOrders = courierUnpaidOrders
         const unpaidPlatformFee = unpaidOrders.reduce(
           (sum, o) => sum + calcAdminEarning(o, earningSettings), 0
         );
@@ -555,6 +556,7 @@ export function Couriers() {
                         await markAsPaidInLocalDB(o.id)
                       })
                     )
+                    setCourierUnpaidOrders([])
                     setShowSettleConfirm(false);
                   }}
                   className="flex-1 py-2 bg-green-500 text-white rounded-lg font-semibold"
