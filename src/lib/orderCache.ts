@@ -346,3 +346,36 @@ export async function clearAllCache()
 export function getCacheMeta(): DBMeta {
   return getMeta()
 }
+
+export async function getOrdersByDateRange(
+  start: string,
+  end: string
+): Promise<import('@/types').Order[]> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(
+      'KurirDevCache'
+    )
+    request.onsuccess = (event) => {
+      const db = (event.target as any).result
+      const tx = db.transaction(
+        'orders', 'readonly'
+      )
+      const store = tx.objectStore('orders')
+      const index = store.index('_date')
+      const range = IDBKeyRange.bound(
+        start, end, false, false
+      )
+      const req = index.getAll(range)
+      req.onsuccess = () => {
+        const results = req.result.map(
+          ({ _date, ...o }: any) => o
+        )
+        resolve(results)
+      }
+      req.onerror = () =>
+        reject(req.error)
+    }
+    request.onerror = () =>
+      reject(request.error)
+  })
+}
