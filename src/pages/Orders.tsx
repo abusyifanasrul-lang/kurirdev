@@ -206,13 +206,23 @@ export function Orders() {
       .filter((order) => {
         const matchesStatus = !statusFilter || order.status === statusFilter;
 
-        const orderDate = new Date(order.created_at);
-        const start = dateFilter.start ? new Date(dateFilter.start) : null;
-        const end = dateFilter.end ? new Date(dateFilter.end) : null;
-        if (end) end.setHours(23, 59, 59); // inclusive end date
+        // Gunakan _date local untuk perbandingan
+        // bukan created_at UTC
+        const orderLocalDate = order._date ||
+          (() => {
+            const d = new Date(order.created_at)
+            const y = d.getFullYear()
+            const m = String(d.getMonth() + 1)
+              .padStart(2, '0')
+            const day = String(d.getDate())
+              .padStart(2, '0')
+            return `${y}-${m}-${day}` 
+          })()
 
-        const matchesDateStart = !start || orderDate >= start;
-        const matchesDateEnd = !end || orderDate <= end;
+        const matchesDateStart = !dateFilter.start ||
+          orderLocalDate >= dateFilter.start
+        const matchesDateEnd = !dateFilter.end ||
+          orderLocalDate <= dateFilter.end
 
         // Advanced Search Logic
         const q = searchQuery.toLowerCase();
