@@ -41,6 +41,28 @@ export function Couriers() {
   const [showCourierPassword, setShowCourierPassword] = useState(false);
   const [selectedCourier, setSelectedCourier] = useState<Courier | null>(null);
   const [courierUnpaidOrders, setCourierUnpaidOrders] = useState<Order[]>([]);
+  const [allUnpaidCounts, setAllUnpaidCounts] = useState<Record<string, number>>({})
+
+  useEffect(() => {
+    if (couriers.length === 0) return
+    const loadAll = async () => {
+      const result: Record<string, number> = {}
+      for (const c of couriers) {
+        const unpaidDB = await getUnpaidOrdersByCourier(c.id)
+        const unpaidZustand = orders.filter(o =>
+          o.courier_id === c.id &&
+          o.status === 'delivered' &&
+          o.payment_status === 'unpaid'
+        )
+        const map = new Map<string, Order>()
+        unpaidDB.forEach(o => map.set(o.id, o))
+        unpaidZustand.forEach(o => map.set(o.id, o))
+        result[c.id] = map.size
+      }
+      setAllUnpaidCounts(result)
+    }
+    loadAll()
+  }, [couriers.length, orders])
 
   const getVehicleLabel = (type?: string) => {
     const map: Record<string, string> = {
@@ -53,11 +75,7 @@ export function Couriers() {
   }
 
   const courierUnpaidCount = (courierId: string) => {
-    return orders.filter(o =>
-      o.courier_id === courierId &&
-      o.status === 'delivered' &&
-      o.payment_status === 'unpaid'
-    ).length
+    return allUnpaidCounts[courierId] ?? 0
   }
 
   useEffect(() => {
@@ -277,7 +295,10 @@ export function Couriers() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {(courier as any).total_deliveries_alltime ?? 0}
+                      {orders.filter(o =>
+                        o.courier_id === courier.id &&
+                        o.status === 'delivered'
+                      ).length}
                     </TableCell>
                     <TableCell>
                       {formatCurrency(
@@ -287,7 +308,11 @@ export function Couriers() {
                       )}
                     </TableCell>
                     <TableCell>
-                      {formatCurrency((courier as any).total_earnings_alltime ?? 0)}
+                      {formatCurrency(
+                        orders
+                          .filter(o => o.courier_id === courier.id && o.status === 'delivered')
+                          .reduce((sum, o) => sum + calcCourierEarning(o, earningSettings), 0)
+                      )}
                       {courierUnpaidCount(courier.id) > 0 && (
                         <span className="ml-2 px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-full font-medium">
                           ⚠️ {courierUnpaidCount(courier.id)} belum setor
@@ -560,6 +585,10 @@ export function Couriers() {
                       })
                     )
                     setCourierUnpaidOrders([])
+                    setAllUnpaidCounts(prev => ({
+                      ...prev,
+                      [selectedCourier.id]: 0
+                    }))
                     setShowSettleConfirm(false);
                   }}
                   className="flex-1 py-2 bg-green-500 text-white rounded-lg font-semibold"
