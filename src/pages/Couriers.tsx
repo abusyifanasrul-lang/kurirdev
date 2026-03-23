@@ -53,8 +53,14 @@ export function Couriers() {
   }
 
   const courierUnpaidCount = (courierId: string) => {
-    const courier = couriers.find(c => c.id === courierId)
-    return (courier as any)?.unpaid_count ?? 0
+    if (selectedCourier?.id === courierId) {
+      return courierUnpaidOrders.length
+    }
+    return orders.filter(o =>
+      o.courier_id === courierId &&
+      o.status === 'delivered' &&
+      o.payment_status === 'unpaid'
+    ).length
   }
 
   useEffect(() => {

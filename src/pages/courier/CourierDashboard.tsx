@@ -11,6 +11,7 @@ import { useSessionStore } from '@/stores/useSessionStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { calcCourierEarning } from '@/lib/calcEarning';
+import { getUnpaidOrdersByCourier } from '@/lib/orderCache';
 import { Order } from '@/types';
 
 // Removed unused CourierOrder interface as we use global Order type
@@ -66,22 +67,33 @@ export function CourierDashboard() {
     [courierOrders]
   );
 
-  const unpaidDeliveredOrdersCount = (liveUser as any)?.unpaid_count ?? 0;
+  const [unpaidDeliveredOrdersCount, setUnpaidDeliveredOrdersCount] = useState(0)
+  const [unpaidTotalEarnings, setUnpaidTotalEarnings] = useState(0)
 
-  const unpaidTotalEarnings = useMemo(() => {
-    return courierOrders
-      .filter(o =>
-        o.status === 'delivered' &&
-        o.payment_status === 'unpaid'
-      )
-      .reduce((sum, o) => {
+  useEffect(() => {
+    if (!user?.id) return
+    getUnpaidOrdersByCourier(user.id).then(unpaidFromDB => {
+      // Gabungkan IndexedDB (order lama) + courierOrders (7 hari Firestore)
+      // pakai Map agar tidak duplikat, IndexedDB di-override oleh Firestore
+      const map = new Map<string, Order>()
+      unpaidFromDB.forEach(o => map.set(o.id, o))
+      courierOrders
+        .filter(o => o.status === 'delivered' && o.payment_status === 'unpaid')
+        .forEach(o => map.set(o.id, o))
+
+      const unpaidOrders = Array.from(map.values())
+      setUnpaidDeliveredOrdersCount(unpaidOrders.length)
+
+      const total = unpaidOrders.reduce((sum, o) => {
         const rate = o.applied_commission_rate ?? commission_rate
         const threshold = o.applied_commission_threshold ?? commission_threshold
         return sum + calcCourierEarning(
           o, { commission_rate: rate, commission_threshold: threshold }
         )
       }, 0)
-  }, [courierOrders, commission_rate, commission_threshold])
+      setUnpaidTotalEarnings(total)
+    })
+  }, [user?.id, courierOrders, commission_rate, commission_threshold])
 
   // Polling simulation
   useEffect(() => {
@@ -142,9 +154,9 @@ export function CourierDashboard() {
           <div className="flex items-center gap-2 min-w-0">
             <AlertTriangle className="h-4 w-4 text-orange-500 flex-shrink-0" />
             <p className="text-sm font-medium text-orange-800 truncate">
-              {unpaidDeliveredOrdersCount} order belum disetor
+              <span className="font-semibold">⚠️ {unpaidDeliveredOrdersCount} order</span>
               <span className="text-xs font-normal text-orange-600 ml-1">
-                · Total: {formatCurrency(unpaidTotalEarnings)}
+                · {formatCurrency(unpaidTotalEarnings)} belum disetor
               </span>
             </p>
           </div>
