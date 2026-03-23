@@ -154,7 +154,7 @@ export function CourierDashboard() {
           <div className="flex items-center gap-2 min-w-0">
             <AlertTriangle className="h-4 w-4 text-orange-500 flex-shrink-0" />
             <p className="text-sm font-medium text-orange-800 truncate">
-              <span className="font-semibold">⚠️ {unpaidDeliveredOrdersCount} order</span>
+              <span className="font-semibold">{unpaidDeliveredOrdersCount} order</span>
               <span className="text-xs font-normal text-orange-600 ml-1">
                 · {formatCurrency(unpaidTotalEarnings)} belum disetor
               </span>

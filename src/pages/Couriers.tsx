@@ -22,7 +22,7 @@ import {
 import { useCourierStore } from '@/stores/useCourierStore';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useUserStore } from '@/stores/useUserStore';
-import { Courier } from '@/types';
+import { Courier, Order } from '@/types';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { calcCourierEarning, calcAdminEarning } from '@/lib/calcEarning';
 import { markAsPaidInLocalDB, getUnpaidOrdersByCourier } from '@/lib/orderCache';
@@ -53,9 +53,6 @@ export function Couriers() {
   }
 
   const courierUnpaidCount = (courierId: string) => {
-    if (selectedCourier?.id === courierId) {
-      return courierUnpaidOrders.length
-    }
     return orders.filter(o =>
       o.courier_id === courierId &&
       o.status === 'delivered' &&
