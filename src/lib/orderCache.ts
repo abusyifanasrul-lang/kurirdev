@@ -352,30 +352,43 @@ export async function getOrdersByDateRange(
   end: string
 ): Promise<import('@/types').Order[]> {
   return new Promise((resolve, reject) => {
+    console.log('getOrdersByDateRange called:',
+      start, 'to', end)
     const request = indexedDB.open(
       'KurirDevCache'
     )
     request.onsuccess = (event) => {
       const db = (event.target as any).result
+      console.log('DB opened, version:',
+        db.version)
+      console.log('Object stores:',
+        Array.from(db.objectStoreNames))
       const tx = db.transaction(
         'orders', 'readonly'
       )
       const store = tx.objectStore('orders')
+      console.log('Indexes:',
+        Array.from(store.indexNames))
       const index = store.index('_date')
       const range = IDBKeyRange.bound(
         start, end, false, false
       )
       const req = index.getAll(range)
       req.onsuccess = () => {
-        const results = req.result.map(
+        console.log('Results found:',
+          req.result.length)
+        resolve(req.result.map(
           ({ _date, ...o }: any) => o
-        )
-        resolve(results)
+        ))
       }
-      req.onerror = () =>
+      req.onerror = (e) => {
+        console.error('Query error:', e)
         reject(req.error)
+      }
     }
-    request.onerror = () =>
+    request.onerror = (e) => {
+      console.error('DB open error:', e)
       reject(request.error)
+    }
   })
 }
