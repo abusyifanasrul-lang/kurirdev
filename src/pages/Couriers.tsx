@@ -25,7 +25,7 @@ import { useUserStore } from '@/stores/useUserStore';
 import { Courier, Order } from '@/types';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { calcCourierEarning, calcAdminEarning } from '@/lib/calcEarning';
-import { markAsPaidInLocalDB, getUnpaidOrdersByCourier } from '@/lib/orderCache';
+import { markAsPaidInLocalDB, getUnpaidOrdersByCourier, getOrdersForWeek } from '@/lib/orderCache';
 
 export function Couriers() {
   const { addCourier, updateCourier } = useCourierStore();
@@ -42,6 +42,24 @@ export function Couriers() {
   const [selectedCourier, setSelectedCourier] = useState<Courier | null>(null);
   const [courierUnpaidOrders, setCourierUnpaidOrders] = useState<Order[]>([]);
   const [allUnpaidCounts, setAllUnpaidCounts] = useState<Record<string, number>>({})
+  const [weekOrders, setWeekOrders] = useState<Order[]>([])
+
+  useEffect(() => {
+    const loadWeek = async () => {
+      const dbOrders = await getOrdersForWeek()
+      setWeekOrders(dbOrders)
+    }
+    loadWeek()
+    window.addEventListener('indexeddb-synced', loadWeek)
+    return () => window.removeEventListener('indexeddb-synced', loadWeek)
+  }, [])
+
+  const allOrders = useMemo(() => {
+    const map = new Map<string, Order>()
+    weekOrders.forEach(o => map.set(o.id, o))
+    orders.forEach(o => map.set(o.id, o))
+    return Array.from(map.values())
+  }, [weekOrders, orders])
 
   useEffect(() => {
     if (couriers.length === 0) return
@@ -49,7 +67,7 @@ export function Couriers() {
       const result: Record<string, number> = {}
       for (const c of couriers) {
         const unpaidDB = await getUnpaidOrdersByCourier(c.id)
-        const unpaidZustand = orders.filter(o =>
+        const unpaidZustand = allOrders.filter(o =>
           o.courier_id === c.id &&
           o.status === 'delivered' &&
           o.payment_status === 'unpaid'
@@ -100,8 +118,8 @@ export function Couriers() {
   const onlineCouriersCount = couriers.filter((c: Courier) => c.is_active && c.is_online).length;
 
   // Calculate from actual order data instead of stale courier fields
-  const totalDeliveries = orders.filter(o => o.status === 'delivered').length;
-  const totalEarnings = orders
+  const totalDeliveries = allOrders.filter(o => o.status === 'delivered').length;
+  const totalEarnings = allOrders
     .filter(o => o.status === 'delivered')
     .reduce((sum, o) => sum + calcCourierEarning(o, earningSettings), 0);
 
@@ -222,12 +240,12 @@ export function Couriers() {
             subtitle={`${onlineCouriersCount} online now`}
           />
           <StatCard
-            title="Total Deliveries"
+            title="Deliveries (7 Hari)"
             value={totalDeliveries}
             icon={<TrendingUp className="h-6 w-6" />}
           />
           <StatCard
-            title="Total Earnings"
+            title="Kurir Earnings (7 Hari)"
             value={formatCurrency(totalEarnings)}
             icon={<DollarSign className="h-6 w-6" />}
           />
@@ -240,9 +258,9 @@ export function Couriers() {
               <TableRow>
                 <TableHeader>Name</TableHeader>
                 <TableHeader>Status</TableHeader>
-                <TableHeader>Completed</TableHeader>
-                <TableHeader>Free Admin</TableHeader>
-                <TableHeader>Earnings</TableHeader>
+                <TableHeader>Completed (7H)</TableHeader>
+                <TableHeader>Free Admin (7H)</TableHeader>
+                <TableHeader>Earnings (7H)</TableHeader>
                 <TableHeader>Action</TableHeader>
               </TableRow>
             </TableHead>
@@ -295,21 +313,21 @@ export function Couriers() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {orders.filter(o =>
+                      {allOrders.filter(o =>
                         o.courier_id === courier.id &&
                         o.status === 'delivered'
                       ).length}
                     </TableCell>
                     <TableCell>
                       {formatCurrency(
-                        orders
+                        allOrders
                           .filter(o => o.courier_id === courier.id && o.status === 'delivered' && o.total_fee <= commission_threshold)
                           .reduce((sum, o) => sum + (o.total_fee || 0), 0)
                       )}
                     </TableCell>
                     <TableCell>
                       {formatCurrency(
-                        orders
+                        allOrders
                           .filter(o => o.courier_id === courier.id && o.status === 'delivered')
                           .reduce((sum, o) => sum + calcCourierEarning(o, earningSettings), 0)
                       )}
