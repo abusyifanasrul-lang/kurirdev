@@ -178,14 +178,14 @@ export function Dashboard() {
             title="Net Revenue Admin"
             value={formatCurrency(analytics.net_revenue_today)}
             icon={<DollarSign className="h-6 w-6" />}
-            subtitle="Setelah komisi & threshold"
+            subtitle="Hari ini · setelah komisi & threshold"
             to="/admin/reports"
           />
           <StatCard
             title="Fee Bebas Komisi"
             value={formatCurrency(analytics.below_threshold_today)}
             icon={<TrendingUp className="h-6 w-6" />}
-            subtitle={`Order ≤ threshold hari ini`}
+            subtitle={`Hari ini · order ≤ Rp ${commission_threshold.toLocaleString('id-ID')}`}
             to="/admin/reports"
           />
           <StatCard
@@ -207,7 +207,7 @@ export function Dashboard() {
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">Revenue Trend</h3>
-                  <p className="text-sm text-gray-500">Last 7 days performance</p>
+                  <p className="text-sm text-gray-500">7 hari terakhir</p>
                 </div>
                 <div className="flex items-center gap-2 text-green-600">
                   <TrendingUp className="h-4 w-4" />
@@ -354,7 +354,10 @@ export function Dashboard() {
 
             {/* Order Status Distribution */}
             <Card>
-              <h3 className="text-lg font-semibold text-gray-900 mb-6">Status Overview</h3>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">Status Overview</h3>
+                <span className="text-xs text-gray-400">7 hari terakhir</span>
+              </div>
               <ResponsiveContainer width="100%" height={200}>
                 <PieChart>
                   <Pie
