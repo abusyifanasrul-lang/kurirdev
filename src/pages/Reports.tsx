@@ -25,11 +25,22 @@ import { Input } from '@/components/ui/Input';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useCourierStore } from '@/stores/useCourierStore';
 import { useUserStore } from '@/stores/useUserStore';
+import {
+  getOrdersByDateRange,
+  cacheOrdersByDate,
+  getCachedOrdersByRange
+} from '@/lib/orderCache'
+import type { Order } from '@/types'
 
 const COLORS = ['#F59E0B', '#3B82F6', '#8B5CF6', '#06B6D4', '#22C55E', '#EF4444'];
 
 export function Reports() {
-  const { historicalOrders, fetchOrdersByDateRange, isFetchingHistory } = useOrderStore();
+  const { fetchOrdersByDateRange } = useOrderStore();
+  const [reportOrders, setReportOrders] = useState<Order[]>([])
+  const [cacheStatus, setCacheStatus] = useState<
+    'idle' | 'checking' | 'missing' | 'loading' | 'loaded'
+  >('idle')
+  const [missingDates, setMissingDates] = useState<string[]>([])
   const { couriers } = useCourierStore();
   const { users } = useUserStore();
   const { commission_rate } = useSettingsStore();
@@ -44,12 +55,59 @@ export function Reports() {
 
   const [appliedRange, setAppliedRange] = useState(dateRange);
 
-  const handleApplyFilter = () => {
-    setAppliedRange(dateRange);
-    const start = startOfDay(parseISO(dateRange.start))
-    const end = endOfDay(parseISO(dateRange.end))
-    fetchOrdersByDateRange(start, end)
-  };
+  const handleApplyFilter = async () => {
+    setAppliedRange(dateRange)
+    setCacheStatus('checking')
+
+    try {
+      const results = await getOrdersByDateRange(
+        dateRange.start,
+        dateRange.end
+      )
+      if (results.length > 0) {
+        setReportOrders(results as Order[])
+        setCacheStatus('loaded')
+      } else {
+        setMissingDates([dateRange.start])
+        setCacheStatus('missing')
+      }
+    } catch {
+      setMissingDates([dateRange.start])
+      setCacheStatus('missing')
+    }
+  }
+
+  const handleFetchAndCache = async () => {
+    setCacheStatus('loading')
+    try {
+      const start = startOfDay(parseISO(dateRange.start))
+      const end = endOfDay(parseISO(dateRange.end))
+      await fetchOrdersByDateRange(start, end)
+
+      const { useOrderStore: store } = await import('@/stores/useOrderStore')
+      const freshOrders = store.getState().historicalOrders
+
+      // Simpan ke IndexedDB per tanggal
+      const days = eachDayOfInterval({ start, end })
+      for (const day of days) {
+        const dateStr = format(day, 'yyyy-MM-dd')
+        const dayOrders = freshOrders.filter(o =>
+          o.created_at.startsWith(dateStr)
+        )
+        await cacheOrdersByDate(dateStr, dayOrders)
+      }
+
+      // Baca dari IndexedDB untuk konfirmasi
+      const { orders: cached } = await getCachedOrdersByRange(
+        dateRange.start,
+        dateRange.end
+      )
+      setReportOrders(cached as Order[])
+      setCacheStatus('loaded')
+    } catch {
+      setCacheStatus('missing')
+    }
+  }
 
   // --- Analytics Calculation ---
   const analytics = useMemo(() => {
@@ -57,7 +115,7 @@ export function Reports() {
     const end = endOfDay(parseISO(appliedRange.end));
 
     // 1. Filter Orders in Range
-    const filteredOrders = historicalOrders.filter((o) => {
+    const filteredOrders = reportOrders.filter((o) => {
       const dateStr = (o.status === 'delivered' && o.actual_delivery_time) ? o.actual_delivery_time : o.created_at;
       if (!dateStr) return false;
       const date = parseISO(dateStr);
@@ -151,7 +209,7 @@ export function Reports() {
       couriersList,
       filteredOrdersCount: filteredOrders.length
     };
-  }, [historicalOrders, couriers, appliedRange]);
+  }, [reportOrders, couriers, appliedRange]);
 
 
   const formatCurrency = (value: number) => {
@@ -378,11 +436,63 @@ export function Reports() {
                 className="flex-1 min-w-0"
               />
             </div>
-            <Button variant="secondary" size="sm" onClick={handleApplyFilter} leftIcon={<Filter className="h-4 w-4" />} disabled={isFetchingHistory}>
-              {isFetchingHistory ? 'Loading...' : 'Apply Filter'}
+            <Button variant="secondary" size="sm" onClick={handleApplyFilter} leftIcon={<Filter className="h-4 w-4" />} disabled={cacheStatus === 'checking' || cacheStatus === 'loading'}>
+              {cacheStatus === 'checking' || cacheStatus === 'loading' ? 'Loading...' : 'Apply Filter'}
             </Button>
           </div>
         </Card>
+
+        {/* Cache Status */}
+        {cacheStatus === 'checking' && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
+            <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            <p className="text-blue-700 text-sm">Memeriksa data lokal...</p>
+          </div>
+        )}
+
+        {cacheStatus === 'missing' && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">📦</span>
+              <div className="flex-1">
+                <p className="font-medium text-amber-800 text-sm">
+                  Data belum tersimpan lokal
+                </p>
+                <p className="text-amber-600 text-xs mt-1">
+                  Setelah diambil, data tersimpan permanen di perangkat ini.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2 mt-3">
+              <button
+                onClick={handleFetchAndCache}
+                className="flex-1 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition"
+              >
+                Ambil Data dari Server
+              </button>
+              <button
+                onClick={() => { setCacheStatus('idle'); setReportOrders([]) }}
+                className="px-4 py-2 border border-amber-300 text-amber-700 text-sm rounded-lg"
+              >
+                Batal
+              </button>
+            </div>
+          </div>
+        )}
+
+        {cacheStatus === 'loading' && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
+            <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            <p className="text-blue-700 text-sm">Mengambil data dari server...</p>
+          </div>
+        )}
+
+        {cacheStatus === 'loaded' && (
+          <div className="flex items-center gap-2 text-xs text-gray-400">
+            <span>📦</span>
+            <span>Data dari cache lokal ({reportOrders.length} order)</span>
+          </div>
+        )}
 
         {/* Summary Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
