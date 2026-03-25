@@ -9,7 +9,6 @@ import { useSessionStore } from '@/stores/useSessionStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { OrderStatus } from '@/types';
 import { useSettingsStore } from '@/stores/useSettingsStore';
-import html2canvas from 'html2canvas';
 
 // Format angka ke tampilan Rupiah: 20000 → "Rp 20.000"
 const formatRupiah = (val: string): string => {
@@ -180,6 +179,7 @@ export function CourierOrderDetail() {
 
   const handleBagikanInvoice = async () => {
     if (!invoiceRef.current) return;
+    const { default: html2canvas } = await import('html2canvas')
     const canvas = await html2canvas(invoiceRef.current, { scale: 2, useCORS: true });
     const dataUrl = canvas.toDataURL('image/png');
     const link = document.createElement('a');

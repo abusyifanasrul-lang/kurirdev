@@ -7,7 +7,6 @@ import { useOrderStore } from '@/stores/useOrderStore';
 import { useAuth } from '@/context/AuthContext';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { calcCourierEarning } from '@/lib/calcEarning';
-import html2canvas from 'html2canvas';
 import { X } from 'lucide-react';
 import { Order } from '@/types';
 
@@ -50,6 +49,7 @@ export function CourierHistory() {
 
   const handleBagikanInvoice = async () => {
     if (!invoiceRef.current) return;
+    const { default: html2canvas } = await import('html2canvas')
     const canvas = await html2canvas(invoiceRef.current, { scale: 2, useCORS: true });
     const dataUrl = canvas.toDataURL('image/png');
     const link = document.createElement('a');
