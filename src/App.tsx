@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { useOrderStore } from '@/stores/useOrderStore';
-import { onForegroundMessage, refreshFCMToken } from '@/lib/fcm';
 import { AppListeners } from '@/components/AppListeners';
 
 // Loading Skeleton
@@ -178,13 +177,15 @@ export function App() {
         const sessionData = JSON.parse(currentUserStr);
         const currentUser = sessionData.state?.user;
         if (currentUser?.role === 'courier') {
-          // Refresh sekali saat app dibuka
-          refreshFCMToken(currentUser.id).catch(console.error);
-          // Refresh periodik setiap 7 hari (dalam milidetik)
+          import('@/lib/fcm').then(({ refreshFCMToken }) => {
+            refreshFCMToken(currentUser.id).catch(console.error)
+          })
           const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
           fcmRefreshInterval = setInterval(() => {
-            refreshFCMToken(currentUser.id).catch(console.error);
-          }, SEVEN_DAYS_MS);
+            import('@/lib/fcm').then(({ refreshFCMToken }) => {
+              refreshFCMToken(currentUser.id).catch(console.error)
+            })
+          }, SEVEN_DAYS_MS)
         }
       } catch (e) {
         // ignore parse error
@@ -192,21 +193,23 @@ export function App() {
     }
 
     // 2. Listen for foreground notifications (Tahap 3)
-    const unsubFCM = onForegroundMessage((payload) => {
-      console.log('🔔 Foreground message received:', payload);
-      // Check notification first, fallback to data (for data-only messages)
-      const notifData = payload.notification || payload.data || {};
-      const title = notifData.title;
-      const body = notifData.body;
-      if (title && Notification.permission === 'granted') {
-        const notif = new Notification(title, {
-          body: body || '',
-          icon: '/icons/android/android-launchericon-192-192.png',
-          tag: payload.data?.orderId || 'kurirdev-foreground',
-        });
-        notif.onclick = () => window.focus();
-      }
-    });
+    let unsubFCM = () => {}
+    import('@/lib/fcm').then(({ onForegroundMessage }) => {
+      unsubFCM = onForegroundMessage((payload) => {
+        console.log('🔔 Foreground message received:', payload)
+        const notifData = payload.notification || payload.data || {}
+        const title = notifData.title
+        const body = notifData.body
+        if (title && Notification.permission === 'granted') {
+          const notif = new Notification(title, {
+            body: body || '',
+            icon: '/icons/android/android-launchericon-192-192.png',
+            tag: payload.data?.orderId || 'kurirdev-foreground',
+          })
+          notif.onclick = () => window.focus()
+        }
+      })
+    })
 
     return () => {
       unsubFCM()
