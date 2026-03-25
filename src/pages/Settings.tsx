@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { User, Lock, Users, Plus, CheckCircle, AlertCircle, Shield, Edit2, UserX, RefreshCw, Eye, EyeOff } from 'lucide-react';
+import { User, Lock, Users, Plus, CheckCircle, AlertCircle, Shield, Edit2, UserX, RefreshCw, Eye, EyeOff, Settings as SettingsIcon, Trash2, Edit3, Search, ShoppingCart, MapPin, Truck, Package, Clock, AlertTriangle, MessageCircle, Phone, Navigation } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { Badge } from '@/components/ui/Badge';
 import type { User as UserType } from '@/types';
+import type { CourierInstruction } from '@/stores/useSettingsStore';
 
 // Store
 import { useUserStore } from '@/stores/useUserStore';
@@ -16,7 +17,6 @@ import { useSettingsStore } from '@/stores/useSettingsStore';
 import {
   clearAllCache,
   getCacheMeta,
-  isInitialSyncCompleted
 } from '@/lib/orderCache';
 import { useNavigate } from 'react-router-dom';
 
@@ -25,7 +25,15 @@ export function Settings() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { updateCourier } = useCourierStore();
-  const { commission_rate, commission_threshold, updateSettings } = useSettingsStore()
+  const { 
+    commission_rate, 
+    commission_threshold, 
+    courier_instructions,
+    updateSettings,
+    addCourierInstruction,
+    updateCourierInstruction,
+    deleteCourierInstruction 
+  } = useSettingsStore()
   const [businessForm, setBusinessForm] = useState({
     commission_rate,
     commission_threshold,
@@ -50,7 +58,7 @@ export function Settings() {
     showMessage('success', 'Business settings saved!')
   }
 
-  const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'users' | 'business'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'users' | 'business' | 'instructions'>('profile');
 
   // Profile state
   const [profileForm, setProfileForm] = useState({
@@ -228,7 +236,82 @@ export function Settings() {
     { id: 'password', label: 'Password', icon: Lock },
     { id: 'users', label: 'System Users', icon: Users },
     { id: 'business', label: 'Business', icon: Shield },
+    { id: 'instructions', label: 'Instruksi Kurir', icon: SettingsIcon },
   ] as const;
+
+  // Instructions state
+  const [isAddInstructionModalOpen, setIsAddInstructionModalOpen] = useState(false);
+  const [isEditInstructionModalOpen, setIsEditInstructionModalOpen] = useState(false);
+  const [selectedInstructionToEdit, setSelectedInstructionToEdit] = useState<CourierInstruction | null>(null);
+  const [newInstruction, setNewInstruction] = useState({ label: '', instruction: '', iconName: 'CheckCircle' });
+  const [editInstructionForm, setEditInstructionForm] = useState({ label: '', instruction: '', iconName: 'CheckCircle' });
+
+  // Icon options untuk icon picker
+  const iconOptions = [
+    { name: 'CheckCircle', icon: CheckCircle, label: 'Check' },
+    { name: 'Search', icon: Search, label: 'Search' },
+    { name: 'ShoppingCart', icon: ShoppingCart, label: 'Cart' },
+    { name: 'MapPin', icon: MapPin, label: 'Location' },
+    { name: 'Truck', icon: Truck, label: 'Truck' },
+    { name: 'Package', icon: Package, label: 'Package' },
+    { name: 'Clock', icon: Clock, label: 'Clock' },
+    { name: 'AlertTriangle', icon: AlertTriangle, label: 'Alert' },
+    { name: 'MessageCircle', icon: MessageCircle, label: 'Message' },
+    { name: 'Phone', icon: Phone, label: 'Phone' },
+    { name: 'Navigation', icon: Navigation, label: 'Navigate' },
+  ];
+
+  // Helper untuk render ikon berdasarkan nama
+  const renderIcon = (iconName: string, className?: string) => {
+    const iconOption = iconOptions.find(opt => opt.name === iconName);
+    if (!iconOption) return null;
+    const IconComponent = iconOption.icon;
+    return <IconComponent className={className || "h-5 w-5"} />;
+  };
+
+  // Instructions handlers
+  const handleAddInstruction = () => {
+    if (!newInstruction.label || !newInstruction.instruction) {
+      showMessage('error', 'Label dan instruksi harus diisi!');
+      return;
+    }
+    addCourierInstruction(newInstruction);
+    setIsAddInstructionModalOpen(false);
+    setNewInstruction({ label: '', instruction: '', iconName: 'CheckCircle' });
+    showMessage('success', 'Instruksi berhasil ditambahkan!');
+  };
+
+  const openEditInstructionModal = (instruction: CourierInstruction) => {
+    setSelectedInstructionToEdit(instruction);
+    setEditInstructionForm({
+      label: instruction.label,
+      instruction: instruction.instruction,
+      iconName: instruction.iconName
+    });
+    setIsEditInstructionModalOpen(true);
+  };
+
+  const handleSaveEditInstruction = () => {
+    if (!selectedInstructionToEdit) return;
+    
+    if (!editInstructionForm.label || !editInstructionForm.instruction) {
+      showMessage('error', 'Label dan instruksi harus diisi!');
+      return;
+    }
+    
+    updateCourierInstruction(selectedInstructionToEdit.id, editInstructionForm);
+    setIsEditInstructionModalOpen(false);
+    setSelectedInstructionToEdit(null);
+    setEditInstructionForm({ label: '', instruction: '', iconName: 'CheckCircle' });
+    showMessage('success', 'Instruksi berhasil diperbarui!');
+  };
+
+  const handleDeleteInstruction = (id: string) => {
+    if (window.confirm('Apakah Anda yakin ingin menghapus instruksi ini?')) {
+      deleteCourierInstruction(id);
+      showMessage('success', 'Instruksi berhasil dihapus!');
+    }
+  };
 
   const canEdit = (target: UserType) => {
     if (user?.id === "1") return true // Super Admin bisa edit semua
@@ -501,6 +584,67 @@ export function Settings() {
               </div>
             </Card>
           )}
+
+          {/* Instructions Tab */}
+          {activeTab === 'instructions' && (
+            <Card>
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Instruksi Kurir</h3>
+                  <p className="text-sm text-gray-500 mt-1">Kelola instruksi yang muncul di dropdown order</p>
+                </div>
+                <Button
+                  onClick={() => setIsAddInstructionModalOpen(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Tambah Instruksi
+                </Button>
+              </div>
+
+              <div className="space-y-3">
+                {(courier_instructions ?? []).length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <SettingsIcon className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                    <p>Belum ada instruksi kurir</p>
+                    <p className="text-sm">Tambah instruksi untuk memudahkan admin saat assign order</p>
+                  </div>
+                ) : (
+                  (courier_instructions ?? []).map((instruction) => (
+                    <div key={instruction.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="flex items-center gap-3 flex-1">
+                        <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-600">
+                          {renderIcon(instruction.iconName, "h-5 w-5")}
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900">{instruction.label}</p>
+                          <p className="text-sm text-gray-500">{instruction.instruction}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 ml-4">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openEditInstructionModal(instruction)}
+                          className="text-blue-600 hover:text-blue-700"
+                        >
+                          <Edit3 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteInstruction(instruction.id)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </Card>
+          )}
         </div>
       </div>
 
@@ -719,6 +863,168 @@ export function Settings() {
           </div>
         </div>
       )}
+
+      {/* Add Instruction Modal */}
+      <Modal
+        isOpen={isAddInstructionModalOpen}
+        onClose={() => setIsAddInstructionModalOpen(false)}
+        title="Tambah Instruksi Kurir"
+      >
+        <div className="space-y-4">
+          {/* Icon Picker */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Pilih Ikon
+            </label>
+            <div className="grid grid-cols-6 gap-2">
+              {iconOptions.map((iconOpt) => {
+                const IconComponent = iconOpt.icon;
+                const isSelected = newInstruction.iconName === iconOpt.name;
+                return (
+                  <button
+                    key={iconOpt.name}
+                    type="button"
+                    onClick={() => setNewInstruction({ ...newInstruction, iconName: iconOpt.name })}
+                    className={`p-3 rounded-lg border transition-all flex flex-col items-center gap-1 ${
+                      isSelected
+                        ? 'border-indigo-500 bg-indigo-50 text-indigo-600'
+                        : 'border-gray-200 hover:border-gray-300 text-gray-500'
+                    }`}
+                  >
+                    <IconComponent className="h-5 w-5" />
+                    <span className="text-[10px]">{iconOpt.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Label (Tampilan Dropdown)
+            </label>
+            <p className="text-xs text-gray-400 mb-2">
+              Judul instruksi yang muncul di dropdown (contoh: "Barang sudah siap, langsung ambil")
+            </p>
+            <Input
+              value={newInstruction.label}
+              onChange={(e) => setNewInstruction({ ...newInstruction, label: e.target.value })}
+              placeholder="Barang sudah siap, langsung ambil"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Instruksi untuk Kurir (Notifikasi)
+            </label>
+            <p className="text-xs text-gray-400 mb-2">
+              Pesan yang dikirim ke kurir saat order di-assign (contoh: "Barang sudah siap, langsung ambil!")
+            </p>
+            <Input
+              value={newInstruction.instruction}
+              onChange={(e) => setNewInstruction({ ...newInstruction, instruction: e.target.value })}
+              placeholder="Barang sudah siap, langsung ambil!"
+            />
+          </div>
+          
+          <div className="flex gap-3 pt-4">
+            <Button
+              variant="outline"
+              onClick={() => setIsAddInstructionModalOpen(false)}
+              className="flex-1"
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={handleAddInstruction}
+              className="flex-1"
+            >
+              Tambah Instruksi
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit Instruction Modal */}
+      <Modal
+        isOpen={isEditInstructionModalOpen}
+        onClose={() => setIsEditInstructionModalOpen(false)}
+        title="Edit Instruksi Kurir"
+      >
+        <div className="space-y-4">
+          {/* Icon Picker */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Pilih Ikon
+            </label>
+            <div className="grid grid-cols-6 gap-2">
+              {iconOptions.map((iconOpt) => {
+                const IconComponent = iconOpt.icon;
+                const isSelected = editInstructionForm.iconName === iconOpt.name;
+                return (
+                  <button
+                    key={iconOpt.name}
+                    type="button"
+                    onClick={() => setEditInstructionForm({ ...editInstructionForm, iconName: iconOpt.name })}
+                    className={`p-3 rounded-lg border transition-all flex flex-col items-center gap-1 ${
+                      isSelected
+                        ? 'border-indigo-500 bg-indigo-50 text-indigo-600'
+                        : 'border-gray-200 hover:border-gray-300 text-gray-500'
+                    }`}
+                  >
+                    <IconComponent className="h-5 w-5" />
+                    <span className="text-[10px]">{iconOpt.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Label (Tampilan Dropdown)
+            </label>
+            <p className="text-xs text-gray-400 mb-2">
+              Judul instruksi yang muncul di dropdown (contoh: "Barang sudah siap, langsung ambil")
+            </p>
+            <Input
+              value={editInstructionForm.label}
+              onChange={(e) => setEditInstructionForm({ ...editInstructionForm, label: e.target.value })}
+              placeholder="Barang sudah siap, langsung ambil"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Instruksi untuk Kurir (Notifikasi)
+            </label>
+            <p className="text-xs text-gray-400 mb-2">
+              Pesan yang dikirim ke kurir saat order di-assign (contoh: "Barang sudah siap, langsung ambil!")
+            </p>
+            <Input
+              value={editInstructionForm.instruction}
+              onChange={(e) => setEditInstructionForm({ ...editInstructionForm, instruction: e.target.value })}
+              placeholder="Barang sudah siap, langsung ambil!"
+            />
+          </div>
+          
+          <div className="flex gap-3 pt-4">
+            <Button
+              variant="outline"
+              onClick={() => setIsEditInstructionModalOpen(false)}
+              className="flex-1"
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={handleSaveEditInstruction}
+              className="flex-1"
+            >
+              Simpan Perubahan
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
     </div>
   );

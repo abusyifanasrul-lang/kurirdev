@@ -65,7 +65,7 @@ export function Orders() {
   const { users } = useUserStore();
   const { addNotification } = useNotificationStore();
   const { user } = useAuth(); // Current admin user
-  const { commission_rate, commission_threshold } = useSettingsStore();
+  const { commission_rate, commission_threshold, courier_instructions } = useSettingsStore();
 
   // Cache State
   const [cacheStatus, setCacheStatus] = useState<'idle' | 'checking' | 'missing' | 'loading' | 'loaded'>('idle')
@@ -397,16 +397,13 @@ export function Orders() {
       await assignCourier(selectedOrder.id, courier.id, courier.name, user?.id || "1", user?.name || 'Admin');
       await rotateQueue(courier.id);
 
-      // Buat teks instruksi
+      // Buat teks instruksi (dinamis dari settings)
       const notes = (selectedOrder.notes || '').toLowerCase().trim();
-      const instruksi = notes === 'sls' || notes === 'selesai'
-        ? '✅ Barang sudah siap, langsung ambil!'
-        : notes.includes('cek langsung')
-        ? '🔍 Cek dulu ke penjual sebelum ambil'
-        : notes.includes('pesan langsung')
-        ? '🛒 Kamu yang pesan di tempat'
-        : notes === 'pss' || notes === 'posisi'
-        ? '📍 Admin minta update posisimu'
+      const selectedInstruction = courier_instructions.find(
+        instruction => instruction.label.toLowerCase() === notes
+      );
+      const instruksi = selectedInstruction 
+        ? selectedInstruction.instruction
         : notes
         ? `📋 ${selectedOrder.notes}` 
         : 'Segera proses!';
@@ -1325,10 +1322,11 @@ export function Orders() {
                       className="w-full border border-indigo-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400 bg-white"
                     >
                       <option value="">— Tidak ada instruksi khusus —</option>
-                      <option value="sls">✅ sls — Barang sudah siap, langsung ambil</option>
-                      <option value="cek langsung">🔍 cek langsung — Admin sudah pesan, kurir cek ke penjual</option>
-                      <option value="pesan langsung">🛒 pesan langsung — Kurir yang pesan di tempat</option>
-                      <option value="pss">📍 pss — Minta kurir update posisi sekarang</option>
+                      {courier_instructions.map((instruction) => (
+                        <option key={instruction.id} value={instruction.label}>
+                          {instruction.label}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
