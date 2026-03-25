@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Plus, Download, Search, ArrowUpDown, ChevronUp, ChevronDown, Printer } from 'lucide-react';
+import { Plus, Download, Search, ArrowUpDown, ChevronUp, ChevronDown, Printer, CheckCircle, ShoppingCart, MapPin, Truck, Package, Clock, AlertTriangle, MessageCircle, Phone, Navigation, X } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { sendPushNotification } from '@/services/notificationService';
 import {
@@ -85,6 +85,17 @@ export function Orders() {
     if (!courierId) return null;
     const courier = users.find(u => u.id === courierId);
     return courier?.name || null;
+  };
+
+  // Helper untuk render ikon instruksi
+  const renderIcon = (iconName: string, className?: string) => {
+    const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+      CheckCircle, Search, ShoppingCart, MapPin, Truck, Package, Clock, 
+      AlertTriangle, MessageCircle, Phone, Navigation
+    };
+    const IconComponent = iconMap[iconName];
+    if (!IconComponent) return null;
+    return <IconComponent className={className || "h-4 w-4"} />;
   };
 
   const allOrders = useMemo(() => {
@@ -1328,6 +1339,18 @@ export function Orders() {
                         </option>
                       ))}
                     </select>
+
+                    {/* Preview ikon instruksi yang dipilih */}
+                    {selectedOrder?.notes && (() => {
+                      const match = courier_instructions.find(i => i.label === selectedOrder.notes)
+                      if (!match) return null
+                      return (
+                        <div className="flex items-center gap-1.5 text-xs text-indigo-600 mt-1">
+                          {renderIcon(match.iconName, 'h-3.5 w-3.5')}
+                          <span>{match.instruction}</span>
+                        </div>
+                      )
+                    })()}
                   </div>
                 </div>
               ) : (

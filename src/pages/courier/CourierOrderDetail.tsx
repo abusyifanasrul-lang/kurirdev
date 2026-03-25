@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, MapPin, Navigation, CheckCircle, Package, Truck, Plus, X, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Phone, MapPin, Navigation, CheckCircle, Package, Truck, Plus, X, AlertTriangle, Search, ShoppingCart, Clock, MessageCircle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/utils/cn';
 import { useOrderStore } from '@/stores/useOrderStore';
@@ -22,6 +22,17 @@ const parseRupiah = (val: string): string => {
   return val.replace(/\D/g, '');
 };
 
+// Helper untuk render ikon instruksi
+const renderIcon = (iconName: string, className?: string) => {
+  const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+    CheckCircle, Search, ShoppingCart, MapPin, Truck, Package, Clock, 
+    AlertTriangle, MessageCircle, Phone, Navigation, X
+  };
+  const IconComponent = iconMap[iconName];
+  if (!IconComponent) return null;
+  return <IconComponent className={className || "h-4 w-4"} />;
+};
+
 export function CourierOrderDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -33,7 +44,7 @@ export function CourierOrderDetail() {
 
   const liveUser = users.find(u => u.id === currentUser?.id);
   const isSuspended = liveUser?.is_active === false;
-  const { commission_rate, commission_threshold } = useSettingsStore();
+  const { commission_rate, commission_threshold, courier_instructions } = useSettingsStore();
     const commissionRate = commission_rate;
 
   useEffect(() => {
@@ -225,31 +236,40 @@ export function CourierOrderDetail() {
 
       {/* Banner Instruksi Admin */}
       {order.notes && (() => {
-        const notes = order.notes.toLowerCase().trim();
-        const isSls = notes === 'sls' || notes === 'selesai';
-        const isCekLangsung = notes.includes('cek langsung');
-        const isPesanLangsung = notes.includes('pesan langsung');
-        const isPss = notes === 'pss' || notes === 'posisi';
-        const isKnownCode = isSls || isCekLangsung || isPesanLangsung || isPss;
+        // Match dengan courier_instructions dari settings (by label)
+        const match = courier_instructions?.find(
+          i => i.label.toLowerCase() === order.notes?.toLowerCase().trim()
+        );
 
-        const config = isSls
-          ? { bg: 'bg-green-50', border: 'border-green-400', icon: '✅', label: 'BARANG SUDAH SIAP', desc: 'Langsung ambil ke penjual, tidak perlu nunggu.', text: 'text-green-800' }
-          : isCekLangsung
-          ? { bg: 'bg-yellow-50', border: 'border-yellow-400', icon: '🔍', label: 'CEK LANGSUNG', desc: 'Admin sudah pesan. Cek ke penjual apakah sudah selesai, lalu lapor ke admin.', text: 'text-yellow-800' }
-          : isPesanLangsung
-          ? { bg: 'bg-orange-50', border: 'border-orange-400', icon: '🛒', label: 'PESAN LANGSUNG', desc: 'Kamu yang pesan di tempat. Jangan lupa update daftar barang & harga di app.', text: 'text-orange-800' }
-          : isPss
-          ? { bg: 'bg-blue-50', border: 'border-blue-400', icon: '📍', label: 'INFO POSISI DIMINTA', desc: 'Admin minta update posisimu sekarang. Balas ke admin via WhatsApp.', text: 'text-blue-800' }
-          : { bg: 'bg-gray-50', border: 'border-gray-300', icon: '📋', label: 'CATATAN ADMIN', desc: order.notes, text: 'text-gray-800' };
+        // Fallback untuk kode lama (sls, pss, dll) yang mungkin masih ada di order lama di Firestore
+        const notes = order.notes.toLowerCase().trim();
+        const legacyConfig: Record<string, { bg: string; border: string; icon: string; label: string; desc: string; text: string }> = {
+          'sls': { bg: 'bg-green-50', border: 'border-green-400', icon: '✅', label: 'BARANG SUDAH SIAP', desc: 'Langsung ambil ke penjual, tidak perlu nunggu.', text: 'text-green-800' },
+          'selesai': { bg: 'bg-green-50', border: 'border-green-400', icon: '✅', label: 'BARANG SUDAH SIAP', desc: 'Langsung ambil ke penjual, tidak perlu nunggu.', text: 'text-green-800' },
+          'pss': { bg: 'bg-blue-50', border: 'border-blue-400', icon: '📍', label: 'INFO POSISI DIMINTA', desc: 'Admin minta update posisimu sekarang. Balas ke admin via WhatsApp.', text: 'text-blue-800' },
+        };
+
+        const legacy = legacyConfig[notes]
+          || (notes.includes('cek langsung') ? { bg: 'bg-yellow-50', border: 'border-yellow-400', icon: '🔍', label: 'CEK LANGSUNG', desc: 'Admin sudah pesan. Cek ke penjual apakah sudah selesai, lalu lapor ke admin.', text: 'text-yellow-800' } : null)
+          || (notes.includes('pesan langsung') ? { bg: 'bg-orange-50', border: 'border-orange-400', icon: '🛒', label: 'PESAN LANGSUNG', desc: 'Kamu yang pesan di tempat. Jangan lupa update daftar barang & harga di app.', text: 'text-orange-800' } : null);
+
+        const config = match
+          ? { bg: 'bg-indigo-50', border: 'border-indigo-400', icon: match.iconName, label: match.label.toUpperCase(), desc: match.instruction, text: 'text-indigo-800', isLucide: true }
+          : legacy
+          ? { ...legacy, isLucide: false }
+          : { bg: 'bg-gray-50', border: 'border-gray-300', icon: '📋', label: 'CATATAN ADMIN', desc: order.notes, text: 'text-gray-800', isLucide: false };
 
         return (
           <div className={`mx-4 mt-1 px-4 py-3 rounded-xl border-l-4 ${config.bg} ${config.border}`}>
             <div className={`flex items-center gap-2 font-bold text-sm ${config.text}`}>
-              <span>{config.icon}</span>
+              {config.isLucide
+                ? renderIcon(config.icon, 'h-4 w-4')   // Lucide icon
+                : <span>{config.icon}</span>            // emoji lama
+              }
               <span>{config.label}</span>
             </div>
             <p className={`text-xs mt-1 ${config.text} opacity-80`}>{config.desc}</p>
-            {!isKnownCode && (
+            {!match && !legacy && (
               <p className="text-[10px] text-gray-400 mt-1 italic">Catatan dari admin</p>
             )}
           </div>
