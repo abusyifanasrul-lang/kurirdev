@@ -453,3 +453,85 @@ Karena localStorage masih menyimpan data lama dengan field `value`, disarankan u
 ---
 
 ## End of Document
+
+---
+
+## Update 26 Maret 2026 - Perbaikan Render Ikon
+
+### Masalah yang Diperbaiki
+
+1. **Ikon tidak muncul di dropdown** - HTML `<option>` tidak bisa render ikon React, hanya plain text
+2. **Ikon tidak muncul di detail order kurir** - Logic masih hardcoded ke kode lama (sls, pss, dll)
+
+### Solusi
+
+**Orders.tsx:**
+- Tambah `renderIcon` helper function
+- Tambah icon preview di bawah dropdown (outside `<select>`)
+- Import semua ikon Lucide yang diperlukan
+
+**CourierOrderDetail.tsx:**
+- Import ikon tambahan dari lucide-react
+- Tambah `renderIcon` helper function
+- Ganti logic hardcoded dengan lookup dari `useSettingsStore`
+- Pertahankan fallback untuk kode lama (sls, pss, cek langsung, pesan langsung)
+- Render ikon Lucide secara dinamis berdasarkan `iconName`
+
+### Code Changes
+
+#### Orders.tsx - renderIcon helper
+```typescript
+const renderIcon = (iconName: string, className?: string) => {
+  const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+    CheckCircle, Search, ShoppingCart, MapPin, Truck, Package, Clock, 
+    AlertTriangle, MessageCircle, Phone, Navigation
+  };
+  const IconComponent = iconMap[iconName];
+  if (!IconComponent) return null;
+  return <IconComponent className={className || "h-4 w-4"} />;
+};
+```
+
+#### Orders.tsx - Icon Preview
+```tsx
+{/* Preview ikon instruksi yang dipilih */}
+{selectedOrder?.notes && (() => {
+  const match = courier_instructions.find(i => i.label === selectedOrder.notes)
+  if (!match) return null
+  return (
+    <div className="flex items-center gap-1.5 text-xs text-indigo-600 mt-1">
+      {renderIcon(match.iconName, 'h-3.5 w-3.5')}
+      <span>{match.instruction}</span>
+    </div>
+  )
+})()}
+```
+
+#### CourierOrderDetail.tsx - Dynamic Banner
+```typescript
+{order.notes && (() => {
+  // Match dengan courier_instructions dari settings (by label)
+  const match = courier_instructions?.find(
+    i => i.label.toLowerCase() === order.notes?.toLowerCase().trim()
+  );
+
+  // Fallback untuk kode lama
+  const legacyConfig = { 'sls': {...}, 'pss': {...} };
+  const legacy = legacyConfig[notes] 
+    || (notes.includes('cek langsung') ? {...} : null)
+    || (notes.includes('pesan langsung') ? {...} : null);
+
+  const config = match
+    ? { ..., isLucide: true }
+    : legacy ? { ..., isLucide: false } : { ..., isLucide: false };
+
+  return (
+    <div className={...}>
+      {config.isLucide
+        ? renderIcon(config.icon, 'h-4 w-4')   // Lucide icon
+        : <span>{config.icon}</span>            // emoji lama
+      }
+    </div>
+  );
+})()}
+```
