@@ -179,6 +179,47 @@ export default defineConfig({
       },
     }),
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Firebase — dipakai semua user
+          'vendor-firebase': [
+            'firebase/app',
+            'firebase/firestore',
+            'firebase/messaging',
+            'firebase/installations',
+          ],
+          // React core
+          'vendor-react': [
+            'react',
+            'react-dom',
+            'react-router-dom',
+          ],
+          // State management
+          'vendor-zustand': [
+            'zustand',
+          ],
+          // Charts — hanya admin, kurir tidak pakai
+          'vendor-charts': [
+            'recharts',
+          ],
+          // PDF — hanya admin
+          'vendor-pdf': [
+            'jspdf',
+          ],
+          // Date utility
+          'vendor-date': [
+            'date-fns',
+          ],
+          // IndexedDB
+          'vendor-dexie': [
+            'dexie',
+          ],
+        },
+      },
+    },
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),
