@@ -1,6 +1,7 @@
 import { initializeApp, SDK_VERSION } from 'firebase/app'
 import { getFirestore } from 'firebase/firestore'
 import { getMessaging, type Messaging } from 'firebase/messaging'
+import { getStorage } from 'firebase/storage'
 
 console.log('🔑 API Key:', import.meta.env.VITE_FIREBASE_API_KEY?.substring(0, 10) ?? 'UNDEFINED')
 console.log('🔥 Firebase SDK version:', SDK_VERSION)
@@ -17,6 +18,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig)
 
 export const db = getFirestore(app)
+export const storage = getStorage(app)
 
 // Safe init: getMessaging() throws in unsupported browsers (non-HTTPS, older browsers)
 let _messaging: Messaging | null = null
