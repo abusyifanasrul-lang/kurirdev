@@ -29,7 +29,6 @@ const Couriers = lazy(() => import('@/pages/Couriers').then(m => ({ default: m.C
 const Reports = lazy(() => import('@/pages/Reports').then(m => ({ default: m.Reports })));
 const Notifications = lazy(() => import('@/pages/Notifications').then(m => ({ default: m.Notifications })));
 const Settings = lazy(() => import('@/pages/Settings').then(m => ({ default: m.Settings })));
-const SuperAdmin = lazy(() => import('@/pages/SuperAdmin').then(m => ({ default: m.SuperAdmin })));
 
 // Courier Pages
 const CourierLayout = lazy(() => import('@/pages/courier/CourierLayout').then(m => ({ default: m.CourierLayout })));
@@ -170,46 +169,48 @@ function PWAUpdateBanner() {
 
 export function App() {
   useEffect(() => {
+
+    // 1. Refresh FCM Token if logged in as courier (Tahap 4)
     const currentUserStr = sessionStorage.getItem('user-session');
     let fcmRefreshInterval: ReturnType<typeof setInterval> | null = null;
-    let unsubFCM: (() => void) | null = null;
-
     if (currentUserStr) {
       try {
         const sessionData = JSON.parse(currentUserStr);
         const currentUser = sessionData.state?.user;
-
         if (currentUser?.role === 'courier') {
-          // Refresh FCM token hanya untuk kurir
+          // Refresh sekali saat app dibuka
           refreshFCMToken(currentUser.id).catch(console.error);
+          // Refresh periodik setiap 7 hari (dalam milidetik)
           const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
           fcmRefreshInterval = setInterval(() => {
             refreshFCMToken(currentUser.id).catch(console.error);
           }, SEVEN_DAYS_MS);
-
-          // Foreground notification hanya untuk kurir
-          unsubFCM = onForegroundMessage((payload) => {
-            const notifData = payload.notification || payload.data || {};
-            const title = notifData.title;
-            const body = notifData.body;
-            if (title && Notification.permission === 'granted') {
-              const notif = new Notification(title, {
-                body: body || '',
-                icon: '/icons/android/android-launchericon-192-192.png',
-                tag: payload.data?.orderId || 'kurirdev-foreground',
-              });
-              notif.onclick = () => window.focus();
-            }
-          });
         }
       } catch (e) {
         // ignore parse error
       }
     }
 
+    // 2. Listen for foreground notifications (Tahap 3)
+    const unsubFCM = onForegroundMessage((payload) => {
+      console.log('🔔 Foreground message received:', payload);
+      // Check notification first, fallback to data (for data-only messages)
+      const notifData = payload.notification || payload.data || {};
+      const title = notifData.title;
+      const body = notifData.body;
+      if (title && Notification.permission === 'granted') {
+        const notif = new Notification(title, {
+          body: body || '',
+          icon: '/icons/android/android-launchericon-192-192.png',
+          tag: payload.data?.orderId || 'kurirdev-foreground',
+        });
+        notif.onclick = () => window.focus();
+      }
+    });
+
     return () => {
-      if (unsubFCM) unsubFCM();
-      if (fcmRefreshInterval) clearInterval(fcmRefreshInterval);
+      unsubFCM()
+      if (fcmRefreshInterval) clearInterval(fcmRefreshInterval)
     }
   }, [])
 
@@ -265,16 +266,6 @@ export function App() {
                 <Route path="earnings" element={<CourierEarnings />} />
                 <Route path="profile" element={<CourierProfile />} />
               </Route>
-
-              {/* Super Admin Route - Unlisted */}
-              <Route
-                path="/superadmin"
-                element={
-                  <ProtectedRoute allowedRoles={['superadmin']}>
-                    <SuperAdmin />
-                  </ProtectedRoute>
-                }
-              />
 
               {/* Fallback */}
               <Route path="*" element={<Navigate to="/" replace />} />
