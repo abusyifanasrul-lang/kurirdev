@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { User, Lock, Users, Plus, CheckCircle, AlertCircle, Shield, Edit2, UserX, RefreshCw, Eye, EyeOff, Settings as SettingsIcon, Trash2, Edit3, Search, ShoppingCart, MapPin, Truck, Package, Clock, AlertTriangle, MessageCircle, Phone, Navigation } from 'lucide-react';
+import { User, Lock, Users, Plus, CheckCircle, AlertCircle, Shield, Edit2, UserX, RefreshCw, Eye, EyeOff, Settings as SettingsIcon, Trash2, Edit3 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -243,31 +243,12 @@ export function Settings() {
   const [isAddInstructionModalOpen, setIsAddInstructionModalOpen] = useState(false);
   const [isEditInstructionModalOpen, setIsEditInstructionModalOpen] = useState(false);
   const [selectedInstructionToEdit, setSelectedInstructionToEdit] = useState<CourierInstruction | null>(null);
-  const [newInstruction, setNewInstruction] = useState({ label: '', instruction: '', iconName: 'CheckCircle' });
-  const [editInstructionForm, setEditInstructionForm] = useState({ label: '', instruction: '', iconName: 'CheckCircle' });
+  const [newInstruction, setNewInstruction] = useState({ label: '', instruction: '', icon: '✅' });
+  const [editInstructionForm, setEditInstructionForm] = useState({ label: '', instruction: '', icon: '✅' });
 
-  // Icon options untuk icon picker
-  const iconOptions = [
-    { name: 'CheckCircle', icon: CheckCircle, label: 'Check' },
-    { name: 'Search', icon: Search, label: 'Search' },
-    { name: 'ShoppingCart', icon: ShoppingCart, label: 'Cart' },
-    { name: 'MapPin', icon: MapPin, label: 'Location' },
-    { name: 'Truck', icon: Truck, label: 'Truck' },
-    { name: 'Package', icon: Package, label: 'Package' },
-    { name: 'Clock', icon: Clock, label: 'Clock' },
-    { name: 'AlertTriangle', icon: AlertTriangle, label: 'Alert' },
-    { name: 'MessageCircle', icon: MessageCircle, label: 'Message' },
-    { name: 'Phone', icon: Phone, label: 'Phone' },
-    { name: 'Navigation', icon: Navigation, label: 'Navigate' },
-  ];
+  // Emoji options untuk emoji picker
+  const emojiOptions = ['✅','🔍','🛒','📍','🚚','📦','⏰','⚠️','💬','📞','🧭','📋','🔔','⚡','🎯'];
 
-  // Helper untuk render ikon berdasarkan nama
-  const renderIcon = (iconName: string, className?: string) => {
-    const iconOption = iconOptions.find(opt => opt.name === iconName);
-    if (!iconOption) return null;
-    const IconComponent = iconOption.icon;
-    return <IconComponent className={className || "h-5 w-5"} />;
-  };
 
   // Instructions handlers
   const handleAddInstruction = () => {
@@ -277,7 +258,7 @@ export function Settings() {
     }
     addCourierInstruction(newInstruction);
     setIsAddInstructionModalOpen(false);
-    setNewInstruction({ label: '', instruction: '', iconName: 'CheckCircle' });
+    setNewInstruction({ label: '', instruction: '', icon: '✅' });
     showMessage('success', 'Instruksi berhasil ditambahkan!');
   };
 
@@ -286,7 +267,7 @@ export function Settings() {
     setEditInstructionForm({
       label: instruction.label,
       instruction: instruction.instruction,
-      iconName: instruction.iconName
+      icon: instruction.icon
     });
     setIsEditInstructionModalOpen(true);
   };
@@ -302,7 +283,7 @@ export function Settings() {
     updateCourierInstruction(selectedInstructionToEdit.id, editInstructionForm);
     setIsEditInstructionModalOpen(false);
     setSelectedInstructionToEdit(null);
-    setEditInstructionForm({ label: '', instruction: '', iconName: 'CheckCircle' });
+    setEditInstructionForm({ label: '', instruction: '', icon: '✅' });
     showMessage('success', 'Instruksi berhasil diperbarui!');
   };
 
@@ -614,7 +595,7 @@ export function Settings() {
                     <div key={instruction.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
                       <div className="flex items-center gap-3 flex-1">
                         <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-600">
-                          {renderIcon(instruction.iconName, "h-5 w-5")}
+                          <span>{instruction.icon}</span>
                         </div>
                         <div>
                           <p className="font-medium text-gray-900">{instruction.label}</p>
@@ -871,28 +852,26 @@ export function Settings() {
         title="Tambah Instruksi Kurir"
       >
         <div className="space-y-4">
-          {/* Icon Picker */}
+          {/* Emoji Picker */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Pilih Ikon
+              Pilih Emoji
             </label>
             <div className="grid grid-cols-6 gap-2">
-              {iconOptions.map((iconOpt) => {
-                const IconComponent = iconOpt.icon;
-                const isSelected = newInstruction.iconName === iconOpt.name;
+              {emojiOptions.map((emoji) => {
+                const isSelected = newInstruction.icon === emoji;
                 return (
                   <button
-                    key={iconOpt.name}
+                    key={emoji}
                     type="button"
-                    onClick={() => setNewInstruction({ ...newInstruction, iconName: iconOpt.name })}
-                    className={`p-3 rounded-lg border transition-all flex flex-col items-center gap-1 ${
+                    onClick={() => setNewInstruction({ ...newInstruction, icon: emoji })}
+                    className={`p-3 rounded-lg border transition-all flex items-center justify-center text-xl ${
                       isSelected
-                        ? 'border-indigo-500 bg-indigo-50 text-indigo-600'
-                        : 'border-gray-200 hover:border-gray-300 text-gray-500'
+                        ? 'border-indigo-500 bg-indigo-50'
+                        : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
-                    <IconComponent className="h-5 w-5" />
-                    <span className="text-[10px]">{iconOpt.label}</span>
+                    {emoji}
                   </button>
                 );
               })}
@@ -952,28 +931,26 @@ export function Settings() {
         title="Edit Instruksi Kurir"
       >
         <div className="space-y-4">
-          {/* Icon Picker */}
+          {/* Emoji Picker */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Pilih Ikon
+              Pilih Emoji
             </label>
             <div className="grid grid-cols-6 gap-2">
-              {iconOptions.map((iconOpt) => {
-                const IconComponent = iconOpt.icon;
-                const isSelected = editInstructionForm.iconName === iconOpt.name;
+              {emojiOptions.map((emoji) => {
+                const isSelected = editInstructionForm.icon === emoji;
                 return (
                   <button
-                    key={iconOpt.name}
+                    key={emoji}
                     type="button"
-                    onClick={() => setEditInstructionForm({ ...editInstructionForm, iconName: iconOpt.name })}
-                    className={`p-3 rounded-lg border transition-all flex flex-col items-center gap-1 ${
+                    onClick={() => setEditInstructionForm({ ...editInstructionForm, icon: emoji })}
+                    className={`p-3 rounded-lg border transition-all flex items-center justify-center text-xl ${
                       isSelected
-                        ? 'border-indigo-500 bg-indigo-50 text-indigo-600'
-                        : 'border-gray-200 hover:border-gray-300 text-gray-500'
+                        ? 'border-indigo-500 bg-indigo-50'
+                        : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
-                    <IconComponent className="h-5 w-5" />
-                    <span className="text-[10px]">{iconOpt.label}</span>
+                    {emoji}
                   </button>
                 );
               })}

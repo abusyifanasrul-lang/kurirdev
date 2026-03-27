@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, MapPin, Navigation, CheckCircle, Package, Truck, Plus, X, AlertTriangle, Search, ShoppingCart, Clock, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Phone, MapPin, Navigation, CheckCircle, Package, Truck, Plus, X, AlertTriangle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/utils/cn';
 import { useOrderStore } from '@/stores/useOrderStore';
@@ -22,16 +22,6 @@ const parseRupiah = (val: string): string => {
   return val.replace(/\D/g, '');
 };
 
-// Helper untuk render ikon instruksi
-const renderIcon = (iconName: string, className?: string) => {
-  const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-    CheckCircle, Search, ShoppingCart, MapPin, Truck, Package, Clock, 
-    AlertTriangle, MessageCircle, Phone, Navigation, X
-  };
-  const IconComponent = iconMap[iconName];
-  if (!IconComponent) return null;
-  return <IconComponent className={className || "h-4 w-4"} />;
-};
 
 export function CourierOrderDetail() {
   const { id } = useParams();
@@ -254,18 +244,15 @@ export function CourierOrderDetail() {
           || (notes.includes('pesan langsung') ? { bg: 'bg-orange-50', border: 'border-orange-400', icon: '🛒', label: 'PESAN LANGSUNG', desc: 'Kamu yang pesan di tempat. Jangan lupa update daftar barang & harga di app.', text: 'text-orange-800' } : null);
 
         const config = match
-          ? { bg: 'bg-indigo-50', border: 'border-indigo-400', icon: match.iconName, label: match.label.toUpperCase(), desc: match.instruction, text: 'text-indigo-800', isLucide: true }
+          ? { bg: 'bg-indigo-50', border: 'border-indigo-400', icon: match.icon, label: match.label.toUpperCase(), desc: match.instruction, text: 'text-indigo-800' }
           : legacy
-          ? { ...legacy, isLucide: false }
-          : { bg: 'bg-gray-50', border: 'border-gray-300', icon: '📋', label: 'CATATAN ADMIN', desc: order.notes, text: 'text-gray-800', isLucide: false };
+          ? { ...legacy }
+          : { bg: 'bg-gray-50', border: 'border-gray-300', icon: '📋', label: 'CATATAN ADMIN', desc: order.notes, text: 'text-gray-800' };
 
         return (
           <div className={`mx-4 mt-1 px-4 py-3 rounded-xl border-l-4 ${config.bg} ${config.border}`}>
             <div className={`flex items-center gap-2 font-bold text-sm ${config.text}`}>
-              {config.isLucide
-                ? renderIcon(config.icon, 'h-4 w-4')   // Lucide icon
-                : <span>{config.icon}</span>            // emoji lama
-              }
+              <span>{config.icon}</span>
               <span>{config.label}</span>
             </div>
             <p className={`text-xs mt-1 ${config.text} opacity-80`}>{config.desc}</p>

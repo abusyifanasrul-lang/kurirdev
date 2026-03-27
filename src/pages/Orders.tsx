@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Plus, Download, Search, ArrowUpDown, ChevronUp, ChevronDown, Printer, CheckCircle, ShoppingCart, MapPin, Truck, Package, Clock, AlertTriangle, MessageCircle, Phone, Navigation, X } from 'lucide-react';
+import { Plus, Download, Search, ArrowUpDown, ChevronUp, ChevronDown, Printer, X } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { sendPushNotification } from '@/services/notificationService';
 import {
@@ -87,16 +87,6 @@ export function Orders() {
     return courier?.name || null;
   };
 
-  // Helper untuk render ikon instruksi
-  const renderIcon = (iconName: string, className?: string) => {
-    const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-      CheckCircle, Search, ShoppingCart, MapPin, Truck, Package, Clock, 
-      AlertTriangle, MessageCircle, Phone, Navigation
-    };
-    const IconComponent = iconMap[iconName];
-    if (!IconComponent) return null;
-    return <IconComponent className={className || "h-4 w-4"} />;
-  };
 
   const allOrders = useMemo(() => {
     // Gabungkan: IndexedDB (pekan ini) +
@@ -413,10 +403,10 @@ export function Orders() {
       const selectedInstruction = courier_instructions.find(
         instruction => instruction.label.toLowerCase() === notes
       );
-      const instruksi = selectedInstruction 
-        ? selectedInstruction.instruction
+      const instruksi = selectedInstruction
+        ? `${selectedInstruction.icon} ${selectedInstruction.instruction}`
         : notes
-        ? `📋 ${selectedOrder.notes}` 
+        ? `📋 ${selectedOrder.notes}`
         : 'Segera proses!';
 
       const notifTitle = `🛵 Order Baru — ${selectedOrder.order_number}`;
@@ -1335,7 +1325,7 @@ export function Orders() {
                       <option value="">— Tidak ada instruksi khusus —</option>
                       {courier_instructions.map((instruction) => (
                         <option key={instruction.id} value={instruction.label}>
-                          {instruction.label}
+                          {instruction.icon} {instruction.label}
                         </option>
                       ))}
                     </select>
@@ -1346,7 +1336,7 @@ export function Orders() {
                       if (!match) return null
                       return (
                         <div className="flex items-center gap-1.5 text-xs text-indigo-600 mt-1">
-                          {renderIcon(match.iconName, 'h-3.5 w-3.5')}
+                          <span>{match.icon}</span>
                           <span>{match.instruction}</span>
                         </div>
                       )

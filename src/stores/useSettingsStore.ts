@@ -5,7 +5,7 @@ export interface CourierInstruction {
   id: string;
   label: string;        // untuk display di dropdown (contoh: "Barang sudah siap, langsung ambil")
   instruction: string;  // untuk notifikasi ke kurir (contoh: "Barang sudah siap, langsung ambil!")
-  iconName: string;     // nama ikon Lucide (contoh: "CheckCircle", "Search", "MapPin")
+  icon: string;     // emoji untuk instruksi (contoh: "✅", "🔍", "🛒")
 }
 
 interface BusinessSettings {
@@ -22,10 +22,10 @@ interface SettingsStore extends BusinessSettings {
 }
 
 const DEFAULT_INSTRUCTIONS: CourierInstruction[] = [
-  { id: '1', label: 'Barang sudah siap, langsung ambil', instruction: 'Barang sudah siap, langsung ambil!', iconName: 'CheckCircle' },
-  { id: '2', label: 'Cek dulu ke penjual sebelum ambil', instruction: 'Cek dulu ke penjual sebelum ambil', iconName: 'Search' },
-  { id: '3', label: 'Kurir yang pesan di tempat', instruction: 'Kamu yang pesan di tempat', iconName: 'ShoppingCart' },
-  { id: '4', label: 'Minta kurir update posisi', instruction: 'Admin minta update posisimu', iconName: 'MapPin' },
+  { id: '1', label: 'Barang sudah siap, langsung ambil', instruction: 'Barang sudah siap, langsung ambil!', icon: '✅' },
+  { id: '2', label: 'Cek dulu ke penjual sebelum ambil', instruction: 'Cek dulu ke penjual sebelum ambil', icon: '🔍' },
+  { id: '3', label: 'Kurir yang pesan di tempat', instruction: 'Kamu yang pesan di tempat', icon: '🛒' },
+  { id: '4', label: 'Minta kurir update posisi', instruction: 'Admin minta update posisimu', icon: '📍' },
 ]
 
 export const useSettingsStore = create<SettingsStore>()(
@@ -50,15 +50,11 @@ export const useSettingsStore = create<SettingsStore>()(
     {
       name: 'business-settings',
       storage: createJSONStorage(() => localStorage),
-      version: 1,
+      version: 3,
       migrate: (persistedState: any, version: number) => {
-        if (version === 0) {
-          // localStorage lama tidak punya courier_instructions sama sekali
-          // atau struktur lama (dengan field 'value') → inject default agar tab tidak crash
-          if (!Array.isArray(persistedState.courier_instructions) ||
-              persistedState.courier_instructions.length === 0) {
-            persistedState.courier_instructions = DEFAULT_INSTRUCTIONS
-          }
+        if (version < 3) {
+          // Reset ke default dengan emoji baru saat migrasi
+          persistedState.courier_instructions = DEFAULT_INSTRUCTIONS
         }
         return persistedState
       }
