@@ -1,12 +1,12 @@
-import { useMemo, useState, useRef, useEffect } from 'react';
+import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { ArrowLeft, Package, Clock, CheckCircle, XCircle, Search } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { format, isToday, isYesterday, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/Badge';
-import { useOrderStore } from '@/stores/useOrderStore';
 import { useAuth } from '@/context/AuthContext';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { calcCourierEarning } from '@/lib/calcEarning';
+import { getOrdersByCourierFromLocal } from '@/lib/orderCache';
 import { X } from 'lucide-react';
 import { Order } from '@/types';
 
@@ -36,16 +36,45 @@ export function CourierHistory() {
       setTimeout(() => el.classList.remove('ring-2', 'ring-yellow-400', 'ring-offset-2'), 2000);
     }, 300);
   }, [highlightOrderId]);
-  const { courierOrders, isFetchingCourierOrders } = useOrderStore();
+
   const { user } = useAuth();
 
   const { commission_rate, commission_threshold } = useSettingsStore()
   const earningSettings = { commission_rate, commission_threshold }
 
+  // State lokal — diisi dari IndexedDB
+  const [courierOrders, setCourierOrders] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const invoiceRef = useRef<HTMLDivElement>(null);
+
+  // Fungsi load data dari IndexedDB
+  const loadFromLocalDB = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const orders = await getOrdersByCourierFromLocal(user.id);
+      setCourierOrders(orders);
+    } catch (err) {
+      console.error('Load from local DB error:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user?.id]);
+
+  // Load saat mount
+  useEffect(() => {
+    loadFromLocalDB();
+  }, [loadFromLocalDB]);
+
+  // Refresh otomatis saat sync selesai
+  useEffect(() => {
+    const handler = () => loadFromLocalDB();
+    window.addEventListener('indexeddb-synced', handler);
+    return () => window.removeEventListener('indexeddb-synced', handler);
+  }, [loadFromLocalDB]);
 
   const handleBagikanInvoice = async () => {
     if (!invoiceRef.current) return;
@@ -85,7 +114,7 @@ export function CourierHistory() {
       .reduce((sum, o) => sum + calcCourierEarning(o, earningSettings), 0);
   }, [courierOrders, user]);
 
-  if (isFetchingCourierOrders && courierOrders.length === 0) {
+  if (isLoading && courierOrders.length === 0) {
     return (
       <div className="flex items-center justify-center py-16">
         <div className="flex flex-col items-center gap-3">

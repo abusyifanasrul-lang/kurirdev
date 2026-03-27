@@ -16,18 +16,19 @@ import {
   needsDeltaSync,
   deltaSyncYesterday,
   moveToLocalDB,
-  checkIntegrity,
-  getCacheMeta
+  checkIntegrity
 } from '@/lib/orderCache'
 import { Order } from '@/types'
 
 // Fungsi fetch helper di luar komponen AppListeners
+// courierId opsional: jika ada, hanya ambil pesanan milik kurir tsb
 async function fetchFinalOrders(
   start: Date,
-  end: Date
+  end: Date,
+  courierId?: string
 ): Promise<Order[]> {
-  const q = query(
-    collection(db, 'orders'),
+  // Base constraints: tanggal & status final
+  const constraints: any[] = [
     where('created_at', '>=',
       start.toISOString()),
     where('created_at', '<=',
@@ -35,10 +36,22 @@ async function fetchFinalOrders(
     where('status', 'in',
       ['delivered', 'cancelled']),
     orderBy('created_at', 'desc')
+  ]
+  const q = query(
+    collection(db, 'orders'),
+    ...constraints
   )
   const snapshot = await getDocs(q)
-  return snapshot.docs
+  let orders = snapshot.docs
     .map(d => d.data() as Order)
+  // Filter di client-side untuk kurir
+  // (menghindari composite index baru di Firebase)
+  if (courierId) {
+    orders = orders.filter(
+      o => o.courier_id === courierId
+    )
+  }
+  return orders
 }
 
 // Storage budget check
@@ -214,11 +227,20 @@ export function AppListeners() {
 
     const runSync = async () => {
       try {
-        // INITIAL SYNC — device baru
-        if (!isInitialSyncCompleted()) {
-          console.log('Running initial sync...')
+        // Tentukan fetch function berdasar role
+        const fetchFn = (start: Date, end: Date) =>
+          fetchFinalOrders(
+            start, end,
+            user.role === 'courier'
+              ? user.id
+              : undefined
+          )
+
+        // INITIAL SYNC — user baru di device ini
+        if (!isInitialSyncCompleted(user.id)) {
+          console.log(`Running initial sync for ${user.role} ${user.id}...`)
           const count = await syncAllFinalOrders(
-            fetchFinalOrders
+            fetchFn, user.id
           )
           console.log(`Initial sync: ${count}
             orders cached`)
@@ -245,7 +267,7 @@ export function AppListeners() {
           if (Math.abs(localCount - metaCount)
               > 10) {
             await syncAllFinalOrders(
-              fetchFinalOrders
+              fetchFn, user.id
             )
             // Cek storage setelah sync
             await checkStorageBudget()
@@ -254,10 +276,10 @@ export function AppListeners() {
         }
 
         // DELTA SYNC — setiap hari
-        if (needsDeltaSync()) {
-          console.log('Running delta sync...')
+        if (needsDeltaSync(user.id)) {
+          console.log(`Running delta sync for ${user.role} ${user.id}...`)
           const count = await deltaSyncYesterday(
-            fetchFinalOrders
+            fetchFn, user.id
           )
           console.log(`Delta sync: ${count}
             orders cached`)

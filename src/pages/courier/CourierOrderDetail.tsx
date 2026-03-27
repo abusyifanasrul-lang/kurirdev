@@ -26,7 +26,7 @@ const parseRupiah = (val: string): string => {
 export function CourierOrderDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { activeOrdersByCourier, currentOrder, subscribeOrderById, updateOrderStatus, cancelOrder, updateBiayaTambahan, updateItems, updateOngkir, updateOrderWaiting } = useOrderStore();
+  const { activeOrdersByCourier, currentOrder, subscribeOrderById, updateOrderStatus, cancelOrder, updateBiayaTambahan, updateItems, updateOngkir, updateOrderWaiting, updateOrder } = useOrderStore();
   const { user } = useAuth();
   const { users } = useUserStore();
   const { user: currentUser } = useSessionStore();
@@ -64,6 +64,10 @@ export function CourierOrderDetail() {
   const [hargaItem, setHargaItem] = useState('');
   const [editOngkir, setEditOngkir] = useState(false);
   const [ongkirValue, setOngkirValue] = useState('');
+  const [editCustomer, setEditCustomer] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editAddress, setEditAddress] = useState('');
 
   const isLocked = order?.status === 'delivered' || isSuspended;
 
@@ -72,7 +76,12 @@ export function CourierOrderDetail() {
       setItemList(order.items || []);
       setOngkirValue(String(order.total_fee || 0));
     }
-  }, [order, showItemForm]);
+    if (order && !editCustomer) {
+      setEditName(order.customer_name || '');
+      setEditPhone(order.customer_phone || '');
+      setEditAddress(order.customer_address || '');
+    }
+  }, [order, showItemForm, editCustomer]);
 
   if (!order) return <div className="p-8 text-center">Order not found</div>;
 
@@ -142,6 +151,16 @@ export function CourierOrderDetail() {
     if (isNaN(val) || val < 0) return;
     await updateOngkir(order.id, val);
     setEditOngkir(false);
+  };
+
+  const handleSimpanCustomer = async () => {
+    if (!editName || !editPhone || !editAddress) return;
+    await updateOrder(order.id, {
+      customer_name: editName,
+      customer_phone: editPhone,
+      customer_address: editAddress
+    });
+    setEditCustomer(false);
   };
 
   const handleCancelTap = () => {
@@ -280,37 +299,90 @@ export function CourierOrderDetail() {
         {/* Customer Info compact */}
         <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 space-y-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center font-bold text-gray-600">
-                {order.customer_name.charAt(0)}
+            <h3 className="font-semibold text-gray-900 text-sm">Info Customer</h3>
+            {!isLocked && (
+              <button
+                onClick={() => setEditCustomer(!editCustomer)}
+                className="text-xs font-medium text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg hover:bg-indigo-100 transition-colors"
+              >
+                {editCustomer ? 'Batalkan' : 'Edit'}
+              </button>
+            )}
+          </div>
+
+          {!editCustomer ? (
+            <>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center font-bold text-gray-600">
+                    {order.customer_name.charAt(0)}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900 text-sm">{order.customer_name}</p>
+                    <p className="text-xs text-gray-500">{order.customer_phone}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    const phone = order.customer_phone.startsWith('0')
+                      ? '62' + order.customer_phone.slice(1)
+                      : order.customer_phone.replace('+', '');
+                    window.open(`https://wa.me/${phone}`, '_blank');
+                  }}
+                  className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center text-green-600"
+                >
+                  <Phone className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="flex items-start gap-2 pt-2 border-t border-gray-100">
+                <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-gray-600 flex-1">{order.customer_address}</p>
+              </div>
+              <button
+                onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.customer_address)}`, '_blank')}
+                className="w-full flex items-center justify-center gap-2 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium transition-colors hover:bg-blue-100"
+              >
+                <Navigation className="h-4 w-4" /> Buka di Maps
+              </button>
+            </>
+          ) : (
+            <div className="space-y-3 pt-1 border-t border-gray-100">
+              <div>
+                <label className="text-xs font-medium text-gray-500 mb-1 block">Nama Customer</label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                />
               </div>
               <div>
-                <p className="font-semibold text-gray-900 text-sm">{order.customer_name}</p>
-                <p className="text-xs text-gray-500">{order.customer_phone}</p>
+                <label className="text-xs font-medium text-gray-500 mb-1 block">No. HP / WhatsApp</label>
+                <input
+                  type="text"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                />
               </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 mb-1 block">Alamat Pengiriman</label>
+                <textarea
+                  value={editAddress}
+                  onChange={(e) => setEditAddress(e.target.value)}
+                  rows={2}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400 resize-none"
+                />
+              </div>
+              <button
+                onClick={handleSimpanCustomer}
+                disabled={!editName || !editPhone || !editAddress}
+                className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+              >
+                Simpan Perubahan
+              </button>
             </div>
-            <button
-              onClick={() => {
-                const phone = order.customer_phone.startsWith('0')
-                  ? '62' + order.customer_phone.slice(1)
-                  : order.customer_phone.replace('+', '');
-                window.open(`https://wa.me/${phone}`, '_blank');
-              }}
-              className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center text-green-600"
-            >
-              <Phone className="h-4 w-4" />
-            </button>
-          </div>
-          <div className="flex items-start gap-2 pt-2 border-t border-gray-100">
-            <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-gray-600 flex-1">{order.customer_address}</p>
-          </div>
-          <button
-            onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.customer_address)}`, '_blank')}
-            className="w-full flex items-center justify-center gap-2 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium"
-          >
-            <Navigation className="h-4 w-4" /> Buka di Maps
-          </button>
+          )}
         </div>
 
         {/* Order Details + Titik & Beban */}

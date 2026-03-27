@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Package, DollarSign, CheckCircle, Clock, Wifi, WifiOff, ChevronRight, AlertTriangle } from 'lucide-react';
 import { format, isToday } from 'date-fns';
@@ -11,7 +11,7 @@ import { useSessionStore } from '@/stores/useSessionStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { calcCourierEarning } from '@/lib/calcEarning';
-import { getUnpaidOrdersByCourier } from '@/lib/orderCache';
+import { getUnpaidOrdersByCourier, getOrdersByCourierFromLocal } from '@/lib/orderCache';
 import { Order } from '@/types';
 
 // Removed unused CourierOrder interface as we use global Order type
@@ -19,7 +19,7 @@ import { Order } from '@/types';
 export function CourierDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { courierOrders, activeOrdersByCourier } = useOrderStore();
+  const { activeOrdersByCourier } = useOrderStore();
 
   const { setCourierOffline, setCourierOnline } = useCourierStore();
   const { users } = useUserStore();
@@ -39,6 +39,27 @@ export function CourierDashboard() {
   const [customOffReason, setCustomOffReason] = useState('');
 
   const courierStatus = (liveUser as any)?.courier_status ?? (isOnline ? 'on' : 'off');
+
+  // State lokal — diisi dari IndexedDB (history orders)
+  const [courierOrders, setCourierOrders] = useState<Order[]>([]);
+
+  const loadFromLocalDB = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const orders = await getOrdersByCourierFromLocal(user.id);
+      setCourierOrders(orders);
+    } catch (err) {
+      console.error('CourierDashboard load error:', err);
+    }
+  }, [user?.id]);
+
+  useEffect(() => { loadFromLocalDB(); }, [loadFromLocalDB]);
+
+  useEffect(() => {
+    const handler = () => loadFromLocalDB();
+    window.addEventListener('indexeddb-synced', handler);
+    return () => window.removeEventListener('indexeddb-synced', handler);
+  }, [loadFromLocalDB]);
 
   const OFF_REASONS = [
     { value: 'Makan', label: '🍽️ Makan' },
@@ -73,8 +94,8 @@ export function CourierDashboard() {
   useEffect(() => {
     if (!user?.id) return
     getUnpaidOrdersByCourier(user.id).then(unpaidFromDB => {
-      // Gabungkan IndexedDB (order lama) + courierOrders (7 hari Firestore)
-      // pakai Map agar tidak duplikat, IndexedDB di-override oleh Firestore
+      // Gabungkan IndexedDB (order lama) + courierOrders (local DB)
+      // pakai Map agar tidak duplikat
       const map = new Map<string, Order>()
       unpaidFromDB.forEach(o => map.set(o.id, o))
       courierOrders

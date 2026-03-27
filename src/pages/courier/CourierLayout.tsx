@@ -16,7 +16,6 @@ export function CourierLayout() {
   const { user, logout } = useAuth();
   const { users } = useUserStore();
   const { user: currentUser } = useSessionStore();
-  const { fetchOrdersByCourier } = useOrderStore();
   
   const liveUser = users.find(u => u.id === currentUser?.id);
   const isSuspended = liveUser?.is_active === false;
@@ -43,9 +42,9 @@ export function CourierLayout() {
       }
     )
 
-    // History orders kurir — one-time fetch
-    // tidak perlu realtime, cukup saat mount
-    fetchOrdersByCourier(user.id)
+    // History orders kurir — sekarang diurus oleh
+    // background sync IndexedDB di AppListeners.
+    // Tidak perlu lagi hard fetch dari Firestore.
 
     return () => {
       unsubActive()

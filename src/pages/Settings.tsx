@@ -104,10 +104,10 @@ export function Settings() {
 
   // Cache sync state
   const [cacheMeta, setCacheMeta] = useState<{
-    last_sync: string
+    last_sync?: string
     total_records: number
-    sync_completed: boolean
-    last_delta_sync: string
+    sync_completed?: boolean
+    last_delta_sync?: string
   } | null>(null)
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncMessage, setSyncMessage] = useState('')

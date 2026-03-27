@@ -1,19 +1,40 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, TrendingUp, DollarSign, Package, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO, startOfDay, subDays, startOfWeek, isWithinInterval, endOfDay } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { useOrderStore } from '@/stores/useOrderStore';
 import { useAuth } from '@/context/AuthContext';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { calcCourierEarning } from '@/lib/calcEarning';
+import { getOrdersByCourierFromLocal } from '@/lib/orderCache';
+import { Order } from '@/types';
 
 type Period = 'daily' | 'weekly';
 
 export function CourierEarnings() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { courierOrders } = useOrderStore();
+
+  // State lokal — diisi dari IndexedDB
+  const [courierOrders, setCourierOrders] = useState<Order[]>([]);
+
+  const loadFromLocalDB = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const orders = await getOrdersByCourierFromLocal(user.id);
+      setCourierOrders(orders);
+    } catch (err) {
+      console.error('CourierEarnings load error:', err);
+    }
+  }, [user?.id]);
+
+  useEffect(() => { loadFromLocalDB(); }, [loadFromLocalDB]);
+
+  useEffect(() => {
+    const handler = () => loadFromLocalDB();
+    window.addEventListener('indexeddb-synced', handler);
+    return () => window.removeEventListener('indexeddb-synced', handler);
+  }, [loadFromLocalDB]);
 
     const [period, setPeriod] = useState<Period>('daily');
 

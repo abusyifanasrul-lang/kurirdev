@@ -16,12 +16,22 @@ function getLocalDateStr(
   return `${year}-${month}-${day}` 
 }
 
-// Tambahkan di bagian atas setelah import:
-interface DBMeta {
-  last_sync: string        // ISO timestamp
-  total_records: number
+// Per-user sync metadata
+// Setiap user punya status sync sendiri
+// agar shared DB bisa dipakai bergantian
+interface UserSyncStatus {
   sync_completed: boolean
   last_delta_sync: string  // ISO timestamp
+  last_sync: string        // ISO timestamp
+}
+
+interface DBMeta {
+  total_records: number
+  users: Record<string, UserSyncStatus>
+  // Legacy fields (backward compat)
+  last_sync?: string
+  sync_completed?: boolean
+  last_delta_sync?: string
 }
 
 const META_KEY = 'kurirdev_db_meta'
@@ -29,12 +39,15 @@ const META_KEY = 'kurirdev_db_meta'
 function getMeta(): DBMeta {
   const raw = localStorage.getItem(META_KEY)
   if (!raw) return {
-    last_sync: '',
     total_records: 0,
-    sync_completed: false,
-    last_delta_sync: ''
+    users: {}
   }
-  return JSON.parse(raw)
+  const parsed = JSON.parse(raw)
+  // Migrasi dari format lama ke per-user
+  if (!parsed.users) {
+    parsed.users = {}
+  }
+  return parsed
 }
 
 function saveMeta(meta: Partial<DBMeta>) {
@@ -42,6 +55,31 @@ function saveMeta(meta: Partial<DBMeta>) {
   localStorage.setItem(META_KEY,
     JSON.stringify({ ...current, ...meta })
   )
+}
+
+function getUserSyncStatus(
+  userId: string
+): UserSyncStatus {
+  const meta = getMeta()
+  return meta.users[userId] || {
+    sync_completed: false,
+    last_delta_sync: '',
+    last_sync: ''
+  }
+}
+
+function saveUserSyncStatus(
+  userId: string,
+  status: Partial<UserSyncStatus>
+) {
+  const meta = getMeta()
+  const current = meta.users[userId] || {
+    sync_completed: false,
+    last_delta_sync: '',
+    last_sync: ''
+  }
+  meta.users[userId] = { ...current, ...status }
+  saveMeta({ users: meta.users })
 }
 
 class KurirDevDB extends Dexie {
@@ -110,17 +148,38 @@ export async function getCachedOrdersByRange(
 }
 
 // Cek apakah initial sync sudah pernah
-// dilakukan di device ini
-export function isInitialSyncCompleted()
-  : boolean {
-  return getMeta().sync_completed
+// dilakukan untuk user ini di device ini
+export function isInitialSyncCompleted(
+  userId: string
+): boolean {
+  // Cek per-user status
+  const userStatus = getUserSyncStatus(userId)
+  if (userStatus.sync_completed) return true
+  // Fallback: cek legacy global flag
+  // (migrasi dari format lama)
+  const meta = getMeta()
+  if (meta.sync_completed && !userStatus.sync_completed) {
+    // Migrasi: tandai user ini sebagai synced
+    saveUserSyncStatus(userId, {
+      sync_completed: true,
+      last_delta_sync: meta.last_delta_sync || '',
+      last_sync: meta.last_sync || ''
+    })
+    return true
+  }
+  return false
 }
 
 // Cek apakah perlu delta sync hari ini
-export function needsDeltaSync(): boolean {
-  const meta = getMeta()
-  if (!meta.last_delta_sync) return true
-  const lastSync = new Date(meta.last_delta_sync)
+// untuk user tertentu
+export function needsDeltaSync(
+  userId: string
+): boolean {
+  const userStatus = getUserSyncStatus(userId)
+  if (!userStatus.last_delta_sync) return true
+  const lastSync = new Date(
+    userStatus.last_delta_sync
+  )
   const today = new Date()
   return lastSync.toDateString()
     !== today.toDateString()
@@ -131,7 +190,8 @@ export function needsDeltaSync(): boolean {
 // Dipanggil SEKALI saat device baru
 export async function syncAllFinalOrders(
   fetchFn: (start: Date, end: Date)
-    => Promise<import('@/types').Order[]>
+    => Promise<import('@/types').Order[]>,
+  userId: string
 ): Promise<number> {
   // Ambil dari awal tahun hingga kemarin
   const end = new Date()
@@ -154,9 +214,9 @@ export async function syncAllFinalOrders(
   }
 
   const total = await localDB.orders.count()
-  saveMeta({
+  saveMeta({ total_records: total })
+  saveUserSyncStatus(userId, {
     last_sync: new Date().toISOString(),
-    total_records: total,
     sync_completed: true,
     last_delta_sync: new Date().toISOString()
   })
@@ -168,7 +228,8 @@ export async function syncAllFinalOrders(
 // Dipanggil setiap hari pertama buka app
 export async function deltaSyncYesterday(
   fetchFn: (start: Date, end: Date)
-    => Promise<import('@/types').Order[]>
+    => Promise<import('@/types').Order[]>,
+  userId: string
 ): Promise<number> {
   const yesterday = new Date()
   yesterday.setDate(yesterday.getDate() - 1)
@@ -192,9 +253,9 @@ export async function deltaSyncYesterday(
   }
 
   const total = await localDB.orders.count()
-  saveMeta({
-    last_delta_sync: new Date().toISOString(),
-    total_records: total
+  saveMeta({ total_records: total })
+  saveUserSyncStatus(userId, {
+    last_delta_sync: new Date().toISOString()
   })
 
   return finalOrders.length
@@ -301,6 +362,30 @@ export async function checkIntegrity()
     localCount,
     metaCount
   }
+}
+
+// Ambil semua order final milik kurir
+// tertentu dari IndexedDB (untuk History)
+export async function getOrdersByCourierFromLocal(
+  courierId: string
+): Promise<import('@/types').Order[]> {
+  const all = await localDB.orders
+    .where('courier_id')
+    .equals(courierId)
+    .toArray()
+
+  return all
+    .filter(o =>
+      o.status === 'delivered' ||
+      o.status === 'cancelled'
+    )
+    .map(({ _date, ...o }) =>
+      o as import('@/types').Order
+    )
+    .sort((a, b) =>
+      new Date(b.created_at).getTime() -
+      new Date(a.created_at).getTime()
+    )
 }
 
 // Reset semua cache (untuk manual sync)
