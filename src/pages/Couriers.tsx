@@ -483,23 +483,31 @@ export function Couriers() {
             </div>
 
             {/* Performance Stats */}
-            <h4 className="font-semibold flex items-center gap-2"><Award className="w-4 h-4 text-yellow-500" /> Performance Metrics</h4>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-white border rounded-lg p-3 text-center shadow-sm">
-                <p className="text-2xl font-bold text-indigo-600">{selectedCourierStats.total_orders}</p>
-                <p className="text-xs text-gray-500 uppercase font-semibold">Total Orders</p>
-              </div>
-              <div className="bg-white border rounded-lg p-3 text-center shadow-sm">
-                <p className="text-2xl font-bold text-green-600">{selectedCourierStats.completed_orders}</p>
-                <p className="text-xs text-gray-500 uppercase font-semibold">Completed</p>
-              </div>
-              <div className="bg-white border rounded-lg p-3 text-center shadow-sm">
-                <p className="text-xl font-bold text-gray-900 leading-tight break-words">{formatCurrency(selectedCourierStats.total_earnings)}</p>
-                <p className="text-xs text-gray-500 uppercase font-semibold">History Earnings</p>
-              </div>
-              <div className="bg-white border rounded-lg p-3 text-center shadow-sm">
-                <p className="text-xl font-bold text-purple-600">{selectedCourierStats.average_delivery_time}m</p>
-                <p className="text-xs text-gray-500 uppercase font-semibold">Avg Time</p>
+            <div className="mb-6">
+              <h4 className="text-sm font-medium text-gray-600 flex items-center gap-2 mb-3">
+                <Award className="w-4 h-4" /> Performance Metrics
+              </h4>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-gray-50 rounded-xl p-3.5">
+                  <p className="text-xs text-gray-500 font-medium mb-1">Total Orders</p>
+                  <p className="text-xl font-semibold text-gray-900 leading-none">{selectedCourierStats.total_orders}</p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-3.5">
+                  <p className="text-xs text-gray-500 font-medium mb-1">Completed</p>
+                  <p className="text-xl font-semibold text-gray-900 leading-none">{selectedCourierStats.completed_orders}</p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-3.5">
+                  <p className="text-xs text-gray-500 font-medium mb-1">Earnings</p>
+                  <p className="text-lg font-semibold text-gray-900 leading-none truncate" title={formatCurrency(selectedCourierStats.total_earnings)}>
+                    {formatCurrency(selectedCourierStats.total_earnings)}
+                  </p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-3.5">
+                  <p className="text-xs text-gray-500 font-medium mb-1">Avg Time</p>
+                  <p className="text-xl font-semibold text-gray-900 leading-none">
+                    {selectedCourierStats.average_delivery_time}<span className="text-sm font-normal text-gray-500 ml-1">min</span>
+                  </p>
+                </div>
               </div>
             </div>
 
