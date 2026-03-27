@@ -403,14 +403,18 @@ export function Orders() {
       const selectedInstruction = courier_instructions.find(
         instruction => instruction.label.toLowerCase() === notes
       );
+      const emoji = selectedInstruction
+        ? (selectedInstruction.icon || '📋')
+        : '';
       const instruksi = selectedInstruction
-        ? `${selectedInstruction.icon} ${selectedInstruction.instruction}`
+        ? `${emoji} ${selectedInstruction.instruction}`
         : notes
         ? `📋 ${selectedOrder.notes}`
         : 'Segera proses!';
 
+      const customerName = selectedOrder.customer_name || 'Customer';
       const notifTitle = `🛵 Order Baru — ${selectedOrder.order_number}`;
-      const notifBody = `${selectedOrder.customer_name} • ${instruksi}`;
+      const notifBody = `${customerName} • ${instruksi}`;
 
       // Simpan ke Firestore agar muncul di halaman notifikasi
       await addNotification({

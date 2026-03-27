@@ -244,7 +244,7 @@ export function CourierOrderDetail() {
           || (notes.includes('pesan langsung') ? { bg: 'bg-orange-50', border: 'border-orange-400', icon: '🛒', label: 'PESAN LANGSUNG', desc: 'Kamu yang pesan di tempat. Jangan lupa update daftar barang & harga di app.', text: 'text-orange-800' } : null);
 
         const config = match
-          ? { bg: 'bg-indigo-50', border: 'border-indigo-400', icon: match.icon, label: match.label.toUpperCase(), desc: match.instruction, text: 'text-indigo-800' }
+          ? { bg: 'bg-indigo-50', border: 'border-indigo-400', icon: match.icon || '📋', label: match.label.toUpperCase(), desc: match.instruction, text: 'text-indigo-800' }
           : legacy
           ? { ...legacy }
           : { bg: 'bg-gray-50', border: 'border-gray-300', icon: '📋', label: 'CATATAN ADMIN', desc: order.notes, text: 'text-gray-800' };

@@ -50,11 +50,27 @@ export const useSettingsStore = create<SettingsStore>()(
     {
       name: 'business-settings',
       storage: createJSONStorage(() => localStorage),
-      version: 3,
+      version: 4,
       migrate: (persistedState: any, version: number) => {
-        if (version < 3) {
-          // Reset ke default dengan emoji baru saat migrasi
-          persistedState.courier_instructions = DEFAULT_INSTRUCTIONS
+        // Mapping iconName lama → emoji
+        const iconNameToEmoji: Record<string, string> = {
+          'CheckCircle': '✅', 'Search': '🔍', 'ShoppingCart': '🛒',
+          'MapPin': '📍', 'Truck': '🚚', 'Package': '📦',
+          'Clock': '⏰', 'AlertTriangle': '⚠️', 'MessageCircle': '💬',
+          'Phone': '📞', 'Navigation': '🧭', 'X': '❌',
+        }
+
+        if (version < 4) {
+          const instructions = persistedState.courier_instructions
+          if (Array.isArray(instructions) && instructions.length > 0) {
+            // Konversi setiap instruksi: iconName → icon (jika belum ada)
+            persistedState.courier_instructions = instructions.map((inst: any) => ({
+              ...inst,
+              icon: inst.icon || iconNameToEmoji[inst.iconName] || '📋',
+            }))
+          } else {
+            persistedState.courier_instructions = DEFAULT_INSTRUCTIONS
+          }
         }
         return persistedState
       }
