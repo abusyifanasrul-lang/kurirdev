@@ -226,24 +226,12 @@ export function CourierOrderDetail() {
 
       {/* Banner Instruksi Admin */}
       {order.notes && (() => {
-        // 1. Cek apakah admin sudah menyimpan emoji di order (fitur baru)
-        if (order.notes_icon) {
-          return (
-            <div className={`mx-4 mt-1 px-4 py-3 rounded-xl border-l-4 bg-indigo-50 border-indigo-400`}>
-              <div className={`flex items-center gap-2 font-bold text-sm text-indigo-800`}>
-                <span>{order.notes_icon}</span>
-                <span>{order.notes.toUpperCase()}</span>
-              </div>
-            </div>
-          );
-        }
-
-        // 2. Fallback untuk order lama yang belum punya notes_icon di Firestore, coba match by label
+        // Match dengan courier_instructions dari settings (by label)
         const match = courier_instructions?.find(
           i => i.label.toLowerCase() === order.notes?.toLowerCase().trim()
         );
 
-        // 3. Fallback untuk kode super lama (sls, pss)
+        // Fallback untuk kode lama (sls, pss, dll) yang mungkin masih ada di order lama di Firestore
         const notes = order.notes.toLowerCase().trim();
         const legacyConfig: Record<string, { bg: string; border: string; icon: string; label: string; desc: string; text: string }> = {
           'sls': { bg: 'bg-green-50', border: 'border-green-400', icon: '✅', label: 'BARANG SUDAH SIAP', desc: 'Langsung ambil ke penjual, tidak perlu nunggu.', text: 'text-green-800' },

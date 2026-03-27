@@ -3,10 +3,11 @@ import { useAuth } from '@/context/AuthContext'
 import { useUserStore } from '@/stores/useUserStore'
 import { useOrderStore } from '@/stores/useOrderStore'
 import { useNotificationStore } from '@/stores/useNotificationStore'
+import { useSettingsStore } from '@/stores/useSettingsStore'
 import {
   collection, query, where,
   orderBy, limit, onSnapshot,
-  getDocs
+  getDocs, getDoc, doc
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import {
@@ -102,6 +103,32 @@ export function AppListeners() {
 
     return () => unsubUsers()
   }, [])
+
+  useEffect(() => {
+    if (!user) return
+
+    // Onetime fetch for global settings sync (local-first approach)
+    const syncGlobalSettings = async () => {
+      try {
+        const docSnap = await getDoc(doc(db, 'settings', 'business'))
+        if (docSnap.exists()) {
+          const data = docSnap.data()
+          if (data && data.courier_instructions) {
+             useSettingsStore.getState().updateSettings({
+               courier_instructions: data.courier_instructions,
+               commission_rate: data.commission_rate ?? 80,
+               commission_threshold: data.commission_threshold ?? 5000,
+             })
+             console.log('Global settings synced to local store.')
+          }
+        }
+      } catch (err) {
+        console.error('Failed to sync global settings:', err)
+      }
+    }
+    syncGlobalSettings()
+
+  }, [user?.id])
 
   useEffect(() => {
     // Hanya Admin yang butuh subscribeOrders

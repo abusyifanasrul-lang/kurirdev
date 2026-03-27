@@ -26,6 +26,7 @@ const DEFAULT_INSTRUCTIONS: CourierInstruction[] = [
   { id: '2', label: 'Cek dulu ke penjual sebelum ambil', instruction: 'Cek dulu ke penjual sebelum ambil', icon: '🔍' },
   { id: '3', label: 'Kurir yang pesan di tempat', instruction: 'Kamu yang pesan di tempat', icon: '🛒' },
   { id: '4', label: 'Minta kurir update posisi', instruction: 'Admin minta update posisimu', icon: '📍' },
+  { id: '5', label: 'Cek kondisi barang saat diterima', instruction: 'Cek kondisi barang saat diterima', icon: '🔍' },
 ]
 
 export const useSettingsStore = create<SettingsStore>()(

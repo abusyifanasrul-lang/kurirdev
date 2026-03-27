@@ -56,7 +56,6 @@ export interface Order {
   updated_at: string;
   created_by?: string;
   notes?: string;
-  notes_icon?: string;
   item_name?: string;
   item_price?: number;
   items?: { nama: string; harga: number }[];
@@ -85,7 +84,6 @@ export interface CreateOrderPayload {
   estimated_delivery_time?: string;
   items?: { nama: string; harga: number }[];
   notes?: string;
-  notes_icon?: string;
 }
 
 // Courier types

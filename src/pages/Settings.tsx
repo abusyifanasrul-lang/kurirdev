@@ -19,6 +19,8 @@ import {
   getCacheMeta,
 } from '@/lib/orderCache';
 import { useNavigate } from 'react-router-dom';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export function Settings() {
   const { users, updateUser, addUser } = useUserStore();
@@ -38,6 +40,19 @@ export function Settings() {
     commission_rate,
     commission_threshold,
   })
+  const syncSettingsToFirestore = async () => {
+    try {
+      const state = useSettingsStore.getState();
+      await setDoc(doc(db, 'settings', 'business'), {
+        commission_rate: state.commission_rate,
+        commission_threshold: state.commission_threshold,
+        courier_instructions: state.courier_instructions,
+      }, { merge: true });
+    } catch (err) {
+      console.error('Failed to sync settings to Firestore:', err);
+    }
+  };
+
   const handleSaveBusinessSettings = () => {
     if (
       isNaN(businessForm.commission_rate) ||
@@ -55,6 +70,7 @@ export function Settings() {
       return
     }
     updateSettings(businessForm)
+    syncSettingsToFirestore()
     showMessage('success', 'Business settings saved!')
   }
 
@@ -257,6 +273,7 @@ export function Settings() {
       return;
     }
     addCourierInstruction(newInstruction);
+    syncSettingsToFirestore();
     setIsAddInstructionModalOpen(false);
     setNewInstruction({ label: '', instruction: '', icon: '✅' });
     showMessage('success', 'Instruksi berhasil ditambahkan!');
@@ -281,6 +298,7 @@ export function Settings() {
     }
     
     updateCourierInstruction(selectedInstructionToEdit.id, editInstructionForm);
+    syncSettingsToFirestore();
     setIsEditInstructionModalOpen(false);
     setSelectedInstructionToEdit(null);
     setEditInstructionForm({ label: '', instruction: '', icon: '✅' });
@@ -290,6 +308,7 @@ export function Settings() {
   const handleDeleteInstruction = (id: string) => {
     if (window.confirm('Apakah Anda yakin ingin menghapus instruksi ini?')) {
       deleteCourierInstruction(id);
+      syncSettingsToFirestore();
       showMessage('success', 'Instruksi berhasil dihapus!');
     }
   };

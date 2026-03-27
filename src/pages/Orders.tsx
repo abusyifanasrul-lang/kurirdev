@@ -390,15 +390,9 @@ export function Orders() {
 
     const courier = availableCouriers.find(c => c.id === assignCourierId);
     if (courier) {
-      // Simpan instruksi (notes) + emoji ke order
+      // Simpan instruksi (notes) ke order jika ada perubahan
       if (selectedOrder.notes !== undefined) {
-        const matchedInstruction = courier_instructions.find(
-          i => i.label.toLowerCase() === (selectedOrder.notes || '').toLowerCase().trim()
-        );
-        updateOrder(selectedOrder.id, {
-          notes: selectedOrder.notes,
-          notes_icon: matchedInstruction?.icon || '📋',
-        });
+        updateOrder(selectedOrder.id, { notes: selectedOrder.notes });
       }
 
       await assignCourier(selectedOrder.id, courier.id, courier.name, user?.id || "1", user?.name || 'Admin');
