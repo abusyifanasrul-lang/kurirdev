@@ -182,6 +182,12 @@ export function Orders() {
   const [inlineNewAddr, setInlineNewAddr] = useState('')
   const [inlineAddingNew, setInlineAddingNew] = useState(false)
 
+  // Edit modal inline address state (for Order Details edit)
+  const [editSelectedCustomer, setEditSelectedCustomer] = useState<Customer | null>(null)
+  const [editInlineAddrId, setEditInlineAddrId] = useState<string | null>(null)
+  const [editInlineAddrValue, setEditInlineAddrValue] = useState('')
+  const [editInlineAddingNew, setEditInlineAddingNew] = useState(false)
+
   const handleCustomerNameChange = (value: string) => {
     setNewOrder({ ...newOrder, customer_name: value })
     setSelectedCustomer(null)
@@ -336,6 +342,11 @@ export function Orders() {
         total_fee: selectedOrder.total_fee,
         payment_status: selectedOrder.payment_status,
       });
+      // Seed inline customer for address picker
+      const cust = findByPhone(selectedOrder.customer_phone)
+      setEditSelectedCustomer(cust || null)
+      setEditInlineAddrId(null)
+      setEditInlineAddingNew(false)
     }
   }, [selectedOrder?.id]);
 
@@ -1360,12 +1371,132 @@ export function Orders() {
                     onChange={e => setEditForm(prev => ({ ...prev, customer_phone: e.target.value }))}
                   />
                 </div>
-                <Textarea
-                  label="Address"
-                  value={editForm.customer_address}
-                  onChange={e => setEditForm(prev => ({ ...prev, customer_address: e.target.value }))}
-                  rows={2}
-                />
+                {/* Address — inline picker jika ada data customer, fallback Textarea */}
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-gray-700">Address</label>
+
+                  {editSelectedCustomer && editSelectedCustomer.addresses.map((addr) => (
+                    <div
+                      key={addr.id}
+                      className={`flex items-center gap-2 px-2 py-1.5 rounded-lg border transition-colors ${
+                        editInlineAddrId === addr.id
+                          ? 'border-indigo-400 bg-indigo-50'
+                          : editForm.customer_address === addr.address
+                          ? 'border-indigo-300 bg-indigo-50/40'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <button type="button" onClick={() => {
+                        if (editInlineAddrId !== addr.id)
+                          setEditForm(prev => ({ ...prev, customer_address: addr.address }))
+                      }} className="flex-shrink-0">
+                        <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${
+                          editForm.customer_address === addr.address && editInlineAddrId !== addr.id
+                            ? 'border-indigo-500' : 'border-gray-300'
+                        }`}>
+                          {editForm.customer_address === addr.address && editInlineAddrId !== addr.id && (
+                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                          )}
+                        </div>
+                      </button>
+                      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded flex-shrink-0 ${
+                        addr.is_default ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500'
+                      }`}>{addr.label}</span>
+
+                      {editInlineAddrId === addr.id ? (
+                        <>
+                          <input
+                            className="flex-1 text-sm border-0 bg-transparent outline-none min-w-0 text-gray-800"
+                            value={editInlineAddrValue}
+                            autoFocus
+                            onChange={e => setEditInlineAddrValue(e.target.value)}
+                            onKeyDown={async (e) => {
+                              if (e.key === 'Enter') {
+                                await updateAddress(editSelectedCustomer.id, addr.id, { address: editInlineAddrValue })
+                                const updated = { ...editSelectedCustomer, addresses: editSelectedCustomer.addresses.map(a => a.id === addr.id ? { ...a, address: editInlineAddrValue } : a) }
+                                setEditSelectedCustomer(updated)
+                                if (editForm.customer_address === addr.address) setEditForm(prev => ({ ...prev, customer_address: editInlineAddrValue }))
+                                setEditInlineAddrId(null)
+                              } else if (e.key === 'Escape') setEditInlineAddrId(null)
+                            }}
+                          />
+                          <button type="button" onClick={async () => {
+                            await updateAddress(editSelectedCustomer.id, addr.id, { address: editInlineAddrValue })
+                            const updated = { ...editSelectedCustomer, addresses: editSelectedCustomer.addresses.map(a => a.id === addr.id ? { ...a, address: editInlineAddrValue } : a) }
+                            setEditSelectedCustomer(updated)
+                            if (editForm.customer_address === addr.address) setEditForm(prev => ({ ...prev, customer_address: editInlineAddrValue }))
+                            setEditInlineAddrId(null)
+                          }} className="flex-shrink-0 text-green-600 hover:text-green-700"><Check className="w-3.5 h-3.5" /></button>
+                          <button type="button" onClick={() => setEditInlineAddrId(null)} className="flex-shrink-0 text-gray-400 hover:text-gray-600"><XCircle className="w-3.5 h-3.5" /></button>
+                        </>
+                      ) : (
+                        <>
+                          <span className="flex-1 text-sm text-gray-700 truncate">{addr.address}</span>
+                          <button type="button" onClick={() => { setEditInlineAddrId(addr.id); setEditInlineAddrValue(addr.address) }} className="flex-shrink-0 text-gray-400 hover:text-indigo-600"><Pencil className="w-3 h-3" /></button>
+                          <button type="button" onClick={async () => {
+                            await deleteAddress(editSelectedCustomer.id, addr.id)
+                            const updated = { ...editSelectedCustomer, addresses: editSelectedCustomer.addresses.filter(a => a.id !== addr.id) }
+                            setEditSelectedCustomer(updated)
+                            if (editForm.customer_address === addr.address) {
+                              const next = updated.addresses[0]
+                              setEditForm(prev => ({ ...prev, customer_address: next ? next.address : '' }))
+                            }
+                          }} className="flex-shrink-0 text-gray-400 hover:text-red-500"><Trash2 className="w-3 h-3" /></button>
+                        </>
+                      )}
+                    </div>
+                  ))}
+
+                  {/* Tambah alamat baru inline */}
+                  {editSelectedCustomer && (
+                    editInlineAddingNew ? (
+                      <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg border border-dashed border-indigo-400 bg-indigo-50">
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-600 flex-shrink-0">Baru</span>
+                        <input
+                          className="flex-1 text-sm border-0 bg-transparent outline-none min-w-0 text-gray-800"
+                          placeholder="Ketik alamat baru..."
+                          autoFocus
+                          value={editInlineAddrValue}
+                          onChange={e => setEditInlineAddrValue(e.target.value)}
+                          onKeyDown={async (e) => {
+                            if (e.key === 'Enter' && editInlineAddrValue.trim()) {
+                              const newA = { label: `Alamat ${editSelectedCustomer.addresses.length + 1}`, address: editInlineAddrValue.trim(), is_default: editSelectedCustomer.addresses.length === 0, notes: '' }
+                              await addAddress(editSelectedCustomer.id, newA)
+                              setEditSelectedCustomer({ ...editSelectedCustomer, addresses: [...editSelectedCustomer.addresses, { ...newA, id: 'temp' }] })
+                              setEditForm(prev => ({ ...prev, customer_address: editInlineAddrValue.trim() }))
+                              setEditInlineAddrValue('')
+                              setEditInlineAddingNew(false)
+                            } else if (e.key === 'Escape') { setEditInlineAddrValue(''); setEditInlineAddingNew(false) }
+                          }}
+                        />
+                        <button type="button" onClick={async () => {
+                          if (!editInlineAddrValue.trim()) return
+                          const newA = { label: `Alamat ${editSelectedCustomer.addresses.length + 1}`, address: editInlineAddrValue.trim(), is_default: editSelectedCustomer.addresses.length === 0, notes: '' }
+                          await addAddress(editSelectedCustomer.id, newA)
+                          setEditSelectedCustomer({ ...editSelectedCustomer, addresses: [...editSelectedCustomer.addresses, { ...newA, id: 'temp' }] })
+                          setEditForm(prev => ({ ...prev, customer_address: editInlineAddrValue.trim() }))
+                          setEditInlineAddrValue('')
+                          setEditInlineAddingNew(false)
+                        }} className="flex-shrink-0 text-green-600 hover:text-green-700"><Check className="w-3.5 h-3.5" /></button>
+                        <button type="button" onClick={() => { setEditInlineAddrValue(''); setEditInlineAddingNew(false) }} className="flex-shrink-0 text-gray-400 hover:text-gray-600"><XCircle className="w-3.5 h-3.5" /></button>
+                      </div>
+                    ) : (
+                      <button type="button" onClick={() => { setEditInlineAddingNew(true); setEditInlineAddrValue('') }}
+                        className="text-xs text-indigo-600 font-medium hover:text-indigo-700 flex items-center gap-1">
+                        <Plus className="w-3 h-3" /> Tambah Alamat Baru
+                      </button>
+                    )
+                  )}
+
+                  {/* Fallback: konsumen belum di master → textarea bebas */}
+                  {!editSelectedCustomer && (
+                    <Textarea
+                      value={editForm.customer_address}
+                      onChange={e => setEditForm(prev => ({ ...prev, customer_address: e.target.value }))}
+                      rows={2}
+                    />
+                  )}
+                </div>
                 <div className="grid grid-cols-2 gap-2">
                   <Input
                     label="Fee"

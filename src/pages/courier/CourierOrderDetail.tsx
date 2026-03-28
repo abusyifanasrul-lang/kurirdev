@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, MapPin, Navigation, CheckCircle, Package, Truck, Plus, X, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Phone, MapPin, Navigation, CheckCircle, Package, Truck, Plus, X, AlertTriangle, Pencil, Trash2, Check, XCircle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/utils/cn';
 import { useOrderStore } from '@/stores/useOrderStore';
@@ -37,7 +37,7 @@ export function CourierOrderDetail() {
   const isSuspended = liveUser?.is_active === false;
   const { commission_rate, commission_threshold, courier_instructions } = useSettingsStore();
   const commissionRate = commission_rate;
-  const { findByPhone, addAddress, upsertCustomer } = useCustomerStore();
+  const { findByPhone, addAddress, updateAddress, deleteAddress, upsertCustomer } = useCustomerStore();
 
   useEffect(() => {
     if (!id) return
@@ -70,6 +70,12 @@ export function CourierOrderDetail() {
   const [editName, setEditName] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [editAddress, setEditAddress] = useState('');
+  // Inline address picker state for courier
+  const [courierAddrCustomer, setCourierAddrCustomer] = useState<ReturnType<typeof findByPhone>>(undefined)
+  const [courierInlineEditId, setCourierInlineEditId] = useState<string | null>(null)
+  const [courierInlineEditValue, setCourierInlineEditValue] = useState('')
+  const [courierInlineAddingNew, setCourierInlineAddingNew] = useState(false)
+  const [courierInlineNewValue, setCourierInlineNewValue] = useState('')
 
   const isLocked = order?.status === 'delivered' || isSuspended;
 
@@ -82,6 +88,11 @@ export function CourierOrderDetail() {
       setEditName(order.customer_name || '');
       setEditPhone(order.customer_phone || '');
       setEditAddress(order.customer_address || '');
+      // Seed address picker from local customer store
+      const found = findByPhone(order.customer_phone || '')
+      setCourierAddrCustomer(found)
+      setCourierInlineEditId(null)
+      setCourierInlineAddingNew(false)
     }
   }, [order, showItemForm, editCustomer]);
 
@@ -395,14 +406,125 @@ export function CourierOrderDetail() {
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400"
                 />
               </div>
+              {/* Alamat — inline picker jika ada data customer */}
               <div>
                 <label className="text-xs font-medium text-gray-500 mb-1 block">Alamat Pengiriman</label>
-                <textarea
-                  value={editAddress}
-                  onChange={(e) => setEditAddress(e.target.value)}
-                  rows={2}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400 resize-none"
-                />
+
+                {courierAddrCustomer ? (
+                  <div className="space-y-1">
+                    {courierAddrCustomer.addresses.map((addr) => (
+                      <div
+                        key={addr.id}
+                        className={`flex items-center gap-2 px-2 py-1.5 rounded-lg border transition-colors ${
+                          courierInlineEditId === addr.id
+                            ? 'border-indigo-400 bg-indigo-50'
+                            : editAddress === addr.address
+                            ? 'border-indigo-300 bg-indigo-50/40'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <button type="button" onClick={() => {
+                          if (courierInlineEditId !== addr.id) setEditAddress(addr.address)
+                        }} className="flex-shrink-0">
+                          <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${
+                            editAddress === addr.address && courierInlineEditId !== addr.id ? 'border-indigo-500' : 'border-gray-300'
+                          }`}>
+                            {editAddress === addr.address && courierInlineEditId !== addr.id && (
+                              <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                            )}
+                          </div>
+                        </button>
+                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded flex-shrink-0 ${
+                          addr.is_default ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500'
+                        }`}>{addr.label}</span>
+
+                        {courierInlineEditId === addr.id ? (
+                          <>
+                            <input
+                              className="flex-1 text-sm border-0 bg-transparent outline-none min-w-0 text-gray-800"
+                              value={courierInlineEditValue}
+                              autoFocus
+                              onChange={e => setCourierInlineEditValue(e.target.value)}
+                              onKeyDown={async (e) => {
+                                if (e.key === 'Enter') {
+                                  await updateAddress(courierAddrCustomer.id, addr.id, { address: courierInlineEditValue })
+                                  const updated = { ...courierAddrCustomer, addresses: courierAddrCustomer.addresses.map(a => a.id === addr.id ? { ...a, address: courierInlineEditValue } : a) }
+                                  setCourierAddrCustomer(updated)
+                                  if (editAddress === addr.address) setEditAddress(courierInlineEditValue)
+                                  setCourierInlineEditId(null)
+                                } else if (e.key === 'Escape') setCourierInlineEditId(null)
+                              }}
+                            />
+                            <button type="button" onClick={async () => {
+                              await updateAddress(courierAddrCustomer.id, addr.id, { address: courierInlineEditValue })
+                              const updated = { ...courierAddrCustomer, addresses: courierAddrCustomer.addresses.map(a => a.id === addr.id ? { ...a, address: courierInlineEditValue } : a) }
+                              setCourierAddrCustomer(updated)
+                              if (editAddress === addr.address) setEditAddress(courierInlineEditValue)
+                              setCourierInlineEditId(null)
+                            }} className="flex-shrink-0 text-green-600"><Check className="w-3.5 h-3.5" /></button>
+                            <button type="button" onClick={() => setCourierInlineEditId(null)} className="flex-shrink-0 text-gray-400"><XCircle className="w-3.5 h-3.5" /></button>
+                          </>
+                        ) : (
+                          <>
+                            <span className="flex-1 text-sm text-gray-700 truncate">{addr.address}</span>
+                            <button type="button" onClick={() => { setCourierInlineEditId(addr.id); setCourierInlineEditValue(addr.address) }} className="flex-shrink-0 text-gray-400 hover:text-indigo-600"><Pencil className="w-3 h-3" /></button>
+                            <button type="button" onClick={async () => {
+                              await deleteAddress(courierAddrCustomer.id, addr.id)
+                              const updated = { ...courierAddrCustomer, addresses: courierAddrCustomer.addresses.filter(a => a.id !== addr.id) }
+                              setCourierAddrCustomer(updated)
+                              if (editAddress === addr.address) setEditAddress(updated.addresses[0]?.address || '')
+                            }} className="flex-shrink-0 text-gray-400 hover:text-red-500"><Trash2 className="w-3 h-3" /></button>
+                          </>
+                        )}
+                      </div>
+                    ))}
+
+                    {/* Tambah alamat baru */}
+                    {courierInlineAddingNew ? (
+                      <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg border border-dashed border-indigo-400 bg-indigo-50">
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-600 flex-shrink-0">Baru</span>
+                        <input
+                          className="flex-1 text-sm border-0 bg-transparent outline-none min-w-0 text-gray-800"
+                          placeholder="Ketik alamat baru..."
+                          autoFocus
+                          value={courierInlineNewValue}
+                          onChange={e => setCourierInlineNewValue(e.target.value)}
+                          onKeyDown={async (e) => {
+                            if (e.key === 'Enter' && courierInlineNewValue.trim()) {
+                              const newA = { label: `Alamat ${courierAddrCustomer.addresses.length + 1}`, address: courierInlineNewValue.trim(), is_default: courierAddrCustomer.addresses.length === 0, notes: '' }
+                              await addAddress(courierAddrCustomer.id, newA)
+                              setCourierAddrCustomer({ ...courierAddrCustomer, addresses: [...courierAddrCustomer.addresses, { ...newA, id: 'temp' }] })
+                              setEditAddress(courierInlineNewValue.trim())
+                              setCourierInlineNewValue(''); setCourierInlineAddingNew(false)
+                            } else if (e.key === 'Escape') { setCourierInlineNewValue(''); setCourierInlineAddingNew(false) }
+                          }}
+                        />
+                        <button type="button" onClick={async () => {
+                          if (!courierInlineNewValue.trim()) return
+                          const newA = { label: `Alamat ${courierAddrCustomer.addresses.length + 1}`, address: courierInlineNewValue.trim(), is_default: courierAddrCustomer.addresses.length === 0, notes: '' }
+                          await addAddress(courierAddrCustomer.id, newA)
+                          setCourierAddrCustomer({ ...courierAddrCustomer, addresses: [...courierAddrCustomer.addresses, { ...newA, id: 'temp' }] })
+                          setEditAddress(courierInlineNewValue.trim())
+                          setCourierInlineNewValue(''); setCourierInlineAddingNew(false)
+                        }} className="flex-shrink-0 text-green-600"><Check className="w-3.5 h-3.5" /></button>
+                        <button type="button" onClick={() => { setCourierInlineNewValue(''); setCourierInlineAddingNew(false) }} className="flex-shrink-0 text-gray-400"><XCircle className="w-3.5 h-3.5" /></button>
+                      </div>
+                    ) : (
+                      <button type="button" onClick={() => setCourierInlineAddingNew(true)}
+                        className="text-xs text-indigo-600 font-medium flex items-center gap-1">
+                        <Plus className="w-3 h-3" /> Tambah Alamat Baru
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  // Fallback: konsumen belum di master customer
+                  <textarea
+                    value={editAddress}
+                    onChange={(e) => setEditAddress(e.target.value)}
+                    rows={2}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400 resize-none"
+                  />
+                )}
               </div>
               <button
                 onClick={handleSimpanCustomer}
