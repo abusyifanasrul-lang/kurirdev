@@ -1039,7 +1039,14 @@ export function Orders() {
       <Modal isOpen={isCreateModalOpen} onClose={() => { setIsCreateModalOpen(false); setFormError(''); setIsCreating(false); }} title="New Order" size="lg">
         <div className="space-y-4">
           <div className="relative">
-            <Input label="Customer Name" value={newOrder.customer_name} onChange={e => handleCustomerNameChange(e.target.value)} />
+            <Input 
+              label="Customer Name" 
+              id="search_customer_name_field"
+              name="search_customer_name_field"
+              value={newOrder.customer_name} 
+              onChange={e => handleCustomerNameChange(e.target.value)} 
+              autoComplete="off"
+            />
             {showSuggestions && customerSuggestions.length > 0 && (
               <div className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1">
                 {customerSuggestions.map((c, i) => (
@@ -1052,7 +1059,14 @@ export function Orders() {
               </div>
             )}
           </div>
-          <Input label="Phone Number" value={newOrder.customer_phone} onChange={e => setNewOrder({ ...newOrder, customer_phone: e.target.value })} />
+          <Input 
+            label="Phone Number" 
+            id="search_customer_phone_field"
+            name="search_customer_phone_field"
+            value={newOrder.customer_phone} 
+            onChange={e => setNewOrder({ ...newOrder, customer_phone: e.target.value })} 
+            autoComplete="off"
+          />
           
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700">Address</label>
