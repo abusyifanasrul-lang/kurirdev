@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Plus, Download, Search, ArrowUpDown, ChevronUp, ChevronDown, Printer } from 'lucide-react';
+import { Plus, Download, Search, ArrowUpDown, ChevronUp, ChevronDown, Printer, Pencil, Trash2, Check, XCircle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { sendPushNotification } from '@/services/notificationService';
 import {
@@ -61,7 +61,7 @@ type SortField = 'order_number' | 'customer_name' | 'status' | 'courier_id' | 'p
 type SortOrder = 'asc' | 'desc';
 
 export function Orders() {
-  const { orders, historicalOrders, fetchOrdersByDateRange, addOrder, assignCourier, cancelOrder, generateOrderId, updateOrder } = useOrderStore();
+  const { orders, fetchOrdersByDateRange, addOrder, assignCourier, cancelOrder, generateOrderId, updateOrder } = useOrderStore();
   const { rotateQueue } = useCourierStore();
   const { users } = useUserStore();
   const { addNotification } = useNotificationStore();
@@ -172,16 +172,21 @@ export function Orders() {
 
   const [cancelReason, setCancelReason] = useState('');
 
-  const { search: searchCustomers, upsertCustomer, addAddress, findByPhone } = useCustomerStore()
+  const { search: searchCustomers, upsertCustomer, addAddress, updateAddress, deleteAddress, findByPhone } = useCustomerStore()
   const [customerSuggestions, setCustomerSuggestions] = useState<Customer[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
-  const [showNewAddressInput, setShowNewAddressInput] = useState(false)
+  // showNewAddressInput reserved - unused after inline-edit refactor
+  const [inlineEditAddrId, setInlineEditAddrId] = useState<string | null>(null)
+  const [inlineEditValue, setInlineEditValue] = useState('')
+  const [inlineNewAddr, setInlineNewAddr] = useState('')
+  const [inlineAddingNew, setInlineAddingNew] = useState(false)
 
   const handleCustomerNameChange = (value: string) => {
     setNewOrder({ ...newOrder, customer_name: value })
     setSelectedCustomer(null)
-    setShowNewAddressInput(false)
+    setInlineEditAddrId(null)
+    setInlineAddingNew(false)
     if (value.length >= 2) {
       setCustomerSuggestions(searchCustomers(value).slice(0, 5))
       setShowSuggestions(true)
@@ -199,7 +204,8 @@ export function Orders() {
       customer_address: defaultAddress ? defaultAddress.address : '' 
     })
     setSelectedCustomer(customer)
-    setShowNewAddressInput(false)
+    setInlineEditAddrId(null)
+    setInlineAddingNew(false)
     setShowSuggestions(false)
   }
 
@@ -986,8 +992,7 @@ export function Orders() {
                               const courierName = users.find(
                                 u => u.id === order.courier_id
                               )?.name || 'Kurir'
-                              setBulkSettleCourierId(
-                                order.courier_id || '')
+                              setBulkSettleCourierName(courierName)
                               setBulkSettleCourierName(courierName)
 
                               // Load unpaid dari IndexedDB
@@ -1068,64 +1073,172 @@ export function Orders() {
             autoComplete="off"
           />
           
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <label className="block text-sm font-medium text-gray-700">Address</label>
-            {selectedCustomer && selectedCustomer.addresses.length > 0 && !showNewAddressInput ? (
-              <div className="space-y-2">
-                <div className="grid gap-2">
-                  {selectedCustomer.addresses.map((addr) => (
-                    <div 
-                      key={addr.id}
-                      onClick={() => setNewOrder({ ...newOrder, customer_address: addr.address })}
-                      className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                        newOrder.customer_address === addr.address 
-                          ? 'border-indigo-500 bg-indigo-50/50' 
-                          : 'border-gray-200 hover:border-indigo-300'
-                      }`}
-                    >
-                      <div className="flex justify-between items-start">
-                        <span className="font-medium text-sm text-gray-900">{addr.label}</span>
-                        {addr.is_default && <span className="text-[10px] bg-indigo-100 text-indigo-700 font-semibold px-2 py-0.5 rounded-full">Default</span>}
-                      </div>
-                      <p className="text-sm text-gray-600 mt-1">{addr.address}</p>
-                    </div>
-                  ))}
-                </div>
-                <button 
-                  type="button" 
+
+            {/* List alamat tersimpan — satu baris per item */}
+            {selectedCustomer && selectedCustomer.addresses.map((addr) => (
+              <div
+                key={addr.id}
+                className={`flex items-center gap-2 px-2 py-1.5 rounded-lg border transition-colors ${
+                  inlineEditAddrId === addr.id
+                    ? 'border-indigo-400 bg-indigo-50'
+                    : newOrder.customer_address === addr.address
+                    ? 'border-indigo-300 bg-indigo-50/40'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                {/* Radio pilih */}
+                <button
+                  type="button"
                   onClick={() => {
-                    setShowNewAddressInput(true)
-                    setNewOrder({ ...newOrder, customer_address: '' })
+                    if (inlineEditAddrId !== addr.id) {
+                      setNewOrder({ ...newOrder, customer_address: addr.address })
+                    }
                   }}
-                  className="text-xs text-indigo-600 font-medium hover:text-indigo-700 flex items-center gap-1 mt-1"
+                  className="flex-shrink-0"
+                >
+                  <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${
+                    newOrder.customer_address === addr.address && inlineEditAddrId !== addr.id
+                      ? 'border-indigo-500'
+                      : 'border-gray-300'
+                  }`}>
+                    {newOrder.customer_address === addr.address && inlineEditAddrId !== addr.id && (
+                      <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                    )}
+                  </div>
+                </button>
+
+                {/* Label badge */}
+                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded flex-shrink-0 ${
+                  addr.is_default ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500'
+                }`}>{addr.label}</span>
+
+                {/* Inline edit mode */}
+                {inlineEditAddrId === addr.id ? (
+                  <>
+                    <input
+                      className="flex-1 text-sm border-0 bg-transparent outline-none focus:outline-none text-gray-800 min-w-0"
+                      value={inlineEditValue}
+                      autoFocus
+                      onChange={e => setInlineEditValue(e.target.value)}
+                      onKeyDown={async (e) => {
+                        if (e.key === 'Enter') {
+                          await updateAddress(selectedCustomer.id, addr.id, { address: inlineEditValue })
+                          const updated = { ...selectedCustomer, addresses: selectedCustomer.addresses.map(a => a.id === addr.id ? { ...a, address: inlineEditValue } : a) }
+                          setSelectedCustomer(updated)
+                          if (newOrder.customer_address === addr.address) setNewOrder({ ...newOrder, customer_address: inlineEditValue })
+                          setInlineEditAddrId(null)
+                        } else if (e.key === 'Escape') {
+                          setInlineEditAddrId(null)
+                        }
+                      }}
+                    />
+                    <button type="button" onClick={async () => {
+                      await updateAddress(selectedCustomer.id, addr.id, { address: inlineEditValue })
+                      const updated = { ...selectedCustomer, addresses: selectedCustomer.addresses.map(a => a.id === addr.id ? { ...a, address: inlineEditValue } : a) }
+                      setSelectedCustomer(updated)
+                      if (newOrder.customer_address === addr.address) setNewOrder({ ...newOrder, customer_address: inlineEditValue })
+                      setInlineEditAddrId(null)
+                    }} className="flex-shrink-0 text-green-600 hover:text-green-700">
+                      <Check className="w-3.5 h-3.5" />
+                    </button>
+                    <button type="button" onClick={() => setInlineEditAddrId(null)} className="flex-shrink-0 text-gray-400 hover:text-gray-600">
+                      <XCircle className="w-3.5 h-3.5" />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span className="flex-1 text-sm text-gray-700 truncate">{addr.address}</span>
+                    {/* Tombol edit */}
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setInlineEditAddrId(addr.id); setInlineEditValue(addr.address) }}
+                      className="flex-shrink-0 text-gray-400 hover:text-indigo-600 transition-colors"
+                    >
+                      <Pencil className="w-3 h-3" />
+                    </button>
+                    {/* Tombol hapus */}
+                    <button
+                      type="button"
+                      onClick={async (e) => {
+                        e.stopPropagation()
+                        await deleteAddress(selectedCustomer.id, addr.id)
+                        const updated = { ...selectedCustomer, addresses: selectedCustomer.addresses.filter(a => a.id !== addr.id) }
+                        setSelectedCustomer(updated)
+                        if (newOrder.customer_address === addr.address) {
+                          const next = updated.addresses[0]
+                          setNewOrder({ ...newOrder, customer_address: next ? next.address : '' })
+                        }
+                      }}
+                      className="flex-shrink-0 text-gray-400 hover:text-red-500 transition-colors"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </>
+                )}
+              </div>
+            ))}
+
+            {/* Inline tambah alamat baru */}
+            {selectedCustomer && (
+              inlineAddingNew ? (
+                <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg border border-dashed border-indigo-400 bg-indigo-50">
+                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-600 flex-shrink-0">Baru</span>
+                  <input
+                    className="flex-1 text-sm border-0 bg-transparent outline-none focus:outline-none text-gray-800 min-w-0"
+                    placeholder="Ketik alamat baru..."
+                    value={inlineNewAddr}
+                    autoFocus
+                    onChange={e => setInlineNewAddr(e.target.value)}
+                    onKeyDown={async (e) => {
+                      if (e.key === 'Enter' && inlineNewAddr.trim()) {
+                        const newAddrObj = { label: `Alamat ${selectedCustomer.addresses.length + 1}`, address: inlineNewAddr.trim(), is_default: selectedCustomer.addresses.length === 0, notes: '' }
+                        await addAddress(selectedCustomer.id, newAddrObj)
+                        const withNew = { ...selectedCustomer, addresses: [...selectedCustomer.addresses, { ...newAddrObj, id: 'temp' }] }
+                        setSelectedCustomer(withNew)
+                        setNewOrder({ ...newOrder, customer_address: inlineNewAddr.trim() })
+                        setInlineNewAddr('')
+                        setInlineAddingNew(false)
+                      } else if (e.key === 'Escape') {
+                        setInlineNewAddr(''); setInlineAddingNew(false)
+                      }
+                    }}
+                  />
+                  <button type="button" onClick={async () => {
+                    if (!inlineNewAddr.trim()) return
+                    const newAddrObj = { label: `Alamat ${selectedCustomer.addresses.length + 1}`, address: inlineNewAddr.trim(), is_default: selectedCustomer.addresses.length === 0, notes: '' }
+                    await addAddress(selectedCustomer.id, newAddrObj)
+                    const withNew = { ...selectedCustomer, addresses: [...selectedCustomer.addresses, { ...newAddrObj, id: 'temp' }] }
+                    setSelectedCustomer(withNew)
+                    setNewOrder({ ...newOrder, customer_address: inlineNewAddr.trim() })
+                    setInlineNewAddr(''); setInlineAddingNew(false)
+                  }} className="flex-shrink-0 text-green-600 hover:text-green-700">
+                    <Check className="w-3.5 h-3.5" />
+                  </button>
+                  <button type="button" onClick={() => { setInlineNewAddr(''); setInlineAddingNew(false) }} className="flex-shrink-0 text-gray-400 hover:text-gray-600">
+                    <XCircle className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setInlineAddingNew(true)}
+                  className="text-xs text-indigo-600 font-medium hover:text-indigo-700 flex items-center gap-1 mt-0.5"
                 >
                   <Plus className="w-3 h-3" />
                   Tambah Alamat Baru
                 </button>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <Textarea 
-                  placeholder="Masukkan alamat lengkap..."
-                  value={newOrder.customer_address} 
-                  onChange={e => setNewOrder({ ...newOrder, customer_address: e.target.value })} 
-                />
-                {(selectedCustomer && selectedCustomer.addresses.length > 0) && showNewAddressInput && (
-                   <button 
-                     type="button" 
-                     onClick={() => {
-                        setShowNewAddressInput(false)
-                        // Reset payload address to selected customer's default/first
-                        const defaultAddress = selectedCustomer.addresses.find(a => a.is_default) || selectedCustomer.addresses[0]
-                        setNewOrder({ ...newOrder, customer_address: defaultAddress ? defaultAddress.address : '' })
-                     }}
-                     className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
-                   >
-                     <ArrowUpDown className="w-3 h-3" />
-                     Pilih dari alamat tersimpan
-                   </button>
-                )}
-              </div>
+              )
+            )}
+
+            {/* Input alamat untuk konsumen baru (tanpa selected customer) */}
+            {!selectedCustomer && (
+              <Textarea
+                placeholder="Masukkan alamat lengkap..."
+                value={newOrder.customer_address}
+                onChange={e => setNewOrder({ ...newOrder, customer_address: e.target.value })}
+              />
             )}
           </div>
           <div className="space-y-2">
