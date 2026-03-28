@@ -31,6 +31,7 @@ import { useOrderStore } from '@/stores/useOrderStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { calcAdminEarning } from '@/lib/calcEarning';
+import type { Order, OrderStatus } from '@/types';
 
 const COLORS = ['#F59E0B', '#3B82F6', '#8B5CF6', '#06B6D4', '#22C55E', '#EF4444'];
 
@@ -384,7 +385,7 @@ export function Dashboard() {
                       style={{ backgroundColor: COLORS[index % COLORS.length] }}
                     />
                     <span className="text-xs text-gray-600 capitalize">
-                      {getStatusLabel(item.status)}: {item.count}
+                      {getStatusLabel(item.status as OrderStatus)}: {item.count}
                     </span>
                   </div>
                 ))}

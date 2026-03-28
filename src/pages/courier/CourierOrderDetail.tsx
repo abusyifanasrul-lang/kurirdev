@@ -9,6 +9,7 @@ import { useSessionStore } from '@/stores/useSessionStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { OrderStatus } from '@/types';
 import { useSettingsStore } from '@/stores/useSettingsStore';
+import { useCustomerStore } from '@/stores/useCustomerStore';
 
 // Format angka ke tampilan Rupiah: 20000 → "Rp 20.000"
 const formatRupiah = (val: string): string => {
@@ -35,7 +36,8 @@ export function CourierOrderDetail() {
   const liveUser = users.find(u => u.id === currentUser?.id);
   const isSuspended = liveUser?.is_active === false;
   const { commission_rate, commission_threshold, courier_instructions } = useSettingsStore();
-    const commissionRate = commission_rate;
+  const commissionRate = commission_rate;
+  const { findByPhone, addAddress, upsertCustomer } = useCustomerStore();
 
   useEffect(() => {
     if (!id) return
@@ -154,7 +156,35 @@ export function CourierOrderDetail() {
   };
 
   const handleSimpanCustomer = async () => {
-    if (!editName || !editPhone || !editAddress) return;
+    if (!editName || !editPhone || !editAddress || !order) return;
+    
+    // Sync ke master customer store
+    const existing = findByPhone(editPhone);
+    if (existing) {
+      const addrExists = existing.addresses.find(a => a.address.toLowerCase() === editAddress.toLowerCase());
+      if (!addrExists) {
+        await addAddress(existing.id, {
+          label: `Koreksi Kurir ${existing.addresses.length + 1}`,
+          address: editAddress,
+          is_default: existing.addresses.length === 0,
+          notes: ''
+        });
+      }
+    } else {
+      await upsertCustomer({
+        name: editName,
+        phone: editPhone,
+        addresses: [{
+          id: crypto.randomUUID(),
+          label: 'Alamat Utama',
+          address: editAddress,
+          is_default: true,
+          notes: ''
+        }]
+      });
+    }
+
+    // Update dokumen order
     await updateOrder(order.id, {
       customer_name: editName,
       customer_phone: editPhone,

@@ -1,5 +1,5 @@
 import Dexie, { Table } from 'dexie'
-import { Order } from '@/types'
+import { Order, Customer } from '@/types'
 
 // Helper function untuk konversi UTC ke local timezone
 function getLocalDateStr(
@@ -32,6 +32,7 @@ interface DBMeta {
   last_sync?: string
   sync_completed?: boolean
   last_delta_sync?: string
+  last_customer_sync?: string
 }
 
 const META_KEY = 'kurirdev_db_meta'
@@ -84,10 +85,15 @@ function saveUserSyncStatus(
 
 class KurirDevDB extends Dexie {
   orders!: Table<Order & { _date: string }>
+  customers!: Table<Customer>
   constructor() {
     super('KurirDevCache')
     this.version(1).stores({
       orders: 'id, _date, courier_id, status, created_at'
+    })
+    this.version(2).stores({
+      orders: 'id, _date, courier_id, status, created_at',
+      customers: 'id, name, phone, updated_at'
     })
   }
 }
@@ -456,14 +462,32 @@ export async function getOrdersByDateRange(
           ({ _date, ...o }: any) => o
         ))
       }
-      req.onerror = (e) => {
+      req.onerror = (e: any) => {
         console.error('Query error:', e)
         reject(req.error)
       }
     }
-    request.onerror = (e) => {
+    request.onerror = (e: any) => {
       console.error('DB open error:', e)
       reject(request.error)
     }
   })
+}
+
+// --- Customer Cache Methods ---
+
+export async function upsertCustomerLocal(customer: Customer): Promise<void> {
+  await localDB.customers.put(customer)
+}
+
+export async function getAllCustomersLocal(): Promise<Customer[]> {
+  return await localDB.customers.toArray()
+}
+
+export function saveCustomerSyncTime(timeIso?: string): void {
+  saveMeta({ last_customer_sync: timeIso || new Date().toISOString() })
+}
+
+export function getCustomerSyncTime(): string | null {
+  return getMeta().last_customer_sync || null
 }

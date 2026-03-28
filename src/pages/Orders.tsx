@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Plus, Download, Search, ArrowUpDown, ChevronUp, ChevronDown, Printer, X } from 'lucide-react';
+import { Plus, Download, Search, ArrowUpDown, ChevronUp, ChevronDown, Printer } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { sendPushNotification } from '@/services/notificationService';
 import {
@@ -34,8 +34,9 @@ import { useCourierStore } from '@/stores/useCourierStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
+import { useCustomerStore } from '@/stores/useCustomerStore';
 import { useAuth } from '@/context/AuthContext';
-import type { Order, CreateOrderPayload, PaymentStatus } from '@/types';
+import type { Order, CreateOrderPayload, PaymentStatus, Customer } from '@/types';
 
 const statusOptions = [
   { value: '', label: 'Semua Status' },
@@ -74,7 +75,6 @@ export function Orders() {
 
   // Bulk Settlement State
   const [showBulkSettle, setShowBulkSettle] = useState(false)
-  const [bulkSettleCourierId, setBulkSettleCourierId] = useState<string>('')
   const [bulkSettleCourierName, setBulkSettleCourierName] = useState<string>('')
   const [bulkUnpaidOrders, setBulkUnpaidOrders] = useState<Order[]>([])
 
@@ -171,33 +171,35 @@ export function Orders() {
   });
 
   const [cancelReason, setCancelReason] = useState('');
-  const [nameSuggestions, setNameSuggestions] = useState<Array<{ name: string, phone: string, address: string }>>([])
+
+  const { search: searchCustomers, upsertCustomer, addAddress, findByPhone } = useCustomerStore()
+  const [customerSuggestions, setCustomerSuggestions] = useState<Customer[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
+  const [showNewAddressInput, setShowNewAddressInput] = useState(false)
 
   const handleCustomerNameChange = (value: string) => {
     setNewOrder({ ...newOrder, customer_name: value })
+    setSelectedCustomer(null)
+    setShowNewAddressInput(false)
     if (value.length >= 2) {
-      const unique = new Map()
-      orders
-        .filter(o => o.customer_name.toLowerCase().includes(value.toLowerCase()))
-        .forEach(o => {
-          if (!unique.has(o.customer_name)) {
-            unique.set(o.customer_name, {
-              name: o.customer_name,
-              phone: o.customer_phone,
-              address: o.customer_address
-            })
-          }
-        })
-      setNameSuggestions(Array.from(unique.values()).slice(0, 5))
+      setCustomerSuggestions(searchCustomers(value).slice(0, 5))
       setShowSuggestions(true)
     } else {
       setShowSuggestions(false)
     }
   }
 
-  const handleSelectCustomer = (customer: { name: string, phone: string, address: string }) => {
-    setNewOrder({ ...newOrder, customer_name: customer.name, customer_phone: customer.phone, customer_address: customer.address })
+  const handleSelectCustomer = (customer: Customer) => {
+    const defaultAddress = customer.addresses.find(a => a.is_default) || customer.addresses[0]
+    setNewOrder({ 
+      ...newOrder, 
+      customer_name: customer.name, 
+      customer_phone: customer.phone, 
+      customer_address: defaultAddress ? defaultAddress.address : '' 
+    })
+    setSelectedCustomer(customer)
+    setShowNewAddressInput(false)
     setShowSuggestions(false)
   }
 
@@ -209,7 +211,7 @@ export function Orders() {
 
         // Gunakan _date local untuk perbandingan
         // bukan created_at UTC
-        const orderLocalDate = order._date ||
+        const orderLocalDate = (order as any)._date ||
           (() => {
             const d = new Date(order.created_at)
             const y = d.getFullYear()
@@ -354,10 +356,52 @@ export function Orders() {
     if (isCreating) return;
     setIsCreating(true);
     try {
+      // Upsert Customer logic local state & firebase
+      let customerId = selectedCustomer?.id;
+      const existingCustomer = findByPhone(newOrder.customer_phone);
+
+      if (existingCustomer) {
+        customerId = existingCustomer.id;
+        const existingAddress = existingCustomer.addresses.find(a => a.address === newOrder.customer_address);
+        if (!existingAddress) {
+          await addAddress(customerId, {
+            label: `Alamat ${existingCustomer.addresses.length + 1}`,
+            address: newOrder.customer_address,
+            is_default: existingCustomer.addresses.length === 0,
+            notes: ''
+          });
+        }
+      } else {
+        const newCustomer = await upsertCustomer({
+          name: newOrder.customer_name,
+          phone: newOrder.customer_phone,
+          addresses: [{
+            id: crypto.randomUUID(),
+            label: 'Alamat Utama',
+            address: newOrder.customer_address,
+            is_default: true,
+            notes: ''
+          }]
+        });
+        customerId = newCustomer.id;
+      }
+
+      // Re-fetch customer to get exact address ID if newly added
+      let activeAddressId = '';
+      const latestCustomer = useCustomerStore.getState().findByPhone(newOrder.customer_phone);
+      if (latestCustomer) {
+        const matchingAddr = latestCustomer.addresses.find(a => a.address === newOrder.customer_address);
+        if (matchingAddr) {
+          activeAddressId = matchingAddr.id;
+        }
+      }
+
       const orderData: Order = {
         id: crypto.randomUUID(),
         order_number: generateOrderId(),
         ...newOrder,
+        customer_id: customerId,
+        customer_address_id: activeAddressId,
         total_fee: newOrder.total_fee || 0,
         status: 'pending',
         payment_status: newOrder.payment_status || 'unpaid',
@@ -996,9 +1040,9 @@ export function Orders() {
         <div className="space-y-4">
           <div className="relative">
             <Input label="Customer Name" value={newOrder.customer_name} onChange={e => handleCustomerNameChange(e.target.value)} />
-            {showSuggestions && nameSuggestions.length > 0 && (
+            {showSuggestions && customerSuggestions.length > 0 && (
               <div className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1">
-                {nameSuggestions.map((c, i) => (
+                {customerSuggestions.map((c, i) => (
                   <button key={i} type="button" onClick={() => handleSelectCustomer(c)}
                     className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b last:border-0">
                     <p className="font-medium text-gray-900">{c.name}</p>
@@ -1009,7 +1053,67 @@ export function Orders() {
             )}
           </div>
           <Input label="Phone Number" value={newOrder.customer_phone} onChange={e => setNewOrder({ ...newOrder, customer_phone: e.target.value })} />
-          <Textarea label="Address" value={newOrder.customer_address} onChange={e => setNewOrder({ ...newOrder, customer_address: e.target.value })} />
+          
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">Address</label>
+            {selectedCustomer && selectedCustomer.addresses.length > 0 && !showNewAddressInput ? (
+              <div className="space-y-2">
+                <div className="grid gap-2">
+                  {selectedCustomer.addresses.map((addr) => (
+                    <div 
+                      key={addr.id}
+                      onClick={() => setNewOrder({ ...newOrder, customer_address: addr.address })}
+                      className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                        newOrder.customer_address === addr.address 
+                          ? 'border-indigo-500 bg-indigo-50/50' 
+                          : 'border-gray-200 hover:border-indigo-300'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <span className="font-medium text-sm text-gray-900">{addr.label}</span>
+                        {addr.is_default && <span className="text-[10px] bg-indigo-100 text-indigo-700 font-semibold px-2 py-0.5 rounded-full">Default</span>}
+                      </div>
+                      <p className="text-sm text-gray-600 mt-1">{addr.address}</p>
+                    </div>
+                  ))}
+                </div>
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    setShowNewAddressInput(true)
+                    setNewOrder({ ...newOrder, customer_address: '' })
+                  }}
+                  className="text-xs text-indigo-600 font-medium hover:text-indigo-700 flex items-center gap-1 mt-1"
+                >
+                  <Plus className="w-3 h-3" />
+                  Tambah Alamat Baru
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Textarea 
+                  placeholder="Masukkan alamat lengkap..."
+                  value={newOrder.customer_address} 
+                  onChange={e => setNewOrder({ ...newOrder, customer_address: e.target.value })} 
+                />
+                {(selectedCustomer && selectedCustomer.addresses.length > 0) && showNewAddressInput && (
+                   <button 
+                     type="button" 
+                     onClick={() => {
+                        setShowNewAddressInput(false)
+                        // Reset payload address to selected customer's default/first
+                        const defaultAddress = selectedCustomer.addresses.find(a => a.is_default) || selectedCustomer.addresses[0]
+                        setNewOrder({ ...newOrder, customer_address: defaultAddress ? defaultAddress.address : '' })
+                     }}
+                     className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
+                   >
+                     <ArrowUpDown className="w-3 h-3" />
+                     Pilih dari alamat tersimpan
+                   </button>
+                )}
+              </div>
+            )}
+          </div>
           <div className="space-y-2">
             <p className="text-sm font-medium text-gray-700">Daftar Barang (opsional)</p>
             {(newOrder.items || []).length > 0 && (

@@ -21,6 +21,25 @@ export interface User {
   unpaid_amount?: number;
 }
 
+export interface CustomerAddress {
+  id: string;
+  label: string;
+  address: string;
+  is_default: boolean;
+  notes?: string;
+}
+
+export interface Customer {
+  id: string;
+  name: string;
+  phone: string;
+  addresses: CustomerAddress[];
+  created_at: string;
+  updated_at: string;
+  order_count?: number;
+  last_order_at?: string;
+}
+
 export interface AuthState {
   user: User | null;
   token: string | null;
@@ -38,6 +57,8 @@ export interface Order {
   customer_name: string;
   customer_phone: string;
   customer_address: string;
+  customer_id?: string;
+  customer_address_id?: string;
   courier_id?: string;
   assigned_at?: string;
   status: OrderStatus;
@@ -79,6 +100,8 @@ export interface CreateOrderPayload {
   customer_name: string;
   customer_phone: string;
   customer_address: string;
+  customer_id?: string;
+  customer_address_id?: string;
   total_fee?: number;
   payment_status?: PaymentStatus;
   estimated_delivery_time?: string;

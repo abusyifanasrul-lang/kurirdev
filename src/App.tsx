@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { useOrderStore } from '@/stores/useOrderStore';
+import { useCustomerStore } from '@/stores/useCustomerStore';
+import { getCustomerSyncTime } from '@/lib/orderCache';
 import { onForegroundMessage, refreshFCMToken } from '@/lib/fcm';
 import { AppListeners } from '@/components/AppListeners';
 
@@ -168,7 +170,19 @@ function PWAUpdateBanner() {
 }
 
 export function App() {
+  const loadFromLocal = useCustomerStore(s => s.loadFromLocal);
+  const syncFromFirestore = useCustomerStore(s => s.syncFromFirestore);
+
   useEffect(() => {
+    // 0. Load customers (local first, delta sync daily)
+    loadFromLocal().then(() => {
+      const lastSyncRaw = getCustomerSyncTime();
+      const lastSyncDate = lastSyncRaw ? new Date(lastSyncRaw).toDateString() : null;
+      const today = new Date().toDateString();
+      if (lastSyncDate !== today) {
+        syncFromFirestore();
+      }
+    });
 
     // 1. Refresh FCM Token if logged in as courier (Tahap 4)
     const currentUserStr = sessionStorage.getItem('user-session');
