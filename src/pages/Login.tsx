@@ -9,6 +9,9 @@ import { useUserStore } from '@/stores/useUserStore';
 import type { User as UserType, UserRole } from '@/types';
 import { useSessionStore } from '@/stores/useSessionStore';
 import { requestFCMPermission } from '@/lib/fcm';
+import { auth, db } from '@/lib/firebase';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 
 type RoleType = UserRole | null;
 
@@ -104,9 +107,6 @@ export function Login() {
 
   useUserStore();
   const { login: sessionLogin } = useSessionStore();
-  const { auth, db } = require('@/lib/firebase'); // Use import if possible, but keeping consistent with existing style
-  const { signInWithEmailAndPassword, signOut } = require('firebase/auth');
-  const { collection, query, where, getDocs, limit } = require('firebase/firestore');
 
   // Clean up old non-role-aware key
   useEffect(() => {
