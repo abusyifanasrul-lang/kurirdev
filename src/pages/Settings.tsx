@@ -180,12 +180,12 @@ export function Settings() {
   };
 
   const handleAddUser = () => {
-    // Normal admin add
     const userData: UserType = {
       id: crypto.randomUUID(),
       name: newUser.name,
       email: newUser.email,
-      role: 'admin', // Enforce admin
+      password: newUser.password,
+      role: 'admin',
       phone: newUser.phone,
       is_active: true,
       created_at: new Date().toISOString(),
