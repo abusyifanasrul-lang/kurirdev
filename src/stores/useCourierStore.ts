@@ -2,6 +2,8 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { Courier } from '@/types'
 import { useUserStore } from './useUserStore'
+import { secondaryAuth } from '@/lib/firebase'
+import { createUserWithEmailAndPassword } from 'firebase/auth'
 
 interface CourierState {
   _storeVersion: string
@@ -82,6 +84,21 @@ export const useCourierStore = create<CourierState>()(
       }),
 
       addCourier: async (courier) => {
+        // 1. Create in Firebase Auth using secondaryAuth (security-first)
+        try {
+          if (!courier.password) throw new Error('Password is required for new courier');
+          await createUserWithEmailAndPassword(secondaryAuth, courier.email, courier.password);
+          console.log(`✅ Courier Auth account created: ${courier.email}`);
+        } catch (error: any) {
+          if (error.code === 'auth/email-already-in-use') {
+            console.log('ℹ️ Auth account already exists, continuing...');
+          } else {
+            console.error('❌ Failed to create courier Auth account:', error);
+            throw new Error(`Gagal membuat akun login kurir: ${error.message}`);
+          }
+        }
+
+        // 2. Add to Local State and Firestore
         set((state) => ({ queue: [...state.queue, courier] }))
         await useUserStore.getState().addUser(courier)
       },

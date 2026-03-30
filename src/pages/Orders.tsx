@@ -68,6 +68,9 @@ export function Orders() {
   const { user } = useAuth(); // Current admin user
   const { commission_rate, commission_threshold, courier_instructions } = useSettingsStore();
 
+  const isOpsAdmin = user?.role === 'admin_kurir' || user?.role === 'admin';
+  const isFinance = user?.role === 'finance' || user?.role === 'admin' || user?.role === 'owner';
+
   // Cache State
   const [cacheStatus, setCacheStatus] = useState<'idle' | 'checking' | 'missing' | 'loading' | 'loaded'>('idle')
   const [missingDates, setMissingDates] = useState<string[]>([])
@@ -805,9 +808,11 @@ export function Orders() {
             <Button variant="outline" leftIcon={<Download className="h-4 w-4" />} onClick={handleExportCSV}>
               Export CSV
             </Button>
-            <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => setIsCreateModalOpen(true)}>
-              New Order
-            </Button>
+            {isOpsAdmin && (
+              <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => setIsCreateModalOpen(true)}>
+                New Order
+              </Button>
+            )}
           </div>
         }
       />
@@ -995,28 +1000,29 @@ export function Orders() {
                         order.payment_status === 'paid' ? (
                           <Badge variant="success">Sudah Setor</Badge>
                         ) : (
-                          <Button
-                            size="sm"
-                            className="bg-orange-500 hover:bg-orange-600 text-white h-7 px-2 text-[10px]"
-                            onClick={async (e) => {
-                              e.stopPropagation()
-                              const courierName = users.find(
-                                u => u.id === order.courier_id
-                              )?.name || 'Kurir'
-                              setBulkSettleCourierName(courierName)
-                              setBulkSettleCourierName(courierName)
-
-                              // Load unpaid dari IndexedDB
-                              const unpaid =
-                                await getUnpaidOrdersByCourier(
-                                  order.courier_id || ''
-                                )
-                              setBulkUnpaidOrders(unpaid)
-                              setShowBulkSettle(true)
-                            }}
-                          >
-                            Konfirmasi Setor
-                          </Button>
+                          isFinance && (
+                            <Button
+                              size="sm"
+                              className="bg-orange-500 hover:bg-orange-600 text-white h-7 px-2 text-[10px]"
+                              onClick={async (e) => {
+                                e.stopPropagation()
+                                const courierName = users.find(
+                                  u => u.id === order.courier_id
+                                )?.name || 'Kurir'
+                                setBulkSettleCourierName(courierName)
+                                
+                                // Load unpaid dari IndexedDB
+                                const unpaid =
+                                  await getUnpaidOrdersByCourier(
+                                    order.courier_id || ''
+                                  )
+                                setBulkUnpaidOrders(unpaid)
+                                setShowBulkSettle(true)
+                              }}
+                            >
+                              Konfirmasi Setor
+                            </Button>
+                          )
                         )
                       ) : (
                         <Badge variant="default" className="text-gray-400 border-gray-200">Belum Setor</Badge>
@@ -1356,8 +1362,8 @@ export function Orders() {
               <Badge variant={getStatusBadgeVariant(selectedOrder.status)} size="sm">{getStatusLabel(selectedOrder.status)}</Badge>
             </div>
 
-            {/* Customer + Payment — compact info */}
-            {selectedOrder.status === 'pending' ? (
+            {/* Customer + Payment — form if pending AND ops admin, otherwise read-only */}
+            {selectedOrder.status === 'pending' && isOpsAdmin ? (
               <div className="space-y-2">
                 <div className="grid grid-cols-2 gap-2">
                   <Input
@@ -1650,9 +1656,8 @@ export function Orders() {
               </div>
             )}
 
-            {/* Courier Assignment — compact */}
             <div className="border-t pt-2">
-              {selectedOrder.status === 'pending' ? (
+              {selectedOrder.status === 'pending' && isOpsAdmin ? (
                 <div className="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100">
                   <label className="block text-xs font-medium text-indigo-900 mb-1.5">Assign Courier (FIFO)</label>
                   <div className="flex gap-2">
@@ -1769,17 +1774,19 @@ export function Orders() {
               </div>
             )}
 
-            {/* Actions — compact */}
             <div className="flex justify-between items-center pt-2 border-t">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                onClick={() => setIsCancelModalOpen(true)}
-                disabled={['delivered', 'cancelled'].includes(selectedOrder.status)}
-              >
-                Cancel Order
-              </Button>
+              {isOpsAdmin && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                  onClick={() => setIsCancelModalOpen(true)}
+                  disabled={['delivered', 'cancelled'].includes(selectedOrder.status)}
+                >
+                  Cancel Order
+                </Button>
+              )}
+              {!isOpsAdmin && <div />}
               <div className="flex gap-2">
                 <Button
                   variant="outline"

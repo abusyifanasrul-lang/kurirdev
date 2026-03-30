@@ -1,0 +1,102 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isAdminKurir() {
+      return getUserRole() == 'admin_kurir';
+    }
+
+    function isOwner() {
+      return getUserRole() == 'owner';
+    }
+
+    function isFinance() {
+      return getUserRole() == 'finance';
+    }
+
+    function isAdmin() {
+      // Legacy 'admin' role has full access
+      let role = getUserRole();
+      return role == 'admin' || role == 'admin_kurir' || role == 'owner' || role == 'finance';
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isAuthenticated() && isAdmin();
+
+      allow create: if isAuthenticated() && (
+        isOwner() || getUserRole() == 'admin' || 
+        (isAdminKurir() && request.resource.data.role == 'courier')
+      );
+
+      allow update: if isAuthenticated() && (
+        // User can update their own profile (limited fields)
+        request.auth.uid == userId
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['name', 'phone', 'password', 'updated_at', 'fcm_token', 'is_online', 'courier_status', 'off_reason'])
+      ) || (
+        // Owner and legacy admin can update everything
+        isOwner() || getUserRole() == 'admin'
+      ) || (
+        // Admin kurir can update courier data
+        isAdminKurir() && resource.data.role == 'courier'
+      );
+
+      allow delete: if false; // Soft delete only
+    }
+
+    // Orders collection
+    match /orders/{orderId} {
+      allow read: if isAuthenticated() && isAdmin();
+      
+      // Also allow couriers to read their assigned orders
+      allow read: if isAuthenticated() && getUserRole() == 'courier' 
+                  && (resource.data.courier_id == request.auth.uid || resource.data.status == 'pending');
+
+      allow create: if isAuthenticated() && (isAdminKurir() || getUserRole() == 'admin');
+
+      allow update: if isAuthenticated() && (
+        isAdminKurir() || getUserRole() == 'admin' || // Full update for ops admin
+        (isFinance() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['payment_status', 'updated_at'])) ||
+        (getUserRole() == 'courier' && resource.data.courier_id == request.auth.uid) // Courier updates status
+      );
+
+      allow delete: if false;
+    }
+
+    // Tracking logs
+    match /tracking_logs/{logId} {
+      allow read: if isAuthenticated() && (isAdmin() || getUserRole() == 'courier');
+      allow create: if isAuthenticated() && (isAdminKurir() || getUserRole() == 'admin' || getUserRole() == 'courier');
+      allow update, delete: if false;
+    }
+
+    // Customers collection
+    match /customers/{customerId} {
+      allow read: if isAuthenticated() && isAdmin();
+      allow write: if isAuthenticated() && (isAdminKurir() || getUserRole() == 'admin' || isOwner());
+    }
+
+    // Settings
+    match /settings/{settingId} {
+      allow read: if isAuthenticated() && (isAdmin() || getUserRole() == 'courier');
+      allow write: if isAuthenticated() && (isOwner() || getUserRole() == 'admin');
+    }
+
+    // Notifications
+    match /notifications/{notifId} {
+      allow read: if isAuthenticated() && (isAdmin() || resource.data.user_id == request.auth.uid);
+      allow create: if isAuthenticated() && (isAdminKurir() || getUserRole() == 'admin');
+      allow update: if isAuthenticated() && resource.data.user_id == request.auth.uid;
+      allow delete: if false;
+    }
+  }
+}

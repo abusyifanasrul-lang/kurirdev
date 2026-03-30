@@ -12,9 +12,13 @@ import {
   Menu,
   X,
   ChevronRight,
+  DollarSign,
+  TrendingUp,
+  BarChart3,
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/context/AuthContext';
+import { getRoleLabel, getRoleBadgeColor } from '@/types';
 
 interface NavItem {
   path: string;
@@ -23,23 +27,53 @@ interface NavItem {
   end?: boolean;
 }
 
-const navItems: NavItem[] = [
-  { path: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { path: '/admin/orders', label: 'Orders', icon: Package },
-  { path: '/admin/couriers', label: 'Couriers', icon: Users },
-  { path: '/admin/reports', label: 'Reports', icon: FileText },
-  { path: '/admin/notifications', label: 'Notifications', icon: Bell },
-  { path: '/admin/settings', label: 'Settings', icon: Settings },
-];
+// Navigation per role
+const roleNavItems: Record<string, NavItem[]> = {
+  admin_kurir: [
+    { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true },
+    { path: '/admin/orders', label: 'Orders', icon: Package },
+    { path: '/admin/couriers', label: 'Couriers', icon: Users },
+    { path: '/admin/notifications', label: 'Notifikasi', icon: Bell },
+    { path: '/admin/settings', label: 'Settings', icon: Settings },
+  ],
+  owner: [
+    { path: '/admin/overview', label: 'Overview', icon: BarChart3, end: true },
+    { path: '/admin/dashboard', label: 'Operasional', icon: LayoutDashboard },
+    { path: '/admin/couriers', label: 'Couriers', icon: Users },
+    { path: '/admin/reports', label: 'Reports', icon: FileText },
+    { path: '/admin/finance', label: 'Keuangan', icon: DollarSign },
+    { path: '/admin/settings', label: 'Settings', icon: Settings },
+  ],
+  finance: [
+    { path: '/admin/finance', label: 'Dashboard', icon: DollarSign, end: true },
+    { path: '/admin/finance/penagihan', label: 'Penagihan', icon: TrendingUp },
+    { path: '/admin/finance/analisa', label: 'Analisa', icon: BarChart3 },
+    { path: '/admin/orders', label: 'Orders', icon: Package },
+    { path: '/admin/reports', label: 'Reports', icon: FileText },
+  ],
+  // Legacy admin = owner
+  admin: [
+    { path: '/admin/overview', label: 'Overview', icon: BarChart3, end: true },
+    { path: '/admin/dashboard', label: 'Operasional', icon: LayoutDashboard },
+    { path: '/admin/orders', label: 'Orders', icon: Package },
+    { path: '/admin/couriers', label: 'Couriers', icon: Users },
+    { path: '/admin/reports', label: 'Reports', icon: FileText },
+    { path: '/admin/notifications', label: 'Notifikasi', icon: Bell },
+    { path: '/admin/finance', label: 'Keuangan', icon: DollarSign },
+    { path: '/admin/settings', label: 'Settings', icon: Settings },
+  ],
+};
 
 export function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
 
-
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+
+  // Get nav items for current role
+  const navItems = user ? (roleNavItems[user.role] || roleNavItems.admin_kurir) : roleNavItems.admin_kurir;
 
   // Check screen size
   useEffect(() => {
@@ -82,6 +116,9 @@ export function Layout() {
     return currentItem?.label || 'Dashboard';
   };
 
+  const roleLabel = user ? getRoleLabel(user.role) : '';
+  const roleBadgeColor = user ? getRoleBadgeColor(user.role) : '';
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Mobile Header */}
@@ -101,8 +138,10 @@ export function Layout() {
           <span className="font-bold">KurirDev</span>
         </div>
 
-        <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center font-semibold">
-          {user?.name?.charAt(0).toUpperCase() || 'A'}
+        <div className="flex items-center gap-2">
+          <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", roleBadgeColor)}>
+            {roleLabel}
+          </span>
         </div>
       </header>
 
@@ -135,7 +174,11 @@ export function Layout() {
             </div>
             <div>
               <h1 className="font-bold text-lg">KurirDev</h1>
-              <p className="text-xs text-gray-400">Admin Dashboard</p>
+              <div className="flex items-center gap-2">
+                <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", roleBadgeColor)}>
+                  {roleLabel}
+                </span>
+              </div>
             </div>
           </div>
           {/* Close button for mobile */}
@@ -176,7 +219,12 @@ export function Layout() {
         {/* User section */}
         <div className="p-4 border-t border-gray-800">
           <div className="flex items-center gap-3 px-4 py-3">
-            <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center font-semibold">
+            <div className={cn(
+              "w-10 h-10 rounded-full flex items-center justify-center font-semibold",
+              user?.role === 'finance' ? 'bg-amber-600' :
+              user?.role === 'owner' ? 'bg-emerald-600' :
+              'bg-indigo-600'
+            )}>
               {user?.name?.charAt(0).toUpperCase() || 'A'}
             </div>
             <div className="flex-1 min-w-0">
@@ -198,13 +246,13 @@ export function Layout() {
       <main
         className={cn(
           'min-h-screen transition-all duration-300',
-          'pt-16 lg:pt-0', // Add padding for mobile header
-          'lg:ml-64' // Margin for sidebar on desktop
+          'pt-16 lg:pt-0',
+          'lg:ml-64'
         )}
       >
         {/* Breadcrumb / Page indicator for mobile */}
         <div className="lg:hidden bg-white border-b border-gray-200 px-4 py-3">
-          <p className="text-sm text-gray-500">Admin</p>
+          <p className="text-xs text-gray-400">{roleLabel}</p>
           <h2 className="font-semibold text-gray-900">{getCurrentPageTitle()}</h2>
         </div>
 

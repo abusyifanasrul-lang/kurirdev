@@ -18,6 +18,7 @@ import {
   moveToLocalDB,
   checkIntegrity
 } from '@/lib/orderCache'
+import { seedFirestore } from '@/lib/firebaseSeeder'
 import { Order } from '@/types'
 
 // Fungsi fetch helper di luar komponen AppListeners
@@ -109,6 +110,9 @@ export function AppListeners() {
     // Semua user butuh subscribeUsers
     // (untuk cek suspended, data kurir, dll)
     const unsubUsers = subscribeUsers()
+
+    // Seed Firestore users if empty
+    seedFirestore().catch(console.error)
 
     setTimeout(() => {
       initQueuePositions().catch(console.error)

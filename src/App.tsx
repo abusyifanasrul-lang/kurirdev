@@ -7,6 +7,7 @@ import { useCustomerStore } from '@/stores/useCustomerStore';
 import { getCustomerSyncTime } from '@/lib/orderCache';
 import { onForegroundMessage, refreshFCMToken } from '@/lib/fcm';
 import { AppListeners } from '@/components/AppListeners';
+import type { UserRole } from '@/types';
 
 // Loading Skeleton
 function LoadingScreen() {
@@ -32,6 +33,14 @@ const Reports = lazy(() => import('@/pages/Reports').then(m => ({ default: m.Rep
 const Notifications = lazy(() => import('@/pages/Notifications').then(m => ({ default: m.Notifications })));
 const Settings = lazy(() => import('@/pages/Settings').then(m => ({ default: m.Settings })));
 
+// Finance Pages
+const FinanceDashboard = lazy(() => import('@/pages/finance/FinanceDashboard').then(m => ({ default: m.FinanceDashboard })));
+const FinancePenagihan = lazy(() => import('@/pages/finance/FinancePenagihan').then(m => ({ default: m.FinancePenagihan })));
+const FinanceAnalisa = lazy(() => import('@/pages/finance/FinanceAnalisa').then(m => ({ default: m.FinanceAnalisa })));
+
+// Owner Pages
+const OwnerOverview = lazy(() => import('@/pages/owner/OwnerOverview').then(m => ({ default: m.OwnerOverview })));
+
 // Courier Pages
 const CourierLayout = lazy(() => import('@/pages/courier/CourierLayout').then(m => ({ default: m.CourierLayout })));
 const CourierDashboard = lazy(() => import('@/pages/courier/CourierDashboard').then(m => ({ default: m.CourierDashboard })));
@@ -42,33 +51,41 @@ const CourierEarnings = lazy(() => import('@/pages/courier/CourierEarnings').the
 const CourierProfile = lazy(() => import('@/pages/courier/CourierProfile').then(m => ({ default: m.CourierProfile })));
 const CourierNotifications = lazy(() => import('@/pages/courier/CourierNotifications').then(m => ({ default: m.CourierNotifications })));
 
+// All admin sub-roles
+const ADMIN_ROLES: UserRole[] = ['admin', 'admin_kurir', 'owner', 'finance'];
+
 // Protected Route Component
-function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles: string[] }) {
+function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles: UserRole[] }) {
   const { user, isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) return <LoadingScreen />;
 
-  // Strictly respect the store state
   if (!isAuthenticated || !user) {
     return <Navigate to="/" replace />;
   }
 
-  // Strictly check roles but stay on current page if unauthorized (or simple redirect to root)
-  if (!allowedRoles.includes(user.role)) {
+  // Check role - 'admin' legacy role can access everything
+  const hasAccess = allowedRoles.includes(user.role) || (user.role === 'admin' && allowedRoles.some(r => ADMIN_ROLES.includes(r)));
+  if (!hasAccess) {
     return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;
 }
 
-// Auth Check - Redirect to dashboard if logged in
+// Auth Check - Redirect to appropriate dashboard if logged in
 function AuthRoute({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) return <LoadingScreen />;
 
   if (isAuthenticated && user) {
-    return <Navigate to={user.role === 'admin' ? '/admin' : '/courier'} replace />;
+    // Redirect based on role
+    if (user.role === 'courier') return <Navigate to="/courier" replace />;
+    if (user.role === 'finance') return <Navigate to="/admin/finance" replace />;
+    if (user.role === 'owner') return <Navigate to="/admin/overview" replace />;
+    // admin_kurir, admin
+    return <Navigate to="/admin/dashboard" replace />;
   }
 
   return <>{children}</>;
@@ -84,9 +101,7 @@ function PWAUpdateBanner() {
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
 
-    // Use the existing registration instead of re-registering
     navigator.serviceWorker.ready.then(reg => {
-      // Listen for updates on the current registration
       reg.addEventListener('updatefound', () => {
         const newWorker = reg.installing;
         if (newWorker) {
@@ -98,7 +113,6 @@ function PWAUpdateBanner() {
         }
       });
 
-      // Also check if there's already a waiting worker
       if (reg.waiting) {
         setWaitingWorker(reg.waiting);
       }
@@ -108,20 +122,18 @@ function PWAUpdateBanner() {
   useEffect(() => {
     if (!waitingWorker) return;
 
-    // Don't show if recently dismissed (6-hour cooldown)
     const dismissedAt = localStorage.getItem('pwa_update_dismissed');
     if (dismissedAt) {
       const hoursAgo = (Date.now() - Number(dismissedAt)) / (1000 * 60 * 60);
       if (hoursAgo < 6) return;
     }
 
-    // Strict condition: Check if courier is actively processing an order
     if (isAuthenticated && user?.role === 'courier') {
       const activeOrders = activeOrdersByCourier.filter(
         (o) => o.status === 'picked_up' || o.status === 'in_transit'
       );
       if (activeOrders.length > 0) {
-        return; // Suppress banner to prevent disrupting active operations
+        return;
       }
     }
 
@@ -136,7 +148,7 @@ function PWAUpdateBanner() {
     localStorage.removeItem('pwa_update_dismissed');
     setTimeout(() => {
       window.location.reload();
-    }, 500); // Give SW short breathing room to swap
+    }, 500);
   };
 
   const handleDismiss = () => {
@@ -174,7 +186,6 @@ export function App() {
   const syncFromFirestore = useCustomerStore(s => s.syncFromFirestore);
 
   useEffect(() => {
-    // 0. Load customers (local first, delta sync daily)
     loadFromLocal().then(() => {
       const lastSyncRaw = getCustomerSyncTime();
       const lastSyncDate = lastSyncRaw ? new Date(lastSyncRaw).toDateString() : null;
@@ -184,7 +195,6 @@ export function App() {
       }
     });
 
-    // 1. Refresh FCM Token if logged in as courier (Tahap 4)
     const currentUserStr = sessionStorage.getItem('user-session');
     let fcmRefreshInterval: ReturnType<typeof setInterval> | null = null;
     if (currentUserStr) {
@@ -192,9 +202,7 @@ export function App() {
         const sessionData = JSON.parse(currentUserStr);
         const currentUser = sessionData.state?.user;
         if (currentUser?.role === 'courier') {
-          // Refresh sekali saat app dibuka
           refreshFCMToken(currentUser.id).catch(console.error);
-          // Refresh periodik setiap 7 hari (dalam milidetik)
           const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
           fcmRefreshInterval = setInterval(() => {
             refreshFCMToken(currentUser.id).catch(console.error);
@@ -205,10 +213,8 @@ export function App() {
       }
     }
 
-    // 2. Listen for foreground notifications (Tahap 3)
     const unsubFCM = onForegroundMessage((payload) => {
       console.log('🔔 Foreground message received:', payload);
-      // Check notification first, fallback to data (for data-only messages)
       const notifData = payload.notification || payload.data || {};
       const title = notifData.title;
       const body = notifData.body;
@@ -246,21 +252,92 @@ export function App() {
                 }
               />
 
-              {/* Admin Routes */}
+              {/* Admin Routes - accessible by all admin sub-roles */}
               <Route
                 path="/admin"
                 element={
-                  <ProtectedRoute allowedRoles={['admin']}>
+                  <ProtectedRoute allowedRoles={ADMIN_ROLES}>
                     <AdminLayout />
                   </ProtectedRoute>
                 }
               >
-                <Route index element={<Dashboard />} />
+                {/* Dashboard - Admin Kurir focused */}
+                <Route path="dashboard" element={<Dashboard />} />
+
+                {/* Owner Overview */}
+                <Route 
+                  path="overview" 
+                  element={
+                    <ProtectedRoute allowedRoles={['owner', 'admin']}>
+                      <OwnerOverview />
+                    </ProtectedRoute>
+                  } 
+                />
+
+                {/* Orders - Admin Kurir full, others read-only */}
                 <Route path="orders" element={<Orders />} />
+
+                {/* Couriers */}
                 <Route path="couriers" element={<Couriers />} />
-                <Route path="reports" element={<Reports />} />
-                <Route path="notifications" element={<Notifications />} />
-                <Route path="settings" element={<Settings />} />
+
+                {/* Reports - Owner & Finance */}
+                <Route 
+                  path="reports" 
+                  element={
+                    <ProtectedRoute allowedRoles={['owner', 'finance', 'admin']}>
+                      <Reports />
+                    </ProtectedRoute>
+                  } 
+                />
+
+                {/* Notifications - Admin Kurir only */}
+                <Route 
+                  path="notifications" 
+                  element={
+                    <ProtectedRoute allowedRoles={['admin_kurir', 'admin']}>
+                      <Notifications />
+                    </ProtectedRoute>
+                  } 
+                />
+
+                {/* Finance Routes */}
+                <Route 
+                  path="finance" 
+                  element={
+                    <ProtectedRoute allowedRoles={['finance', 'owner', 'admin']}>
+                      <FinanceDashboard />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="finance/penagihan" 
+                  element={
+                    <ProtectedRoute allowedRoles={['finance', 'owner', 'admin']}>
+                      <FinancePenagihan />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="finance/analisa" 
+                  element={
+                    <ProtectedRoute allowedRoles={['finance', 'owner', 'admin']}>
+                      <FinanceAnalisa />
+                    </ProtectedRoute>
+                  } 
+                />
+
+                {/* Settings - Owner only */}
+                <Route 
+                  path="settings" 
+                  element={
+                    <ProtectedRoute allowedRoles={['owner', 'admin']}>
+                      <Settings />
+                    </ProtectedRoute>
+                  } 
+                />
+
+                {/* Default redirect for /admin */}
+                <Route index element={<AdminRedirect />} />
               </Route>
 
               {/* Courier PWA Routes */}
@@ -289,4 +366,19 @@ export function App() {
       </AuthProvider>
     </ThemeProvider>
   );
+}
+
+// Redirect /admin to the appropriate dashboard based on role
+function AdminRedirect() {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/" replace />;
+
+  switch (user.role) {
+    case 'finance':
+      return <Navigate to="/admin/finance" replace />;
+    case 'owner':
+      return <Navigate to="/admin/overview" replace />;
+    default:
+      return <Navigate to="/admin/dashboard" replace />;
+  }
 }

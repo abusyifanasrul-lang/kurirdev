@@ -1,0 +1,441 @@
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import {
+  Search, CheckCircle, AlertTriangle, Clock,
+  ChevronDown, ChevronUp
+} from 'lucide-react';
+import { format, parseISO, differenceInDays } from 'date-fns';
+import { Header } from '@/components/layout/Header';
+import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
+import { Badge } from '@/components/ui/Badge';
+import {
+  Table, TableHead, TableBody, TableRow, TableHeader, TableCell
+} from '@/components/ui/Table';
+import { useOrderStore } from '@/stores/useOrderStore';
+import { useUserStore } from '@/stores/useUserStore';
+import { useSettingsStore } from '@/stores/useSettingsStore';
+import { calcCourierEarning } from '@/lib/calcEarning';
+import { getOrdersForWeek, markAsPaidInLocalDB } from '@/lib/orderCache';
+import { cn } from '@/utils/cn';
+import type { Order } from '@/types';
+
+type FilterType = 'unpaid' | 'paid' | 'all';
+
+export function FinancePenagihan() {
+  const { orders, updateOrder } = useOrderStore();
+  const { users } = useUserStore();
+  const { commission_rate, commission_threshold } = useSettingsStore();
+  const earningSettings = { commission_rate, commission_threshold };
+
+  const couriers = users.filter(u => u.role === 'courier');
+  const [weekOrders, setWeekOrders] = useState<Order[]>([]);
+  const [filter, setFilter] = useState<FilterType>('unpaid');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [expandedCourier, setExpandedCourier] = useState<string | null>(null);
+
+  // Confirm modal state
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmCourier, setConfirmCourier] = useState<{ id: string; name: string; orders: Order[] } | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
+  const [confirmSuccess, setConfirmSuccess] = useState(false);
+
+  const loadWeekOrders = useCallback(async () => {
+    const dbOrders = await getOrdersForWeek();
+    setWeekOrders(dbOrders);
+  }, []);
+
+  useEffect(() => {
+    loadWeekOrders();
+    window.addEventListener('indexeddb-synced', loadWeekOrders);
+    return () => window.removeEventListener('indexeddb-synced', loadWeekOrders);
+  }, [loadWeekOrders]);
+
+  const allOrders = useMemo(() => {
+    const map = new Map<string, Order>();
+    weekOrders.forEach(o => map.set(o.id, o));
+    orders.forEach(o => map.set(o.id, o));
+    return Array.from(map.values());
+  }, [weekOrders, orders]);
+
+  const deliveredOrders = useMemo(() =>
+    allOrders.filter(o => o.status === 'delivered'),
+    [allOrders]
+  );
+
+  // Group by courier
+  const courierSummary = useMemo(() => {
+    const result: Array<{
+      courierId: string;
+      courierName: string;
+      totalEarning: number;
+      unpaidOrders: Order[];
+      paidOrders: Order[];
+      lastSettlement: string | null;
+    }> = [];
+
+    for (const courier of couriers) {
+      const courierDelivered = deliveredOrders.filter(o => o.courier_id === courier.id);
+      const unpaid = courierDelivered.filter(o => o.payment_status === 'unpaid');
+      const paid = courierDelivered.filter(o => o.payment_status === 'paid');
+
+      const totalEarning = unpaid.reduce((sum, o) =>
+        sum + calcCourierEarning(o, earningSettings), 0
+      );
+
+      // Filter based on search
+      if (searchQuery && !courier.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+        continue;
+      }
+
+      // Filter based on payment status
+      if (filter === 'unpaid' && unpaid.length === 0) continue;
+      if (filter === 'paid' && (paid.length === 0 || unpaid.length > 0)) continue;
+
+      result.push({
+        courierId: courier.id,
+        courierName: courier.name,
+        totalEarning,
+        unpaidOrders: unpaid.sort((a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        ),
+        paidOrders: paid.sort((a, b) =>
+          new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+        ).slice(0, 5),
+        lastSettlement: paid.length > 0 ? paid[0].updated_at : null,
+      });
+    }
+
+    return result.sort((a, b) => b.totalEarning - a.totalEarning);
+  }, [deliveredOrders, couriers, filter, searchQuery]);
+
+  const totalUnpaid = courierSummary.reduce((sum, c) => sum + c.totalEarning, 0);
+  const totalUnpaidOrders = courierSummary.reduce((sum, c) => sum + c.unpaidOrders.length, 0);
+
+  const handleConfirmSettlement = (courierId: string, courierName: string, orders: Order[]) => {
+    setConfirmCourier({ id: courierId, name: courierName, orders });
+    setShowConfirmModal(true);
+    setConfirmSuccess(false);
+  };
+
+  const processSettlement = async () => {
+    if (!confirmCourier) return;
+    setConfirmLoading(true);
+
+    try {
+      for (const order of confirmCourier.orders) {
+        await updateOrder(order.id, { payment_status: 'paid' });
+        await markAsPaidInLocalDB(order.id);
+      }
+      setConfirmSuccess(true);
+      setTimeout(() => {
+        setShowConfirmModal(false);
+        setConfirmCourier(null);
+        loadWeekOrders();
+      }, 1500);
+    } catch (err) {
+      console.error('Settlement error:', err);
+    } finally {
+      setConfirmLoading(false);
+    }
+  };
+
+  const formatCurrency = (val: number) =>
+    new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
+
+  const getAgingBadge = (dateStr: string) => {
+    const days = differenceInDays(new Date(), parseISO(dateStr));
+    if (days <= 3) return { label: `${days} hari`, className: 'bg-green-100 text-green-700' };
+    if (days <= 7) return { label: `${days} hari`, className: 'bg-amber-100 text-amber-700' };
+    return { label: `${days} hari`, className: 'bg-red-100 text-red-700' };
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Header
+        title="Penagihan Setoran"
+        subtitle={`${totalUnpaidOrders} order belum disetor`}
+      />
+
+      <div className="p-4 lg:p-8 space-y-6">
+        {/* Summary Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle className="h-5 w-5 text-amber-600" />
+              <span className="text-sm font-medium text-amber-800">Total Tagihan</span>
+            </div>
+            <p className="text-xl font-bold text-amber-900">{formatCurrency(totalUnpaid)}</p>
+            <p className="text-xs text-amber-600 mt-1">{totalUnpaidOrders} order</p>
+          </div>
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Clock className="h-5 w-5 text-red-600" />
+              <span className="text-sm font-medium text-red-800">Perlu Ditagih</span>
+            </div>
+            <p className="text-xl font-bold text-red-900">
+              {courierSummary.filter(c =>
+                c.unpaidOrders.some(o => differenceInDays(new Date(), parseISO(o.created_at)) > 7)
+              ).length} kurir
+            </p>
+            <p className="text-xs text-red-600 mt-1">Piutang &gt; 7 hari</p>
+          </div>
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4 col-span-2 lg:col-span-1">
+            <div className="flex items-center gap-2 mb-2">
+              <CheckCircle className="h-5 w-5 text-green-600" />
+              <span className="text-sm font-medium text-green-800">Sudah Lunas</span>
+            </div>
+            <p className="text-xl font-bold text-green-900">
+              {couriers.length - courierSummary.filter(c => c.unpaidOrders.length > 0).length}/{couriers.length}
+            </p>
+            <p className="text-xs text-green-600 mt-1">Kurir tanpa tagihan</p>
+          </div>
+        </div>
+
+        {/* Filter & Search */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex bg-white rounded-lg border border-gray-200 p-1">
+            {([
+              { key: 'unpaid', label: 'Belum Lunas' },
+              { key: 'paid', label: 'Sudah Lunas' },
+              { key: 'all', label: 'Semua' },
+            ] as const).map((f) => (
+              <button
+                key={f.key}
+                onClick={() => setFilter(f.key)}
+                className={cn(
+                  "flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors",
+                  filter === f.key
+                    ? 'bg-amber-600 text-white'
+                    : 'text-gray-600 hover:bg-gray-50'
+                )}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari nama kurir..."
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+            />
+          </div>
+        </div>
+
+        {/* Courier Cards */}
+        <div className="space-y-4">
+          {courierSummary.length === 0 ? (
+            <Card>
+              <div className="text-center py-8">
+                <CheckCircle className="h-12 w-12 text-green-400 mx-auto mb-3" />
+                <p className="text-gray-600 font-medium">
+                  {filter === 'unpaid' ? 'Semua tagihan sudah lunas' : 'Tidak ada data'}
+                </p>
+              </div>
+            </Card>
+          ) : (
+            courierSummary.map((courier) => {
+              const isExpanded = expandedCourier === courier.courierId;
+              const hasUnpaid = courier.unpaidOrders.length > 0;
+
+              return (
+                <Card key={courier.courierId} className={cn(
+                  "transition-all",
+                  hasUnpaid && "border-l-4 border-l-amber-400"
+                )}>
+                  {/* Courier Header */}
+                  <div
+                    className="flex items-center justify-between cursor-pointer"
+                    onClick={() => setExpandedCourier(isExpanded ? null : courier.courierId)}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={cn(
+                        "w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg",
+                        hasUnpaid ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'
+                      )}>
+                        {courier.courierName.charAt(0)}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900">{courier.courierName}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          {hasUnpaid ? (
+                            <Badge className="bg-amber-100 text-amber-700">
+                              {courier.unpaidOrders.length} order belum disetor
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-green-100 text-green-700">
+                              Lunas
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      {hasUnpaid && (
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-amber-700">
+                            {formatCurrency(courier.totalEarning)}
+                          </p>
+                        </div>
+                      )}
+                      {hasUnpaid && (
+                        <Button
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleConfirmSettlement(courier.courierId, courier.courierName, courier.unpaidOrders);
+                          }}
+                          className="bg-amber-600 hover:bg-amber-700"
+                        >
+                          Konfirmasi
+                        </Button>
+                      )}
+                      {isExpanded ? (
+                        <ChevronUp className="h-5 w-5 text-gray-400" />
+                      ) : (
+                        <ChevronDown className="h-5 w-5 text-gray-400" />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Expanded Detail */}
+                  {isExpanded && (
+                    <div className="mt-4 pt-4 border-t border-gray-100">
+                      {hasUnpaid && (
+                        <>
+                          <h4 className="text-sm font-semibold text-gray-700 mb-3">Order Belum Disetor</h4>
+                          <div className="overflow-x-auto">
+                            <Table>
+                              <TableHead>
+                                <TableRow>
+                                  <TableHeader>Order</TableHeader>
+                                  <TableHeader>Tanggal</TableHeader>
+                                  <TableHeader>Fee</TableHeader>
+                                  <TableHeader>Earning</TableHeader>
+                                  <TableHeader>Umur</TableHeader>
+                                </TableRow>
+                              </TableHead>
+                              <TableBody>
+                                {courier.unpaidOrders.map((order) => {
+                                  const aging = getAgingBadge(order.created_at);
+                                  return (
+                                    <TableRow key={order.id}>
+                                      <TableCell className="font-medium">{order.order_number}</TableCell>
+                                      <TableCell>{format(parseISO(order.created_at), 'dd MMM yyyy')}</TableCell>
+                                      <TableCell>{formatCurrency(order.total_fee)}</TableCell>
+                                      <TableCell className="font-medium text-amber-700">
+                                        {formatCurrency(calcCourierEarning(order, earningSettings))}
+                                      </TableCell>
+                                      <TableCell>
+                                        <Badge className={aging.className}>{aging.label}</Badge>
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                })}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        </>
+                      )}
+
+                      {courier.paidOrders.length > 0 && (
+                        <>
+                          <h4 className="text-sm font-semibold text-gray-700 mt-4 mb-3">Riwayat Setoran Terakhir</h4>
+                          <div className="space-y-2">
+                            {courier.paidOrders.map((order) => (
+                              <div key={order.id} className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                                <div>
+                                  <p className="text-sm font-medium text-gray-900">{order.order_number}</p>
+                                  <p className="text-xs text-gray-500">
+                                    {format(parseISO(order.updated_at), 'dd MMM yyyy, HH:mm')}
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-sm font-medium text-green-700">
+                                    {formatCurrency(calcCourierEarning(order, earningSettings))}
+                                  </p>
+                                  <CheckCircle className="h-4 w-4 text-green-500 ml-auto" />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </Card>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* Confirm Settlement Modal */}
+      {showConfirmModal && confirmCourier && (
+        <Modal
+          isOpen={showConfirmModal}
+          onClose={() => setShowConfirmModal(false)}
+          title="Konfirmasi Setoran"
+        >
+          {confirmSuccess ? (
+            <div className="text-center py-6">
+              <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
+              <p className="text-lg font-semibold text-gray-900">Setoran Dikonfirmasi!</p>
+              <p className="text-sm text-gray-500 mt-1">
+                {confirmCourier.orders.length} order telah ditandai lunas.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                <p className="font-medium text-amber-900">{confirmCourier.name}</p>
+                <p className="text-2xl font-bold text-amber-700 mt-1">
+                  {formatCurrency(confirmCourier.orders.reduce((sum, o) =>
+                    sum + calcCourierEarning(o, earningSettings), 0
+                  ))}
+                </p>
+                <p className="text-sm text-amber-600">{confirmCourier.orders.length} order</p>
+              </div>
+
+              <div className="max-h-40 overflow-y-auto">
+                {confirmCourier.orders.map((order) => (
+                  <div key={order.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                    <div>
+                      <p className="text-sm font-medium">{order.order_number}</p>
+                      <p className="text-xs text-gray-500">{format(parseISO(order.created_at), 'dd MMM')}</p>
+                    </div>
+                    <p className="text-sm font-medium text-amber-700">
+                      {formatCurrency(calcCourierEarning(order, earningSettings))}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  variant="secondary"
+                  className="flex-1"
+                  onClick={() => setShowConfirmModal(false)}
+                  disabled={confirmLoading}
+                >
+                  Batal
+                </Button>
+                <Button
+                  className="flex-1 bg-amber-600 hover:bg-amber-700"
+                  onClick={processSettlement}
+                  disabled={confirmLoading}
+                >
+                  {confirmLoading ? 'Memproses...' : 'Konfirmasi Setoran'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </Modal>
+      )}
+    </div>
+  );
+}

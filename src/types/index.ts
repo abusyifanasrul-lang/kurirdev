@@ -1,9 +1,37 @@
 // User types
+export type UserRole = 'admin' | 'admin_kurir' | 'owner' | 'finance' | 'courier';
+
+export function isAdminRole(role: UserRole): boolean {
+  return ['admin', 'admin_kurir', 'owner', 'finance'].includes(role);
+}
+
+export function getRoleLabel(role: UserRole): string {
+  const labels: Record<UserRole, string> = {
+    admin: 'Super Admin',
+    admin_kurir: 'Admin Kurir',
+    owner: 'Owner',
+    finance: 'Keuangan',
+    courier: 'Kurir',
+  };
+  return labels[role] || role;
+}
+
+export function getRoleBadgeColor(role: UserRole): string {
+  const colors: Record<UserRole, string> = {
+    admin: 'bg-purple-100 text-purple-700',
+    admin_kurir: 'bg-indigo-100 text-indigo-700',
+    owner: 'bg-emerald-100 text-emerald-700',
+    finance: 'bg-amber-100 text-amber-700',
+    courier: 'bg-blue-100 text-blue-700',
+  };
+  return colors[role] || 'bg-gray-100 text-gray-700';
+}
+
 export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'courier';
+  role: UserRole;
   password?: string;
   phone?: string;
   is_active: boolean;

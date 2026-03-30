@@ -180,6 +180,7 @@ export function Settings() {
   };
 
   const handleAddUser = async () => {
+    setIsLoading(true);
     try {
       const userData: UserType = {
         id: crypto.randomUUID(),
@@ -200,6 +201,8 @@ export function Settings() {
     } catch (error) {
       console.error('Error adding user:', error);
       showMessage('error', 'Failed to add user. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 

@@ -1,6 +1,7 @@
 import { initializeApp, SDK_VERSION } from 'firebase/app'
 import { getFirestore } from 'firebase/firestore'
 import { getMessaging, type Messaging } from 'firebase/messaging'
+import { getAuth } from 'firebase/auth'
 
 console.log('🔑 API Key:', import.meta.env.VITE_FIREBASE_API_KEY?.substring(0, 10) ?? 'UNDEFINED')
 console.log('🔥 Firebase SDK version:', SDK_VERSION)
@@ -15,8 +16,11 @@ const firebaseConfig = {
 }
 
 const app = initializeApp(firebaseConfig)
+const secondaryApp = initializeApp(firebaseConfig, 'SecondaryApp')
 
 export const db = getFirestore(app)
+export const auth = getAuth(app)
+export const secondaryAuth = getAuth(secondaryApp)
 
 // Safe init: getMessaging() throws in unsupported browsers (non-HTTPS, older browsers)
 let _messaging: Messaging | null = null
