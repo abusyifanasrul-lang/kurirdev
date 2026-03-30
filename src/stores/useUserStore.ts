@@ -29,10 +29,11 @@ export const useUserStore = create<UserState>()((set, get) => ({
   addUser: async (user) => {
     const couriers = get().users.filter(u => u.role === 'courier')
     const maxPos = couriers.reduce((max, c) => Math.max(max, (c as any).queue_position ?? 0), 0)
-    await setDoc(doc(db, 'users', user.id), {
-      ...user,
-      queue_position: user.role === 'courier' ? maxPos + 1 : undefined,
-    })
+    const dataToSave: any = { ...user }
+    if (user.role === 'courier') {
+      dataToSave.queue_position = maxPos + 1
+    }
+    await setDoc(doc(db, 'users', user.id), dataToSave)
   },
 
   updateUser: async (id, data) => {
