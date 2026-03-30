@@ -262,7 +262,7 @@ export function Login() {
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div className="text-center p-2 bg-white rounded-lg">
                     <p className="font-medium text-indigo-600">Admin Kurir</p>
-                    <p className="text-gray-400 mt-1">admin@delivery.com</p>
+                    <p className="text-gray-400 mt-1">rina@delivery.com</p>
                     <p className="text-gray-400">admin123</p>
                   </div>
                   <div className="text-center p-2 bg-white rounded-lg">
