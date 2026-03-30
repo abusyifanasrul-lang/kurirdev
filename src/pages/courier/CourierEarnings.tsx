@@ -2,7 +2,6 @@ import { useMemo, useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, TrendingUp, DollarSign, Package, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO, startOfDay, subDays, startOfWeek, isWithinInterval, endOfDay } from 'date-fns';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useAuth } from '@/context/AuthContext';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { calcCourierEarning } from '@/lib/calcEarning';
@@ -14,6 +13,12 @@ type Period = 'daily' | 'weekly';
 export function CourierEarnings() {
   const navigate = useNavigate();
   const { user } = useAuth();
+
+  const [RechartsLib, setRechartsLib] = useState<any>(null);
+
+  useEffect(() => {
+    import('recharts').then(m => setRechartsLib(m));
+  }, []);
 
   // State lokal — diisi dari IndexedDB
   const [courierOrders, setCourierOrders] = useState<Order[]>([]);
@@ -189,19 +194,21 @@ export function CourierEarnings() {
               <Package className="w-10 h-10 text-gray-300 mx-auto mb-2" />
               <p className="text-sm text-gray-500">Belum ada data pendapatan</p>
             </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} tickFormatter={formatChartCurrency} width={45} />
-                <Tooltip
+          ) : RechartsLib ? (
+            <RechartsLib.ResponsiveContainer width="100%" height={220}>
+              <RechartsLib.BarChart data={chartData}>
+                <RechartsLib.CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <RechartsLib.XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                <RechartsLib.YAxis tick={{ fontSize: 11 }} tickFormatter={formatChartCurrency} width={45} />
+                <RechartsLib.Tooltip
                   formatter={(value: number | undefined) => [formatCurrency(value ?? 0), 'Pendapatan']}
                   labelFormatter={(label) => `Periode: ${label}`}
                 />
-                <Bar dataKey="earnings" fill="#6366f1" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+                <RechartsLib.Bar dataKey="earnings" fill="#6366f1" radius={[4, 4, 0, 0]} />
+              </RechartsLib.BarChart>
+            </RechartsLib.ResponsiveContainer>
+          ) : (
+            <div className="h-[220px] bg-gray-50 rounded-xl animate-pulse" />
           )}
         </div>
       </div>

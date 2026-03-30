@@ -90,6 +90,7 @@ export function CourierDashboard() {
 
   const [unpaidDeliveredOrdersCount, setUnpaidDeliveredOrdersCount] = useState(0)
   const [unpaidTotalEarnings, setUnpaidTotalEarnings] = useState(0)
+  const [warningLoading, setWarningLoading] = useState(true)
 
   useEffect(() => {
     if (!user?.id) return
@@ -113,6 +114,7 @@ export function CourierDashboard() {
         )
       }, 0)
       setUnpaidTotalEarnings(total)
+      setWarningLoading(false)
     })
   }, [user?.id, courierOrders, commission_rate, commission_threshold])
 
@@ -167,7 +169,9 @@ export function CourierDashboard() {
       </div>
 
       {/* Unpaid Warning Card */}
-      {unpaidDeliveredOrdersCount > 0 && (
+      {warningLoading ? (
+        <div className="h-[52px] rounded-xl bg-gray-100 animate-pulse" />
+      ) : unpaidDeliveredOrdersCount > 0 ? (
         <div
           onClick={() => navigate('/courier/history')}
           className="flex items-center justify-between gap-3 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 cursor-pointer active:scale-[0.98] transition-all"
@@ -185,7 +189,7 @@ export function CourierDashboard() {
             Lihat <ChevronRight className="h-3.5 w-3.5" />
           </span>
         </div>
-      )}
+      ) : null}
 
       {/* Status Toggle — ON / STAY / OFF */}
       <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">

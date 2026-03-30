@@ -14,7 +14,6 @@ import {
   Cell,
   Legend,
 } from 'recharts';
-import { jsPDF } from 'jspdf';
 import { Header } from '@/components/layout/Header';
 import { Card, StatCard } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -220,7 +219,8 @@ export function Reports() {
     }).format(value);
   };
 
-  const handleExportReport = () => {
+  const handleExportReport = async () => {
+    const { jsPDF } = await import('jspdf');
     const start = appliedRange.start;
     const end = appliedRange.end;
 
@@ -267,7 +267,7 @@ export function Reports() {
     // FUNGSI DRAW BAR CHART LOKAL
     // ==========================================
     const drawBarChart = (
-      doc: jsPDF,
+      doc: InstanceType<typeof jsPDF>,
       data: Array<{ date: string; revenue: number; orders: number }>,
       x: number,
       y: number,
