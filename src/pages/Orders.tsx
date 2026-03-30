@@ -805,9 +805,11 @@ export function Orders() {
         subtitle="Kelola semua pesanan"
         actions={
           <div className="flex gap-2">
-            <Button variant="outline" leftIcon={<Download className="h-4 w-4" />} onClick={handleExportCSV}>
-              Export CSV
-            </Button>
+            {isFinance && (
+              <Button variant="outline" leftIcon={<Download className="h-4 w-4" />} onClick={handleExportCSV}>
+                Export CSV
+              </Button>
+            )}
             {isOpsAdmin && (
               <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => setIsCreateModalOpen(true)}>
                 New Order

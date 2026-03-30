@@ -34,7 +34,6 @@ const roleNavItems: Record<string, NavItem[]> = {
     { path: '/admin/orders', label: 'Orders', icon: Package },
     { path: '/admin/couriers', label: 'Couriers', icon: Users },
     { path: '/admin/notifications', label: 'Notifikasi', icon: Bell },
-    { path: '/admin/settings', label: 'Settings', icon: Settings },
   ],
   owner: [
     { path: '/admin/overview', label: 'Overview', icon: BarChart3, end: true },
