@@ -179,23 +179,28 @@ export function Settings() {
     setIsLoading(false);
   };
 
-  const handleAddUser = () => {
-    const userData: UserType = {
-      id: crypto.randomUUID(),
-      name: newUser.name,
-      email: newUser.email,
-      password: newUser.password,
-      role: 'admin',
-      phone: newUser.phone,
-      is_active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    addUser(userData);
+  const handleAddUser = async () => {
+    try {
+      const userData: UserType = {
+        id: crypto.randomUUID(),
+        name: newUser.name,
+        email: newUser.email,
+        password: newUser.password,
+        role: 'admin',
+        phone: newUser.phone,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      await addUser(userData);
 
-    setIsAddUserModalOpen(false);
-    setNewUser({ name: '', email: '', password: '', role: 'admin', phone: '' });
-    showMessage('success', 'User added successfully!');
+      setIsAddUserModalOpen(false);
+      setNewUser({ name: '', email: '', password: '', role: 'admin', phone: '' });
+      showMessage('success', 'User added successfully!');
+    } catch (error) {
+      console.error('Error adding user:', error);
+      showMessage('error', 'Failed to add user. Please try again.');
+    }
   };
 
   const openEditModal = (u: UserType) => {
