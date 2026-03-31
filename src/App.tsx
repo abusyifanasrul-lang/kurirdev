@@ -202,9 +202,9 @@ export function App() {
       });
     }, 0);
 
-    const currentUserStr = sessionStorage.getItem('user-session');
+    const currentUserStr = localStorage.getItem('session-storage');
     let fcmRefreshInterval: ReturnType<typeof setInterval> | null = null;
-    let unsubFCM: (() => void) | undefined;
+    let unsubFCM: any;
 
     if (currentUserStr) {
       try {
@@ -241,7 +241,13 @@ export function App() {
 
     return () => {
       clearTimeout(syncTimer);
-      if (unsubFCM) unsubFCM();
+      if (unsubFCM) {
+        if (typeof unsubFCM === 'function') {
+          unsubFCM();
+        } else if ('then' in unsubFCM) {
+          (unsubFCM as Promise<any>).then(h => h.remove?.());
+        }
+      }
       if (fcmRefreshInterval) clearInterval(fcmRefreshInterval);
     };
   }, [])

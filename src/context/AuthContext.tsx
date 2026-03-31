@@ -14,11 +14,30 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { login: storeLogin, logout: storeLogout, updateUser: storeUpdateUser } = useSessionStore();
-  const [state, setState] = useState<AuthState>({
-    user: null,
-    token: null,
-    isAuthenticated: false,
-    isLoading: true,
+  // Initialize state synchronously from localStorage to bypass Zustand hydration delay
+  const [state, setState] = useState<AuthState>(() => {
+    try {
+      const storage = localStorage.getItem('session-storage');
+      if (storage) {
+        const { state: persistedState } = JSON.parse(storage);
+        if (persistedState?.isAuthenticated && persistedState?.user) {
+          return {
+            user: persistedState.user,
+            token: null,
+            isAuthenticated: true,
+            isLoading: false, // Optimistic: no loading screen if we have a session
+          };
+        }
+      }
+    } catch (e) {
+      console.error('Failed to parse session from localStorage', e);
+    }
+    return {
+      user: null,
+      token: null,
+      isAuthenticated: false,
+      isLoading: true, // Cold start: show loading screen
+    };
   });
 
   // Listen to Firebase Auth state

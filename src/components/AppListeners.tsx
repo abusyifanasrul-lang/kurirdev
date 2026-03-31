@@ -95,8 +95,11 @@ async function checkStorageBudget() {
 
 export function AppListeners() {
   const { user } = useAuth()
-  const subscribeUsers = useUserStore(
-    state => state.subscribeUsers
+  const { subscribeCurrentUser, subscribeUsers } = useUserStore(
+    state => ({ 
+      subscribeCurrentUser: state.subscribeCurrentUser,
+      subscribeUsers: state.subscribeUsers 
+    })
   )
   const initQueuePositions = useUserStore(
     state => state.initQueuePositions
@@ -107,9 +110,18 @@ export function AppListeners() {
     )
 
   useEffect(() => {
-    // Semua user butuh subscribeUsers
-    // (untuk cek suspended, data kurir, dll)
-    const unsubUsers = subscribeUsers()
+    // Role-based user subscription
+    let unsubUsers: (() => void) | undefined
+    
+    if (user?.id) {
+      if (user.role === 'courier') {
+        // Courier only needs to listen to their own status (suspended/online)
+        unsubUsers = subscribeCurrentUser(user.id)
+      } else {
+        // Admins need to see all users
+        unsubUsers = subscribeUsers()
+      }
+    }
 
     // Seed Firestore users if empty — skip if already seeded
     if (!localStorage.getItem('kurirdev_seeded')) {
@@ -120,7 +132,7 @@ export function AppListeners() {
 
     // Queue positions only needed for admin roles, not courier
     setTimeout(() => {
-      const sessionStr = sessionStorage.getItem('user-session')
+      const sessionStr = localStorage.getItem('session-storage')
       if (sessionStr) {
         try {
           const { state } = JSON.parse(sessionStr)
@@ -131,8 +143,10 @@ export function AppListeners() {
       }
     }, 5000)
 
-    return () => unsubUsers()
-  }, [])
+    return () => {
+      if (unsubUsers) unsubUsers()
+    }
+  }, [user?.id, subscribeCurrentUser, subscribeUsers, initQueuePositions])
 
   useEffect(() => {
     if (!user) return

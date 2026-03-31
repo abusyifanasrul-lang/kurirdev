@@ -7,6 +7,7 @@ interface UserState {
   users: User[]
   isLoading: boolean
   subscribeUsers: () => () => void
+  subscribeCurrentUser: (id: string) => () => void
   addUser: (user: User) => Promise<void>
   updateUser: (id: string, data: Partial<User>) => Promise<void>
   removeUser: (id: string) => Promise<void>
@@ -22,6 +23,21 @@ export const useUserStore = create<UserState>()((set, get) => ({
     const unsub = onSnapshot(collection(db, 'users'), (snapshot) => {
       const users = snapshot.docs.map(d => d.data() as User)
       set({ users, isLoading: false })
+    })
+    return unsub
+  },
+
+  subscribeCurrentUser: (id: string) => {
+    const unsub = onSnapshot(doc(db, 'users', id), (docSnap) => {
+      if (docSnap.exists()) {
+        const userData = docSnap.data() as User
+        set((state) => ({
+          users: state.users.some(u => u.id === id)
+            ? state.users.map(u => u.id === id ? userData : u)
+            : [...state.users, userData],
+          isLoading: false
+        }))
+      }
     })
     return unsub
   },

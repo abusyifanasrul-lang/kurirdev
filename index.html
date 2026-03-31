@@ -25,13 +25,17 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="KurirDev" />
 
-  <!-- Preconnect ke Firebase/Google APIs (keep minimal — Lighthouse flags unused preconnects) -->
+  <!-- Preload Critical Fonts -->
+  <link rel="preload" href="https://fonts.gstatic.com/s/inter/v13/UcCO3FwrX2iL9_CnrnJ9.woff2" as="font" type="font/woff2" crossorigin />
+  
+  <!-- Optimized Preconnects -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preconnect" href="https://firestore.googleapis.com" />
-  <link rel="preconnect" href="https://www.googleapis.com" crossorigin />
-  <link rel="dns-prefetch" href="https://firestore.googleapis.com" />
+
+  <!-- Dns Prefetch as Fallback -->
   <link rel="dns-prefetch" href="https://www.googleapis.com" />
-  <!-- NOTE: securetoken.googleapis.com and fcmregistrations.googleapis.com 
-       removed — Lighthouse flagged them as unused preconnects -->
+  <link rel="dns-prefetch" href="https://securetoken.googleapis.com" />
 </head>
 
 <body>

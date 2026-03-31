@@ -1,132 +1,147 @@
-importScripts('https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js')
-importScripts('https://www.gstatic.com/firebasejs/11.6.0/firebase-messaging-compat.js')
+// KurirDev Modern Service Worker
+// Optimized for performance and offline-first reliability
 
-firebase.initializeApp({
-  apiKey: "AIzaSyBqS5x5BWFFU19Gi4rGtEv7CcF9P_cLD-Q",
-  authDomain: "kurirdev-prod.firebaseapp.com",
-  projectId: "kurirdev-prod",
-  storageBucket: "kurirdev-prod.firebasestorage.app",
-  messagingSenderId: "945083209932",
-  appId: "1:945083209932:web:aa57a8c7c2cbab174cca69"
-})
+import { clientsClaim, skipWaiting } from 'workbox-core';
+import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
+import { registerRoute, NavigationRoute } from 'workbox-routing';
+import { CacheFirst, NetworkFirst, StaleWhileRevalidate } from 'workbox-strategies';
+import { ExpirationPlugin } from 'workbox-expiration';
+import { CacheableResponsePlugin } from 'workbox-cacheable-response';
+import { createHandlerBoundToURL } from 'workbox-precaching';
 
-const messaging = firebase.messaging()
+// 1. Initial Setup
+skipWaiting();
+clientsClaim();
+cleanupOutdatedCaches();
 
-// Handle background messages from Firebase SDK
-messaging.onBackgroundMessage((payload) => {
-  console.log('[sw.js] Background message received:', payload)
+// 2. Precache Assets (Injected by Vite)
+precacheAndRoute(self.__WB_MANIFEST || []);
 
-  // Extract title/body from notification OR data (data-only messages)
-  const notif = payload.notification || {}
-  const data = payload.data || {}
-  const title = notif.title || data.title || 'KurirDev'
-  const body = notif.body || data.body || ''
+// 3. Navigation Routing (SPA Support)
+const handler = createHandlerBoundToURL('/index.html');
+const navigationRoute = new NavigationRoute(handler, {
+  allowlist: [/^(?!\/__).*/],
+});
+registerRoute(navigationRoute);
 
-  return self.registration.showNotification(title, {
-    body,
-    icon: notif.icon || '/icons/android/android-launchericon-192-192.png',
-    badge: notif.badge || '/icons/android/android-launchericon-96-96.png',
-    vibrate: [200, 100, 200],
-    data: data,
-    tag: data.orderId || 'kurirdev-notification',
-    requireInteraction: true
+// 4. Runtime Caching Strategies
+
+// Cache Google Fonts (Styling)
+registerRoute(
+  /^https:\/\/fonts\.googleapis\.com\/.*/i,
+  new CacheFirst({
+    cacheName: 'google-fonts-stylesheets',
+    plugins: [
+      new CacheableResponsePlugin({ statuses: [0, 200] }),
+      new ExpirationPlugin({ maxAgeSeconds: 60 * 60 * 24 * 365 }), // 1 year
+    ],
   })
-})
+);
 
-// Manual push handler — catches ALL push events including those Firebase SDK might miss
+// Cache Google Fonts (Files)
+registerRoute(
+  /^https:\/\/fonts\.gstatic\.com\/.*/i,
+  new CacheFirst({
+    cacheName: 'google-fonts-webfonts',
+    plugins: [
+      new CacheableResponsePlugin({ statuses: [0, 200] }),
+      new ExpirationPlugin({
+        maxAgeSeconds: 60 * 60 * 24 * 365,
+        maxEntries: 30,
+      }),
+    ],
+  })
+);
+
+// Cache Images
+registerRoute(
+  /\.(?:png|jpg|jpeg|svg|gif|webp)$/i,
+  new CacheFirst({
+    cacheName: 'images-cache',
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 60,
+        maxAgeSeconds: 30 * 24 * 60 * 60, // 30 Days
+      }),
+    ],
+  })
+);
+
+// Cache Static Assets (JS/CSS) - NetworkFirst to ensure updates but still work offline
+registerRoute(
+  /\.(?:js|css)$/i,
+  new NetworkFirst({
+    cacheName: 'static-resources',
+    networkTimeoutSeconds: 3,
+  })
+);
+
+// Cache API Requests - StaleWhileRevalidate for speed
+registerRoute(
+  /^https:\/\/(?:n8n\.kurirdev\.my\.id|.*\.supabase\.co|firestore\.googleapis\.com)\/.*/i,
+  new StaleWhileRevalidate({
+    cacheName: 'api-cache',
+    plugins: [
+      new CacheableResponsePlugin({ statuses: [0, 200] }),
+      new ExpirationPlugin({ maxEntries: 100, maxAgeSeconds: 60 * 60 }), // 1 hour
+    ],
+  })
+);
+
+// 5. Native Native Push Implementation (No Firebase SDK needed in background)
+// This significantly reduces SW boot time and memory usage.
+
 self.addEventListener('push', (event) => {
-  console.log('[sw.js] Push event received:', event)
-  if (!event.data) return
-
-  try {
-    const payload = event.data.json()
-    console.log('[sw.js] Push payload:', payload)
-
-    // Check if this is a data-only message (no "notification" key at top level)
-    // Firebase SDK's onBackgroundMessage should handle notification-bearing messages,
-    // but for data-only payloads we must show it ourselves.
-    const notif = payload.notification
-    const data = payload.data || {}
-
-    // If there IS a notification key, Firebase SDK will handle showing it — don't duplicate.
-    // If there is NO notification key, we need to manually show it.
-    if (!notif && (data.title || data.body)) {
-      const title = data.title || 'KurirDev'
-      const body = data.body || ''
-
-      event.waitUntil(
-        self.registration.showNotification(title, {
-          body,
-          icon: '/icons/android/android-launchericon-192-192.png',
-          badge: '/icons/android/android-launchericon-96-96.png',
-          vibrate: [200, 100, 200],
-          data: data,
-          tag: data.orderId || 'kurirdev-notification',
-          requireInteraction: true
-        })
-      )
+  console.log('[sw.js] Push received:', event);
+  
+  let data = {};
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch (e) {
+      console.warn('[sw.js] Push data is not JSON:', event.data.text());
+      data = { notification: { title: 'KurirDev', body: event.data.text() } };
     }
-  } catch (e) {
-    console.error('[sw.js] Push parse error:', e)
-    // Even if JSON parse fails, try to show something
-    event.waitUntil(
-      self.registration.showNotification('KurirDev', {
-        body: 'Anda memiliki notifikasi baru',
-        icon: '/icons/android/android-launchericon-192-192.png',
-        badge: '/icons/android/android-launchericon-96-96.png',
-        vibrate: [200, 100, 200],
-        tag: 'kurirdev-fallback'
-      })
-    )
   }
-})
+
+  const payload = data.notification || data.data || data || {};
+  const title = payload.title || 'KurirDev Update';
+  const options = {
+    body: payload.body || 'Ada pembaruan status pesanan.',
+    icon: '/icons/android/android-launchericon-192-192.png',
+    badge: '/icons/android/android-launchericon-96-96.png',
+    vibrate: [200, 100, 200],
+    tag: payload.orderId || 'kurirdev-notification',
+    data: payload,
+    requireInteraction: true,
+    actions: [
+      { action: 'open', title: 'Buka Aplikasi' }
+    ]
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
 
 self.addEventListener('notificationclick', (event) => {
-  event.notification.close()
-  const data = event.notification.data || {}
-  const urlToOpen = data.orderId ? '/courier/orders/' + data.orderId : '/courier/orders'
+  event.notification.close();
+  
+  const payload = event.notification.data || {};
+  const orderId = payload.orderId;
+  const urlToOpen = orderId ? `/courier/orders/${orderId}` : '/courier';
 
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true })
-      .then((clientList) => {
-        for (const client of clientList) {
-          if (client.url.includes('kurirdev') && 'focus' in client) {
-            return client.focus().then(c => c.navigate(urlToOpen))
-          }
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url.includes('kurirdev') && 'focus' in client) {
+          return client.focus().then(c => c.navigate(urlToOpen));
         }
-        return clients.openWindow(urlToOpen)
-      })
-  )
-})
-
-self.addEventListener('install', () => {
-  self.skipWaiting()
-})
-
-self.addEventListener('activate', (event) => {
-  event.waitUntil(clients.claim())
-})
-
-// --- Workbox precaching (injected by VitePWA injectManifest) ---
-import { precacheAndRoute } from 'workbox-precaching';
-precacheAndRoute(self.__WB_MANIFEST);
-
-const CACHE_VERSION = 'v1.0.5';
-const CACHE_NAME = `kurirdev-${CACHE_VERSION}`;
-
-self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(
-        keys
-          .filter(key => key !== CACHE_NAME)
-          .map(key => caches.delete(key))
-      )
-    )
+      }
+      return clients.openWindow(urlToOpen);
+    })
   );
 });
 
-// For update banner to know when to skipWaiting
+// Broadcast Channel for UI Communication
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
