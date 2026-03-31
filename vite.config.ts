@@ -200,14 +200,6 @@ export default defineConfig({
           'vendor-zustand': [
             'zustand',
           ],
-          // Charts — hanya admin, kurir tidak pakai
-          'vendor-charts': [
-            'recharts',
-          ],
-          // PDF — hanya admin
-          'vendor-pdf': [
-            'jspdf',
-          ],
           // Date utility
           'vendor-date': [
             'date-fns',
@@ -216,6 +208,9 @@ export default defineConfig({
           'vendor-dexie': [
             'dexie',
           ],
+          // NOTE: vendor-charts (recharts) and vendor-pdf (jspdf) 
+          // intentionally NOT in manualChunks — they will be 
+          // dynamically imported only when needed (admin pages only)
         },
       },
     },
