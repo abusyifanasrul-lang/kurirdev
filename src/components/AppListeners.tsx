@@ -148,8 +148,8 @@ export function AppListeners() {
   }, [user?.id])
 
   useEffect(() => {
-    // Hanya Admin yang butuh subscribeOrders
-    if (!user || user.role !== 'admin') return
+    // Semua role admin (admin, admin_kurir, owner, finance) butuh subscribeOrders
+    if (!user || user.role === 'courier') return
 
     const todayStart = new Date()
     todayStart.setHours(0, 0, 0, 0)
@@ -308,7 +308,7 @@ export function AppListeners() {
   }, [user?.id])
 
   useEffect(() => {
-    if (!user || user.role !== 'admin') return
+    if (!user || !['admin', 'admin_kurir'].includes(user.role)) return
     const unsub = subscribeAllNotifications()
     return () => unsub()
   }, [user?.id])

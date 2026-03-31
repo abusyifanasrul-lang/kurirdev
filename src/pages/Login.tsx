@@ -29,6 +29,17 @@ interface RoleOption {
 
 const roleOptions: RoleOption[] = [
   {
+    id: 'admin',
+    label: 'Super Admin',
+    description: 'Akses penuh & troubleshooting sistem',
+    icon: Lock,
+    color: 'purple',
+    hoverColor: 'hover:border-purple-500 hover:bg-purple-50',
+    iconBg: 'bg-purple-100 group-hover:bg-purple-200',
+    iconColor: 'text-purple-600',
+    headerBg: 'bg-purple-600',
+  },
+  {
     id: 'admin_kurir',
     label: 'Admin Kurir',
     description: 'Kelola order & assign kurir',
@@ -117,7 +128,8 @@ export function Login() {
     if (role === 'courier') return '/courier';
     if (role === 'finance') return '/admin/finance';
     if (role === 'owner') return '/admin/overview';
-    return '/admin/dashboard'; // admin_kurir, admin
+    if (role === 'admin') return '/admin/diagnostics';
+    return '/admin/dashboard'; // admin_kurir
   };
 
   const handleLogin = async (e: React.FormEvent) => {
