@@ -13,38 +13,25 @@ interface AuthContextType extends AuthState {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { login: storeLogin, logout: storeLogout, updateUser: storeUpdateUser } = useSessionStore();
-  // Initialize state synchronously from localStorage to bypass Zustand hydration delay
-  const [state, setState] = useState<AuthState>(() => {
+  const { user, isAuthenticated, login: storeLogin, logout: storeLogout, updateUser: storeUpdateUser } = useSessionStore();
+  
+  // Local state only for the very first initialization/cold boot
+  const [isInitializing, setIsInitializing] = useState(() => {
     try {
       const storage = localStorage.getItem('session-storage');
       if (storage) {
         const { state: persistedState } = JSON.parse(storage);
-        if (persistedState?.isAuthenticated && persistedState?.user) {
-          return {
-            user: persistedState.user,
-            token: null,
-            isAuthenticated: true,
-            isLoading: false, // Optimistic: no loading screen if we have a session
-          };
-        }
+        return !(persistedState?.isAuthenticated && persistedState?.user);
       }
-    } catch (e) {
-      console.error('Failed to parse session from localStorage', e);
-    }
-    return {
-      user: null,
-      token: null,
-      isAuthenticated: false,
-      isLoading: true, // Cold start: show loading screen
-    };
+    } catch (e) {}
+    return true; // No session found? Start with a loading screen
   });
 
   // Listen to Firebase Auth state
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        // Find matching Firestore doc by email
+        // Only fetch from Firestore if we don't have a user in store, or if it might be stale
         try {
           const q = query(
             collection(db, 'users'),
@@ -55,30 +42,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           
           if (!querySnapshot.empty) {
             const userData = querySnapshot.docs[0].data() as User;
-            storeLogin(userData); // Sync to Zustand
-            setState({
-              user: userData,
-              token: null,
-              isAuthenticated: true,
-              isLoading: false,
-            });
-          } else {
-            console.error('User document not found in Firestore for:', firebaseUser.email);
-            setState(prev => ({ ...prev, isLoading: false }));
+            storeLogin(userData); // Sync to Zustand (Single Source of Truth)
           }
         } catch (error) {
-          console.error('Error fetching user data:', error);
-          setState(prev => ({ ...prev, isLoading: false }));
+          console.error('Error fetching user data on auth change:', error);
+        } finally {
+          setIsInitializing(false);
         }
       } else {
-        // No user logged in via Firebase Auth
         storeLogout();
-        setState({
-          user: null,
-          token: null,
-          isAuthenticated: false,
-          isLoading: false,
-        });
+        setIsInitializing(false);
       }
     });
 
@@ -94,8 +67,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     storeUpdateUser(updatedUser);
   }, [storeUpdateUser]);
 
+  const value = {
+    user,
+    isAuthenticated,
+    isLoading: isInitializing,
+    token: null,
+    logout,
+    updateUser,
+  };
+
   return (
-    <AuthContext.Provider value={{ ...state, logout, updateUser }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
