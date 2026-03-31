@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">KurirDev</string>
+    <string name="title_activity_main">KurirDev</string>
+    <string name="package_name">com.kurirdev.app</string>
+    <string name="custom_url_scheme">com.kurirdev.app</string>
+</resources>
