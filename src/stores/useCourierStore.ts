@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { Courier } from '@/types'
 import { useUserStore } from './useUserStore'
-import { getSecondaryAuth } from '@/lib/firebase'
+import { secondaryAuth } from '@/lib/firebase'
 import { createUserWithEmailAndPassword } from 'firebase/auth'
 
 interface CourierState {
@@ -87,7 +87,6 @@ export const useCourierStore = create<CourierState>()(
         // 1. Create in Firebase Auth using secondaryAuth (security-first)
         try {
           if (!courier.password) throw new Error('Password is required for new courier');
-          const secondaryAuth = getSecondaryAuth();
           await createUserWithEmailAndPassword(secondaryAuth, courier.email, courier.password);
           console.log(`✅ Courier Auth account created: ${courier.email}`);
         } catch (error: any) {

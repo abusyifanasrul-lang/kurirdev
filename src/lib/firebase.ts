@@ -1,6 +1,9 @@
-import { initializeApp } from 'firebase/app'
+import { initializeApp, SDK_VERSION } from 'firebase/app'
 import { getFirestore } from 'firebase/firestore'
-import { getAuth, Auth } from 'firebase/auth'
+import { getAuth } from 'firebase/auth'
+
+console.log('🔑 API Key:', import.meta.env.VITE_FIREBASE_API_KEY?.substring(0, 10) ?? 'UNDEFINED')
+console.log('🔥 Firebase SDK version:', SDK_VERSION)
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -12,19 +15,11 @@ const firebaseConfig = {
 }
 
 const app = initializeApp(firebaseConfig)
+const secondaryApp = initializeApp(firebaseConfig, 'SecondaryApp')
+
 export const db = getFirestore(app)
 export const auth = getAuth(app)
-
-// Lazy-load secondary auth only when needed (e.g. for seeder or create courier)
-// This prevents initializing a second Auth iframe on app boot, saving ~300ms TBT.
-let secondaryAuthInstance: Auth | null = null;
-export const getSecondaryAuth = () => {
-  if (!secondaryAuthInstance) {
-    const secondaryApp = initializeApp(firebaseConfig, 'SecondaryApp')
-    secondaryAuthInstance = getAuth(secondaryApp)
-  }
-  return secondaryAuthInstance
-}
+export const secondaryAuth = getAuth(secondaryApp)
 
 // NOTE: firebase/messaging is lazy-loaded in fcm.ts (only for courier role)
 // to avoid pulling ~30KB into the main bundle for all users.

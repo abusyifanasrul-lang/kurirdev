@@ -1,4 +1,4 @@
-import { db, getSecondaryAuth } from './firebase'
+import { db, secondaryAuth } from './firebase'
 import { collection, doc, setDoc, getDocs } from 'firebase/firestore'
 import { createUserWithEmailAndPassword } from 'firebase/auth'
 
@@ -29,8 +29,6 @@ export const seedFirestore = async () => {
       console.log('⏭️ Firestore already seeded, skipping')
       return
     }
-
-    const secondaryAuth = getSecondaryAuth();
 
     // Seed users
     for (const user of INITIAL_USERS) {

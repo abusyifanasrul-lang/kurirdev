@@ -91,10 +91,6 @@ export default defineConfig({
           { url: 'icons/ios/180.png', revision: null },
         ]
       },
-      workbox: {
-        // NOTE: runtimeCaching in vite.config.ts is IGNORED when using strategies: "injectManifest"
-        // All custom routing must be implemented directly in sw.js using Workbox libraries.
-      },
     }),
   ],
   build: {

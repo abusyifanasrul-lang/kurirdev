@@ -64,14 +64,11 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
 
   if (isLoading) return <LoadingScreen />;
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !user) {
     return <Navigate to="/" replace />;
   }
 
-  // If authenticated but user data missing (rare but possible during sync)
-  if (!user) return <LoadingScreen />;
-
-  // Strict role check
+  // Strict role check — no more legacy bypass
   const hasAccess = allowedRoles.includes(user.role);
   if (!hasAccess) {
     return <Navigate to="/" replace />;
@@ -86,14 +83,12 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
 
   if (isLoading) return <LoadingScreen />;
 
-  if (isAuthenticated) {
-    // If authenticated but user data missing (waiting for sync)
-    if (!user) return <LoadingScreen />;
-
+  if (isAuthenticated && user) {
     // Redirect based on role
     if (user.role === 'courier') return <Navigate to="/courier" replace />;
     if (user.role === 'finance') return <Navigate to="/admin/finance" replace />;
     if (user.role === 'owner') return <Navigate to="/admin/overview" replace />;
+    // admin_kurir, admin
     return <Navigate to="/admin/dashboard" replace />;
   }
 
@@ -207,9 +202,9 @@ export function App() {
       });
     }, 0);
 
-    const currentUserStr = localStorage.getItem('session-storage');
+    const currentUserStr = sessionStorage.getItem('user-session');
     let fcmRefreshInterval: ReturnType<typeof setInterval> | null = null;
-    let unsubFCM: any;
+    let unsubFCM: (() => void) | undefined;
 
     if (currentUserStr) {
       try {
@@ -246,13 +241,7 @@ export function App() {
 
     return () => {
       clearTimeout(syncTimer);
-      if (unsubFCM) {
-        if (typeof unsubFCM === 'function') {
-          unsubFCM();
-        } else if ('then' in unsubFCM) {
-          (unsubFCM as Promise<any>).then(h => h.remove?.());
-        }
-      }
+      if (unsubFCM) unsubFCM();
       if (fcmRefreshInterval) clearInterval(fcmRefreshInterval);
     };
   }, [])
