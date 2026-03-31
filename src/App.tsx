@@ -64,11 +64,14 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
 
   if (isLoading) return <LoadingScreen />;
 
-  if (!isAuthenticated || !user) {
+  if (!isAuthenticated) {
     return <Navigate to="/" replace />;
   }
 
-  // Strict role check — no more legacy bypass
+  // If authenticated but user data missing (rare but possible during sync)
+  if (!user) return <LoadingScreen />;
+
+  // Strict role check
   const hasAccess = allowedRoles.includes(user.role);
   if (!hasAccess) {
     return <Navigate to="/" replace />;
@@ -83,12 +86,14 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
 
   if (isLoading) return <LoadingScreen />;
 
-  if (isAuthenticated && user) {
+  if (isAuthenticated) {
+    // If authenticated but user data missing (waiting for sync)
+    if (!user) return <LoadingScreen />;
+
     // Redirect based on role
     if (user.role === 'courier') return <Navigate to="/courier" replace />;
     if (user.role === 'finance') return <Navigate to="/admin/finance" replace />;
     if (user.role === 'owner') return <Navigate to="/admin/overview" replace />;
-    // admin_kurir, admin
     return <Navigate to="/admin/dashboard" replace />;
   }
 

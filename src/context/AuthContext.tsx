@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import type { User, AuthState } from '@/types';
 import { useSessionStore } from '@/stores/useSessionStore';
 import { auth, db } from '@/lib/firebase';
@@ -13,25 +13,28 @@ interface AuthContextType extends AuthState {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { user, isAuthenticated, login: storeLogin, logout: storeLogout, updateUser: storeUpdateUser } = useSessionStore();
+  // Use specific selectors to avoid subscribing to the whole store (prevents render loops)
+  const user = useSessionStore(state => state.user);
+  const isAuthenticated = useSessionStore(state => state.isAuthenticated);
+  const storeLogin = useSessionStore(state => state.login);
+  const storeLogout = useSessionStore(state => state.logout);
+  const storeUpdateUser = useSessionStore(state => state.updateUser);
   
-  // Local state only for the very first initialization/cold boot
+  // Local state for initial boot
   const [isInitializing, setIsInitializing] = useState(() => {
     try {
       const storage = localStorage.getItem('session-storage');
       if (storage) {
-        const { state: persistedState } = JSON.parse(storage);
-        return !(persistedState?.isAuthenticated && persistedState?.user);
+        const { state } = JSON.parse(storage);
+        return !(state?.isAuthenticated && state?.user);
       }
     } catch (e) {}
-    return true; // No session found? Start with a loading screen
+    return true;
   });
 
-  // Listen to Firebase Auth state
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        // Only fetch from Firestore if we don't have a user in store, or if it might be stale
         try {
           const q = query(
             collection(db, 'users'),
@@ -39,13 +42,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             limit(1)
           );
           const querySnapshot = await getDocs(q);
-          
           if (!querySnapshot.empty) {
-            const userData = querySnapshot.docs[0].data() as User;
-            storeLogin(userData); // Sync to Zustand (Single Source of Truth)
+            storeLogin(querySnapshot.docs[0].data() as User);
           }
         } catch (error) {
-          console.error('Error fetching user data on auth change:', error);
+          console.error('Auth sync error:', error);
         } finally {
           setIsInitializing(false);
         }
@@ -54,7 +55,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsInitializing(false);
       }
     });
-
     return () => unsubscribe();
   }, [storeLogin, storeLogout]);
 
@@ -67,14 +67,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     storeUpdateUser(updatedUser);
   }, [storeUpdateUser]);
 
-  const value = {
+  // Memoize value to prevent downstream re-render cascades
+  const value = useMemo(() => ({
     user,
     isAuthenticated,
-    isLoading: isInitializing,
+    isLoading: isInitializing || (isAuthenticated && !user),
     token: null,
     logout,
     updateUser,
-  };
+  }), [user, isAuthenticated, isInitializing, logout, updateUser]);
 
   return (
     <AuthContext.Provider value={value}>
