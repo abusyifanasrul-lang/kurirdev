@@ -29,7 +29,7 @@ import { getOrdersForWeek } from '@/lib/orderCache';
 // Stores
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useUserStore } from '@/stores/useUserStore';
-import { useAuthStore } from '@/stores/useAuthStore';
+import { useAuth } from '@/context/AuthContext';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { calcAdminEarning } from '@/lib/calcEarning';
 import type { Order, OrderStatus } from '@/types';
@@ -39,7 +39,7 @@ const COLORS = ['#F59E0B', '#3B82F6', '#8B5CF6', '#06B6D4', '#22C55E', '#EF4444'
 export function Dashboard() {
   const { orders } = useOrderStore();
   const { users } = useUserStore();
-  const { user } = useAuthStore();
+  const { user } = useAuth();
   const { commission_rate, commission_threshold } = useSettingsStore();
   const earningSettings = { commission_rate, commission_threshold };
 

@@ -455,36 +455,15 @@ export async function getOrdersByDateRange(
   start: string,
   end: string
 ): Promise<import('@/types').Order[]> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(
-      'KurirDevCache'
-    )
-    request.onsuccess = (event) => {
-      const db = (event.target as any).result
-      const tx = db.transaction(
-        'orders', 'readonly'
-      )
-      const store = tx.objectStore('orders')
-      const index = store.index('_date')
-      const range = IDBKeyRange.bound(
-        start, end, false, false
-      )
-      const req = index.getAll(range)
-      req.onsuccess = () => {
-        resolve(req.result.map(
-          ({ _date, ...o }: any) => o
-        ))
-      }
-      req.onerror = (e: any) => {
-        console.error('Query error:', e)
-        reject(req.error)
-      }
-    }
-    request.onerror = (e: any) => {
-      console.error('DB open error:', e)
-      reject(request.error)
-    }
-  })
+  const startStr = getLocalDateStr(start);
+  const endStr = getLocalDateStr(end);
+
+  const orders = await localDB.orders
+    .where('_date')
+    .between(startStr, endStr, true, true)
+    .toArray();
+
+  return orders.map(({ _date, ...o }) => o as import('@/types').Order);
 }
 
 // --- Customer Cache Methods ---

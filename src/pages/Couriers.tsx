@@ -22,7 +22,7 @@ import {
 import { useCourierStore } from '@/stores/useCourierStore';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useUserStore } from '@/stores/useUserStore';
-import { useAuthStore } from '@/stores/useAuthStore';
+import { useAuth } from '@/context/AuthContext';
 import { Courier, Order } from '@/types';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { calcCourierEarning, calcAdminEarning } from '@/lib/calcEarning';
@@ -35,7 +35,7 @@ export function Couriers() {
   const { orders, getOrdersByCourier, updateOrder } = useOrderStore();
   const { commission_rate, commission_threshold } = useSettingsStore();
   const earningSettings = { commission_rate, commission_threshold };
-  const { user } = useAuthStore();
+  const { user } = useAuth();
   const isFinance = user?.role === 'finance' || user?.role === 'owner';
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
