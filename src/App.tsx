@@ -41,6 +41,9 @@ const FinanceAnalisa = lazy(() => import('@/pages/finance/FinanceAnalisa').then(
 // Owner Pages
 const OwnerOverview = lazy(() => import('@/pages/owner/OwnerOverview').then(m => ({ default: m.OwnerOverview })));
 
+// Super Admin Only
+const SystemDiagnostics = lazy(() => import('@/pages/admin/SystemDiagnostics').then(m => ({ default: m.SystemDiagnostics })));
+
 // Courier Pages
 const CourierLayout = lazy(() => import('@/pages/courier/CourierLayout').then(m => ({ default: m.CourierLayout })));
 const CourierDashboard = lazy(() => import('@/pages/courier/CourierDashboard').then(m => ({ default: m.CourierDashboard })));
@@ -64,8 +67,8 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
     return <Navigate to="/" replace />;
   }
 
-  // Check role - 'admin' legacy role can access everything
-  const hasAccess = allowedRoles.includes(user.role) || (user.role === 'admin' && allowedRoles.some(r => ADMIN_ROLES.includes(r)));
+  // Strict role check — no more legacy bypass
+  const hasAccess = allowedRoles.includes(user.role);
   if (!hasAccess) {
     return <Navigate to="/" replace />;
   }
@@ -326,12 +329,22 @@ export function App() {
                   } 
                 />
 
-                {/* Settings - Owner only */}
+                {/* Settings - Owner & Super Admin */}
                 <Route 
                   path="settings" 
                   element={
                     <ProtectedRoute allowedRoles={['owner', 'admin']}>
                       <Settings />
+                    </ProtectedRoute>
+                  } 
+                />
+
+                {/* Diagnostics - Super Admin ONLY (God View) */}
+                <Route 
+                  path="diagnostics" 
+                  element={
+                    <ProtectedRoute allowedRoles={['admin']}>
+                      <SystemDiagnostics />
                     </ProtectedRoute>
                   } 
                 />

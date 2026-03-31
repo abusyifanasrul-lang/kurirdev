@@ -33,6 +33,7 @@ export function FinancePenagihan() {
   const [filter, setFilter] = useState<FilterType>('unpaid');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedCourier, setExpandedCourier] = useState<string | null>(null);
+  const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
 
   // Confirm modal state
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -127,6 +128,11 @@ export function FinancePenagihan() {
         await updateOrder(order.id, { payment_status: 'paid' });
         await markAsPaidInLocalDB(order.id);
       }
+      setSelectedOrders(prev => {
+        const next = new Set(prev);
+        confirmCourier.orders.forEach(o => next.delete(o.id));
+        return next;
+      });
       setConfirmSuccess(true);
       setTimeout(() => {
         setShowConfirmModal(false);
@@ -278,7 +284,9 @@ export function FinancePenagihan() {
                       {hasUnpaid && (
                         <div className="text-right">
                           <p className="text-lg font-bold text-amber-700">
-                            {formatCurrency(courier.totalEarning)}
+                            {formatCurrency(courier.unpaidOrders.some(o => selectedOrders.has(o.id)) 
+                              ? courier.unpaidOrders.filter(o => selectedOrders.has(o.id)).reduce((sum, o) => sum + calcCourierEarning(o, earningSettings), 0)
+                              : courier.totalEarning)}
                           </p>
                         </div>
                       )}
@@ -287,11 +295,18 @@ export function FinancePenagihan() {
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleConfirmSettlement(courier.courierId, courier.courierName, courier.unpaidOrders);
+                            const courierSelected = courier.unpaidOrders.filter(o => selectedOrders.has(o.id));
+                            handleConfirmSettlement(
+                              courier.courierId, 
+                              courier.courierName, 
+                              courierSelected.length > 0 ? courierSelected : courier.unpaidOrders
+                            );
                           }}
                           className="bg-amber-600 hover:bg-amber-700"
                         >
-                          Konfirmasi
+                          {courier.unpaidOrders.some(o => selectedOrders.has(o.id)) 
+                            ? `Konfirmasi (${courier.unpaidOrders.filter(o => selectedOrders.has(o.id)).length})` 
+                            : 'Konfirmasi Semua'}
                         </Button>
                       )}
                       {isExpanded ? (
@@ -307,11 +322,27 @@ export function FinancePenagihan() {
                     <div className="mt-4 pt-4 border-t border-gray-100">
                       {hasUnpaid && (
                         <>
-                          <h4 className="text-sm font-semibold text-gray-700 mb-3">Order Belum Disetor</h4>
+                          <div className="flex justify-between items-center mb-3">
+                            <h4 className="text-sm font-semibold text-gray-700">Order Belum Disetor</h4>
+                            <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-md">Pilih checkbox untuk setor sebagian</span>
+                          </div>
                           <div className="overflow-x-auto">
                             <Table>
                               <TableHead>
                                 <TableRow>
+                                  <TableHeader className="w-10">
+                                    <input 
+                                      type="checkbox" 
+                                      className="rounded border-gray-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
+                                      checked={courier.unpaidOrders.length > 0 && courier.unpaidOrders.every(o => selectedOrders.has(o.id))}
+                                      onChange={(e) => {
+                                        const newSet = new Set(selectedOrders);
+                                        if (e.target.checked) courier.unpaidOrders.forEach(o => newSet.add(o.id));
+                                        else courier.unpaidOrders.forEach(o => newSet.delete(o.id));
+                                        setSelectedOrders(newSet);
+                                      }}
+                                    />
+                                  </TableHeader>
                                   <TableHeader>Order</TableHeader>
                                   <TableHeader>Tanggal</TableHeader>
                                   <TableHeader>Fee</TableHeader>
@@ -324,6 +355,19 @@ export function FinancePenagihan() {
                                   const aging = getAgingBadge(order.created_at);
                                   return (
                                     <TableRow key={order.id}>
+                                      <TableCell>
+                                        <input 
+                                          type="checkbox" 
+                                          className="rounded border-gray-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
+                                          checked={selectedOrders.has(order.id)}
+                                          onChange={(e) => {
+                                            const newSet = new Set(selectedOrders);
+                                            if (e.target.checked) newSet.add(order.id);
+                                            else newSet.delete(order.id);
+                                            setSelectedOrders(newSet);
+                                          }}
+                                        />
+                                      </TableCell>
                                       <TableCell className="font-medium">{order.order_number}</TableCell>
                                       <TableCell>{format(parseISO(order.created_at), 'dd MMM yyyy')}</TableCell>
                                       <TableCell>{formatCurrency(order.total_fee)}</TableCell>

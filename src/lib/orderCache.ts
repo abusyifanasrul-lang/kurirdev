@@ -491,3 +491,83 @@ export function saveCustomerSyncTime(timeIso?: string): void {
 export function getCustomerSyncTime(): string | null {
   return getMeta().last_customer_sync || null
 }
+
+// --- Analytics: local-first aggregation (zero Firebase reads) ---
+
+// Ambil order 30 hari terakhir dari IndexedDB
+export async function getOrdersForMonth(): Promise<import('@/types').Order[]> {
+  const today = new Date()
+  const thirtyDaysAgo = new Date()
+  thirtyDaysAgo.setDate(today.getDate() - 29)
+  thirtyDaysAgo.setHours(0, 0, 0, 0)
+
+  const startStr = getLocalDateStr(thirtyDaysAgo.toISOString())
+  const endStr = getLocalDateStr(today.toISOString())
+
+  const orders = await localDB.orders
+    .where('_date')
+    .between(startStr, endStr, true, true)
+    .toArray()
+
+  return orders.map(({ _date, ...o }) => o as import('@/types').Order)
+}
+
+// Top N pelanggan berdasarkan jumlah order dari IndexedDB
+export async function getTopCustomers(
+  limit = 5
+): Promise<{ name: string; order_count: number; total_fee: number }[]> {
+  const all = await localDB.orders
+    .filter(o => o.status === 'delivered')
+    .toArray()
+
+  const map = new Map<string, { name: string; order_count: number; total_fee: number }>()
+  for (const o of all) {
+    const key = o.customer_id || o.customer_name
+    const existing = map.get(key)
+    if (existing) {
+      existing.order_count++
+      existing.total_fee += o.total_fee || 0
+    } else {
+      map.set(key, {
+        name: o.customer_name,
+        order_count: 1,
+        total_fee: o.total_fee || 0,
+      })
+    }
+  }
+
+  return Array.from(map.values())
+    .sort((a, b) => b.order_count - a.order_count)
+    .slice(0, limit)
+}
+
+// Top N kurir berdasarkan jumlah delivery dari IndexedDB
+export async function getTopCouriers(
+  limit = 5,
+  courierNames: Record<string, string> = {}
+): Promise<{ id: string; name: string; delivery_count: number; total_fee: number }[]> {
+  const all = await localDB.orders
+    .filter(o => o.status === 'delivered' && !!o.courier_id)
+    .toArray()
+
+  const map = new Map<string, { id: string; name: string; delivery_count: number; total_fee: number }>()
+  for (const o of all) {
+    const cid = o.courier_id!
+    const existing = map.get(cid)
+    if (existing) {
+      existing.delivery_count++
+      existing.total_fee += o.total_fee || 0
+    } else {
+      map.set(cid, {
+        id: cid,
+        name: courierNames[cid] || `Kurir ${cid.slice(0, 6)}`,
+        delivery_count: 1,
+        total_fee: o.total_fee || 0,
+      })
+    }
+  }
+
+  return Array.from(map.values())
+    .sort((a, b) => b.delivery_count - a.delivery_count)
+    .slice(0, limit)
+}

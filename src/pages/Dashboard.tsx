@@ -166,6 +166,37 @@ export function Dashboard() {
       />
 
       <div className="p-4 lg:p-8 space-y-6 lg:space-y-8">
+
+        {/* Urgency Panel — pending orders older than 30 min */}
+        {(() => {
+          const urgentPending = (orders || []).filter(o => {
+            if (o.status !== 'pending') return false;
+            const created = new Date(o.created_at).getTime();
+            const ageMin = (Date.now() - created) / 60000;
+            return ageMin > 30;
+          });
+          if (urgentPending.length === 0) return null;
+          return (
+            <div className="flex items-center justify-between gap-4 p-4 bg-amber-50 border border-amber-300 rounded-xl">
+              <div className="flex items-center gap-3">
+                <Clock className="h-5 w-5 text-amber-600 shrink-0" />
+                <div>
+                  <p className="font-semibold text-amber-900 text-sm">
+                    ⚡ {urgentPending.length} order PENDING belum di-assign lebih dari 30 menit
+                  </p>
+                  <p className="text-xs text-amber-700 mt-0.5">Segera assign kurir agar tidak terlambat</p>
+                </div>
+              </div>
+              <Link
+                to="/admin/orders"
+                className="shrink-0 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg transition-colors"
+              >
+                Assign Sekarang →
+              </Link>
+            </div>
+          );
+        })()}
+
         {/* Stats Grid - Linked to Pages */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6">
           <StatCard

@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
-  TrendingUp, DollarSign, Package, Users,
-  Award, BarChart3, ArrowRight
+  TrendingUp, DollarSign, Users,
+  Award, BarChart3, ShoppingBag,
 } from 'lucide-react';
 import {
   format, parseISO, startOfDay, endOfDay, subDays, isWithinInterval
@@ -16,8 +16,7 @@ import { useOrderStore } from '@/stores/useOrderStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { calcAdminEarning } from '@/lib/calcEarning';
-import { getOrdersForWeek } from '@/lib/orderCache';
-import { useNavigate } from 'react-router-dom';
+import { getOrdersForWeek, getTopCustomers, getTopCouriers } from '@/lib/orderCache';
 import type { Order } from '@/types';
 
 const COLORS = ['#F59E0B', '#3B82F6', '#8B5CF6', '#06B6D4', '#22C55E', '#EF4444'];
@@ -34,7 +33,6 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export function OwnerOverview() {
-  const navigate = useNavigate();
   const { orders } = useOrderStore();
   const { users } = useUserStore();
   const { commission_rate, commission_threshold } = useSettingsStore();
@@ -45,17 +43,32 @@ export function OwnerOverview() {
 
   const [period, setPeriod] = useState<Period>('today');
   const [weekOrders, setWeekOrders] = useState<Order[]>([]);
+  const [topCustomers, setTopCustomers] = useState<{ name: string; order_count: number; total_fee: number }[]>([]);
+  const [topCouriersLocal, setTopCouriersLocal] = useState<{ id: string; name: string; delivery_count: number; total_fee: number }[]>([]);
 
-  const loadWeekOrders = useCallback(async () => {
+  // Build courier name map for local aggregation
+  const courierNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    users.filter(u => u.role === 'courier').forEach(u => { map[u.id] = u.name; });
+    return map;
+  }, [users]);
+
+  const loadLocalData = useCallback(async () => {
     const dbOrders = await getOrdersForWeek();
     setWeekOrders(dbOrders);
-  }, []);
+    const [customers, localCouriers] = await Promise.all([
+      getTopCustomers(5),
+      getTopCouriers(5, courierNameMap),
+    ]);
+    setTopCustomers(customers);
+    setTopCouriersLocal(localCouriers);
+  }, [courierNameMap]);
 
   useEffect(() => {
-    loadWeekOrders();
-    window.addEventListener('indexeddb-synced', loadWeekOrders);
-    return () => window.removeEventListener('indexeddb-synced', loadWeekOrders);
-  }, [loadWeekOrders]);
+    loadLocalData();
+    window.addEventListener('indexeddb-synced', loadLocalData);
+    return () => window.removeEventListener('indexeddb-synced', loadLocalData);
+  }, [loadLocalData]);
 
   const allOrders = useMemo(() => {
     const map = new Map<string, Order>();
@@ -146,20 +159,8 @@ export function OwnerOverview() {
     }));
   }, [filteredOrders]);
 
-  // Top performers
-  const topPerformers = useMemo(() => {
-    const stats: Record<string, { name: string; orders: number; revenue: number }> = {};
-    deliveredOrders.forEach(o => {
-      if (!o.courier_id) return;
-      if (!stats[o.courier_id]) {
-        const courier = users.find(u => u.id === o.courier_id);
-        stats[o.courier_id] = { name: courier?.name || 'Unknown', orders: 0, revenue: 0 };
-      }
-      stats[o.courier_id].orders++;
-      stats[o.courier_id].revenue += o.total_fee || 0;
-    });
-    return Object.values(stats).sort((a, b) => b.orders - a.orders).slice(0, 5);
-  }, [deliveredOrders, users]);
+  // Top performers — from local IndexedDB aggregation
+  const topPerformers = topCouriersLocal;
 
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
@@ -298,24 +299,16 @@ export function OwnerOverview() {
             )}
           </Card>
 
-          {/* Top Performers */}
+          {/* Top Kurir (Local-First) */}
           <Card>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <Award className="h-5 w-5 text-emerald-600" />
-                Top Performers
-              </h3>
-              <button
-                onClick={() => navigate('/admin/couriers')}
-                className="text-sm text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1"
-              >
-                Lihat Semua <ArrowRight className="h-4 w-4" />
-              </button>
+            <div className="flex items-center gap-2 mb-4">
+              <Award className="h-5 w-5 text-emerald-600" />
+              <h3 className="text-lg font-semibold text-gray-900">Top Kurir</h3>
             </div>
             {topPerformers.length > 0 ? (
               <div className="space-y-3">
                 {topPerformers.map((c, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                  <div key={c.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                     <div className="flex items-center gap-3">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
                         i === 0 ? 'bg-yellow-100 text-yellow-700' :
@@ -327,58 +320,46 @@ export function OwnerOverview() {
                       </div>
                       <div>
                         <p className="font-medium text-gray-900 text-sm">{c.name}</p>
-                        <p className="text-xs text-gray-500">{c.orders} order delivered</p>
+                        <p className="text-xs text-gray-500">{c.delivery_count} delivery</p>
                       </div>
                     </div>
-                    <p className="font-semibold text-gray-900 text-sm">{formatCurrency(c.revenue)}</p>
+                    <p className="font-semibold text-gray-900 text-sm">{formatCurrency(c.total_fee)}</p>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8 text-gray-400">Tidak ada data</div>
+              <div className="text-center py-8 text-gray-400">Tidak ada data lokal</div>
             )}
           </Card>
         </div>
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <button
-            onClick={() => navigate('/admin/dashboard')}
-            className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-xl hover:border-indigo-300 hover:shadow-sm transition-all"
-          >
-            <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
-              <Package className="h-5 w-5 text-indigo-600" />
+        {/* Top Customers (Local-First) */}
+        <Card>
+          <div className="flex items-center gap-2 mb-4">
+            <ShoppingBag className="h-5 w-5 text-blue-600" />
+            <h3 className="text-lg font-semibold text-gray-900">Top Pelanggan</h3>
+          </div>
+          {topCustomers.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {topCustomers.map((c, i) => (
+                <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm">
+                      {i + 1}
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900 text-sm">{c.name}</p>
+                      <p className="text-xs text-gray-500">{c.order_count} order</p>
+                    </div>
+                  </div>
+                  <p className="font-semibold text-gray-900 text-sm">{formatCurrency(c.total_fee)}</p>
+                </div>
+              ))}
             </div>
-            <div className="text-left">
-              <p className="font-medium text-gray-900">Operasional</p>
-              <p className="text-xs text-gray-500">Kelola order & kurir</p>
-            </div>
-          </button>
-          <button
-            onClick={() => navigate('/admin/reports')}
-            className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-xl hover:border-emerald-300 hover:shadow-sm transition-all"
-          >
-            <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
-              <BarChart3 className="h-5 w-5 text-emerald-600" />
-            </div>
-            <div className="text-left">
-              <p className="font-medium text-gray-900">Laporan</p>
-              <p className="text-xs text-gray-500">Export laporan detail</p>
-            </div>
-          </button>
-          <button
-            onClick={() => navigate('/admin/settings')}
-            className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-xl hover:border-purple-300 hover:shadow-sm transition-all"
-          >
-            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-              <Users className="h-5 w-5 text-purple-600" />
-            </div>
-            <div className="text-left">
-              <p className="font-medium text-gray-900">Pengaturan</p>
-              <p className="text-xs text-gray-500">Konfigurasi bisnis</p>
-            </div>
-          </button>
-        </div>
+          ) : (
+            <div className="text-center py-6 text-gray-400 text-sm">Tidak ada data lokal</div>
+          )}
+        </Card>
       </div>
     </div>
   );

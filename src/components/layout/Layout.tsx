@@ -15,6 +15,7 @@ import {
   DollarSign,
   TrendingUp,
   BarChart3,
+  ShieldAlert,
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/context/AuthContext';
@@ -35,12 +36,11 @@ const roleNavItems: Record<string, NavItem[]> = {
     { path: '/admin/couriers', label: 'Couriers', icon: Users },
     { path: '/admin/notifications', label: 'Notifikasi', icon: Bell },
   ],
+  // Owner: Business Pilot - analytics & financial insight, no operational menus
   owner: [
     { path: '/admin/overview', label: 'Overview', icon: BarChart3, end: true },
-    { path: '/admin/dashboard', label: 'Operasional', icon: LayoutDashboard },
-    { path: '/admin/couriers', label: 'Couriers', icon: Users },
-    { path: '/admin/reports', label: 'Reports', icon: FileText },
     { path: '/admin/finance', label: 'Keuangan', icon: DollarSign },
+    { path: '/admin/reports', label: 'Reports', icon: FileText },
     { path: '/admin/settings', label: 'Settings', icon: Settings },
   ],
   finance: [
@@ -50,16 +50,16 @@ const roleNavItems: Record<string, NavItem[]> = {
     { path: '/admin/orders', label: 'Orders', icon: Package },
     { path: '/admin/reports', label: 'Reports', icon: FileText },
   ],
-  // Legacy admin = owner
+  // Super Admin (admin): God View - full access + exclusive Diagnostics
   admin: [
-    { path: '/admin/overview', label: 'Overview', icon: BarChart3, end: true },
-    { path: '/admin/dashboard', label: 'Operasional', icon: LayoutDashboard },
+    { path: '/admin/dashboard', label: 'Command Center', icon: LayoutDashboard, end: true },
     { path: '/admin/orders', label: 'Orders', icon: Package },
     { path: '/admin/couriers', label: 'Couriers', icon: Users },
+    { path: '/admin/finance', label: 'Keuangan', icon: DollarSign },
     { path: '/admin/reports', label: 'Reports', icon: FileText },
     { path: '/admin/notifications', label: 'Notifikasi', icon: Bell },
-    { path: '/admin/finance', label: 'Keuangan', icon: DollarSign },
     { path: '/admin/settings', label: 'Settings', icon: Settings },
+    { path: '/admin/diagnostics', label: 'Diagnostics', icon: ShieldAlert },
   ],
 };
 
@@ -220,6 +220,7 @@ export function Layout() {
           <div className="flex items-center gap-3 px-4 py-3">
             <div className={cn(
               "w-10 h-10 rounded-full flex items-center justify-center font-semibold",
+              user?.role === 'admin' ? 'bg-purple-600' :
               user?.role === 'finance' ? 'bg-amber-600' :
               user?.role === 'owner' ? 'bg-emerald-600' :
               'bg-indigo-600'

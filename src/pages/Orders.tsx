@@ -1777,18 +1777,39 @@ export function Orders() {
             )}
 
             <div className="flex justify-between items-center pt-2 border-t">
-              {isOpsAdmin && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                  onClick={() => setIsCancelModalOpen(true)}
-                  disabled={['delivered', 'cancelled'].includes(selectedOrder.status)}
-                >
-                  Cancel Order
-                </Button>
-              )}
-              {!isOpsAdmin && <div />}
+              <div className="flex gap-2">
+                {isOpsAdmin && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                    onClick={() => setIsCancelModalOpen(true)}
+                    disabled={['delivered', 'cancelled'].includes(selectedOrder.status)}
+                  >
+                    Cancel Order
+                  </Button>
+                )}
+                {user?.role === 'admin' && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-purple-600 hover:text-purple-800 hover:bg-purple-50 flex items-center gap-1"
+                    onClick={() => {
+                      const tgt = window.prompt(
+                        `[SUPER ADMIN] Force update status (pending/assigned/picked_up/in_transit/delivered/cancelled):`,
+                        selectedOrder.status
+                      );
+                      if (tgt && ['pending', 'assigned', 'picked_up', 'in_transit', 'delivered', 'cancelled'].includes(tgt)) {
+                        updateOrder(selectedOrder.id, { status: tgt as any });
+                      } else if (tgt) {
+                        alert('Status tidak valid');
+                      }
+                    }}
+                  >
+                    ⚡ Force Status
+                  </Button>
+                )}
+              </div>
               <div className="flex gap-2">
                 <Button
                   variant="outline"
