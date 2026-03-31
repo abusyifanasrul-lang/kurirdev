@@ -113,8 +113,40 @@ export function FinancePenagihan() {
       });
     }
 
+    // Add Orphaned Orders (Courier missing)
+    const activeIds = couriers.map(c => c.id);
+    const orphans = deliveredOrders.filter(o => o.courier_id && !activeIds.includes(o.courier_id));
+    
+    if (orphans.length > 0) {
+      const unpaid = orphans.filter(o => o.payment_status === 'unpaid');
+      const paid = orphans.filter(o => o.payment_status === 'paid');
+      
+      const totalEarning = unpaid.reduce((sum, o) =>
+        sum + calcCourierEarning(o, earningSettings), 0
+      );
+
+      // Only show orphans if they match the filter or search (search matches 'Terhapus')
+      const matchesSearch = !searchQuery || 'terhapus'.includes(searchQuery.toLowerCase()) || 'unknown'.includes(searchQuery.toLowerCase());
+      const matchesFilter = filter === 'all' || (filter === 'unpaid' && unpaid.length > 0) || (filter === 'paid' && unpaid.length === 0);
+
+      if (matchesSearch && matchesFilter) {
+        result.push({
+          courierId: 'unknown_legacy',
+          courierName: '📦 Kurir Terhapus / Unknown',
+          totalEarning,
+          unpaidOrders: unpaid.sort((a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          ),
+          paidOrders: paid.sort((a, b) =>
+            new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+          ).slice(0, 5),
+          lastSettlement: null
+        });
+      }
+    }
+
     return result.sort((a, b) => b.totalEarning - a.totalEarning);
-  }, [deliveredOrders, couriers, filter, searchQuery]);
+  }, [deliveredOrders, couriers, filter, searchQuery, earningSettings]);
 
   const totalUnpaid = courierSummary.reduce((sum, c) => sum + c.totalEarning, 0);
   const totalUnpaidOrders = courierSummary.reduce((sum, c) => sum + c.unpaidOrders.length, 0);

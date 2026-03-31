@@ -5,8 +5,9 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useCustomerStore } from '@/stores/useCustomerStore';
 import { getCustomerSyncTime } from '@/lib/orderCache';
-import { onForegroundMessage, refreshFCMToken } from '@/lib/fcm';
 import { AppListeners } from '@/components/AppListeners';
+// NOTE: fcm.ts is NOT statically imported — it's dynamically imported only for courier role
+// to avoid pulling firebase/messaging (~30KB) into the main bundle for all users.
 import type { UserRole } from '@/types';
 
 // Loading Skeleton
@@ -189,52 +190,60 @@ export function App() {
   const syncFromFirestore = useCustomerStore(s => s.syncFromFirestore);
 
   useEffect(() => {
-    loadFromLocal().then(() => {
-      const lastSyncRaw = getCustomerSyncTime();
-      const lastSyncDate = lastSyncRaw ? new Date(lastSyncRaw).toDateString() : null;
-      const today = new Date().toDateString();
-      if (lastSyncDate !== today) {
-        syncFromFirestore();
-      }
-    });
+    // Defer non-critical customer sync — runs after current event loop
+    const syncTimer = setTimeout(() => {
+      loadFromLocal().then(() => {
+        const lastSyncRaw = getCustomerSyncTime();
+        const lastSyncDate = lastSyncRaw ? new Date(lastSyncRaw).toDateString() : null;
+        const today = new Date().toDateString();
+        if (lastSyncDate !== today) {
+          syncFromFirestore();
+        }
+      });
+    }, 0);
 
     const currentUserStr = sessionStorage.getItem('user-session');
     let fcmRefreshInterval: ReturnType<typeof setInterval> | null = null;
+    let unsubFCM: (() => void) | undefined;
+
     if (currentUserStr) {
       try {
         const sessionData = JSON.parse(currentUserStr);
         const currentUser = sessionData.state?.user;
         if (currentUser?.role === 'courier') {
-          refreshFCMToken(currentUser.id).catch(console.error);
-          const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-          fcmRefreshInterval = setInterval(() => {
+          // Dynamic import — only loads firebase/messaging for courier role
+          import('@/lib/fcm').then(({ refreshFCMToken, onForegroundMessage }) => {
             refreshFCMToken(currentUser.id).catch(console.error);
-          }, SEVEN_DAYS_MS);
+            const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+            fcmRefreshInterval = setInterval(() => {
+              refreshFCMToken(currentUser.id).catch(console.error);
+            }, SEVEN_DAYS_MS);
+            unsubFCM = onForegroundMessage((payload: any) => {
+              console.log('🔔 Foreground message received:', payload);
+              const notifData = payload.notification || payload.data || {};
+              const title = notifData.title;
+              const body = notifData.body;
+              if (title && Notification.permission === 'granted') {
+                const notif = new Notification(title, {
+                  body: body || '',
+                  icon: '/icons/android/android-launchericon-192-192.png',
+                  tag: payload.data?.orderId || 'kurirdev-foreground',
+                });
+                notif.onclick = () => window.focus();
+              }
+            });
+          }).catch(err => console.error('FCM dynamic import failed:', err));
         }
       } catch (e) {
         // ignore parse error
       }
     }
 
-    const unsubFCM = onForegroundMessage((payload) => {
-      console.log('🔔 Foreground message received:', payload);
-      const notifData = payload.notification || payload.data || {};
-      const title = notifData.title;
-      const body = notifData.body;
-      if (title && Notification.permission === 'granted') {
-        const notif = new Notification(title, {
-          body: body || '',
-          icon: '/icons/android/android-launchericon-192-192.png',
-          tag: payload.data?.orderId || 'kurirdev-foreground',
-        });
-        notif.onclick = () => window.focus();
-      }
-    });
-
     return () => {
-      unsubFCM()
-      if (fcmRefreshInterval) clearInterval(fcmRefreshInterval)
-    }
+      clearTimeout(syncTimer);
+      if (unsubFCM) unsubFCM();
+      if (fcmRefreshInterval) clearInterval(fcmRefreshInterval);
+    };
   }, [])
 
   return (

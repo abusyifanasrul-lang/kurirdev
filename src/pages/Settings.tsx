@@ -17,6 +17,7 @@ import { useSettingsStore } from '@/stores/useSettingsStore';
 import {
   clearAllCache,
   getCacheMeta,
+  getOrphanedOrdersLocal,
 } from '@/lib/orderCache';
 import { useNavigate } from 'react-router-dom';
 import { doc, setDoc } from 'firebase/firestore';
@@ -585,6 +586,30 @@ export function Settings() {
                         className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 transition-colors"
                       >
                         🧹 Cleanup Dummy Orders
+                      </button>
+
+                      <hr className="my-4 border-gray-200" />
+
+                      <h5 className="text-xs font-semibold text-gray-700 mb-1 uppercase tracking-wider">💾 Data Integrity</h5>
+                      <p className="text-xs text-gray-500 mb-3">
+                        Deteksi order yang kehilangan referensi kurir (yatim).
+                      </p>
+                      <button
+                        onClick={async () => {
+                          const activeIds = users.filter(u => u.role === 'courier').map(u => u.id);
+                          const orphans = await getOrphanedOrdersLocal(activeIds);
+                          if (orphans.length === 0) {
+                            alert('✅ Tidak ditemukan order yatim. Semua data sinkron!');
+                          } else {
+                            if (window.confirm(`⚠️ Ditemukan ${orphans.length} order yatim! Apa Anda ingin melihat detailnya di halaman Penagihan? (Dikelompokkan di "Kurir Terhapus")`)) {
+                              setActiveTab('business'); // stay here but alert
+                              window.location.href = '/finance/penagihan';
+                            }
+                          }
+                        }}
+                        className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
+                      >
+                        🔍 Scan Orphaned Orders
                       </button>
                     </div>
                   </div>

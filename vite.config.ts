@@ -183,12 +183,13 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          // Firebase — dipakai semua user
+          // Firebase core — dipakai semua user
+          // NOTE: firebase/messaging & firebase/installations intentionally excluded
+          // — they're only needed for courier push notifications (lazy-loaded via fcm.ts)
           'vendor-firebase': [
             'firebase/app',
             'firebase/firestore',
-            'firebase/messaging',
-            'firebase/installations',
+            'firebase/auth',
           ],
           // React core
           'vendor-react': [

@@ -1,6 +1,5 @@
-import { getToken, onMessage } from 'firebase/messaging'
+import { getToken, onMessage, getMessaging, type Messaging } from 'firebase/messaging'
 import { deleteInstallations, getInstallations } from 'firebase/installations'
-import { messaging } from './firebase'
 import app from './firebase'
 import { db } from './firebase'
 import { doc, updateDoc } from 'firebase/firestore'
@@ -8,6 +7,15 @@ import { Capacitor } from '@capacitor/core'
 import { PushNotifications } from '@capacitor/push-notifications'
 
 const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY
+
+// Lazy messaging init — this file is only loaded for courier role (dynamic import in App.tsx)
+let _messaging: Messaging | null = null
+try {
+  _messaging = getMessaging(app)
+} catch (e) {
+  console.warn('⚠️ Firebase Messaging not supported in this browser:', e)
+}
+const messaging = _messaging
 
 /**
  * Clear all stale Firebase data from IndexedDB.

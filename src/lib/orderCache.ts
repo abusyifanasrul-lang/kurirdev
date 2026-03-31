@@ -563,3 +563,18 @@ export async function getTopCouriers(
     .sort((a, b) => b.delivery_count - a.delivery_count)
     .slice(0, limit)
 }
+
+// Cari order yang kehilangan referensi kurir (orphaned)
+export async function getOrphanedOrdersLocal(
+  activeCourierIds: string[]
+): Promise<import('@/types').Order[]> {
+  const all = await localDB.orders
+    .toArray();
+  
+  return all
+    .filter(o => 
+      o.courier_id && 
+      !activeCourierIds.includes(o.courier_id)
+    )
+    .map(({ _date, ...o }) => o as import('@/types').Order);
+}

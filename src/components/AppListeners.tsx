@@ -111,12 +111,25 @@ export function AppListeners() {
     // (untuk cek suspended, data kurir, dll)
     const unsubUsers = subscribeUsers()
 
-    // Seed Firestore users if empty
-    seedFirestore().catch(console.error)
+    // Seed Firestore users if empty — skip if already seeded
+    if (!localStorage.getItem('kurirdev_seeded')) {
+      seedFirestore().then(() => {
+        localStorage.setItem('kurirdev_seeded', '1')
+      }).catch(console.error)
+    }
 
+    // Queue positions only needed for admin roles, not courier
     setTimeout(() => {
-      initQueuePositions().catch(console.error)
-    }, 2000)
+      const sessionStr = sessionStorage.getItem('user-session')
+      if (sessionStr) {
+        try {
+          const { state } = JSON.parse(sessionStr)
+          if (state?.user?.role && state.user.role !== 'courier') {
+            initQueuePositions().catch(console.error)
+          }
+        } catch {}
+      }
+    }, 5000)
 
     return () => unsubUsers()
   }, [])
@@ -301,9 +314,13 @@ export function AppListeners() {
       }
     }
 
-    // Delay 3 detik agar listener lain
-    // sudah aktif dulu
-    const timer = setTimeout(runSync, 3000)
+    // Delay 5 detik agar listener lain sudah aktif dulu
+    // dan skip jika tab tidak visible (save resources)
+    const timer = setTimeout(() => {
+      if (document.visibilityState === 'visible') {
+        runSync()
+      }
+    }, 5000)
     return () => clearTimeout(timer)
   }, [user?.id])
 

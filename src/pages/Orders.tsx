@@ -87,7 +87,8 @@ export function Orders() {
   const getCourierName = (courierId?: string) => {
     if (!courierId) return null;
     const courier = users.find(u => u.id === courierId);
-    return courier?.name || null;
+    if (!courier) return '── Kurir Terhapus ──';
+    return courier.name;
   };
 
 
