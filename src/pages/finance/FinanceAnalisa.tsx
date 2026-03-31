@@ -17,7 +17,7 @@ import { useOrderStore } from '@/stores/useOrderStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { calcCourierEarning, calcAdminEarning } from '@/lib/calcEarning';
-import { getOrdersForWeek } from '@/lib/orderCache';
+import { getOrdersByDateRange } from '@/lib/orderCache';
 import type { Order } from '@/types';
 
 type Period = '7days' | '30days' | 'thisMonth';
@@ -29,25 +29,32 @@ export function FinanceAnalisa() {
   const earningSettings = { commission_rate, commission_threshold };
 
   const [period, setPeriod] = useState<Period>('7days');
-  const [weekOrders, setWeekOrders] = useState<Order[]>([]);
+  const [periodOrders, setPeriodOrders] = useState<Order[]>([]);
 
-  const loadWeekOrders = useCallback(async () => {
-    const dbOrders = await getOrdersForWeek();
-    setWeekOrders(dbOrders);
-  }, []);
+  const loadPeriodOrders = useCallback(async () => {
+    const now = new Date();
+    let start: Date;
+    if (period === '7days') start = startOfDay(subDays(now, 6));
+    else if (period === '30days') start = startOfDay(subDays(now, 29));
+    else start = startOfMonth(now);
+    const end = endOfDay(now);
+
+    const dbOrders = await getOrdersByDateRange(start.toISOString(), end.toISOString());
+    setPeriodOrders(dbOrders);
+  }, [period]);
 
   useEffect(() => {
-    loadWeekOrders();
-    window.addEventListener('indexeddb-synced', loadWeekOrders);
-    return () => window.removeEventListener('indexeddb-synced', loadWeekOrders);
-  }, [loadWeekOrders]);
+    loadPeriodOrders();
+    window.addEventListener('indexeddb-synced', loadPeriodOrders);
+    return () => window.removeEventListener('indexeddb-synced', loadPeriodOrders);
+  }, [loadPeriodOrders]);
 
   const allOrders = useMemo(() => {
     const map = new Map<string, Order>();
-    weekOrders.forEach(o => map.set(o.id, o));
+    periodOrders.forEach(o => map.set(o.id, o));
     orders.forEach(o => map.set(o.id, o));
     return Array.from(map.values());
-  }, [weekOrders, orders]);
+  }, [periodOrders, orders]);
 
   // Period range
   const dateRange = useMemo(() => {

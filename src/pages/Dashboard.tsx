@@ -29,6 +29,7 @@ import { getOrdersForWeek } from '@/lib/orderCache';
 // Stores
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useUserStore } from '@/stores/useUserStore';
+import { useAuthStore } from '@/stores/useAuthStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { calcAdminEarning } from '@/lib/calcEarning';
 import type { Order, OrderStatus } from '@/types';
@@ -38,8 +39,11 @@ const COLORS = ['#F59E0B', '#3B82F6', '#8B5CF6', '#06B6D4', '#22C55E', '#EF4444'
 export function Dashboard() {
   const { orders } = useOrderStore();
   const { users } = useUserStore();
+  const { user } = useAuthStore();
   const { commission_rate, commission_threshold } = useSettingsStore();
   const earningSettings = { commission_rate, commission_threshold };
+
+  const isFinance = user?.role === 'finance' || user?.role === 'owner';
 
   const [isConnected] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(new Date());
@@ -206,20 +210,41 @@ export function Dashboard() {
             trend={{ value: 12, isPositive: true }}
             to="/admin/orders"
           />
-          <StatCard
-            title="Net Revenue Admin"
-            value={formatCurrency(analytics.net_revenue_today)}
-            icon={<DollarSign className="h-6 w-6" />}
-            subtitle="Hari ini · setelah komisi & threshold"
-            to="/admin/reports"
-          />
-          <StatCard
-            title="Fee Bebas Komisi"
-            value={formatCurrency(analytics.below_threshold_today)}
-            icon={<TrendingUp className="h-6 w-6" />}
-            subtitle={`Hari ini · order ≤ Rp ${commission_threshold.toLocaleString('id-ID')}`}
-            to="/admin/reports"
-          />
+          {isFinance ? (
+            <>
+              <StatCard
+                title="Net Revenue Admin"
+                value={formatCurrency(analytics.net_revenue_today)}
+                icon={<DollarSign className="h-6 w-6" />}
+                subtitle="Hari ini · setelah komisi & threshold"
+                to="/admin/reports"
+              />
+              <StatCard
+                title="Fee Bebas Komisi"
+                value={formatCurrency(analytics.below_threshold_today)}
+                icon={<TrendingUp className="h-6 w-6" />}
+                subtitle={`Hari ini · order ≤ Rp ${commission_threshold.toLocaleString('id-ID')}`}
+                to="/admin/reports"
+              />
+            </>
+          ) : (
+            <>
+              <StatCard
+                title="Active Orders"
+                value={allOrders.filter(o => ['assigned', 'picked_up', 'in_transit'].includes(o.status)).length}
+                icon={<TrendingUp className="h-6 w-6" />}
+                subtitle="Sedang diproses"
+                to="/admin/orders"
+              />
+              <StatCard
+                title="Terkirim Hari Ini"
+                value={allOrders.filter(o => o.status === 'delivered' && isToday(new Date(o.actual_delivery_time || o.created_at))).length}
+                icon={<Package className="h-6 w-6" />}
+                subtitle="Sudah sampai"
+                to="/admin/orders"
+              />
+            </>
+          )}
           <StatCard
             title="Pending Orders"
             value={analytics.pending_orders}
@@ -235,45 +260,47 @@ export function Dashboard() {
           {/* Main Chart Column (2/3 width) */}
           <div className="lg:col-span-2 space-y-6">
             {/* Revenue Chart */}
-            <Card>
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Revenue Trend</h3>
-                  <p className="text-sm text-gray-500">7 hari terakhir</p>
+            {isFinance && (
+              <Card>
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Revenue Trend</h3>
+                    <p className="text-sm text-gray-500">7 hari terakhir</p>
+                  </div>
+                  <div className="flex items-center gap-2 text-green-600">
+                    <TrendingUp className="h-4 w-4" />
+                    <span className="text-sm font-medium">Live</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-green-600">
-                  <TrendingUp className="h-4 w-4" />
-                  <span className="text-sm font-medium">Live</span>
-                </div>
-              </div>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={revenueChartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                  <XAxis
-                    dataKey="date"
-                    tickFormatter={(value) => format(new Date(value), 'MMM dd')}
-                    stroke="#9CA3AF"
-                    fontSize={12}
-                  />
-                  <YAxis
-                    tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
-                    stroke="#9CA3AF"
-                    fontSize={12}
-                  />
-                  <Tooltip
-                    formatter={(value) => [formatCurrency(value as number), 'Revenue']}
-                    labelFormatter={(label) => format(new Date(label), 'MMM dd, yyyy')}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="revenue"
-                    stroke="#4F46E5"
-                    strokeWidth={2}
-                    dot={{ fill: '#4F46E5', strokeWidth: 2 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </Card>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={revenueChartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={(value) => format(new Date(value), 'MMM dd')}
+                      stroke="#9CA3AF"
+                      fontSize={12}
+                    />
+                    <YAxis
+                      tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+                      stroke="#9CA3AF"
+                      fontSize={12}
+                    />
+                    <Tooltip
+                      formatter={(value) => [formatCurrency(value as number), 'Revenue']}
+                      labelFormatter={(label) => format(new Date(label), 'MMM dd, yyyy')}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="revenue"
+                      stroke="#4F46E5"
+                      strokeWidth={2}
+                      dot={{ fill: '#4F46E5', strokeWidth: 2 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </Card>
+            )}
 
             {/* Recent Orders */}
             <Card>

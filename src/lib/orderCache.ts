@@ -337,6 +337,19 @@ export async function getUnpaidOrdersByCourier(
     )
 }
 
+// Ambil SEMUA unpaid orders (untuk Finance Penagihan)
+export async function getAllUnpaidOrdersLocal(): Promise<import('@/types').Order[]> {
+  const all = await localDB.orders.toArray()
+  return all
+    .filter(o =>
+      o.status === 'delivered' &&
+      o.payment_status === 'unpaid'
+    )
+    .map(({ _date, ...o }) =>
+      o as import('@/types').Order
+    )
+}
+
 // Update payment_status di IndexedDB
 // saat order dikonfirmasi setor
 export async function markAsPaidInLocalDB(

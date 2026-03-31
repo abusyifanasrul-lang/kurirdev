@@ -4,26 +4,19 @@ import { messaging } from './firebase'
 import app from './firebase'
 import { db } from './firebase'
 import { doc, updateDoc } from 'firebase/firestore'
+import { Capacitor } from '@capacitor/core'
+import { PushNotifications } from '@capacitor/push-notifications'
 
 const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY
 
 /**
  * Clear all stale Firebase data from IndexedDB.
- * This fixes 401 errors when switching Firebase apps (old cached FIS credentials).
  */
 async function clearStaleFirebaseData(): Promise<void> {
-  try {
-    // 1. Delete all Firebase-related IndexedDB databases
-    const dbNames = [
-      'firebase-installations-database',
-      'firebase-heartbeat-database',
-      'firebase-messaging-database',
-      // older SDK format
-      'fcm_token_details_db',
-    ]
+  if (Capacitor.isNativePlatform()) return // Native handled by FCM SDK directly
 
+  try {
     if ('databases' in indexedDB) {
-      // Modern browsers: list all databases and delete Firebase-related ones
       const allDbs = await (indexedDB as any).databases()
       for (const dbInfo of allDbs) {
         if (dbInfo.name && (
@@ -31,158 +24,123 @@ async function clearStaleFirebaseData(): Promise<void> {
           dbInfo.name.includes('fcm') ||
           dbInfo.name.includes('FirebaseInstallations')
         )) {
-          console.log(`🗑️ Deleting IndexedDB: ${dbInfo.name}`)
           indexedDB.deleteDatabase(dbInfo.name)
         }
       }
-    } else {
-      // Fallback: try to delete known database names
-      for (const name of dbNames) {
-        console.log(`🗑️ Deleting IndexedDB: ${name}`)
-          ; (indexedDB as IDBFactory).deleteDatabase(name)
-      }
     }
 
-    // 2. Unsubscribe any existing push subscription
-    const registrations = await navigator.serviceWorker.getRegistrations()
-    for (const reg of registrations) {
-      const sub = await reg.pushManager.getSubscription()
-      if (sub) {
-        await sub.unsubscribe()
-        console.log('🗑️ Unsubscribed old push subscription')
-      }
-    }
-
-    // 3. Delete Firebase Installation (forces new FID)
-    try {
-      const installations = getInstallations(app)
-      await deleteInstallations(installations)
-      console.log('🗑️ Deleted Firebase Installation (FID)')
-    } catch (e) {
-      // May fail if no installation exists — that's fine
-      console.debug('FID delete skipped:', e)
-    }
-
-    console.log('✅ Stale Firebase data cleared')
+    const installations = getInstallations(app)
+    await deleteInstallations(installations)
+    console.log('✅ Stale Web Firebase data cleared')
   } catch (error) {
-    console.warn('⚠️ Could not clear stale data (non-fatal):', error)
+    console.warn('⚠️ Could not clear stale data:', error)
   }
 }
 
 /**
- * Key used to track if we've already cleaned stale data after an app change.
- * This prevents clearing data on every login — only needed once.
+ * Native Registration for Capacitor
  */
-const CLEANUP_KEY = 'fcm_cleanup_done_v4' // bumped: fix push notification popup not showing
-
-export const requestFCMPermission = async (userId: string): Promise<string | null> => {
+const registerNativePush = async (userId: string): Promise<string | null> => {
   try {
-    if (!messaging) {
-      console.warn('⚠️ Firebase Messaging not available')
-      return null
+    let perm = await PushNotifications.checkPermissions()
+    
+    if (perm.receive !== 'granted') {
+      perm = await PushNotifications.requestPermissions()
     }
 
-    // Skip FCM on localhost (requires HTTPS)
-    if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
-      console.debug('⏭️ FCM skipped on localhost')
-      return null
+    if (perm.receive !== 'granted') {
+      throw new Error('User denied push permissions')
     }
 
-    const permission = await Notification.requestPermission()
-    if (permission !== 'granted') {
-      console.log('⚠️ Notification permission denied')
-      return null
-    }
-
-    // One-time cleanup of stale Firebase data (fixes 401 from cached old app credentials)
-    if (!localStorage.getItem(CLEANUP_KEY)) {
-      console.log('🧹 First run after update — clearing stale Firebase data...')
-      await clearStaleFirebaseData()
-
-      // Unregister old firebase SW to force fresh registration
-      const existingRegs = await navigator.serviceWorker.getRegistrations()
-      for (const reg of existingRegs) {
-        if (reg.active?.scriptURL.includes('firebase-messaging-sw') ||
-          reg.active?.scriptURL.includes('sw.js')) {
-          await reg.unregister()
-          console.log(`🗑️ Unregistered old SW: ${reg.active?.scriptURL}`)
-        }
-      }
-
-      localStorage.setItem(CLEANUP_KEY, new Date().toISOString())
-
-      // Small delay to let IndexedDB deletions complete
-      await new Promise(resolve => setTimeout(resolve, 1000))
-    }
-
-    // Ensure we have a valid SW registration (re-register if cleanup removed it)
-    let registration = await navigator.serviceWorker.getRegistration('/')
-    if (!registration) {
-      console.log('📦 Re-registering service worker...')
-      registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
-      // Wait for SW to be active
-      await navigator.serviceWorker.ready
-      console.log('✅ Service worker re-registered')
-    } else {
-      // Just check for updates without re-registering
-      await registration.update().catch(() => {
-        console.debug('SW update check skipped')
-      })
-    }
-
-    const token = await getToken(messaging, {
-      vapidKey: VAPID_KEY,
-      serviceWorkerRegistration: registration
-    })
-
-    if (token) {
+    // Add listeners for native notifications
+    await PushNotifications.addListener('registration', async ({ value: token }) => {
+      console.log('🚀 Native FCM token received:', token.substring(0, 20) + '...')
       await updateDoc(doc(db, 'users', userId), {
         fcm_token: token,
-        fcm_token_updated_at: new Date().toISOString()
+        fcm_token_updated_at: new Date().toISOString(),
+        platform: 'android'
       })
-      console.log('✅ FCM token saved:', token.substring(0, 20) + '...')
-      return token
-    }
-    return null
-  } catch (error: any) {
-    if (error?.code === 'messaging/token-subscribe-failed') {
-      console.warn('⚠️ FCM token subscribe failed — attempting recovery...')
+    })
 
-      // If it still fails, force clear and retry ONCE
-      if (localStorage.getItem(CLEANUP_KEY)) {
-        console.log('🔄 Forcing full cleanup and retry...')
-        localStorage.removeItem(CLEANUP_KEY)
-        // Retry on next login — don't infinite loop
-        localStorage.setItem('fcm_retry_pending', 'true')
-      }
-    } else {
-      console.error('❌ FCM token error:', error)
-    }
+    await PushNotifications.addListener('registrationError', (err) => {
+      console.error('❌ Native registration error:', err)
+    })
+
+    // Listen for notifications while app is open
+    await PushNotifications.addListener('pushNotificationReceived', (notification) => {
+      console.log('🔔 Notification received while app open:', notification.title)
+    })
+
+    await PushNotifications.register()
+    return 'pending_native_callback'
+  } catch (e) {
+    console.error('❌ Failed native registration:', e)
     return null
+  }
+}
+
+/**
+ * Web Registration for PWA
+ */
+const registerWebPush = async (userId: string): Promise<string | null> => {
+  if (!messaging) return null
+  
+  const permission = await Notification.requestPermission()
+  if (permission !== 'granted') return null
+
+  let registration = await navigator.serviceWorker.getRegistration('/')
+  if (!registration) {
+    registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
+    await navigator.serviceWorker.ready
+  } else {
+    await registration.update().catch(() => {})
+  }
+
+  const token = await getToken(messaging, {
+    vapidKey: VAPID_KEY,
+    serviceWorkerRegistration: registration
+  })
+
+  if (token) {
+    await updateDoc(doc(db, 'users', userId), {
+      fcm_token: token,
+      fcm_token_updated_at: new Date().toISOString(),
+      platform: 'web'
+    })
+    return token
+  }
+  return null
+}
+
+export const requestFCMPermission = async (userId: string): Promise<string | null> => {
+  if (Capacitor.isNativePlatform()) {
+    console.log('📱 Using Native Push (Capacitor)')
+    return registerNativePush(userId)
+  } else {
+    console.log('🌐 Using Web Push (PWA)')
+    await clearStaleFirebaseData()
+    return registerWebPush(userId)
   }
 }
 
 export const refreshFCMToken = async (userId: string): Promise<void> => {
   try {
-    if (!messaging) return
-
-    // Skip FCM on localhost (requires HTTPS)
-    if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') return
-
-    const registration = await navigator.serviceWorker.getRegistration('/sw.js')
-    if (!registration) return
-
-    const token = await getToken(messaging, {
-      vapidKey: VAPID_KEY,
-      serviceWorkerRegistration: registration
-    })
-
-    if (token) {
-      await updateDoc(doc(db, 'users', userId), {
-        fcm_token: token,
-        fcm_token_updated_at: new Date().toISOString()
+    if (Capacitor.isNativePlatform()) {
+      await PushNotifications.register() // Re-triggers current registration listener
+    } else {
+      if (!messaging) return
+      const registration = await navigator.serviceWorker.getRegistration('/sw.js')
+      if (!registration) return
+      const token = await getToken(messaging, {
+        vapidKey: VAPID_KEY,
+        serviceWorkerRegistration: registration
       })
-      console.log('🔄 FCM token refreshed')
+      if (token) {
+        await updateDoc(doc(db, 'users', userId), {
+          fcm_token: token,
+          fcm_token_updated_at: new Date().toISOString()
+        })
+      }
     }
   } catch (error) {
     console.error('Token refresh failed:', error)
@@ -190,6 +148,20 @@ export const refreshFCMToken = async (userId: string): Promise<void> => {
 }
 
 export const onForegroundMessage = (callback: (payload: any) => void) => {
-  if (!messaging) return () => { }
-  return onMessage(messaging, callback)
+  if (Capacitor.isNativePlatform()) {
+    // Native foreground listener
+    return PushNotifications.addListener('pushNotificationReceived', (notification) => {
+      callback({
+        notification: {
+          title: notification.title,
+          body: notification.body,
+        },
+        data: notification.data
+      })
+    })
+  } else {
+    // Web foreground listener
+    if (!messaging) return () => { }
+    return onMessage(messaging, callback)
+  }
 }

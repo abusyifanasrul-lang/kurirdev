@@ -16,7 +16,7 @@ import { useOrderStore } from '@/stores/useOrderStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { calcCourierEarning } from '@/lib/calcEarning';
-import { getOrdersForWeek, markAsPaidInLocalDB } from '@/lib/orderCache';
+import { getOrdersForWeek, getAllUnpaidOrdersLocal, markAsPaidInLocalDB } from '@/lib/orderCache';
 import { cn } from '@/utils/cn';
 import type { Order } from '@/types';
 
@@ -29,7 +29,7 @@ export function FinancePenagihan() {
   const earningSettings = { commission_rate, commission_threshold };
 
   const couriers = users.filter(u => u.role === 'courier');
-  const [weekOrders, setWeekOrders] = useState<Order[]>([]);
+  const [localOrders, setLocalOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState<FilterType>('unpaid');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedCourier, setExpandedCourier] = useState<string | null>(null);
@@ -41,23 +41,29 @@ export function FinancePenagihan() {
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [confirmSuccess, setConfirmSuccess] = useState(false);
 
-  const loadWeekOrders = useCallback(async () => {
-    const dbOrders = await getOrdersForWeek();
-    setWeekOrders(dbOrders);
+  const loadLocalOrders = useCallback(async () => {
+    const [recentOrders, unpaidOrders] = await Promise.all([
+      getOrdersForWeek(),
+      getAllUnpaidOrdersLocal()
+    ]);
+    const map = new Map<string, Order>();
+    recentOrders.forEach(o => map.set(o.id, o));
+    unpaidOrders.forEach(o => map.set(o.id, o));
+    setLocalOrders(Array.from(map.values()));
   }, []);
 
   useEffect(() => {
-    loadWeekOrders();
-    window.addEventListener('indexeddb-synced', loadWeekOrders);
-    return () => window.removeEventListener('indexeddb-synced', loadWeekOrders);
-  }, [loadWeekOrders]);
+    loadLocalOrders();
+    window.addEventListener('indexeddb-synced', loadLocalOrders);
+    return () => window.removeEventListener('indexeddb-synced', loadLocalOrders);
+  }, [loadLocalOrders]);
 
   const allOrders = useMemo(() => {
     const map = new Map<string, Order>();
-    weekOrders.forEach(o => map.set(o.id, o));
+    localOrders.forEach(o => map.set(o.id, o));
     orders.forEach(o => map.set(o.id, o));
     return Array.from(map.values());
-  }, [weekOrders, orders]);
+  }, [localOrders, orders]);
 
   const deliveredOrders = useMemo(() =>
     allOrders.filter(o => o.status === 'delivered'),
@@ -137,7 +143,7 @@ export function FinancePenagihan() {
       setTimeout(() => {
         setShowConfirmModal(false);
         setConfirmCourier(null);
-        loadWeekOrders();
+        loadLocalOrders();
       }, 1500);
     } catch (err) {
       console.error('Settlement error:', err);

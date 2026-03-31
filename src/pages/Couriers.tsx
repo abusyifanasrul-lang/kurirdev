@@ -22,6 +22,7 @@ import {
 import { useCourierStore } from '@/stores/useCourierStore';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useUserStore } from '@/stores/useUserStore';
+import { useAuthStore } from '@/stores/useAuthStore';
 import { Courier, Order } from '@/types';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { calcCourierEarning, calcAdminEarning } from '@/lib/calcEarning';
@@ -34,6 +35,8 @@ export function Couriers() {
   const { orders, getOrdersByCourier, updateOrder } = useOrderStore();
   const { commission_rate, commission_threshold } = useSettingsStore();
   const earningSettings = { commission_rate, commission_threshold };
+  const { user } = useAuthStore();
+  const isFinance = user?.role === 'finance' || user?.role === 'owner';
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isPerformanceModalOpen, setIsPerformanceModalOpen] = useState(false);
@@ -244,11 +247,13 @@ export function Couriers() {
             value={totalDeliveries}
             icon={<TrendingUp className="h-6 w-6" />}
           />
-          <StatCard
-            title="Kurir Earnings (7 Hari)"
-            value={formatCurrency(totalEarnings)}
-            icon={<DollarSign className="h-6 w-6" />}
-          />
+          {isFinance && (
+            <StatCard
+              title="Kurir Earnings (7 Hari)"
+              value={formatCurrency(totalEarnings)}
+              icon={<DollarSign className="h-6 w-6" />}
+            />
+          )}
         </div>
 
         {/* Couriers Table */}
@@ -259,8 +264,12 @@ export function Couriers() {
                 <TableHeader>Name</TableHeader>
                 <TableHeader>Status</TableHeader>
                 <TableHeader>Completed (7H)</TableHeader>
-                <TableHeader>Free Admin (7H)</TableHeader>
-                <TableHeader>Earnings (7H)</TableHeader>
+                {isFinance && (
+                  <>
+                    <TableHeader>Free Admin (7H)</TableHeader>
+                    <TableHeader>Earnings (7H)</TableHeader>
+                  </>
+                )}
                 <TableHeader>Action</TableHeader>
               </TableRow>
             </TableHead>
@@ -318,25 +327,29 @@ export function Couriers() {
                         o.status === 'delivered'
                       ).length}
                     </TableCell>
-                    <TableCell>
-                      {formatCurrency(
-                        allOrders
-                          .filter(o => o.courier_id === courier.id && o.status === 'delivered' && o.total_fee <= commission_threshold)
-                          .reduce((sum, o) => sum + (o.total_fee || 0), 0)
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {formatCurrency(
-                        allOrders
-                          .filter(o => o.courier_id === courier.id && o.status === 'delivered')
-                          .reduce((sum, o) => sum + calcCourierEarning(o, earningSettings), 0)
-                      )}
-                      {courierUnpaidCount(courier.id) > 0 && (
-                        <span className="ml-2 px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-full font-medium">
-                          ⚠️ {courierUnpaidCount(courier.id)} belum setor
-                        </span>
-                      )}
-                    </TableCell>
+                    {isFinance && (
+                      <>
+                        <TableCell>
+                          {formatCurrency(
+                            allOrders
+                              .filter(o => o.courier_id === courier.id && o.status === 'delivered' && o.total_fee <= commission_threshold)
+                              .reduce((sum, o) => sum + (o.total_fee || 0), 0)
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {formatCurrency(
+                            allOrders
+                              .filter(o => o.courier_id === courier.id && o.status === 'delivered')
+                              .reduce((sum, o) => sum + calcCourierEarning(o, earningSettings), 0)
+                          )}
+                          {courierUnpaidCount(courier.id) > 0 && (
+                            <span className="ml-2 px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-full font-medium">
+                              ⚠️ {courierUnpaidCount(courier.id)} belum setor
+                            </span>
+                          )}
+                        </TableCell>
+                      </>
+                    )}
                     <TableCell>
                       <Button variant="ghost" size="sm" onClick={(e) => {
                         e.stopPropagation();
@@ -496,12 +509,14 @@ export function Couriers() {
                   <p className="text-xs text-gray-500 font-medium mb-1">Completed</p>
                   <p className="text-xl font-semibold text-gray-900 leading-none">{selectedCourierStats.completed_orders}</p>
                 </div>
-                <div className="bg-gray-50 rounded-xl p-3.5">
-                  <p className="text-xs text-gray-500 font-medium mb-1">Earnings</p>
-                  <p className="text-lg font-semibold text-gray-900 leading-none truncate" title={formatCurrency(selectedCourierStats.total_earnings)}>
-                    {formatCurrency(selectedCourierStats.total_earnings)}
-                  </p>
-                </div>
+                {isFinance && (
+                  <div className="bg-gray-50 rounded-xl p-3.5">
+                    <p className="text-xs text-gray-500 font-medium mb-1">Earnings</p>
+                    <p className="text-lg font-semibold text-gray-900 leading-none truncate" title={formatCurrency(selectedCourierStats.total_earnings)}>
+                      {formatCurrency(selectedCourierStats.total_earnings)}
+                    </p>
+                  </div>
+                )}
                 <div className="bg-gray-50 rounded-xl p-3.5">
                   <p className="text-xs text-gray-500 font-medium mb-1">Avg Time</p>
                   <p className="text-xl font-semibold text-gray-900 leading-none">
@@ -511,9 +526,11 @@ export function Couriers() {
               </div>
             </div>
 
-            {/* Tagihan Setoran */}
-            {(() => {
+            {/* Tagihan Setoran (Terproteksi RBAC) */}
+            {isFinance && (() => {
               const unpaidOrders = courierUnpaidOrders
+              if (!unpaidOrders || unpaidOrders.length === 0) return null;
+              
               const unpaidTotalFee = unpaidOrders.reduce(
                 (sum, o) => sum + o.total_fee, 0
               );
@@ -521,7 +538,7 @@ export function Couriers() {
                 (sum, o) => sum + calcAdminEarning(o, earningSettings), 0
               );
 
-              return unpaidOrders.length > 0 && (
+              return (
                 <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
                   <h4 className="font-semibold flex items-center gap-2 text-orange-800 mb-3">
                     💰 Tagihan Setoran

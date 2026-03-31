@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "945083209932",
+    "project_id": "kurirdev-prod",
+    "storage_bucket": "kurirdev-prod.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:945083209932:android:6538350ca18793934cca69",
+        "android_client_info": {
+          "package_name": "com.kurirdev.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "945083209932-8p1crr3f27917jjh6c52usckcm0o5mi3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBo6P7Xq9ODhhDBnthTV9y_OtBQ_zqZoMY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "945083209932-8p1crr3f27917jjh6c52usckcm0o5mi3.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
