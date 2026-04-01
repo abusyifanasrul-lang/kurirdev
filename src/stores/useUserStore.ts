@@ -89,9 +89,6 @@ export const useUserStore = create<UserState>()((set, get) => ({
       }
 
       const invokePromise = supabase.functions.invoke('create-staff-user', {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`
-        },
         body: {
           email: user.email,
           password: user.password,
@@ -101,12 +98,11 @@ export const useUserStore = create<UserState>()((set, get) => ({
         }
       })
 
-      const timeoutPromise = new Promise((_, reject) => 
+      const timeoutPromise = new Promise<{ data: null; error: Error }>((_, reject) => 
         setTimeout(() => reject(new Error('Request timed out after 15 seconds. Please try again.')), 15000)
       )
 
-      const result = await Promise.race([invokePromise, timeoutPromise]) as any
-      const { data, error } = result
+      const { error } = await Promise.race([invokePromise, timeoutPromise]) as any
 
       if (error) {
         throw new Error(error.message || 'Failed to create user')
@@ -125,18 +121,18 @@ export const useUserStore = create<UserState>()((set, get) => ({
 
   updateUser: async (id, data) => {
     const { email, password, ...dbData } = data as any
-    await supabase.from('profiles')
+    await (supabase.from('profiles') as any)
       .update({ ...dbData, updated_at: new Date().toISOString() })
       .eq('id', id)
   },
 
   removeUser: async (id) => {
     if (id === '1') return
-    await supabase.from('profiles').update({ is_active: false }).eq('id', id)
+    await (supabase.from('profiles') as any).update({ is_active: false }).eq('id', id)
   },
 
   updateUserQueuePosition: async (id, position) => {
-    await supabase.from('profiles').update({
+    await (supabase.from('profiles') as any).update({
       queue_position: position,
       updated_at: new Date().toISOString()
     }).eq('id', id)
@@ -149,8 +145,8 @@ export const useUserStore = create<UserState>()((set, get) => ({
       
     if (error || !profiles) return
 
-    const alreadyHasPosition = profiles.filter(c => c.queue_position != null)
-    const needsPosition = profiles.filter(c => c.queue_position == null)
+    const alreadyHasPosition = (profiles as any[]).filter(c => c.queue_position != null)
+    const needsPosition = (profiles as any[]).filter(c => c.queue_position == null)
 
     if (needsPosition.length === 0) return
 
@@ -159,14 +155,14 @@ export const useUserStore = create<UserState>()((set, get) => ({
     )
 
     const sorted = [...needsPosition].sort(
-      (a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
+      (a, b) => new Date((a as any).created_at || 0).getTime() - new Date((b as any).created_at || 0).getTime()
     )
 
     for (let i = 0; i < sorted.length; i++) {
-        await supabase.from('profiles').update({
+        await (supabase.from('profiles') as any).update({
             queue_position: maxExisting + i + 1,
             updated_at: new Date().toISOString()
-        }).eq('id', sorted[i].id)
+        }).eq('id', (sorted[i] as any).id)
     }
   },
 

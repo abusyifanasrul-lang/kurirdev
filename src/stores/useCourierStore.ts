@@ -83,39 +83,15 @@ export const useCourierStore = create<CourierState>()(
       }),
 
       addCourier: async (courier) => {
-        // 1. Create in Supabase Auth via Edge Function (security-first)
-        try {
-          if (!courier.password) throw new Error('Password is required for new courier');
-          const { data, error } = await supabase.functions.invoke('create-staff-user', {
-            body: {
-              email: courier.email,
-              password: courier.password,
-              role: courier.role,
-              name: courier.name,
-              phone: courier.phone
-            }
-          });
-          
-          if (error) {
-             console.error('Pesan error dari Edge Function:', error);
-             throw new Error(error.message || 'Error executing edge function');
-          }
-          
-          console.log(`✅ Courier Auth account created: ${courier.email}`, data);
-          
-          // Use returned ID for local tracking
-          const newUserId = data?.user?.id;
-          if (newUserId) {
-            courier.id = newUserId;
-          }
-        } catch (error: any) {
-          console.error('❌ Failed to create courier Auth account:', error);
-          throw new Error(`Gagal membuat akun login kurir: ${error.message}`);
+        // 1. Create in Supabase (Auth + Profile) via UserStore
+        const result = await useUserStore.getState().addUser(courier)
+        
+        if (!result.success) {
+          throw new Error(result.error || 'Gagal membuat akun kurir')
         }
 
-        // 2. Add to Local State and trigger DB save
+        // 2. Add to Local State (queue)
         set((state) => ({ queue: [...state.queue, courier] }))
-        await useUserStore.getState().addUser(courier)
       },
 
       updateCourier: async (id, data) => {
