@@ -113,18 +113,26 @@ export const useUserStore = create<UserState>()((set, get) => ({
     }
 
     // Uses Edge Function to bypass RLS and create a new auth user
-    const { data, error } = await supabase.functions.invoke('create-staff-user', {
-      headers: {
-        Authorization: `Bearer ${session.access_token}`
-      },
-      body: {
-        email: user.email,
-        password: user.password,
-        name: user.name,
-        role: user.role,
-        phone: user.phone
-      }
-    })
+    let invokeResult;
+    try {
+      invokeResult = await supabase.functions.invoke('create-staff-user', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        },
+        body: {
+          email: user.email,
+          password: user.password,
+          name: user.name,
+          role: user.role,
+          phone: user.phone
+        }
+      })
+    } catch (e) {
+      console.error('Invoke error:', e)
+      throw new Error('Failed to call Edge Function: ' + (e.message || 'Unknown error'))
+    }
+
+    const { data, error } = invokeResult
 
     if (error) {
       console.error('Failed to add user via Edge Function:', error)
