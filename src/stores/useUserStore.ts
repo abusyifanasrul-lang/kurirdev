@@ -86,17 +86,30 @@ export const useUserStore = create<UserState>()((set, get) => ({
   },
 
   addUser: async (user) => {
-    // Get current session for authentication
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-
-    if (sessionError || !session?.access_token) {
-      throw new Error('No valid session found. Please log in again.')
+    // Refresh the session to ensure it's valid
+    let session;
+    try {
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
+      if (refreshError || !refreshData.session) {
+        console.error('Session refresh failed:', refreshError)
+        throw new Error('Failed to refresh session. Please log in again.')
+      }
+      session = refreshData.session
+    } catch (e) {
+      console.error('Session refresh error:', e)
+      throw new Error('Session refresh failed. Please log in again.')
     }
 
     // Verify the session is still valid by getting user
-    const { data: { user: authUser }, error: userError } = await supabase.auth.getUser()
-    if (userError || !authUser) {
-      throw new Error('Session expired. Please log in again.')
+    try {
+      const { data: { user: authUser }, error: userError } = await supabase.auth.getUser()
+      if (userError || !authUser) {
+        console.error('getUser failed:', userError)
+        throw new Error('Session expired. Please log in again.')
+      }
+    } catch (e) {
+      console.error('getUser error:', e)
+      throw new Error('Session validation failed. Please log in again.')
     }
 
     // Uses Edge Function to bypass RLS and create a new auth user
