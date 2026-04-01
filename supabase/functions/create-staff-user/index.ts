@@ -52,11 +52,14 @@ serve(async (req) => {
       .single()
 
     if (profileError || !profile) {
-      return new Response(JSON.stringify({ error: 'Forbidden: Profile not found' }), { status: 403, headers: corsHeaders })
+      console.error('Profile query failed for caller:', caller.id, profileError)
+      return new Response(JSON.stringify({ error: 'Forbidden: Profile not found', userId: caller.id }), { status: 403, headers: corsHeaders })
     }
 
+    console.log('Caller profile role from DB:', profile.role)
     const allowedRoles = ['admin', 'admin_kurir', 'owner']
     if (!allowedRoles.includes(profile.role)) {
+      console.warn('Caller unauthorized role:', profile.role)
       return new Response(JSON.stringify({ error: 'Forbidden: Insufficient permissions', role: profile.role }), { status: 403, headers: corsHeaders })
     }
 

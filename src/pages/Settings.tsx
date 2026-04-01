@@ -202,15 +202,20 @@ export function Settings() {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
-      await addUser(userData);
-
-      console.log('User added successfully, closing modal.');
-      setIsAddUserModalOpen(false);
-      setNewUser({ name: '', email: '', password: '', role: 'admin', phone: '' });
-      showMessage('success', 'User added successfully!');
+      const result = await addUser(userData);
+      
+      if (result?.success) {
+        console.log('User added successfully, closing modal.');
+        setIsAddUserModalOpen(false);
+        setNewUser({ name: '', email: '', password: '', role: 'admin', phone: '' });
+        showMessage('success', 'User added successfully!');
+      } else {
+        console.error('Add user failed:', result?.error);
+        showMessage('error', `Failed to add user: ${result?.error || 'Unknown error'}`);
+      }
     } catch (error: any) {
       console.error('Error in handleAddUser catch block:', error);
-      showMessage('error', `Failed to add user: ${error.message || 'Unknown error'}`);
+      showMessage('error', `An unexpected error occurred: ${error.message || 'Unknown error'}`);
     } finally {
       setIsLoading(false);
       console.log('handleAddUser finished.');
