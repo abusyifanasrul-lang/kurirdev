@@ -896,28 +896,7 @@ export function Settings() {
               Hanya gunakan jika data tidak sinkron dengan server
             </p>
 
-            {/* Tombol Migrasi Konsumen */}
-            <div className="pt-6 border-t border-gray-200 mt-6">
-              <h4 className="text-sm font-medium text-gray-900 mb-2">Migrasi Menu Konsumen</h4>
-              <p className="text-xs text-gray-500 mb-4">
-                Pindahkan data nomor HP & alamat dari arsip order lama (histori) menjadi data konsumen terpusat. Wajib jalankan di awal update multi-alamat ini.
-              </p>
-              <button
-                onClick={async () => {
-                  if (!window.confirm("Yakin ingin memulai ekstrak data konsumen? Proses ini membaca seluruh history order.")) return;
-                  const { runCustomerMigration } = await import('@/lib/migrateCustomers')
-                  const res = await runCustomerMigration()
-                  if (res.success) {
-                    alert(`Migrasi ${res.count} konsumen selesai!`)
-                  } else {
-                    alert('Gagal migrasi: ' + res.error)
-                  }
-                }}
-                className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 font-medium transition-colors"
-              >
-                🛠 Mulai Migrasi Data Konsumen
-              </button>
-            </div>
+
           </div>
         </div>
       )}
