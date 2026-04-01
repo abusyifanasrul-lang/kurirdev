@@ -105,6 +105,7 @@ export function Settings() {
   const [showPassword, setShowPassword] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Cache sync state
@@ -185,10 +186,10 @@ export function Settings() {
   };
 
   const handleAddUser = async () => {
-    console.log('handleAddUser triggered', { newUser, isLoading });
-    if (isLoading) return;
+    console.log('handleAddUser triggered', { newUser, isSubmitting });
+    if (isSubmitting) return;
     
-    setIsLoading(true);
+    setIsSubmitting(true);
     try {
       console.log('Invoking addUser in store...');
       const userData: UserType = {
@@ -217,7 +218,7 @@ export function Settings() {
       console.error('Error in handleAddUser catch block:', error);
       showMessage('error', `An unexpected error occurred: ${error.message || 'Unknown error'}`);
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
       console.log('handleAddUser finished.');
     }
   };
