@@ -74,14 +74,28 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(clients.claim())
 })
 
-import { precacheAndRoute } from 'workbox-precaching';
-import { registerRoute } from 'workbox-routing';
+import { precacheAndRoute, createHandlerBoundToURL } from 'workbox-precaching';
+import { registerRoute, NavigationRoute } from 'workbox-routing';
 import { CacheFirst, NetworkFirst, StaleWhileRevalidate } from 'workbox-strategies';
 import { ExpirationPlugin } from 'workbox-expiration';
 import { CacheableResponsePlugin } from 'workbox-cacheable-response';
 
 // Precache injected assets
 precacheAndRoute(self.__WB_MANIFEST);
+
+// SPA Fallback: Ensure navigating to /courier or /admin serves index.html
+try {
+  const handler = createHandlerBoundToURL('/index.html');
+  const navigationRoute = new NavigationRoute(handler, {
+    denylist: [
+      new RegExp('/api/'), // Exclude APIs
+      new RegExp('/_/') // Exclude internal paths
+    ],
+  });
+  registerRoute(navigationRoute);
+} catch (e) {
+  console.log('[sw.js] NavigationRoute error:', e);
+}
 
 // 1. Google Fonts Cache (CacheFirst)
 registerRoute(
@@ -128,9 +142,25 @@ registerRoute(
   })
 );
 
-// 4. API / External Services (NetworkFirst)
+// 4. Static Assets (StaleWhileRevalidate)
+// Must be registered BEFORE the generic API route
 registerRoute(
-  ({url}) => url.origin.includes('kurirdev') || url.origin.includes('supabase.co'),
+  ({request}) => request.destination === 'script' || request.destination === 'style' || request.destination === 'worker',
+  new StaleWhileRevalidate({
+    cacheName: 'static-resources',
+  })
+);
+
+// 5. API / External Services (NetworkFirst)
+registerRoute(
+  ({request, url}) => {
+    // Bypass navigation requests and static assets
+    if (['document', 'script', 'style', 'image', 'font'].includes(request.destination)) {
+      return false;
+    }
+    // Match only specific external API requests
+    return url.origin.includes('supabase.co');
+  },
   new NetworkFirst({
     cacheName: 'api-cache',
     plugins: [
@@ -142,15 +172,7 @@ registerRoute(
         statuses: [0, 200],
       }),
     ],
-    networkTimeoutSeconds: 5, // Fallback to cache quickly if network is slow
-  })
-);
-
-// 5. Static Assets (StaleWhileRevalidate)
-registerRoute(
-  ({request}) => request.destination === 'script' || request.destination === 'style',
-  new StaleWhileRevalidate({
-    cacheName: 'static-resources',
+    networkTimeoutSeconds: 5,
   })
 );
 
