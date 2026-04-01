@@ -5,8 +5,8 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
-import { Badge } from '@/components/ui/Badge';
-import type { User as UserType, UserRole } from '@/types';
+import { Select } from '@/components/ui/Select';
+import type { User as UserType, UserRole, Courier } from '@/types';
 import type { CourierInstruction } from '@/stores/useSettingsStore';
 
 // Store
@@ -100,8 +100,24 @@ export function Settings() {
   const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false);
   const [selectedUserToEdit, setSelectedUserToEdit] = useState<UserType | null>(null);
 
-  const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'admin', phone: '' });
-  const [editUserForm, setEditUserForm] = useState({ name: '', email: '', phone: '', role: '', password: '' });
+  const [newUser, setNewUser] = useState({ 
+    name: '', 
+    email: '', 
+    password: '', 
+    role: 'admin', 
+    phone: '',
+    vehicle_type: 'motorcycle' as Courier['vehicle_type'],
+    plate_number: ''
+  });
+  const [editUserForm, setEditUserForm] = useState({ 
+    name: '', 
+    email: '', 
+    phone: '', 
+    role: '', 
+    password: '',
+    vehicle_type: 'motorcycle' as Courier['vehicle_type'],
+    plate_number: ''
+  });
   const [showPassword, setShowPassword] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -200,6 +216,8 @@ export function Settings() {
         role: newUser.role as UserRole,
         phone: newUser.phone,
         is_active: true,
+        vehicle_type: newUser.role === 'courier' ? newUser.vehicle_type : undefined,
+        plate_number: newUser.role === 'courier' ? newUser.plate_number : undefined,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -208,7 +226,15 @@ export function Settings() {
       if (result?.success) {
         console.log('User added successfully, closing modal.');
         setIsAddUserModalOpen(false);
-        setNewUser({ name: '', email: '', password: '', role: 'admin', phone: '' });
+        setNewUser({ 
+          name: '', 
+          email: '', 
+          password: '', 
+          role: 'admin', 
+          phone: '', 
+          vehicle_type: 'motorcycle', 
+          plate_number: '' 
+        });
         showMessage('success', 'User berhasil ditambahkan!');
       } else {
         console.error('Add user failed:', result?.error);
@@ -231,7 +257,9 @@ export function Settings() {
       email: u.email,
       phone: u.phone || '',
       role: u.role,
-      password: '' // Default empty, only update if filled
+      password: '', // Default empty, only update if filled
+      vehicle_type: (u as Courier).vehicle_type || 'motorcycle',
+      plate_number: (u as Courier).plate_number || ''
     });
     setIsEditUserModalOpen(true);
   };
@@ -243,7 +271,9 @@ export function Settings() {
       name: editUserForm.name,
       email: editUserForm.email,
       phone: editUserForm.phone,
-      role: editUserForm.role as UserRole
+      role: editUserForm.role as UserRole,
+      vehicle_type: editUserForm.role === 'courier' ? editUserForm.vehicle_type : undefined,
+      plate_number: editUserForm.role === 'courier' ? editUserForm.plate_number : undefined
     };
 
     if (editUserForm.password) {
@@ -763,8 +793,31 @@ export function Settings() {
                  <option value="admin_kurir">Admin Kurir</option>
                  <option value="finance">Keuangan</option>
                  <option value="owner">Owner</option>
+                 <option value="courier">Kurir</option>
               </select>
             </div>
+
+          {newUser.role === 'courier' && (
+            <div className="grid grid-cols-2 gap-4">
+              <Select
+                label="Jenis Kendaraan"
+                value={newUser.vehicle_type}
+                onChange={(e) => setNewUser({ ...newUser, vehicle_type: e.target.value as any })}
+                options={[
+                  { value: 'motorcycle', label: 'Motor' },
+                  { value: 'car', label: 'Mobil' },
+                  { value: 'bicycle', label: 'Sepeda' },
+                  { value: 'van', label: 'Van/Pick Up' },
+                ]}
+              />
+              <Input
+                label="Plate Number"
+                value={newUser.plate_number}
+                onChange={(e) => setNewUser({ ...newUser, plate_number: e.target.value })}
+                placeholder="B 1234 XYZ"
+              />
+            </div>
+          )}
           <Input
             label="Telepon"
             value={newUser.phone}
@@ -840,6 +893,28 @@ export function Settings() {
                <option value="courier">Kurir</option>
             </select>
           </div>
+
+          {editUserForm.role === 'courier' && (
+            <div className="grid grid-cols-2 gap-4">
+              <Select
+                label="Jenis Kendaraan"
+                value={editUserForm.vehicle_type}
+                onChange={(e) => setEditUserForm({ ...editUserForm, vehicle_type: e.target.value as any })}
+                options={[
+                  { value: 'motorcycle', label: 'Motor' },
+                  { value: 'car', label: 'Mobil' },
+                  { value: 'bicycle', label: 'Sepeda' },
+                  { value: 'van', label: 'Van/Pick Up' },
+                ]}
+              />
+              <Input
+                label="Plate Number"
+                value={editUserForm.plate_number}
+                onChange={(e) => setEditUserForm({ ...editUserForm, plate_number: e.target.value })}
+                placeholder="B 1234 XYZ"
+              />
+            </div>
+          )}
           <div className="pt-2 border-t mt-2">
             <h4 className="text-sm font-medium text-gray-900 mb-2">Reset Password</h4>
             <div className="relative">
