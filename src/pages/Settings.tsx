@@ -64,7 +64,7 @@ export function Settings() {
       businessForm.commission_rate < 0 ||
       businessForm.commission_rate > 100
     ) {
-      showMessage('error', 'Commission rate harus antara 0 dan 100.')
+      showMessage('error', 'Rate komisi harus antara 0 dan 100.')
       return
     }
     if (
@@ -76,7 +76,7 @@ export function Settings() {
     }
     updateSettings(businessForm)
     syncSettingsToServer()
-    showMessage('success', 'Business settings saved!')
+    showMessage('success', 'Pengaturan bisnis berhasil disimpan!')
   }
 
   const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'users' | 'business' | 'instructions'>('profile');
@@ -163,17 +163,17 @@ export function Settings() {
     // Simulate delay
     await new Promise((resolve) => setTimeout(resolve, 500));
     updateUser(user.id, profileForm);
-    showMessage('success', 'Profile updated successfully!');
+    showMessage('success', 'Profil berhasil diperbarui!');
     setIsLoading(false);
   };
 
   const handleChangePassword = async () => {
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      showMessage('error', 'Passwords do not match!');
+      showMessage('error', 'Password tidak cocok!');
       return;
     }
     if (passwordForm.newPassword.length < 8) {
-      showMessage('error', 'Password must be at least 8 characters!');
+      showMessage('error', 'Password minimal 8 karakter!');
       return;
     }
 
@@ -181,7 +181,7 @@ export function Settings() {
     await new Promise((resolve) => setTimeout(resolve, 1000));
     // In real app, verify current password here
     setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-    showMessage('success', 'Password changed successfully!');
+    showMessage('success', 'Password berhasil diubah!');
     setIsLoading(false);
   };
 
@@ -209,14 +209,14 @@ export function Settings() {
         console.log('User added successfully, closing modal.');
         setIsAddUserModalOpen(false);
         setNewUser({ name: '', email: '', password: '', role: 'admin', phone: '' });
-        showMessage('success', 'User added successfully!');
+        showMessage('success', 'User berhasil ditambahkan!');
       } else {
         console.error('Add user failed:', result?.error);
-        showMessage('error', `Failed to add user: ${result?.error || 'Unknown error'}`);
+        showMessage('error', `Gagal menambahkan user: ${result?.error || 'Unknown error'}`);
       }
     } catch (error: any) {
       console.error('Error in handleAddUser catch block:', error);
-      showMessage('error', `An unexpected error occurred: ${error.message || 'Unknown error'}`);
+      showMessage('error', `Terjadi kesalahan tak terduga: ${error.message || 'Unknown error'}`);
     } finally {
       setIsSubmitting(false); // ABSOLUTE RESET
       setIsLoading(false);
@@ -257,12 +257,12 @@ export function Settings() {
     updateUser(selectedUserToEdit.id, updates);
     setIsEditUserModalOpen(false);
     setSelectedUserToEdit(null);
-    showMessage('success', 'User updated successfully!');
+    showMessage('success', 'User berhasil diperbarui!');
   };
 
   const handleToggleSuspend = (u: UserType) => {
     if (u.id === user?.id) {
-      showMessage('error', 'You cannot suspend yourself!');
+      showMessage('error', 'Anda tidak bisa menonaktifkan diri sendiri!');
       return;
     }
     // RBAC: Only Owner or Admin can change status
@@ -704,17 +704,33 @@ export function Settings() {
       <Modal
         isOpen={isAddUserModalOpen}
         onClose={() => setIsAddUserModalOpen(false)}
-        title="Add New Admin"
+        title="Tambah Admin Baru"
       >
         <div className="space-y-4">
+          {message && (
+            <div
+              className={`p-3 rounded-lg flex items-center gap-2 text-sm ${
+                message.type === 'success'
+                  ? 'bg-green-50 text-green-700 border border-green-200'
+                  : 'bg-red-50 text-red-700 border border-red-200'
+              }`}
+            >
+              {message.type === 'success' ? (
+                <CheckCircle className="h-4 w-4" />
+              ) : (
+                <AlertCircle className="h-4 w-4" />
+              )}
+              {message.text}
+            </div>
+          )}
           <Input
-            label="Full Name"
+            label="Nama Lengkap"
             value={newUser.name}
             onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-            placeholder="Enter full name"
+            placeholder="Masukkan nama lengkap"
           />
           <Input
-            label="Email Address"
+            label="Alamat Email"
             type="email"
             value={newUser.email}
             onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
@@ -725,7 +741,7 @@ export function Settings() {
               type={showPassword ? 'text' : 'password'}
               value={newUser.password}
               onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-              placeholder="Min 8 chars"
+              placeholder="Min 8 karakter"
               rightIcon={
                 <button
                   type="button"
@@ -745,11 +761,12 @@ export function Settings() {
               >
                  <option value="admin">Admin (Super)</option>
                  <option value="admin_kurir">Admin Kurir</option>
+                 <option value="finance">Keuangan</option>
                  <option value="owner">Owner</option>
               </select>
             </div>
           <Input
-            label="Phone"
+            label="Telepon"
             value={newUser.phone}
             onChange={(e) => setNewUser({ ...newUser, phone: e.target.value })}
             placeholder="+628..."
@@ -757,13 +774,13 @@ export function Settings() {
 
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button variant="outline" onClick={() => setIsAddUserModalOpen(false)}>
-              Cancel
+              Batal
             </Button>
             <Button
               onClick={handleAddUser}
               disabled={!newUser.name || !newUser.email || !newUser.password}
             >
-              Add User
+              Tambah User
             </Button>
           </div>
         </div>
@@ -776,19 +793,35 @@ export function Settings() {
         title={`Edit User: ${selectedUserToEdit?.name}`}
       >
         <div className="space-y-4">
+          {message && (
+            <div
+              className={`p-3 rounded-lg flex items-center gap-2 text-sm ${
+                message.type === 'success'
+                  ? 'bg-green-50 text-green-700 border border-green-200'
+                  : 'bg-red-50 text-red-700 border border-red-200'
+              }`}
+            >
+              {message.type === 'success' ? (
+                <CheckCircle className="h-4 w-4" />
+              ) : (
+                <AlertCircle className="h-4 w-4" />
+              )}
+              {message.text}
+            </div>
+          )}
           <Input
-            label="Full Name"
+            label="Nama Lengkap"
             value={editUserForm.name}
             onChange={(e) => setEditUserForm({ ...editUserForm, name: e.target.value })}
           />
           <Input
-            label="Email Address"
+            label="Alamat Email"
             type="email"
             value={editUserForm.email}
             onChange={(e) => setEditUserForm({ ...editUserForm, email: e.target.value })}
           />
           <Input
-            label="Phone"
+            label="Telepon"
             value={editUserForm.phone}
             onChange={(e) => setEditUserForm({ ...editUserForm, phone: e.target.value })}
           />
@@ -812,8 +845,8 @@ export function Settings() {
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="Leave blank to keep current"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                placeholder="Kosongkan jika tidak ingin diubah"
                 value={editUserForm.password}
                 onChange={(e) => setEditUserForm({ ...editUserForm, password: e.target.value })}
               />
@@ -829,10 +862,10 @@ export function Settings() {
 
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button variant="outline" onClick={() => setIsEditUserModalOpen(false)}>
-              Cancel
+              Batal
             </Button>
             <Button onClick={handleSaveEditUser}>
-              Save Changes
+              Simpan Perubahan
             </Button>
           </div>
         </div>
