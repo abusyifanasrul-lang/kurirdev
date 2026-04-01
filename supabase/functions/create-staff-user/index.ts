@@ -82,28 +82,35 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: createError.message }), { status: 400, headers: corsHeaders })
     }
 
-    // 5. Update Profile
+    // 5. Create or Update Profile (Upsert)
     if (newUser.user) {
-      const updateData: any = { role, name, phone }
+      const profileData: any = { 
+        id: newUser.user.id, 
+        role, 
+        name, 
+        phone,
+        updated_at: new Date().toISOString()
+      }
       
-      // Initial queue for couriers
+      // Calculate queue position if it's a courier
       if (role === 'courier') {
         const { data: couriers } = await supabaseAdmin.from('profiles').select('queue_position').eq('role', 'courier')
-        const maxPos = couriers?.reduce((max, c) => Math.max(max, c.queue_position || 0), 0) || 0
-        updateData.queue_position = maxPos + 1
+        const maxPos = (couriers as any[])?.reduce((max: number, c: any) => Math.max(max, c.queue_position || 0), 0) || 0
+        profileData.queue_position = maxPos + 1
       }
 
-      const { error: updateError } = await supabaseAdmin
+      console.log('Upserting profile for user:', newUser.user.id)
+      const { error: upsertError } = await supabaseAdmin
         .from('profiles')
-        .update(updateData)
-        .eq('id', newUser.user.id)
+        .upsert(profileData)
       
-      if (updateError) {
-        console.error('Profile update error:', updateError)
+      if (upsertError) {
+        console.error('CRITICAL: Profile upsert failed:', upsertError)
+        return new Response(JSON.stringify({ error: 'User created but profile upsert failed', details: upsertError }), { status: 500, headers: corsHeaders })
       }
     }
 
-    return new Response(JSON.stringify({ message: 'User created', user: newUser.user }), {
+    return new Response(JSON.stringify({ message: 'User and profile created successfully', user: newUser.user }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
