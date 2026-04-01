@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { Badge } from '@/components/ui/Badge';
-import type { User as UserType } from '@/types';
+import type { User as UserType, UserRole } from '@/types';
 import type { CourierInstruction } from '@/stores/useSettingsStore';
 
 // Store
@@ -192,7 +192,7 @@ export function Settings() {
         name: newUser.name,
         email: newUser.email,
         password: newUser.password,
-        role: 'admin',
+        role: newUser.role as UserRole,
         phone: newUser.phone,
         is_active: true,
         created_at: new Date().toISOString(),
@@ -250,14 +250,14 @@ export function Settings() {
       showMessage('error', 'You cannot suspend yourself!');
       return;
     }
-    // RBAC: Only Super Admin (id 1) can change status
-    if (user?.id !== "1") {
-      showMessage('error', 'Only Super Admin can change user status!');
+    // RBAC: Only Owner or Admin can change status
+    if (user?.role !== 'owner' && user?.role !== 'admin') {
+      showMessage('error', 'Hanya Owner atau Admin yang bisa mengubah status user!');
       return;
     }
 
     updateCourier(u.id, { is_active: !u.is_active });
-    showMessage('success', `User ${!u.is_active ? 'activated' : 'suspended'} successfully!`);
+    showMessage('success', `User ${!u.is_active ? 'aktif' : 'non-aktif'} berhasil diperbarui!`);
   };
 
   const tabs = [
@@ -327,8 +327,8 @@ export function Settings() {
   };
 
   const canEdit = (target: UserType) => {
-    if (user?.id === "1") return true // Super Admin bisa edit semua
-    if (target.id === "1") return false // Tidak ada yang bisa edit Super Admin kecuali dirinya
+    if (user?.role === 'owner' || user?.role === 'admin') return true // Super Admin/Owner bisa edit semua
+    if (target.role === 'owner') return false // Tidak ada yang bisa edit Owner kecuali dirinya
     if (target.role === 'admin' && target.id !== user?.id) return false // Admin tidak bisa edit admin lain
     return true
   }
@@ -457,7 +457,7 @@ export function Settings() {
                   <h3 className="text-lg font-semibold text-gray-900">System Users</h3>
                   <p className="text-sm text-gray-500">Manage admins and couriers access</p>
                 </div>
-                {user?.role === 'admin' && (
+                {(user?.role === 'admin' || user?.role === 'owner') && (
                   <Button
                     size="sm"
                     leftIcon={<Plus className="h-4 w-4" />}
@@ -476,9 +476,9 @@ export function Settings() {
                     onClick={() => canEdit(u) && openEditModal(u)}
                   >
                     <div className="flex items-center gap-4 w-full sm:w-auto">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-medium transition-opacity ${!u.is_active ? 'opacity-50' : ''} ${u.role === 'admin' ? 'bg-indigo-100 text-indigo-600' : 'bg-orange-100 text-orange-600'
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-medium transition-opacity ${!u.is_active ? 'opacity-50' : ''} ${u.role === 'admin' || u.role === 'owner' ? 'bg-indigo-100 text-indigo-600' : 'bg-orange-100 text-orange-600'
                         }`}>
-                        {u.role === 'admin' ? <Shield className="w-5 h-5" /> : u.name.charAt(0)}
+                        {u.role === 'admin' || u.role === 'owner' ? <Shield className="w-5 h-5" /> : u.name.charAt(0)}
                       </div>
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
@@ -507,7 +507,7 @@ export function Settings() {
                       )}
 
                       {/* Status Toggle Action - RBAC Protected */}
-                      {user?.id === "1" && u.id !== "1" && u.id !== user.id && (
+                      {(user?.role === 'admin' || user?.role === 'owner') && u.id !== user.id && (
                         <button
                           onClick={(e) => { e.stopPropagation(); handleToggleSuspend(u); }}
                           className={`p-2 rounded-lg transition-colors ${u.is_active ? 'text-red-400 hover:text-red-600 hover:bg-red-50' : 'text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50'}`}
@@ -574,7 +574,7 @@ export function Settings() {
                 </div>
 
                 {/* Super Admin Cleanup Section */}
-                {user?.id === "1" && (
+                {(user?.role === 'owner' || user?.role === 'admin') && (
                   <div className="pt-6 border-t mt-6">
                     <h4 className="text-sm font-medium text-gray-900 mb-4">🔧 Super Admin Tools</h4>
                     <div className="space-y-2">
@@ -722,7 +722,20 @@ export function Settings() {
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
-                      </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-500 ml-1">Role</label>
+              <select
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                value={newUser.role}
+                onChange={(e) => setNewUser({ ...newUser, role: e.target.value as any })}
+              >
+                <option value="admin">Admin (Super)</option>
+                <option value="admin_kurir">Admin Kurir</option>
+                <option value="finance">Finance</option>
+                <option value="owner">Owner</option>
+              </select>
+            </div>
+          </div>
           <Input
             label="Phone"
             value={newUser.phone}

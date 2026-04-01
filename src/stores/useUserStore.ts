@@ -12,6 +12,7 @@ interface UserState {
   removeUser: (id: string) => Promise<void>
   updateUserQueuePosition: (id: string, position: number) => Promise<void>
   initQueuePositions: () => Promise<void>
+  reset: () => void
 }
 
 // Helper to map Supabase profiles row to app User type
@@ -151,4 +152,6 @@ export const useUserStore = create<UserState>()((set, get) => ({
         }).eq('id', sorted[i].id)
     }
   },
+
+  reset: () => set({ users: [], isLoading: false }),
 }))

@@ -36,6 +36,7 @@ interface OrderState {
   updateOrderWaiting: (orderId: string, isWaiting: boolean) => Promise<void>
   setOrders: (orders: Order[]) => void
   setActiveOrdersByCourier: (orders: Order[]) => void
+  reset: () => void
 
   generateOrderId: () => string
   getOrdersByCourier: (courierId: string) => Order[]
@@ -338,5 +339,15 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
 
   setActiveOrdersByCourier: (orders: Order[]) => {
     set({ activeOrdersByCourier: orders, isFetchingActiveOrders: false })
-  }
+  },
+
+  reset: () => set({
+    orders: [],
+    courierOrders: [],
+    historicalOrders: [],
+    statusHistory: {},
+    activeOrdersByCourier: [],
+    currentOrder: null,
+    isLoading: false
+  })
 }))

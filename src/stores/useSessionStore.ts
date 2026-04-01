@@ -8,6 +8,7 @@ interface SessionState {
     login: (user: User) => void;
     logout: () => void;
     updateUser: (data: Partial<User>) => void;
+    reset: () => void;
 }
 
 export const useSessionStore = create<SessionState>()(
@@ -20,6 +21,7 @@ export const useSessionStore = create<SessionState>()(
             updateUser: (data) => set((state) => ({
                 user: state.user ? { ...state.user, ...data } : null
             })),
+            reset: () => set({ user: null, isAuthenticated: false }),
         }),
         {
             name: 'session-storage',

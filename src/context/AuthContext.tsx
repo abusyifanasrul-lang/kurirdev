@@ -1,6 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { User, AuthState, UserRole } from '@/types';
 import { useSessionStore } from '@/stores/useSessionStore';
+import { useUserStore } from '@/stores/useUserStore';
+import { useOrderStore } from '@/stores/useOrderStore';
+import { useNotificationStore } from '@/stores/useNotificationStore';
 import { supabase } from '@/lib/supabaseClient';
 
 interface AuthContextType extends AuthState {
@@ -103,10 +106,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [fetchProfile, storeLogout]);
 
   const logout = useCallback(async () => {
-    await supabase.auth.signOut();
-    storeLogout();
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error('Error during Supabase sign out:', err);
+    }
+    
+    // Reset all global stores
+    useSessionStore.getState().reset();
+    useUserStore.getState().reset();
+    useOrderStore.getState().reset();
+    useNotificationStore.getState().reset();
+    
     setState({ user: null, token: null, isAuthenticated: false, isLoading: false });
-  }, [storeLogout]);
+  }, []);
 
   const updateUser = useCallback((updatedUser: User) => {
     storeUpdateUser(updatedUser);

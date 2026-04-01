@@ -12,6 +12,7 @@ interface NotificationState {
   markAsRead: (id: string) => Promise<void>
   markAllAsRead: (userId: string) => Promise<void>
   getNotificationsByUser: (userId: string) => Notification[]
+  reset: () => void
 }
 
 export const useNotificationStore = create<NotificationState>()((set, get) => ({
@@ -113,5 +114,6 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
 
   getNotificationsByUser: (userId) => {
     return get().notifications.filter(n => n.user_id === userId)
-  }
+  },
+  reset: () => set({ notifications: [], isLoading: false })
 }))
