@@ -46,18 +46,26 @@ serve(async (req) => {
     )
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized caller' }), { status: 401, headers: corsHeaders })
+      return new Response(JSON.stringify({ error: 'Unauthorized caller: No valid session', details: authError }), { status: 401, headers: corsHeaders })
     }
     
     // Check role from profiles (or JWT meta)
-    const { data: callerProfile } = await supabaseClient
+    const { data: callerProfile, error: profileError } = await supabaseClient
       .from('profiles')
       .select('role')
       .eq('id', user.id)
       .single()
+    
+    if (profileError) {
+      return new Response(JSON.stringify({ error: 'Failed to fetch caller profile', details: profileError }), { status: 500, headers: corsHeaders })
+    }
       
-    if (callerProfile?.role !== 'admin' && user.id !== '1') {
-       return new Response(JSON.stringify({ error: 'Caller must be an admin' }), { status: 403, headers: corsHeaders })
+    const allowedRoles = ['admin', 'admin_kurir', 'owner'];
+    if (!allowedRoles.includes(callerProfile?.role) && user.id !== '1') {
+       return new Response(JSON.stringify({ 
+         error: 'Forbidden: Caller does not have permission', 
+         callerRole: callerProfile?.role 
+       }), { status: 403, headers: corsHeaders })
     }
 
     // Now proceed to create the user in Auth
