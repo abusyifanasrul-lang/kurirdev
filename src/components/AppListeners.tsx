@@ -97,9 +97,11 @@ export function AppListeners() {
     }, 5000)
 
     return () => {
-      if (typeof unsubUsers === 'function') unsubUsers()
+      if (unsubUsers && typeof unsubUsers === 'function') {
+        try { unsubUsers() } catch (e) { /* ignore */ }
+      }
     }
-  }, [])
+  }, [user?.id, subscribeUsers, initQueuePositions])
 
   useEffect(() => {
     if (!user) return
@@ -259,19 +261,25 @@ export function AppListeners() {
   }, [user?.id])
 
   useEffect(() => {
-    if (!user || !['admin', 'admin_kurir'].includes(user.role)) return () => {}
+    if (!user || !['admin', 'admin_kurir', 'owner'].includes(user.role)) return;
     
-    let unsub: any = () => {}
-    try {
-      unsub = subscribeAllNotifications()
-    } catch (e) {
-      console.error('Failed to subscribe notifications:', e)
-    }
+    let unsub: any = null;
+    const setupNotifications = async () => {
+      try {
+        unsub = await subscribeAllNotifications();
+      } catch (e) {
+        console.error('Failed to subscribe notifications:', e);
+      }
+    };
+    
+    setupNotifications();
     
     return () => {
-      if (typeof unsub === 'function') unsub()
-    }
-  }, [user?.id])
+      if (unsub && typeof unsub === 'function') {
+        try { unsub() } catch (e) { /* ignore */ }
+      }
+    };
+  }, [user?.id, subscribeAllNotifications]);
 
   return null
 }
