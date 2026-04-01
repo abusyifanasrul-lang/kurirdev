@@ -5,9 +5,10 @@ import { User, UserRole } from '@/types'
 interface UserState {
   users: User[]
   isLoading: boolean
+  error: string | null
   fetchUsers: () => Promise<void>
   subscribeUsers: () => () => void
-  addUser: (user: User) => Promise<void>
+  addUser: (user: User) => Promise<{ success: boolean; error?: string }>
   updateUser: (id: string, data: Partial<User>) => Promise<void>
   removeUser: (id: string) => Promise<void>
   updateUserQueuePosition: (id: string, position: number) => Promise<void>
@@ -15,11 +16,10 @@ interface UserState {
   reset: () => void
 }
 
-// Helper to map Supabase profiles row to app User type
 const mapProfileToUser = (profile: any): User => ({
   id: profile.id,
   name: profile.name,
-  email: '', // Usually not loaded directly from profiles except during login
+  email: '', 
   role: profile.role as UserRole,
   phone: profile.phone || undefined,
   is_active: profile.is_active ?? true,
@@ -37,74 +37,10 @@ const mapProfileToUser = (profile: any): User => ({
 export const useUserStore = create<UserState>()((set, get) => ({
   users: [],
   isLoading: true,
-
-  addUser: async (user) => {
-    try {
-      // Refresh the session to ensure it's valid
-      let session;
-      try {
-        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
-        if (refreshError || !refreshData.session) {
-          console.error('Session refresh failed:', refreshError)
-          throw new Error('Failed to refresh session. Please log in again.')
-        }
-        session = refreshData.session
-      } catch (e) {
-        console.error('Session refresh error:', e)
-        throw new Error('Session refresh failed. Please log in again.')
-      }
-
-      // Verify the session is still valid by getting user
-      try {
-        const { data: { user: authUser }, error: userError } = await supabase.auth.getUser()
-        if (userError || !authUser) {
-          console.error('getUser failed:', userError)
-          throw new Error('Session expired. Please log in again.')
-        }
-      } catch (e) {
-        console.error('getUser error:', e)
-        throw new Error('Session validation failed. Please log in again.')
-      }
-
-      // Uses Edge Function to bypass RLS and create a new auth user
-      let invokeResult;
-      try {
-        invokeResult = await supabase.functions.invoke('create-staff-user', {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`
-          },
-          body: {
-            email: user.email,
-            password: user.password,
-            name: user.name,
-            role: user.role,
-            phone: user.phone
-          }
-        })
-      } catch (e) {
-        console.error('Invoke error:', e)
-        throw new Error('Failed to call Edge Function: ' + (e.message || 'Unknown error'))
-      }
-
-      const { data, error } = invokeResult
-
-      if (error) {
-        console.error('Failed to add user via Edge Function:', error)
-        // Handle specific error types
-        if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
-          throw new Error('Authentication failed. Please log in again.')
-        }
-        throw new Error(error.message || 'Failed to create user')
-      }
-
-      console.log('User created:', data)
-    } catch (e) {
-      console.error('addUser error:', e)
-      throw new Error('Failed to add user: ' + (e.message || 'Unknown error'))
-    }
-  },
+  error: null,
 
   fetchUsers: async () => {
+    set({ isLoading: true })
     const { data: profiles, error } = await supabase.from('profiles').select('*')
     if (error) {
       console.error('fetchUsers error:', error)
@@ -115,73 +51,44 @@ export const useUserStore = create<UserState>()((set, get) => ({
   },
 
   subscribeUsers: () => {
-    // Initial fetch
     get().fetchUsers()
 
-    // Listen to realtime changes on profiles
     const channel = supabase.channel('public:profiles')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'profiles' },
         (payload) => {
           const { eventType, new: newRec, old: oldRec } = payload
-          const users = [...get().users]
+          const currentUsers = [...get().users]
           
           if (eventType === 'INSERT') {
-            users.push(mapProfileToUser(newRec))
+            set({ users: [...currentUsers, mapProfileToUser(newRec)] })
           } else if (eventType === 'UPDATE') {
-            const idx = users.findIndex(u => u.id === newRec.id)
-            if (idx !== -1) {
-               users[idx] = { ...users[idx], ...mapProfileToUser(newRec) }
-            } else {
-               users.push(mapProfileToUser(newRec))
-            }
+            const updatedUsers = currentUsers.map(u => 
+              u.id === newRec.id ? { ...u, ...mapProfileToUser(newRec) } : u
+            )
+            set({ users: updatedUsers })
           } else if (eventType === 'DELETE') {
-            const idx = users.findIndex(u => u.id === oldRec.id)
-            if (idx !== -1) users.splice(idx, 1)
+            set({ users: currentUsers.filter(u => u.id !== oldRec.id) })
           }
-          set({ users })
         }
       )
       .subscribe()
       
-    // Return unsubscribe function
     return () => {
       supabase.removeChannel(channel)
     }
   },
 
-  addUser: async (user) => {
-    // Refresh the session to ensure it's valid
-    let session;
+  addUser: async (user: User) => {
+    set({ isLoading: true, error: null })
     try {
-      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
-      if (refreshError || !refreshData.session) {
-        console.error('Session refresh failed:', refreshError)
-        throw new Error('Failed to refresh session. Please log in again.')
-      }
-      session = refreshData.session
-    } catch (e) {
-      console.error('Session refresh error:', e)
-      throw new Error('Session refresh failed. Please log in again.')
-    }
-
-    // Verify the session is still valid by getting user
-    try {
-      const { data: { user: authUser }, error: userError } = await supabase.auth.getUser()
-      if (userError || !authUser) {
-        console.error('getUser failed:', userError)
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError || !session) {
         throw new Error('Session expired. Please log in again.')
       }
-    } catch (e) {
-      console.error('getUser error:', e)
-      throw new Error('Session validation failed. Please log in again.')
-    }
 
-    // Uses Edge Function to bypass RLS and create a new auth user
-    let invokeResult;
-    try {
-      invokeResult = await supabase.functions.invoke('create-staff-user', {
+      const { data, error } = await supabase.functions.invoke('create-staff-user', {
         headers: {
           Authorization: `Bearer ${session.access_token}`
         },
@@ -193,27 +100,22 @@ export const useUserStore = create<UserState>()((set, get) => ({
           phone: user.phone
         }
       })
-    } catch (e) {
-      console.error('Invoke error:', e)
-      throw new Error('Failed to call Edge Function: ' + (e.message || 'Unknown error'))
-    }
 
-    const { data, error } = invokeResult
-
-    if (error) {
-      console.error('Failed to add user via Edge Function:', error)
-      // Handle specific error types
-      if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
-        throw new Error('Authentication failed. Please log in again.')
+      if (error) {
+        throw new Error(error.message || 'Failed to create user')
       }
-      throw new Error(error.message || 'Failed to create user')
-    }
 
-    console.log('User created:', data)
+      await get().fetchUsers()
+      set({ isLoading: false })
+      return { success: true }
+    } catch (e: any) {
+      console.error('addUser error:', e)
+      set({ error: e.message, isLoading: false })
+      return { success: false, error: e.message }
+    }
   },
 
   updateUser: async (id, data) => {
-    // Remove local state fields that shouldn't go to DB directly
     const { email, password, ...dbData } = data as any
     await supabase.from('profiles')
       .update({ ...dbData, updated_at: new Date().toISOString() })
@@ -221,7 +123,7 @@ export const useUserStore = create<UserState>()((set, get) => ({
   },
 
   removeUser: async (id) => {
-    if (id === '1') return Promise.resolve() // Protect system admin
+    if (id === '1') return
     await supabase.from('profiles').update({ is_active: false }).eq('id', id)
   },
 
@@ -245,7 +147,7 @@ export const useUserStore = create<UserState>()((set, get) => ({
     if (needsPosition.length === 0) return
 
     const maxExisting = alreadyHasPosition.reduce(
-      (max, c) => Math.max(max, c.queue_position ?? 0), 0
+      (max, c) => Math.max(max, (c.queue_position as number) ?? 0), 0
     )
 
     const sorted = [...needsPosition].sort(
@@ -260,5 +162,5 @@ export const useUserStore = create<UserState>()((set, get) => ({
     }
   },
 
-  reset: () => set({ users: [], isLoading: false }),
+  reset: () => set({ users: [], isLoading: false, error: null }),
 }))
