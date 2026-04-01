@@ -68,9 +68,16 @@ serve(async (req) => {
     }
 
     // 3. Process Request
-    const { email, password, name, phone, role } = await req.json()
+    const body = await req.json().catch(() => ({}))
+    const { email, password, name, phone, role } = body
+    
+    if (!email || !password || !role) {
+      console.warn('Missing required fields:', { email: !!email, pw: !!password, role: !!role })
+      return new Response(JSON.stringify({ error: 'Missing required fields (email, password, role)' }), { status: 400, headers: corsHeaders })
+    }
 
-    // 4. Create User
+    console.log('Step 4: Creating Auth User for', email)
+    // 4. Create Auth User
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
@@ -79,8 +86,11 @@ serve(async (req) => {
     })
 
     if (createError) {
-      return new Response(JSON.stringify({ error: createError.message }), { status: 400, headers: corsHeaders })
+      console.error('Step 4 Failed: Auth creation failed:', createError.message)
+      return new Response(JSON.stringify({ error: createError.message, step: 'auth' }), { status: 400, headers: corsHeaders })
     }
+
+    console.log('Step 5: Auth User created successfully:', newUser.user.id)
 
     // 5. Create or Update Profile (Upsert)
     if (newUser.user) {
@@ -100,21 +110,22 @@ serve(async (req) => {
           .eq('role', 'courier')
         
         let maxPos = 0
-        if (couriers && couriers.length > 0) {
-          maxPos = Math.max(...couriers.map(c => c.queue_position || 0))
+        if (couriers && (couriers as any[]).length > 0) {
+          maxPos = Math.max(...(couriers as any[]).map(c => c.queue_position || 0))
         }
         profileData.queue_position = maxPos + 1
       }
 
-      console.log('Upserting profile for user:', newUser.user.id)
+      console.log('Step 6: Upserting profile for user:', newUser.user.id)
       const { error: upsertError } = await supabaseAdmin
         .from('profiles')
         .upsert(profileData)
       
       if (upsertError) {
-        console.error('CRITICAL: Profile upsert failed:', upsertError)
-        return new Response(JSON.stringify({ error: 'User created but profile upsert failed', details: upsertError }), { status: 500, headers: corsHeaders })
+        console.error('Step 6 Failed: Profile upsert failed:', upsertError)
+        return new Response(JSON.stringify({ error: 'User created but profile upsert failed', details: upsertError, step: 'profile' }), { status: 500, headers: corsHeaders })
       }
+      console.log('Step 7: Profile upserted successfully')
     }
 
     return new Response(JSON.stringify({ message: 'User and profile created successfully', user: newUser.user }), {
@@ -123,7 +134,8 @@ serve(async (req) => {
     })
 
   } catch (err: any) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders })
+    console.error('Global Function Error:', err.message)
+    return new Response(JSON.stringify({ error: err.message, step: 'global' }), { status: 500, headers: corsHeaders })
   }
 })
 
