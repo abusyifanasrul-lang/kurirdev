@@ -87,9 +87,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Supabase Auth Event:', event);
+      
+      // If we already have this user and it's just a regular SIGNED_IN (like a token refresh),
+      // don't re-fetch the entire profile to prevent UI flickering and double events.
       if (session?.user) {
+        if (state.user?.id === session.user.id && event === 'SIGNED_IN') {
+          console.log('Token refreshed for current user, skipping profile fetch.');
+          return;
+        }
         await fetchProfile(session.user.id, session.user.email || '');
-      } else {
+      } else if (event === 'SIGNED_OUT') {
         storeLogout();
         setState({
           user: null,
@@ -106,24 +113,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [fetchProfile, storeLogout]);
 
   const logout = useCallback(async () => {
+    console.log('Initiating logout...');
     try {
       await supabase.auth.signOut();
     } catch (err) {
       console.error('Error during Supabase sign out:', err);
     }
     
-    // Reset all global stores
-    try { useSessionStore.getState().reset(); } catch(e) {}
-    try { useUserStore.getState().reset(); } catch(e) {}
-    try { useOrderStore.getState().reset(); } catch(e) {}
-    try { useNotificationStore.getState().reset(); } catch(e) {}
-    try {
-      const { useCourierStore } = await import('@/stores/useCourierStore');
-      useCourierStore.getState().reset();
-    } catch(e) {}
-    
-    setState({ user: null, token: null, isAuthenticated: false, isLoading: false });
-  }, []);
+    // Safety delay to let Supabase finish
+    setTimeout(async () => {
+      // Reset all global stores manually and carefully
+      try { useSessionStore.getState().reset(); } catch(e) {}
+      try { useUserStore.getState().reset(); } catch(e) {}
+      try { useOrderStore.getState().reset(); } catch(e) {}
+      try { useNotificationStore.getState().reset(); } catch(e) {}
+      try { useSettingsStore.getState().reset(); } catch(e) {}
+      
+      try {
+        const { useCourierStore } = await import('@/stores/useCourierStore');
+        useCourierStore.getState().reset();
+      } catch(e) {}
+      
+      // Force clear local storage just in case
+      try { localStorage.clear(); } catch(e) {}
+      
+      setState({ user: null, token: null, isAuthenticated: false, isLoading: false });
+      console.log('Logout cleanup complete.');
+    }, 100);
+  }, [storeLogout]);
 
   const updateUser = useCallback((updatedUser: User) => {
     storeUpdateUser(updatedUser);

@@ -97,7 +97,7 @@ export function AppListeners() {
     }, 5000)
 
     return () => {
-      if (unsubUsers && typeof unsubUsers === 'function') {
+      if (typeof unsubUsers === 'function') {
         try { unsubUsers() } catch (e) { /* ignore */ }
       }
     }
@@ -266,7 +266,10 @@ export function AppListeners() {
     let unsub: any = null;
     const setupNotifications = async () => {
       try {
-        unsub = await subscribeAllNotifications();
+        const result = await subscribeAllNotifications();
+        if (typeof result === 'function') {
+          unsub = result;
+        }
       } catch (e) {
         console.error('Failed to subscribe notifications:', e);
       }
@@ -275,7 +278,7 @@ export function AppListeners() {
     setupNotifications();
     
     return () => {
-      if (unsub && typeof unsub === 'function') {
+      if (typeof unsub === 'function') {
         try { unsub() } catch (e) { /* ignore */ }
       }
     };

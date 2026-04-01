@@ -94,8 +94,15 @@ serve(async (req) => {
       
       // Calculate queue position if it's a courier
       if (role === 'courier') {
-        const { data: couriers } = await supabaseAdmin.from('profiles').select('queue_position').eq('role', 'courier')
-        const maxPos = (couriers as any[])?.reduce((max: number, c: any) => Math.max(max, c.queue_position || 0), 0) || 0
+        const { data: couriers } = await supabaseAdmin
+          .from('profiles')
+          .select('queue_position')
+          .eq('role', 'courier')
+        
+        let maxPos = 0
+        if (couriers && couriers.length > 0) {
+          maxPos = Math.max(...couriers.map(c => c.queue_position || 0))
+        }
         profileData.queue_position = maxPos + 1
       }
 
