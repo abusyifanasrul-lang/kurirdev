@@ -12,7 +12,7 @@ entrypoint = "./functions/notify-courier/index.ts"
 
 [functions.create-staff-user]
 enabled = true
-verify_jwt = true
+verify_jwt = false
 import_map = "./functions/create-staff-user/deno.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
