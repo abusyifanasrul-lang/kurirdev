@@ -21,12 +21,10 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
-    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || ''
 
     console.log('Function Invoked. Env Check:', { 
       hasUrl: !!supabaseUrl, 
-      hasServiceKey: !!serviceRoleKey, 
-      hasAnonKey: !!anonKey 
+      hasServiceKey: !!serviceRoleKey,
     })
 
     if (!supabaseUrl || !serviceRoleKey) {
@@ -45,21 +43,21 @@ serve(async (req) => {
 
     // 1. Authenticate the caller
     const authHeader = req.headers.get('Authorization')
-    console.log('Auth Header Present:', !!authHeader)
+    console.log('Auth Header Present:', !!authHeader, '| Header value prefix:', authHeader?.substring(0, 20))
     
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Missing Authorization header' }), { status: 401, headers: corsHeaders })
     }
 
-    // Use regular client to verify the user's session
-    // We pass the auth header directly to ensure the client is acting as the user
-    const supabaseClient = createClient(supabaseUrl, anonKey || serviceRoleKey, {
-      global: { headers: { Authorization: authHeader } }
-    })
-    
-    const { data: { user: caller }, error: authError } = await supabaseClient.auth.getUser()
+    // Extract JWT token and verify directly via admin client
+    // NOTE: Do NOT use getUser() on a secondary client with global.headers —
+    // Supabase JS v2 auth methods bypass global headers. Pass the token explicitly instead.
+    const token = authHeader.replace('Bearer ', '').trim()
+    console.log('Token length:', token.length)
+
+    const { data: { user: caller }, error: authError } = await supabaseAdmin.auth.getUser(token)
     if (authError || !caller) {
-      console.error('Authentication Error:', authError?.message || 'No user found')
+      console.error('Authentication Error:', authError?.message || 'No user found', '| Token starts with:', token.substring(0, 30))
       return new Response(JSON.stringify({ 
         error: 'Unauthorized: Invalid session', 
         details: authError?.message || 'User not found in session',
