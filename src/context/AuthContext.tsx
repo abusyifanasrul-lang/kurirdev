@@ -1,9 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import type { User, AuthState } from '@/types';
+import type { User, AuthState, UserRole } from '@/types';
 import { useSessionStore } from '@/stores/useSessionStore';
-import { auth, db } from '@/lib/firebase';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { supabase } from '@/lib/supabaseClient';
 
 interface AuthContextType extends AuthState {
   logout: () => Promise<void>;
@@ -15,47 +13,80 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { user: cachedUser, login: storeLogin, logout: storeLogout, updateUser: storeUpdateUser } = useSessionStore();
   
-  // Optimistic Auth: If we have a cached user, use it immediately
-  // to avoid the initial loading screen waterfall.
   const [state, setState] = useState<AuthState>({
     user: cachedUser,
     token: null,
     isAuthenticated: !!cachedUser,
-    isLoading: !cachedUser, // Very fast boot if cached user exists
+    isLoading: !cachedUser,
   });
 
-  // Listen to Firebase Auth state
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        // Find matching Firestore doc by email
-        try {
-          const q = query(
-            collection(db, 'users'),
-            where('email', '==', firebaseUser.email),
-            limit(1)
-          );
-          const querySnapshot = await getDocs(q);
-          
-          if (!querySnapshot.empty) {
-            const userData = querySnapshot.docs[0].data() as User;
-            storeLogin(userData); // Sync to Zustand
-            setState({
-              user: userData,
-              token: null,
-              isAuthenticated: true,
-              isLoading: false,
-            });
-          } else {
-            console.error('User document not found in Firestore for:', firebaseUser.email);
-            setState(prev => ({ ...prev, isLoading: false }));
-          }
-        } catch (error) {
-          console.error('Error fetching user data:', error);
-          setState(prev => ({ ...prev, isLoading: false }));
-        }
+  const fetchProfile = useCallback(async (userId: string, email: string) => {
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+        
+      if (error) throw error;
+      
+      if (profile) {
+        const userData: User = {
+          id: profile.id,
+          name: profile.name,
+          email: email,
+          role: profile.role as UserRole,
+          phone: profile.phone || undefined,
+          is_active: true,
+          fcm_token: profile.fcm_token || undefined,
+          is_online: profile.is_online,
+          created_at: profile.created_at || new Date().toISOString(),
+          updated_at: profile.updated_at || new Date().toISOString(),
+          total_deliveries_alltime: profile.total_deliveries_alltime,
+          total_earnings_alltime: profile.total_earnings_alltime,
+          unpaid_count: profile.unpaid_count,
+          unpaid_amount: profile.unpaid_amount,
+        };
+        storeLogin(userData); // Sync to Zustand
+        setState({
+          user: userData,
+          token: null,
+          isAuthenticated: true,
+          isLoading: false, // Turn off loader once auth is verified
+        });
       } else {
-        // No user logged in via Firebase Auth
+        console.error('Profile not found for:', userId);
+        setState(prev => ({ ...prev, isLoading: false }));
+      }
+    } catch (error) {
+      console.error('Error fetching profile from Supabase:', error);
+      setState(prev => ({ ...prev, isLoading: false }));
+    }
+  }, [storeLogin]);
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error) {
+         console.error('Supabase session error:', error);
+         storeLogout();
+         setState({ user: null, token: null, isAuthenticated: false, isLoading: false });
+         return;
+      }
+      if (session?.user) {
+        await fetchProfile(session.user.id, session.user.email || '');
+      } else {
+        setState(prev => ({ ...prev, isLoading: false }));
+      }
+    };
+
+    checkSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Supabase Auth Event:', event);
+      if (session?.user) {
+        await fetchProfile(session.user.id, session.user.email || '');
+      } else {
         storeLogout();
         setState({
           user: null,
@@ -66,12 +97,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    return () => unsubscribe();
-  }, [storeLogin, storeLogout]);
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [fetchProfile, storeLogout]);
 
   const logout = useCallback(async () => {
-    await signOut(auth);
+    await supabase.auth.signOut();
     storeLogout();
+    setState({ user: null, token: null, isAuthenticated: false, isLoading: false });
   }, [storeLogout]);
 
   const updateUser = useCallback((updatedUser: User) => {

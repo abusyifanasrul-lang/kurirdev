@@ -7,8 +7,7 @@ import { useOrderStore } from '@/stores/useOrderStore';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { useSessionStore } from '@/stores/useSessionStore';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { supabase } from '@/lib/supabaseClient';
 import { Order } from '@/types';
 
 export function CourierLayout() {
@@ -27,27 +26,43 @@ export function CourierLayout() {
     const sevenDaysAgo = new Date()
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
 
-    const unsubActive = onSnapshot(
-      query(
-        collection(db, 'orders'),
-        where('courier_id', '==', user.id),
-        where('status', 'in', ['assigned', 'picked_up', 'in_transit']),
-        where('created_at', '>=', sevenDaysAgo.toISOString())
-      ),
-      (snapshot) => {
-        const activeOrders = snapshot.docs
-          .map(d => d.data() as Order)
-        useOrderStore.getState()
-          .setActiveOrdersByCourier(activeOrders)
-      }
-    )
+    // Initial fetch
+    supabase.from('orders')
+      .select('*')
+      .eq('courier_id', user.id)
+      .in('status', ['assigned', 'picked_up', 'in_transit'])
+      .gte('created_at', sevenDaysAgo.toISOString())
+      .then(({ data }) => {
+        if (data) {
+          useOrderStore.getState().setActiveOrdersByCourier(data as Order[])
+        }
+      })
+
+    // Subscribe to changes for this courier
+    const channel = supabase.channel(`public:orders:courier_${user.id}`)
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'orders',
+        filter: `courier_id=eq.${user.id}`
+      }, async () => {
+        // Simple refetch strategy for active orders to maintain correct local state
+        const { data } = await supabase.from('orders')
+          .select('*')
+          .eq('courier_id', user.id)
+          .in('status', ['assigned', 'picked_up', 'in_transit'])
+          .gte('created_at', sevenDaysAgo.toISOString())
+        if (data) {
+          useOrderStore.getState().setActiveOrdersByCourier(data as Order[])
+        }
+      })
+      .subscribe()
 
     // History orders kurir — sekarang diurus oleh
     // background sync IndexedDB di AppListeners.
-    // Tidak perlu lagi hard fetch dari Firestore.
 
     return () => {
-      unsubActive()
+      supabase.removeChannel(channel)
     }
   }, [user?.id])
   const { notifications } = useNotificationStore();

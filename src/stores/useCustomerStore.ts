@@ -1,6 +1,5 @@
 import { create } from 'zustand'
-import { db } from '@/lib/firebase'
-import { collection, doc, setDoc, getDocs, query, where } from 'firebase/firestore'
+import { supabase } from '@/lib/supabaseClient'
 import { Customer, CustomerAddress } from '@/types'
 import { getAllCustomersLocal, upsertCustomerLocal, saveCustomerSyncTime, getCustomerSyncTime } from '@/lib/orderCache'
 
@@ -9,7 +8,7 @@ interface CustomerState {
   isLoaded: boolean
 
   loadFromLocal: () => Promise<void>
-  syncFromFirestore: () => Promise<void>
+  syncFromServer: () => Promise<void>
   upsertCustomer: (data: Omit<Customer, 'id' | 'created_at' | 'updated_at'>) => Promise<Customer>
   addAddress: (customerId: string, addr: Omit<CustomerAddress, 'id'>) => Promise<void>
   updateAddress: (customerId: string, addrId: string, data: Partial<CustomerAddress>) => Promise<void>
@@ -33,20 +32,21 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
     }
   },
 
-  syncFromFirestore: async () => {
+  syncFromServer: async () => {
     const lastSync = getCustomerSyncTime()
     try {
-      let q = query(collection(db, 'customers'));
+      let query = supabase.from('customers').select('*')
       if (lastSync) {
-        q = query(collection(db, 'customers'), where('updated_at', '>', lastSync));
+        query = query.gt('updated_at', lastSync)
       }
       
-      const snapshot = await getDocs(q)
-      if (!snapshot.empty) {
-        const fetched = snapshot.docs.map(doc => doc.data() as Customer)
-        
+      const { data: fetched, error } = await query
+      
+      if (error) throw error
+
+      if (fetched && fetched.length > 0) {
         for (const customer of fetched) {
-          await upsertCustomerLocal(customer)
+          await upsertCustomerLocal(customer as Customer)
         }
 
         const localCustomers = await getAllCustomersLocal()
@@ -73,7 +73,7 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }
-      await setDoc(doc(db, 'customers', newCustomer.id), newCustomer)
+      await supabase.from('customers').upsert(newCustomer)
       await upsertCustomerLocal(newCustomer)
       set({ customers: [...customers, newCustomer] })
       return newCustomer
@@ -84,7 +84,7 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
         addresses: data.addresses,
         updated_at: new Date().toISOString()
       }
-      await setDoc(doc(db, 'customers', updatedCustomer.id), updatedCustomer)
+      await supabase.from('customers').upsert(updatedCustomer)
       await upsertCustomerLocal(updatedCustomer)
       set({ customers: customers.map(c => c.id === updatedCustomer.id ? updatedCustomer : c) })
       return updatedCustomer
@@ -103,7 +103,7 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
       updated_at: new Date().toISOString()
     }
 
-    await setDoc(doc(db, 'customers', customerId), updatedCustomer)
+    await supabase.from('customers').upsert(updatedCustomer)
     await upsertCustomerLocal(updatedCustomer)
     set({ customers: customers.map(c => c.id === customerId ? updatedCustomer : c) })
   },
@@ -119,7 +119,7 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
       updated_at: new Date().toISOString()
     }
 
-    await setDoc(doc(db, 'customers', customerId), updatedCustomer)
+    await supabase.from('customers').upsert(updatedCustomer)
     await upsertCustomerLocal(updatedCustomer)
     set({ customers: customers.map(c => c.id === customerId ? updatedCustomer : c) })
   },
@@ -135,7 +135,7 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
       updated_at: new Date().toISOString()
     }
 
-    await setDoc(doc(db, 'customers', customerId), updatedCustomer)
+    await supabase.from('customers').upsert(updatedCustomer)
     await upsertCustomerLocal(updatedCustomer)
     set({ customers: customers.map(c => c.id === customerId ? updatedCustomer : c) })
   },

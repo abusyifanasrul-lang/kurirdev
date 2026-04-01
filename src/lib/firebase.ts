@@ -1,6 +1,4 @@
 import { initializeApp, SDK_VERSION } from 'firebase/app'
-import { getFirestore } from 'firebase/firestore'
-import { getAuth } from 'firebase/auth'
 
 console.log('🔑 API Key:', import.meta.env.VITE_FIREBASE_API_KEY?.substring(0, 10) ?? 'UNDEFINED')
 console.log('🔥 Firebase SDK version:', SDK_VERSION)
@@ -15,11 +13,6 @@ const firebaseConfig = {
 }
 
 const app = initializeApp(firebaseConfig)
-const secondaryApp = initializeApp(firebaseConfig, 'SecondaryApp')
-
-export const db = getFirestore(app)
-export const auth = getAuth(app)
-export const secondaryAuth = getAuth(secondaryApp)
 
 // NOTE: firebase/messaging is lazy-loaded in fcm.ts (only for courier role)
 // to avoid pulling ~30KB into the main bundle for all users.

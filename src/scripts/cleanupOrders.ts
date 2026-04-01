@@ -1,50 +1,47 @@
-import { db } from '@/lib/firebase'
-import {
-  collection, getDocs, query,
-  where, writeBatch, doc
-} from 'firebase/firestore'
+import { supabase } from '@/lib/supabaseClient'
 
 export async function cleanupDummyOrders() {
-  const q = query(
-    collection(db, 'orders'),
-    where('status', 'not-in',
-      ['delivered', 'cancelled'])
-  )
+  const { data: snapshot, error } = await supabase
+    .from('orders')
+    .select('*')
+    .not('status', 'in', '("delivered","cancelled")')
 
-  const snapshot = await getDocs(q)
-  if (snapshot.empty) {
+  if (error || !snapshot || snapshot.length === 0) {
     console.log('No orders to cleanup')
     return
   }
 
-  console.log(`Found ${snapshot.docs.length} orders to process`)
+  console.log(`Found ${snapshot.length} orders to process`)
 
-  const batch = writeBatch(db)
   let deliveredCount = 0
   let cancelledCount = 0
 
-  snapshot.docs.forEach(docSnap => {
-    const order = docSnap.data()
-    const ref = doc(db, 'orders', docSnap.id)
-
+  // Promise.all for updates instead of Firestore batch
+  const promises = snapshot.map(order => {
     if (order.total_fee && order.total_fee > 0) {
-      batch.update(ref, {
-        status: 'delivered',
-        actual_delivery_time: order.created_at,
-        updated_at: new Date().toISOString()
-      })
       deliveredCount++
+      return supabase
+        .from('orders')
+        .update({
+          status: 'delivered',
+          actual_delivery_time: order.created_at,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', order.id)
     } else {
-      batch.update(ref, {
-        status: 'cancelled',
-        cancellation_reason: 'Data cleanup - no fee',
-        cancelled_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
       cancelledCount++
+      return supabase
+        .from('orders')
+        .update({
+          status: 'cancelled',
+          cancellation_reason: 'Data cleanup - no fee',
+          cancelled_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', order.id)
     }
   })
 
-  await batch.commit()
+  await Promise.all(promises)
   console.log(`✅ Done: ${deliveredCount} delivered, ${cancelledCount} cancelled`)
 }

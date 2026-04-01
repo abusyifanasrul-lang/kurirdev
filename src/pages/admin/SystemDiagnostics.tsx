@@ -10,11 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { useAuth } from '@/context/AuthContext';
-import { db } from '@/lib/firebase';
-import {
-  doc, getDoc, collection, query,
-  getDocs, updateDoc, Timestamp,
-} from 'firebase/firestore';
+import { supabase } from '@/lib/supabaseClient';
 import {
   clearAllCache, getCacheMeta, checkIntegrity,
 } from '@/lib/orderCache';
@@ -54,9 +50,10 @@ export function SystemDiagnostics() {
   const [cacheMeta] = useState(getCacheMeta);
 
   const checkSystemHealth = useCallback(async () => {
-    // Firebase ping
+    // Supabase ping
     try {
-      await getDoc(doc(db, 'settings', 'business'));
+      const { error } = await supabase.from('settings').select('id').eq('id', 'global').single();
+      if (error) throw error;
       setFirebaseOk(true);
     } catch {
       setFirebaseOk(false);
@@ -89,16 +86,16 @@ export function SystemDiagnostics() {
     setInspectResult(null);
     setInspectError('');
     try {
-      const collectionName = inspectType === 'order' ? 'orders' : 'users';
-      const ref = doc(db, collectionName, inspectId.trim());
-      const snap = await getDoc(ref);
-      if (!snap.exists()) {
-        setInspectError(`Document "${inspectId}" not found in ${collectionName}.`);
+      const collectionName = inspectType === 'order' ? 'orders' : 'profiles';
+      const { data, error } = await supabase.from(collectionName).select('*').eq('id', inspectId.trim()).single();
+      
+      if (error || !data) {
+        setInspectError(`Record "${inspectId}" not found in ${collectionName}.`);
       } else {
-        setInspectResult(snap.data());
+        setInspectResult(data);
       }
     } catch (e: any) {
-      setInspectError(e.message || 'Failed to fetch document.');
+      setInspectError(e.message || 'Failed to fetch record.');
     }
   };
 
@@ -118,13 +115,12 @@ export function SystemDiagnostics() {
     setForceLoading(true);
     setForceMsg('');
     try {
-      const ref = doc(db, 'orders', forceOrderId.trim());
-      await updateDoc(ref, {
+      const { error } = await supabase.from('orders').update({
         status: forceStatus,
         updated_at: new Date().toISOString(),
-        force_updated_by: user?.id,
-        force_updated_at: Timestamp.now(),
-      });
+      }).eq('id', forceOrderId.trim());
+      
+      if (error) throw error;
       setForceMsg(`✅ Status order berhasil diubah → ${STATUS_LABELS[forceStatus]}`);
     } catch (e: any) {
       setForceMsg(`❌ Gagal: ${e.message}`);
@@ -140,15 +136,14 @@ export function SystemDiagnostics() {
   const loadAuditLogs = useCallback(async () => {
     setAuditLoading(true);
     try {
-      // Last 20 tracking logs as a proxy for audit trail
-      const q = query(collection(db, 'tracking_logs'));
-      const snap = await getDocs(q);
-      const logs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      // Sort by changed_at desc, take 20
-      logs.sort((a: any, b: any) =>
-        (b.changed_at || '').localeCompare(a.changed_at || '')
-      );
-      setAuditLogs(logs.slice(0, 20));
+      const { data, error } = await supabase
+        .from('tracking_logs')
+        .select('*')
+        .order('changed_at', { ascending: false })
+        .limit(20);
+        
+      if (error) throw error;
+      setAuditLogs(data || []);
     } catch (e) {
       console.error('Audit load error:', e);
     } finally {

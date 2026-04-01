@@ -1,13 +1,8 @@
 import { create } from 'zustand'
-import { db } from '@/lib/firebase'
-import {
-  collection, doc, setDoc, updateDoc,
-  onSnapshot, increment, getDocs, query, where, orderBy
-} from 'firebase/firestore'
+import { supabase } from '@/lib/supabaseClient'
 import { Order, OrderStatus, OrderStatusHistory } from '@/types'
 import { sendMockNotification } from '@/utils/notification'
 import { useSettingsStore } from '@/stores/useSettingsStore'
-import { calcCourierEarning } from '@/lib/calcEarning'
 import {
   moveToLocalDB,
   markAsPaidInLocalDB
@@ -64,16 +59,18 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     try {
       const sevenDaysAgo = new Date()
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-      const q = query(
-        collection(db, 'orders'),
-        where('courier_id', '==', courierId),
-        where('status', 'in', ['delivered', 'cancelled']),
-        orderBy('created_at', 'desc')
-      )
-      const snapshot = await getDocs(q)
-      const allOrders = snapshot.docs.map(d => d.data() as Order)
-      const courierOrders = allOrders.filter(o => new Date(o.created_at) >= sevenDaysAgo)
-      set({ courierOrders, isFetchingCourierOrders: false })
+      
+      const { data: allOrders, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('courier_id', courierId)
+        .in('status', ['delivered', 'cancelled'])
+        .gte('created_at', sevenDaysAgo.toISOString())
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+
+      set({ courierOrders: allOrders as Order[], isFetchingCourierOrders: false })
     } catch (error) {
       console.error('fetchOrdersByCourier error:', error)
       set({ isFetchingCourierOrders: false })
@@ -83,15 +80,15 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   fetchOrdersByDateRange: async (start, end) => {
     set({ isFetchingHistory: true })
     try {
-      const q = query(
-        collection(db, 'orders'),
-        where('created_at', '>=', start.toISOString()),
-        where('created_at', '<=', end.toISOString()),
-        orderBy('created_at', 'desc')
-      )
-      const snapshot = await getDocs(q)
-      const historicalOrders = snapshot.docs.map(d => d.data() as Order)
-      set({ historicalOrders, isFetchingHistory: false })
+      const { data: historicalOrders, error } = await supabase
+        .from('orders')
+        .select('*')
+        .gte('created_at', start.toISOString())
+        .lte('created_at', end.toISOString())
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      set({ historicalOrders: historicalOrders as Order[], isFetchingHistory: false })
     } catch (error) {
       console.error('fetchOrdersByDateRange error:', error)
       set({ isFetchingHistory: false })
@@ -101,14 +98,14 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   fetchActiveOrdersByCourier: async (courierId) => {
     set({ isFetchingActiveOrders: true })
     try {
-      const q = query(
-        collection(db, 'orders'),
-        where('courier_id', '==', courierId),
-        where('status', 'in', ['assigned', 'picked_up', 'in_transit'])
-      )
-      const snapshot = await getDocs(q)
-      const activeOrdersByCourier = snapshot.docs.map(d => d.data() as Order)
-      set({ activeOrdersByCourier, isFetchingActiveOrders: false })
+      const { data: activeOrdersByCourier, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('courier_id', courierId)
+        .in('status', ['assigned', 'picked_up', 'in_transit'])
+        
+      if (error) throw error
+      set({ activeOrdersByCourier: activeOrdersByCourier as Order[], isFetchingActiveOrders: false })
     } catch (error) {
       console.error('fetchActiveOrdersByCourier error:', error)
       set({ isFetchingActiveOrders: false })
@@ -116,18 +113,35 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   },
 
   subscribeOrderById: (orderId) => {
-    const unsub = onSnapshot(doc(db, 'orders', orderId), (snapshot) => {
-      if (snapshot.exists()) {
-        set({ currentOrder: snapshot.data() as Order })
-      } else {
-        set({ currentOrder: null })
-      }
-    })
-    return unsub
+    const fetchCurrent = async () => {
+       const { data } = await supabase.from('orders').select('*').eq('id', orderId).single()
+       if (data) set({ currentOrder: data as Order })
+    }
+    fetchCurrent()
+
+    const channel = supabase.channel(`public:orders:${orderId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `id=eq.${orderId}` }, (payload) => {
+        if (payload.eventType === 'DELETE') {
+           set({ currentOrder: null })
+        } else {
+           set({ currentOrder: payload.new as Order })
+        }
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   },
 
   addOrder: async (order) => {
-    await setDoc(doc(db, 'orders', order.id), order)
+    const { error } = await supabase.from('orders').insert(order)
+    if (error) throw error
+    
+    // Optimistically add to list
+    set(state => ({ orders: [order, ...state.orders] }))
+
+    // Push Notif might be triggered via edge function instead in proper prod schema, but keep mock for now
     sendMockNotification(
       'Order Baru Masuk!',
       `Order ${order.order_number} sebesar Rp ${order.total_fee.toLocaleString('id-ID')} menunggumu!`,
@@ -139,167 +153,163 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     const order = get().orders.find(o => o.id === orderId)
       || get().currentOrder
       || get().activeOrdersByCourier.find(o => o.id === orderId)
+      
     if (!order) return
 
-    const updates: Partial<Order> = {
-      status,
-      updated_at: new Date().toISOString()
-    }
-
-    if (status === 'picked_up' && !order.actual_pickup_time) {
-      updates.actual_pickup_time = new Date().toISOString()
-    } else if (status === 'delivered' && !order.actual_delivery_time) {
-      updates.actual_delivery_time = new Date().toISOString()
-    }
-
-    if (status === 'delivered' || status === 'cancelled') {
-      updates.is_waiting = false
-    }
-
+    // If delivered, use atomic RPC to calculate and deduct earnings securely
     if (status === 'delivered') {
       const { commission_rate, commission_threshold } = useSettingsStore.getState()
-      updates.applied_commission_rate = commission_rate
-      updates.applied_commission_threshold = commission_threshold
-
-      if (order.courier_id) {
-        const courierEarning = calcCourierEarning(order, { commission_rate, commission_threshold })
-        await updateDoc(doc(db, 'users', order.courier_id), {
-          total_deliveries_alltime: increment(1),
-          total_earnings_alltime: increment(courierEarning),
-          unpaid_count: increment(1),
-          unpaid_amount: increment(courierEarning),
-          updated_at: new Date().toISOString()
-        })
+      
+      const { error } = await supabase.rpc('complete_order', {
+         p_order_id: orderId,
+         p_user_id: userId,
+         p_user_name: userName,
+         p_notes: notes || '',
+         p_commission_rate: commission_rate,
+         p_commission_threshold: commission_threshold
+      })
+      
+      if (error) {
+         console.error('Complete order RPC error:', error)
+         throw error
       }
-    }
+      
+      // Update local cache
+      const updatedOrder = { ...order, status: 'delivered', is_waiting: false, applied_commission_rate: commission_rate, applied_commission_threshold: commission_threshold, actual_delivery_time: new Date().toISOString() }
+      moveToLocalDB(updatedOrder as Order).catch(err => console.error('Mirror write error:', err))
 
-    await updateDoc(doc(db, 'orders', orderId), updates)
-
-    // Mirror write ke IndexedDB
-    // jika order sudah final
-    const updatedOrder = {
-      ...order,
-      ...updates
-    }
-    if (
-      updatedOrder.status === 'delivered' ||
-      updatedOrder.status === 'cancelled'
-    ) {
-      moveToLocalDB(updatedOrder as Order)
-        .catch(err => console.error(
-          'Mirror write error:', err
-        ))
-    }
-
-    const newHistory: OrderStatusHistory = {
-      id: crypto.randomUUID(),
-      order_id: orderId,
-      status,
-      changed_by: userId,
-      changed_by_name: userName,
-      changed_at: new Date().toISOString(),
-      notes
-    }
-
-    const currentHistory = get().statusHistory[orderId] || []
-    set(state => ({
-      statusHistory: {
-        ...state.statusHistory,
-        [orderId]: [...currentHistory, newHistory]
+    } else {
+      // Normal Status Update logic
+      const updates: Partial<Order> = {
+        status,
+        updated_at: new Date().toISOString()
       }
-    }))
-    await setDoc(
-      doc(db, 'tracking_logs', newHistory.id),
-      newHistory
-    )
+
+      if (status === 'picked_up' && !order.actual_pickup_time) {
+        updates.actual_pickup_time = new Date().toISOString()
+      }
+
+      if (status === 'cancelled') {
+        updates.is_waiting = false
+        updates.cancelled_at = new Date().toISOString()
+        updates.cancellation_reason = notes || ''
+      }
+
+      const { error: updateError } = await supabase.from('orders').update(updates).eq('id', orderId)
+      if (updateError) throw updateError
+
+      // Insert tracking log
+      const newHistory: OrderStatusHistory = {
+        id: crypto.randomUUID(),
+        order_id: orderId,
+        status,
+        changed_by: userId,
+        changed_by_name: userName,
+        changed_at: new Date().toISOString(),
+        notes: notes || ''
+      }
+      
+      await supabase.from('tracking_logs').insert(newHistory)
+
+      // Mirror write ke IndexedDB
+      if (status === 'cancelled') {
+        const updatedOrder = { ...order, ...updates }
+        moveToLocalDB(updatedOrder as Order).catch(err => console.error('Mirror write error:', err))
+      }
+
+      const currentHistory = get().statusHistory[orderId] || []
+      set(state => ({
+        statusHistory: {
+          ...state.statusHistory,
+          [orderId]: [...currentHistory, newHistory]
+        }
+      }))
+    }
   },
 
   assignCourier: async (orderId, courierId, courierName, userId, userName) => {
-    await get().updateOrderStatus(orderId, 'assigned', userId, userName, `Assigned to ${courierName}`)
-
-    await updateDoc(doc(db, 'orders', orderId), {
+    // We update order first, then status
+    await supabase.from('orders').update({
       courier_id: courierId,
       assigned_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
-    })
+    }).eq('id', orderId)
+
+    await get().updateOrderStatus(orderId, 'assigned', userId, userName, `Assigned to ${courierName}`)
   },
 
   cancelOrder: async (orderId, reason, userId, userName, cancelReasonType) => {
-    await get().updateOrderStatus(orderId, 'cancelled', userId, userName, reason)
-    await updateDoc(doc(db, 'orders', orderId), {
+    // updateOrderStatus handles log insertion and local DB mirroring.
+    // We do explicit updates here for specific cancellation reason types.
+    await supabase.from('orders').update({
       cancellation_reason: reason,
       cancel_reason_type: cancelReasonType ?? null,
       cancelled_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
-    })
+    }).eq('id', orderId)
+
+    await get().updateOrderStatus(orderId, 'cancelled', userId, userName, reason)
   },
 
   updateOrder: async (orderId, updates) => {
     if (updates.payment_status === 'paid') {
-      const order = get().orders.find(o => o.id === orderId)
-      if (order && order.payment_status === 'unpaid' && order.courier_id) {
-        const { commission_rate, commission_threshold } = useSettingsStore.getState()
-        const courierEarning = calcCourierEarning(order, { commission_rate, commission_threshold })
-        await updateDoc(doc(db, 'users', order.courier_id), {
-          unpaid_count: increment(-1),
-          unpaid_amount: increment(-courierEarning),
-          updated_at: new Date().toISOString()
-        })
-      }
-    }
-    await updateDoc(doc(db, 'orders', orderId), {
-      ...updates,
-      updated_at: new Date().toISOString()
-    })
-
-    // Mirror write ke IndexedDB
-    // jika payment dikonfirmasi
-    if (updates.payment_status === 'paid') {
-      markAsPaidInLocalDB(orderId)
-        .catch(err => console.error(
-          'Mirror paid error:', err
-        ))
+        const { error: rpcError } = await supabase.rpc('mark_order_paid', { p_order_id: orderId })
+        if (rpcError) throw rpcError
+        
+        const { payment_status, ...restUpdates } = updates as any
+        if (Object.keys(restUpdates).length > 0) {
+           await supabase.from('orders').update({ ...restUpdates, updated_at: new Date().toISOString() }).eq('id', orderId)
+        }
+        
+        // Mirror write ke IndexedDB
+        markAsPaidInLocalDB(orderId).catch(err => console.error('Mirror paid error:', err))
+    } else {
+       await supabase.from('orders').update({
+         ...updates,
+         updated_at: new Date().toISOString()
+       }).eq('id', orderId)
     }
   },
+  
   updateBiayaTambahan: async (orderId, titik, beban) => {
     const total_biaya_titik = titik * 3000;
     const total_biaya_beban = beban.reduce((sum, b) => sum + b.biaya, 0);
-    await updateDoc(doc(db, 'orders', orderId), {
+    await supabase.from('orders').update({
       titik,
       total_biaya_titik,
       beban,
       total_biaya_beban,
       updated_at: new Date().toISOString()
-    })
+    }).eq('id', orderId)
   },
 
   updateItemBarang: async (orderId, itemName, itemPrice) => {
-    await updateDoc(doc(db, 'orders', orderId), {
+    await supabase.from('orders').update({
       item_name: itemName,
       item_price: itemPrice,
       updated_at: new Date().toISOString()
-    });
+    }).eq('id', orderId);
   },
 
   updateItems: async (orderId, items) => {
-    await updateDoc(doc(db, 'orders', orderId), {
+    await supabase.from('orders').update({
       items,
       updated_at: new Date().toISOString()
-    });
+    }).eq('id', orderId);
   },
 
   updateOngkir: async (orderId, totalFee) => {
-    await updateDoc(doc(db, 'orders', orderId), {
+    await supabase.from('orders').update({
       total_fee: totalFee,
       updated_at: new Date().toISOString()
-    });
+    }).eq('id', orderId);
   },
 
   updateOrderWaiting: async (orderId, isWaiting) => {
-    await updateDoc(doc(db, 'orders', orderId), {
+    await supabase.from('orders').update({
       is_waiting: isWaiting,
       updated_at: new Date().toISOString()
-    });
+    }).eq('id', orderId);
   },
 
   generateOrderId: () => {

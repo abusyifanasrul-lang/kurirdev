@@ -22,6 +22,15 @@ if ("serviceWorker" in navigator) {
     });
   });
 }
+import { clearAllCache } from './lib/orderCache';
+
+if (!localStorage.getItem('supabase_migration_cleared_v2')) {
+  console.log('Performing hard reset for Supabase migration...');
+  clearAllCache().then(() => {
+    localStorage.setItem('supabase_migration_cleared_v2', 'true');
+    window.location.reload();
+  }).catch(err => console.error('Cache clear error:', err));
+}
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

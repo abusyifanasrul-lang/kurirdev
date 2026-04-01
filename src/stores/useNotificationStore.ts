@@ -1,9 +1,5 @@
 import { create } from 'zustand'
-import { db } from '@/lib/firebase'
-import {
-  collection, doc, setDoc, updateDoc,
-  onSnapshot, query, where, orderBy
-} from 'firebase/firestore'
+import { supabase } from '@/lib/supabaseClient'
 import { Notification } from '@/types'
 
 interface NotificationState {
@@ -23,53 +19,96 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
   isLoading: true,
 
   subscribeNotifications: (userId: string) => {
-    const q = query(
-      collection(db, 'notifications'),
-      where('user_id', '==', userId)
-    )
-    const unsub = onSnapshot(q, (snapshot) => {
-      const notifications = snapshot.docs
-        .map(d => d.data() as Notification)
-        .sort((a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime())
-      set({ notifications, isLoading: false })
-    })
-    return unsub
+    // Initial fetch
+    supabase.from('notifications')
+      .select('*')
+      .eq('user_id', userId)
+      .order('sent_at', { ascending: false })
+      .then(({ data }) => {
+        if (data) set({ notifications: data as Notification[], isLoading: false })
+      })
+
+    const channel = supabase.channel(`public:notifications:user_id=eq.${userId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
+        (payload) => {
+          const { eventType, new: newRec, old: oldRec } = payload
+          const notifications = [...get().notifications]
+          
+          if (eventType === 'INSERT') {
+            notifications.unshift(newRec as Notification)
+          } else if (eventType === 'UPDATE') {
+            const idx = notifications.findIndex(n => n.id === newRec.id)
+            if (idx !== -1) notifications[idx] = { ...notifications[idx], ...newRec }
+          } else if (eventType === 'DELETE') {
+            const idx = notifications.findIndex(n => n.id === oldRec.id)
+            if (idx !== -1) notifications.splice(idx, 1)
+          }
+          
+          set({ 
+            notifications: notifications.sort((a,b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime()) 
+          })
+        }
+      )
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   },
 
   subscribeAllNotifications: () => {
-    const q = query(
-      collection(db, 'notifications'),
-      orderBy('sent_at', 'desc')
-    )
-    const unsub = onSnapshot(q, (snapshot) => {
-      const notifications = snapshot.docs
-        .map(d => d.data() as Notification)
-      set({ notifications, isLoading: false })
-    })
-    return unsub
+    // Admins usually see everything, but this wasn't strictly filtered by role in firebase either
+    supabase.from('notifications')
+      .select('*')
+      .order('sent_at', { ascending: false })
+      .then(({ data }) => {
+        if (data) set({ notifications: data as Notification[], isLoading: false })
+      })
+
+    const channel = supabase.channel(`public:notifications:all`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'notifications' },
+        (payload) => {
+          const { eventType, new: newRec, old: oldRec } = payload
+          const notifications = [...get().notifications]
+          
+          if (eventType === 'INSERT') {
+            notifications.unshift(newRec as Notification)
+          } else if (eventType === 'UPDATE') {
+            const idx = notifications.findIndex(n => n.id === newRec.id)
+            if (idx !== -1) notifications[idx] = { ...notifications[idx], ...newRec }
+          } else if (eventType === 'DELETE') {
+            const idx = notifications.findIndex(n => n.id === oldRec.id)
+            if (idx !== -1) notifications.splice(idx, 1)
+          }
+          
+          set({ 
+            notifications: notifications.sort((a,b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime()) 
+          })
+        }
+      )
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   },
 
   addNotification: async (data) => {
-    const newNotification: Notification = {
-      id: crypto.randomUUID(),
+    const newNotification: Partial<Notification> = {
       ...data,
       is_read: false,
       sent_at: new Date().toISOString(),
     }
-    await setDoc(doc(db, 'notifications', newNotification.id), newNotification)
+    
+    await supabase.from('notifications').insert(newNotification)
   },
 
   markAsRead: async (id) => {
-    await updateDoc(doc(db, 'notifications', id), { is_read: true })
+    await supabase.from('notifications').update({ is_read: true }).eq('id', id)
   },
 
   markAllAsRead: async (userId) => {
-    const unread = get().notifications.filter(
-      n => n.user_id === userId && !n.is_read
-    )
-    await Promise.all(
-      unread.map(n => updateDoc(doc(db, 'notifications', n.id), { is_read: true }))
-    )
+    await supabase.from('notifications').update({ is_read: true }).eq('user_id', userId).eq('is_read', false)
   },
 
   getNotificationsByUser: (userId) => {

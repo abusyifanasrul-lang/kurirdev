@@ -2,8 +2,7 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { Courier } from '@/types'
 import { useUserStore } from './useUserStore'
-import { secondaryAuth } from '@/lib/firebase'
-import { createUserWithEmailAndPassword } from 'firebase/auth'
+import { supabase } from '@/lib/supabaseClient'
 
 interface CourierState {
   _storeVersion: string
@@ -84,21 +83,37 @@ export const useCourierStore = create<CourierState>()(
       }),
 
       addCourier: async (courier) => {
-        // 1. Create in Firebase Auth using secondaryAuth (security-first)
+        // 1. Create in Supabase Auth via Edge Function (security-first)
         try {
           if (!courier.password) throw new Error('Password is required for new courier');
-          await createUserWithEmailAndPassword(secondaryAuth, courier.email, courier.password);
-          console.log(`✅ Courier Auth account created: ${courier.email}`);
-        } catch (error: any) {
-          if (error.code === 'auth/email-already-in-use') {
-            console.log('ℹ️ Auth account already exists, continuing...');
-          } else {
-            console.error('❌ Failed to create courier Auth account:', error);
-            throw new Error(`Gagal membuat akun login kurir: ${error.message}`);
+          const { data, error } = await supabase.functions.invoke('create-staff-user', {
+            body: {
+              email: courier.email,
+              password: courier.password,
+              role: courier.role,
+              name: courier.name,
+              phone: courier.phone
+            }
+          });
+          
+          if (error) {
+             console.error('Pesan error dari Edge Function:', error);
+             throw new Error(error.message || 'Error executing edge function');
           }
+          
+          console.log(`✅ Courier Auth account created: ${courier.email}`, data);
+          
+          // Use returned ID for local tracking
+          const newUserId = data?.user?.id;
+          if (newUserId) {
+            courier.id = newUserId;
+          }
+        } catch (error: any) {
+          console.error('❌ Failed to create courier Auth account:', error);
+          throw new Error(`Gagal membuat akun login kurir: ${error.message}`);
         }
 
-        // 2. Add to Local State and Firestore
+        // 2. Add to Local State and trigger DB save
         set((state) => ({ queue: [...state.queue, courier] }))
         await useUserStore.getState().addUser(courier)
       },

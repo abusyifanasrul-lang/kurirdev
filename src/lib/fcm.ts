@@ -1,10 +1,9 @@
 import { getToken, onMessage, getMessaging, type Messaging } from 'firebase/messaging'
 import { deleteInstallations, getInstallations } from 'firebase/installations'
 import app from './firebase'
-import { db } from './firebase'
-import { doc, updateDoc } from 'firebase/firestore'
 import { Capacitor } from '@capacitor/core'
 import { PushNotifications } from '@capacitor/push-notifications'
+import { supabase } from './supabaseClient'
 
 const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY
 
@@ -63,11 +62,11 @@ const registerNativePush = async (userId: string): Promise<string | null> => {
     // Add listeners for native notifications
     await PushNotifications.addListener('registration', async ({ value: token }) => {
       console.log('🚀 Native FCM token received:', token.substring(0, 20) + '...')
-      await updateDoc(doc(db, 'users', userId), {
+      await supabase.from('profiles').update({
         fcm_token: token,
         fcm_token_updated_at: new Date().toISOString(),
         platform: 'android'
-      })
+      }).eq('id', userId)
     })
 
     await PushNotifications.addListener('registrationError', (err) => {
@@ -110,11 +109,11 @@ const registerWebPush = async (userId: string): Promise<string | null> => {
   })
 
   if (token) {
-    await updateDoc(doc(db, 'users', userId), {
+    await supabase.from('profiles').update({
       fcm_token: token,
       fcm_token_updated_at: new Date().toISOString(),
       platform: 'web'
-    })
+    }).eq('id', userId)
     return token
   }
   return null
@@ -144,10 +143,10 @@ export const refreshFCMToken = async (userId: string): Promise<void> => {
         serviceWorkerRegistration: registration
       })
       if (token) {
-        await updateDoc(doc(db, 'users', userId), {
+        await supabase.from('profiles').update({
           fcm_token: token,
           fcm_token_updated_at: new Date().toISOString()
-        })
+        }).eq('id', userId)
       }
     }
   } catch (error) {

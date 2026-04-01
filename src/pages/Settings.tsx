@@ -20,8 +20,7 @@ import {
   getOrphanedOrdersLocal,
 } from '@/lib/orderCache';
 import { useNavigate } from 'react-router-dom';
-import { doc, setDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { supabase } from '@/lib/supabaseClient';
 
 export function Settings() {
   const { users, updateUser, addUser } = useUserStore();
@@ -41,16 +40,21 @@ export function Settings() {
     commission_rate,
     commission_threshold,
   })
-  const syncSettingsToFirestore = async () => {
+  const syncSettingsToServer = async () => {
     try {
       const state = useSettingsStore.getState();
-      await setDoc(doc(db, 'settings', 'business'), {
-        commission_rate: state.commission_rate,
-        commission_threshold: state.commission_threshold,
-        courier_instructions: state.courier_instructions,
-      }, { merge: true });
+      const { error } = await supabase
+        .from('settings')
+        .update({
+          commission_rate: state.commission_rate,
+          commission_threshold: state.commission_threshold,
+          courier_instructions: state.courier_instructions,
+        })
+        .eq('id', 'global');
+        
+      if (error) throw error;
     } catch (err) {
-      console.error('Failed to sync settings to Firestore:', err);
+      console.error('Failed to sync settings to Supabase:', err);
     }
   };
 
@@ -71,7 +75,7 @@ export function Settings() {
       return
     }
     updateSettings(businessForm)
-    syncSettingsToFirestore()
+    syncSettingsToServer()
     showMessage('success', 'Business settings saved!')
   }
 
@@ -282,7 +286,7 @@ export function Settings() {
       return;
     }
     addCourierInstruction(newInstruction);
-    syncSettingsToFirestore();
+    syncSettingsToServer();
     setIsAddInstructionModalOpen(false);
     setNewInstruction({ label: '', instruction: '', icon: '✅' });
     showMessage('success', 'Instruksi berhasil ditambahkan!');
@@ -307,7 +311,7 @@ export function Settings() {
     }
     
     updateCourierInstruction(selectedInstructionToEdit.id, editInstructionForm);
-    syncSettingsToFirestore();
+    syncSettingsToServer();
     setIsEditInstructionModalOpen(false);
     setSelectedInstructionToEdit(null);
     setEditInstructionForm({ label: '', instruction: '', icon: '✅' });
@@ -317,7 +321,7 @@ export function Settings() {
   const handleDeleteInstruction = (id: string) => {
     if (window.confirm('Apakah Anda yakin ingin menghapus instruksi ini?')) {
       deleteCourierInstruction(id);
-      syncSettingsToFirestore();
+      syncSettingsToServer();
       showMessage('success', 'Instruksi berhasil dihapus!');
     }
   };

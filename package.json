@@ -16,6 +16,7 @@
     "@capacitor/geolocation": "^8.1.0",
     "@capacitor/push-notifications": "^8.0.3",
     "@capacitor/status-bar": "^8.0.2",
+    "@supabase/supabase-js": "^2.101.1",
     "axios": "^1.13.5",
     "clsx": "2.1.1",
     "date-fns": "^4.1.0",

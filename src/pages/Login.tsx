@@ -8,9 +8,7 @@ import { useUserStore } from '@/stores/useUserStore';
 import type { User as UserType, UserRole } from '@/types';
 import { useSessionStore } from '@/stores/useSessionStore';
 import { requestFCMPermission } from '@/lib/fcm';
-import { auth, db } from '@/lib/firebase';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { supabase } from '@/lib/supabaseClient';
 
 export function Login() {
   const navigate = useNavigate();
@@ -55,23 +53,45 @@ export function Login() {
     setError('');
 
     try {
-      // 1. Sign in with Firebase Auth
-      const userCredential = await signInWithEmailAndPassword(auth, email.toLowerCase().trim(), password);
-      const firebaseUser = userCredential.user;
+      // 1. Sign in with Supabase Auth
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email: email.toLowerCase().trim(),
+        password,
+      });
 
-      // 2. Fetch user data from Firestore to get their role
-      const q = query(
-        collection(db, 'users'),
-        where('email', '==', firebaseUser.email),
-        limit(1)
-      );
-      const querySnapshot = await getDocs(q);
+      if (authError || !data.user) {
+        throw new Error(authError?.message || 'Login failed.');
+      }
 
-      if (querySnapshot.empty) {
+      const supabaseUser = data.user;
+
+      // 2. Fetch user data from Supabase profiles
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', supabaseUser.id)
+        .single();
+
+      if (profileError || !profile) {
         throw new Error('Data pengguna tidak ditemukan di database.');
       }
 
-      const userData = querySnapshot.docs[0].data() as UserType;
+      const userData: UserType = {
+          id: profile.id,
+          name: profile.name,
+          email: supabaseUser.email || '',
+          role: profile.role as UserRole,
+          phone: profile.phone || undefined,
+          is_active: true,
+          fcm_token: profile.fcm_token || undefined,
+          is_online: profile.is_online,
+          created_at: profile.created_at || new Date().toISOString(),
+          updated_at: profile.updated_at || new Date().toISOString(),
+          total_deliveries_alltime: profile.total_deliveries_alltime,
+          total_earnings_alltime: profile.total_earnings_alltime,
+          unpaid_count: profile.unpaid_count,
+          unpaid_amount: profile.unpaid_amount,
+      };
 
       // 3. Establish Session (Zustand)
       sessionLogin(userData);
@@ -93,7 +113,7 @@ export function Login() {
 
     } catch (err: any) {
       console.error('Login error:', err);
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+      if (err.message?.includes('Invalid login') || err.message?.includes('credentials')) {
         setError('Email atau password salah.');
       } else {
         setError(err.message || 'Login gagal. Silakan coba lagi.');
