@@ -321,3 +321,13 @@ VALUES (
   '[{"id": "1", "icon": "✅", "label": "Barang sudah siap, langsung ambil", "instruction": "Barang sudah siap, langsung ambil!"}, {"id": "2", "icon": "🔍", "label": "Cek dulu ke penjual sebelum ambil", "instruction": "Cek dulu ke penjual sebelum ambil"}, {"id": "3", "icon": "🛒", "label": "Kurir yang pesan di tempat", "instruction": "Kamu yang pesan di tempat"}, {"id": "4", "icon": "📍", "label": "Minta kurir update posisi", "instruction": "Admin minta update posisimu"}, {"id": "5", "icon": "🔍", "label": "Cek kondisi barang saat diterima", "instruction": "Cek kondisi barang saat diterima"}]'::JSONB
 ) 
 ON CONFLICT DO NOTHING;
+
+-- Grant necessary permissions to service_role to ensure Edge Functions can operate
+GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;
+GRANT ALL ON ALL ROUTINES IN SCHEMA public TO service_role;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO postgres, anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO postgres, anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO postgres, anon, authenticated, service_role;
+
