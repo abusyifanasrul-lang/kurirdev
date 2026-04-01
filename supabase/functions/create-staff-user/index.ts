@@ -8,6 +8,8 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  console.log('Edge Function create-staff-user called, method:', req.method)
+
   if (req.method === 'OPTIONS') {
     return new Response('ok', {
       headers: {
@@ -19,17 +21,24 @@ serve(async (req) => {
 
   try {
     const { email, password, name, phone, role } = await req.json()
+    console.log('Request body:', { email, name, role })
 
     // Needs to be authenticated using an Admin JWT to create users
     const authHeader = req.headers.get('Authorization')
+    console.log('Auth header present:', !!authHeader)
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Missing Auth Header' }), { status: 401, headers: corsHeaders })
     }
 
     // Init Supabase with the service_role key to bypass RLS and use Admin Auth API
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    console.log('Supabase URL:', supabaseUrl ? 'set' : 'not set')
+    console.log('Service role key:', serviceRoleKey ? 'set' : 'not set')
+
     const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      supabaseUrl ?? '',
+      serviceRoleKey ?? '',
       {
         auth: {
           autoRefreshToken: false,
@@ -38,34 +47,34 @@ serve(async (req) => {
       }
     )
 
-    // Verify the caller is an admin
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
-    )
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
+    // Verify the caller is an admin using the service role client
+    const token = authHeader.replace('Bearer ', '')
+    console.log('Verifying token with admin client...')
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
+    console.log('Admin getUser result:', { user: !!user, error: authError })
     if (authError || !user) {
-      console.error('Auth error:', authError)
-      return new Response(JSON.stringify({ error: 'Unauthorized caller: No valid session', details: authError?.message }), { status: 401, headers: corsHeaders })
+      console.error('Auth verification error:', authError)
+      return new Response(JSON.stringify({ error: 'Unauthorized caller: Invalid token', details: authError?.message }), { status: 401, headers: corsHeaders })
     }
-    
-    // Check role from profiles (or JWT meta)
-    const { data: callerProfile, error: profileError } = await supabaseClient
+
+    // Check role from profiles
+    const { data: callerProfile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('role')
       .eq('id', user.id)
       .single()
-    
+
     if (profileError) {
+      console.error('Profile fetch error:', profileError)
       return new Response(JSON.stringify({ error: 'Failed to fetch caller profile', details: profileError }), { status: 500, headers: corsHeaders })
     }
-      
+
+    console.log('Caller role:', callerProfile?.role)
     const allowedRoles = ['admin', 'admin_kurir', 'owner'];
     if (!allowedRoles.includes(callerProfile?.role) && user.id !== '1') {
-       return new Response(JSON.stringify({ 
-         error: 'Forbidden: Caller does not have permission', 
-         callerRole: callerProfile?.role 
+       return new Response(JSON.stringify({
+         error: 'Forbidden: Caller does not have permission',
+         callerRole: callerProfile?.role
        }), { status: 403, headers: corsHeaders })
     }
 
