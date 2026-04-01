@@ -38,6 +38,72 @@ export const useUserStore = create<UserState>()((set, get) => ({
   users: [],
   isLoading: true,
 
+  addUser: async (user) => {
+    try {
+      // Refresh the session to ensure it's valid
+      let session;
+      try {
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
+        if (refreshError || !refreshData.session) {
+          console.error('Session refresh failed:', refreshError)
+          throw new Error('Failed to refresh session. Please log in again.')
+        }
+        session = refreshData.session
+      } catch (e) {
+        console.error('Session refresh error:', e)
+        throw new Error('Session refresh failed. Please log in again.')
+      }
+
+      // Verify the session is still valid by getting user
+      try {
+        const { data: { user: authUser }, error: userError } = await supabase.auth.getUser()
+        if (userError || !authUser) {
+          console.error('getUser failed:', userError)
+          throw new Error('Session expired. Please log in again.')
+        }
+      } catch (e) {
+        console.error('getUser error:', e)
+        throw new Error('Session validation failed. Please log in again.')
+      }
+
+      // Uses Edge Function to bypass RLS and create a new auth user
+      let invokeResult;
+      try {
+        invokeResult = await supabase.functions.invoke('create-staff-user', {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`
+          },
+          body: {
+            email: user.email,
+            password: user.password,
+            name: user.name,
+            role: user.role,
+            phone: user.phone
+          }
+        })
+      } catch (e) {
+        console.error('Invoke error:', e)
+        throw new Error('Failed to call Edge Function: ' + (e.message || 'Unknown error'))
+      }
+
+      const { data, error } = invokeResult
+
+      if (error) {
+        console.error('Failed to add user via Edge Function:', error)
+        // Handle specific error types
+        if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+          throw new Error('Authentication failed. Please log in again.')
+        }
+        throw new Error(error.message || 'Failed to create user')
+      }
+
+      console.log('User created:', data)
+    } catch (e) {
+      console.error('addUser error:', e)
+      throw new Error('Failed to add user: ' + (e.message || 'Unknown error'))
+    }
+  },
+
   fetchUsers: async () => {
     const { data: profiles, error } = await supabase.from('profiles').select('*')
     if (error) {

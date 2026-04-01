@@ -98,9 +98,6 @@ serve(async (req) => {
     // So we don't need to manually insert into `profiles`.
     // Wait, let's just do an update to ensure phone is correct if trigger missed something.
     if (authData.user) {
-      // Small pause to allow trigger transaction to finish
-      await new Promise(r => setTimeout(r, 500))
-      
       const updatePayload: any = { role }
       if (phone) updatePayload.phone = phone
       if (name) updatePayload.name = name
