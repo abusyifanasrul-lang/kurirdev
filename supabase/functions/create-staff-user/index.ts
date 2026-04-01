@@ -108,7 +108,6 @@ serve(async (req) => {
         id: newUser.user.id, 
         role, 
         name, 
-        email, // CRITICAL: Added missing email field
         phone: phone || null,
         updated_at: new Date().toISOString(),
         is_active: true,
