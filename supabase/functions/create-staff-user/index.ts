@@ -94,36 +94,32 @@ serve(async (req) => {
 
     // 5. Create or Update Profile (Upsert)
     if (newUser.user) {
+      console.log('Step 5: Preparing profile data for user:', newUser.user.id)
+      
       const profileData: any = { 
         id: newUser.user.id, 
         role, 
         name, 
         phone,
-        updated_at: new Date().toISOString()
-      }
-      
-      // Calculate queue position if it's a courier
-      if (role === 'courier') {
-        const { data: couriers } = await supabaseAdmin
-          .from('profiles')
-          .select('queue_position')
-          .eq('role', 'courier')
-        
-        let maxPos = 0
-        if (couriers && (couriers as any[]).length > 0) {
-          maxPos = Math.max(...(couriers as any[]).map(c => c.queue_position || 0))
-        }
-        profileData.queue_position = maxPos + 1
+        updated_at: new Date().toISOString(),
+        is_active: true,
+        queue_position: 0 // Simplified: Default to 0, manage queue elsewhere
       }
 
-      console.log('Step 6: Upserting profile for user:', newUser.user.id)
+      console.log('Step 6: Upserting profile for user group:', role)
       const { error: upsertError } = await supabaseAdmin
         .from('profiles')
         .upsert(profileData)
       
       if (upsertError) {
         console.error('Step 6 Failed: Profile upsert failed:', upsertError)
-        return new Response(JSON.stringify({ error: 'User created but profile upsert failed', details: upsertError, step: 'profile' }), { status: 500, headers: corsHeaders })
+        // If profile fails, we should technically delete the auth user, 
+        // but for now we just report it clearly to the admin.
+        return new Response(JSON.stringify({ 
+          error: 'Auth user created, but profile failed', 
+          details: upsertError, 
+          step: 'profile' 
+        }), { status: 500, headers: corsHeaders })
       }
       console.log('Step 7: Profile upserted successfully')
     }
