@@ -42,25 +42,31 @@ serve(async (req) => {
     })
 
     // 1. Authenticate the caller
-    const authHeader = req.headers.get('Authorization')
-    console.log('Auth Header Present:', !!authHeader, '| Header value prefix:', authHeader?.substring(0, 20))
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization')
+    console.log('Auth Header Present:', !!authHeader)
     
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Missing Authorization header' }), { status: 401, headers: corsHeaders })
+      return new Response(JSON.stringify({ 
+        error: 'Missing Authorization header',
+        debug: { headerFound: false }
+      }), { status: 401, headers: corsHeaders })
     }
 
     // Extract JWT token and verify directly via admin client
-    // NOTE: Do NOT use getUser() on a secondary client with global.headers —
-    // Supabase JS v2 auth methods bypass global headers. Pass the token explicitly instead.
-    const token = authHeader.replace('Bearer ', '').trim()
-    console.log('Token length:', token.length)
-
+    const token = authHeader.replace(/^[Bb]earer\s+/, '').trim()
+    
     const { data: { user: caller }, error: authError } = await supabaseAdmin.auth.getUser(token)
     if (authError || !caller) {
-      console.error('Authentication Error:', authError?.message || 'No user found', '| Token starts with:', token.substring(0, 30))
+      console.error('Authentication Error:', authError?.message || 'No user found')
       return new Response(JSON.stringify({ 
         error: 'Unauthorized: Invalid session', 
         details: authError?.message || 'User not found in session',
+        debug: { 
+          tokenLength: token.length,
+          tokenPrefix: token.substring(0, 5),
+          authError: authError?.message,
+          hasCaller: !!caller
+        },
         step: 'auth_check'
       }), { status: 401, headers: corsHeaders })
     }

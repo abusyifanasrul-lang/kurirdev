@@ -89,6 +89,9 @@ export const useUserStore = create<UserState>()((set, get) => ({
       }
 
       const invokePromise = supabase.functions.invoke('create-staff-user', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        },
         body: {
           email: user.email,
           password: user.password,
