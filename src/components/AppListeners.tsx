@@ -96,7 +96,9 @@ export function AppListeners() {
       }
     }, 5000)
 
-    return () => unsubUsers()
+    return () => {
+      if (typeof unsubUsers === 'function') unsubUsers()
+    }
   }, [])
 
   useEffect(() => {
@@ -257,11 +259,18 @@ export function AppListeners() {
   }, [user?.id])
 
   useEffect(() => {
-    if (!user || !['admin', 'admin_kurir'].includes(user.role)) return
-    // Wait, useNotificationStore still needs to be refactored? 
-    // Usually admin uses this to listen for new orders via Firebase messaging or channel.
-    const unsub = subscribeAllNotifications()
-    return () => unsub()
+    if (!user || !['admin', 'admin_kurir'].includes(user.role)) return () => {}
+    
+    let unsub: any = () => {}
+    try {
+      unsub = subscribeAllNotifications()
+    } catch (e) {
+      console.error('Failed to subscribe notifications:', e)
+    }
+    
+    return () => {
+      if (typeof unsub === 'function') unsub()
+    }
   }, [user?.id])
 
   return null
