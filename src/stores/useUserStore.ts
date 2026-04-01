@@ -105,10 +105,25 @@ export const useUserStore = create<UserState>()((set, get) => ({
         setTimeout(() => reject(new Error('Request timed out after 15 seconds. Please try again.')), 15000)
       )
 
-      const { error } = await Promise.race([invokePromise, timeoutPromise]) as any
+      const response = await Promise.race([invokePromise, timeoutPromise]) as any
 
-      if (error) {
-        throw new Error(error.message || 'Failed to create user')
+      if (response.error) {
+        // Supabase functions might wrap the actual error response body
+        // We can extract custom error details thrown by our edge function
+        let detailedMessage = response.error.message || 'Failed to create user'
+        
+        try {
+          if (response.error.context) {
+            const body = await response.error.context.json()
+            if (body && (body.error || body.details)) {
+              detailedMessage = `${body.error || ''} ${body.details ? `(${body.details})` : ''}`
+            }
+          }
+        } catch (parseErr) {
+          // ignore parse errors
+        }
+
+        throw new Error(detailedMessage)
       }
 
       await get().fetchUsers()
