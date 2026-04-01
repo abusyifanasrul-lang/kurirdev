@@ -46,7 +46,8 @@ serve(async (req) => {
     )
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized caller: No valid session', details: authError }), { status: 401, headers: corsHeaders })
+      console.error('Auth error:', authError)
+      return new Response(JSON.stringify({ error: 'Unauthorized caller: No valid session', details: authError?.message }), { status: 401, headers: corsHeaders })
     }
     
     // Check role from profiles (or JWT meta)

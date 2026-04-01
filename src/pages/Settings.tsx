@@ -734,10 +734,9 @@ export function Settings() {
                 value={newUser.role}
                 onChange={(e) => setNewUser({ ...newUser, role: e.target.value as any })}
               >
-                <option value="admin">Admin (Super)</option>
-                <option value="admin_kurir">Admin Kurir</option>
-                <option value="finance">Finance</option>
-                <option value="owner">Owner</option>
+                 <option value="admin">Admin (Super)</option>
+                 <option value="admin_kurir">Admin Kurir</option>
+                 <option value="owner">Owner</option>
               </select>
             </div>
           <Input

@@ -87,27 +87,41 @@ export const useUserStore = create<UserState>()((set, get) => ({
 
   addUser: async (user) => {
     // Get current session for authentication
-    const { data: { session } } = await supabase.auth.getSession()
-    
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+
+    if (sessionError || !session?.access_token) {
+      throw new Error('No valid session found. Please log in again.')
+    }
+
+    // Verify the session is still valid by getting user
+    const { data: { user: authUser }, error: userError } = await supabase.auth.getUser()
+    if (userError || !authUser) {
+      throw new Error('Session expired. Please log in again.')
+    }
+
     // Uses Edge Function to bypass RLS and create a new auth user
     const { data, error } = await supabase.functions.invoke('create-staff-user', {
       headers: {
-        Authorization: `Bearer ${session?.access_token}`
+        Authorization: `Bearer ${session.access_token}`
       },
-      body: { 
-        email: user.email, 
-        password: user.password, 
-        name: user.name, 
-        role: user.role, 
-        phone: user.phone 
+      body: {
+        email: user.email,
+        password: user.password,
+        name: user.name,
+        role: user.role,
+        phone: user.phone
       }
     })
-    
+
     if (error) {
       console.error('Failed to add user via Edge Function:', error)
-      throw error
+      // Handle specific error types
+      if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+        throw new Error('Authentication failed. Please log in again.')
+      }
+      throw new Error(error.message || 'Failed to create user')
     }
-    
+
     console.log('User created:', data)
   },
 
