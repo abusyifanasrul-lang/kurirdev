@@ -218,7 +218,8 @@ export function Settings() {
       console.error('Error in handleAddUser catch block:', error);
       showMessage('error', `An unexpected error occurred: ${error.message || 'Unknown error'}`);
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false); // ABSOLUTE RESET
+      setIsLoading(false);
       console.log('handleAddUser finished.');
     }
   };

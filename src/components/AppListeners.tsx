@@ -128,83 +128,78 @@ export function AppListeners() {
 
   useEffect(() => {
     // Semua role admin (admin, admin_kurir, owner, finance) butuh live orders
-    if (!user || user.role === 'courier') return
-
-    const todayStart = new Date()
-    todayStart.setHours(0, 0, 0, 0)
-    
-    // Initial fetch to populate the store
-    const fetchInitialAdminOrders = async () => {
-      // Fetch today's orders
-      const { data: todayOrders } = await supabase
-        .from('orders')
-        .select('*')
-        .gte('created_at', todayStart.toISOString())
-        .order('created_at', { ascending: false })
-        .limit(100)
-
-      // Fetch active orders (can be older than today)
-      const { data: activeOrders } = await supabase
-        .from('orders')
-        .select('*')
-        .neq('status', 'delivered')
-        .neq('status', 'cancelled')
-        .order('created_at', { ascending: false })
-        .limit(50)
-        
-      const allFetched = [...(todayOrders || []), ...(activeOrders || [])] as Order[]
-      // deduplicate
-      const uniqueOrders = Array.from(new Map(allFetched.map(item => [item.id, item])).values())
+    if (user && user.role !== 'courier') {
+      const todayStart = new Date()
+      todayStart.setHours(0, 0, 0, 0)
       
-      useOrderStore.getState().setOrders(uniqueOrders)
-    }
+      const fetchInitialAdminOrders = async () => {
+        const { data: todayOrders } = await supabase
+          .from('orders')
+          .select('*')
+          .gte('created_at', todayStart.toISOString())
+          .order('created_at', { ascending: false })
+          .limit(100)
 
-    fetchInitialAdminOrders()
+        const { data: activeOrders } = await supabase
+          .from('orders')
+          .select('*')
+          .neq('status', 'delivered')
+          .neq('status', 'cancelled')
+          .order('created_at', { ascending: false })
+          .limit(50)
+          
+        const allFetched = [...(todayOrders || []), ...(activeOrders || [])] as Order[]
+        const uniqueOrders = Array.from(new Map(allFetched.map(item => [item.id, item])).values())
+        useOrderStore.getState().setOrders(uniqueOrders)
+      }
 
-    // Realtime subscription for ALL order changes
-    const channel = supabase.channel('admin:orders')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
-        const { eventType, new: newRec, old: oldRec } = payload
-        const currentOrders = useOrderStore.getState().orders
-        let updatedOrders = [...currentOrders]
+      fetchInitialAdminOrders()
 
-        if (eventType === 'INSERT') {
-          // Check if it's relevant (active or today) before pushing blindly
-          const isToday = new Date(newRec.created_at) >= todayStart
-          const isActive = !['delivered', 'cancelled'].includes(newRec.status)
-          if (isToday || isActive) {
-            updatedOrders = [newRec as Order, ...updatedOrders]
-          }
-        } 
-        else if (eventType === 'UPDATE') {
-          const idx = updatedOrders.findIndex(o => o.id === newRec.id)
-          if (idx !== -1) {
-            updatedOrders[idx] = { ...updatedOrders[idx], ...(newRec as Order) }
-          } else {
-            // Might be an old order that just became active again? Unlikely but safe to add
+      const channel = supabase.channel('admin:orders')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
+          const { eventType, new: newRec, old: oldRec } = payload
+          const currentOrders = useOrderStore.getState().orders
+          let updatedOrders = [...currentOrders]
+
+          if (eventType === 'INSERT') {
             const isToday = new Date(newRec.created_at) >= todayStart
             const isActive = !['delivered', 'cancelled'].includes(newRec.status)
             if (isToday || isActive) {
-               updatedOrders.unshift(newRec as Order)
+              updatedOrders = [newRec as Order, ...updatedOrders]
+            }
+          } 
+          else if (eventType === 'UPDATE') {
+            const idx = updatedOrders.findIndex(o => o.id === newRec.id)
+            if (idx !== -1) {
+              updatedOrders[idx] = { ...updatedOrders[idx], ...(newRec as Order) }
+            } else {
+              const isToday = new Date(newRec.created_at) >= todayStart
+              const isActive = !['delivered', 'cancelled'].includes(newRec.status)
+              if (isToday || isActive) {
+                 updatedOrders.unshift(newRec as Order)
+              }
+            }
+
+            if (newRec.status === 'delivered' || newRec.status === 'cancelled') {
+               moveToLocalDB(newRec as Order).catch(err => console.error('Mirror write error:', err))
             }
           }
-
-          // Mirror write ke IndexedDB untuk order yang final
-          if (newRec.status === 'delivered' || newRec.status === 'cancelled') {
-             moveToLocalDB(newRec as Order).catch(err => console.error('Mirror write error:', err))
+          else if (eventType === 'DELETE') {
+            updatedOrders = updatedOrders.filter(o => o.id !== oldRec.id)
           }
-        }
-        else if (eventType === 'DELETE') {
-          updatedOrders = updatedOrders.filter(o => o.id !== oldRec.id)
-        }
 
-        useOrderStore.getState().setOrders(updatedOrders)
-      })
-      .subscribe()
+          useOrderStore.getState().setOrders(updatedOrders)
+        })
+        .subscribe()
 
-    return () => {
-      supabase.removeChannel(channel)
+      return () => {
+        if (channel) {
+          try { supabase.removeChannel(channel) } catch (e) {}
+        }
+      }
     }
+    
+    return () => {}
   }, [user?.id])
 
   useEffect(() => {

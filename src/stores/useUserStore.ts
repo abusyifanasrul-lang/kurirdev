@@ -88,7 +88,7 @@ export const useUserStore = create<UserState>()((set, get) => ({
         throw new Error('Session expired. Please log in again.')
       }
 
-      const { data, error } = await supabase.functions.invoke('create-staff-user', {
+      const invokePromise = supabase.functions.invoke('create-staff-user', {
         headers: {
           Authorization: `Bearer ${session.access_token}`
         },
@@ -101,17 +101,25 @@ export const useUserStore = create<UserState>()((set, get) => ({
         }
       })
 
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timed out after 15 seconds. Please try again.')), 15000)
+      )
+
+      const result = await Promise.race([invokePromise, timeoutPromise]) as any
+      const { data, error } = result
+
       if (error) {
         throw new Error(error.message || 'Failed to create user')
       }
 
       await get().fetchUsers()
-      set({ isLoading: false })
       return { success: true }
     } catch (e: any) {
       console.error('addUser error:', e)
-      set({ error: e.message, isLoading: false })
+      set({ error: e.message })
       return { success: false, error: e.message }
+    } finally {
+      set({ isLoading: false })
     }
   },
 
