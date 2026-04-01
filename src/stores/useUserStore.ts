@@ -86,8 +86,14 @@ export const useUserStore = create<UserState>()((set, get) => ({
   },
 
   addUser: async (user) => {
+    // Get current session for authentication
+    const { data: { session } } = await supabase.auth.getSession()
+    
     // Uses Edge Function to bypass RLS and create a new auth user
     const { data, error } = await supabase.functions.invoke('create-staff-user', {
+      headers: {
+        Authorization: `Bearer ${session?.access_token}`
+      },
       body: { 
         email: user.email, 
         password: user.password, 
