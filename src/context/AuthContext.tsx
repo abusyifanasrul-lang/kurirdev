@@ -4,6 +4,7 @@ import { useSessionStore } from '@/stores/useSessionStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useNotificationStore } from '@/stores/useNotificationStore';
+import { useSettingsStore } from '@/stores/useSettingsStore';
 import { supabase } from '@/lib/supabaseClient';
 
 interface AuthContextType extends AuthState {

@@ -187,7 +187,7 @@ function PWAUpdateBanner() {
 
 export function App() {
   const loadFromLocal = useCustomerStore(s => s.loadFromLocal);
-  const syncFromFirestore = useCustomerStore(s => s.syncFromFirestore);
+  const syncFromServer = useCustomerStore(s => s.syncFromServer);
 
   useEffect(() => {
     // Defer non-critical customer sync — runs after current event loop
@@ -197,7 +197,7 @@ export function App() {
         const lastSyncDate = lastSyncRaw ? new Date(lastSyncRaw).toDateString() : null;
         const today = new Date().toDateString();
         if (lastSyncDate !== today) {
-          syncFromFirestore();
+          syncFromServer();
         }
       });
     }, 0);

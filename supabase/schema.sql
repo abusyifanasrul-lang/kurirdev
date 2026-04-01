@@ -9,6 +9,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE public.profiles (
   id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
+  email VARCHAR(255),
   phone VARCHAR(50),
   role VARCHAR(50) NOT NULL DEFAULT 'courier' CHECK (role IN ('owner', 'admin_kurir', 'finance', 'courier')),
   is_online BOOLEAN DEFAULT false,

@@ -19,7 +19,7 @@ interface UserState {
 const mapProfileToUser = (profile: any): User => ({
   id: profile.id,
   name: profile.name,
-  email: '', 
+  email: profile.email || '', 
   role: profile.role as UserRole,
   phone: profile.phone || undefined,
   is_active: profile.is_active ?? true,

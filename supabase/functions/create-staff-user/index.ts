@@ -108,6 +108,7 @@ serve(async (req) => {
         id: newUser.user.id, 
         role, 
         name, 
+        email,
         phone: phone || null,
         updated_at: new Date().toISOString(),
         is_active: true,
