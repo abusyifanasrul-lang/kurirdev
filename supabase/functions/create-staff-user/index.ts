@@ -19,9 +19,17 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || ''
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.error('CRITICAL: Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY')
+      return new Response(JSON.stringify({ 
+        error: 'Edge Function misconfigured: Missing environment variables',
+        step: 'init_env'
+      }), { status: 500, headers: corsHeaders })
+    }
 
     // Init Admin client
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
@@ -35,7 +43,7 @@ serve(async (req) => {
     }
 
     // Use regular client to verify the user's session
-    const supabaseClient = createClient(supabaseUrl, anonKey, {
+    const supabaseClient = createClient(supabaseUrl, anonKey || serviceRoleKey, {
       global: { headers: { Authorization: authHeader } }
     })
     

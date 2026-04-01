@@ -98,7 +98,7 @@ export function AppListeners() {
 
     return () => {
       if (typeof unsubUsers === 'function') {
-        try { unsubUsers() } catch (e) { /* ignore */ }
+        try { unsubUsers() } catch(e) {}
       }
     }
   }, [user?.id, subscribeUsers, initQueuePositions])
@@ -122,7 +122,8 @@ export function AppListeners() {
       }
     }
     syncGlobalSettings()
-
+    
+    return () => {} // Explicitly return empty cleanup for consistency
   }, [user?.id])
 
   useEffect(() => {
