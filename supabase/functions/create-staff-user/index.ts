@@ -7,18 +7,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, x_client_info, apikey, content-type',
 }
 
-// Simple JWT decode function
-function decodeJwt(token: string) {
-  const parts = token.split('.')
-  if (parts.length !== 3) throw new Error('Invalid JWT')
-  const payload = parts[1]
-  const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'))
-  return JSON.parse(decoded)
-}
-
 serve(async (req) => {
-  console.log('Edge Function create-staff-user called, method:', req.method)
-
+  // Handle CORS
   if (req.method === 'OPTIONS') {
     return new Response('ok', {
       headers: {
@@ -29,108 +19,90 @@ serve(async (req) => {
   }
 
   try {
-    const { email, password, name, phone, role } = await req.json()
-    console.log('Request body:', { email, name, role })
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
 
-    // Verify the JWT and extract user ID
+    // Init Admin client
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    })
+
+    // 1. Authenticate the caller
     const authHeader = req.headers.get('Authorization')
-    console.log('Auth header present:', !!authHeader)
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Missing Auth Header' }), { status: 401, headers: corsHeaders })
+      return new Response(JSON.stringify({ error: 'Missing Authorization header' }), { status: 401, headers: corsHeaders })
     }
 
-    const token = authHeader.replace('Bearer ', '')
-    let userId: string
-    try {
-      const payload = decodeJwt(token)
-      userId = payload.sub as string
-      console.log('Decoded user ID:', userId)
-    } catch (e) {
-      console.error('JWT decode error:', e)
-      return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401, headers: corsHeaders })
+    // Use regular client to verify the user's session
+    const supabaseClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } }
+    })
+    
+    const { data: { user: caller }, error: authError } = await supabaseClient.auth.getUser()
+    if (authError || !caller) {
+      return new Response(JSON.stringify({ error: 'Unauthorized: Invalid session', details: authError }), { status: 401, headers: corsHeaders })
     }
 
-    if (!userId) {
-      return new Response(JSON.stringify({ error: 'Invalid token: no user ID' }), { status: 401, headers: corsHeaders })
-    }
-
-    // Init Supabase with the service_role key to bypass RLS and use Admin Auth API
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-    console.log('Supabase URL:', supabaseUrl ? 'set' : 'not set')
-    console.log('Service role key:', serviceRoleKey ? 'set' : 'not set')
-
-    const supabaseAdmin = createClient(
-      supabaseUrl ?? '',
-      serviceRoleKey ?? '',
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    )
-
-    // Check role from profiles
-    const { data: callerProfile, error: profileError } = await supabaseAdmin
+    // 2. Check caller's role in DB
+    const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('role')
-      .eq('id', userId)
+      .eq('id', caller.id)
       .single()
 
-    if (profileError) {
-      console.error('Profile fetch error:', profileError)
-      return new Response(JSON.stringify({ error: 'Failed to fetch caller profile', details: profileError }), { status: 500, headers: corsHeaders })
+    if (profileError || !profile) {
+      return new Response(JSON.stringify({ error: 'Forbidden: Profile not found' }), { status: 403, headers: corsHeaders })
     }
 
-    console.log('Caller role:', callerProfile?.role)
-    const allowedRoles = ['admin', 'admin_kurir', 'owner'];
-    if (!allowedRoles.includes(callerProfile?.role) && userId !== '1') {
-       return new Response(JSON.stringify({
-         error: 'Forbidden: Caller does not have permission',
-         callerRole: callerProfile?.role
-       }), { status: 403, headers: corsHeaders })
+    const allowedRoles = ['admin', 'admin_kurir', 'owner']
+    if (!allowedRoles.includes(profile.role)) {
+      return new Response(JSON.stringify({ error: 'Forbidden: Insufficient permissions', role: profile.role }), { status: 403, headers: corsHeaders })
     }
 
-    // Now proceed to create the user in Auth
-    const { data: authData, error: createError } = await supabaseAdmin.auth.admin.createUser({
+    // 3. Process Request
+    const { email, password, name, phone, role } = await req.json()
+
+    // 4. Create User
+    const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
-      user_metadata: {
-        name,
-        role,
-        phone
-      }
+      user_metadata: { name, role, phone }
     })
 
     if (createError) {
       return new Response(JSON.stringify({ error: createError.message }), { status: 400, headers: corsHeaders })
     }
-    
-    // Auth trigger in Postgres (schema.sql) automatically handles profile creation.
-    // So we don't need to manually insert into `profiles`.
-    // Wait, let's just do an update to ensure phone is correct if trigger missed something.
-    if (authData.user) {
-      const updatePayload: any = { role }
-      if (phone) updatePayload.phone = phone
-      if (name) updatePayload.name = name
 
-      // If it's a courier, determine initial queue
+    // 5. Update Profile
+    if (newUser.user) {
+      const updateData: any = { role, name, phone }
+      
+      // Initial queue for couriers
       if (role === 'courier') {
-         const { data: allCouriers } = await supabaseAdmin.from('profiles').select('queue_position').eq('role', 'courier')
-         const maxQueue = allCouriers?.reduce((max, c) => Math.max(max, c.queue_position || 0), 0) || 0
-         updatePayload.queue_position = maxQueue + 1
+        const { data: couriers } = await supabaseAdmin.from('profiles').select('queue_position').eq('role', 'courier')
+        const maxPos = couriers?.reduce((max, c) => Math.max(max, c.queue_position || 0), 0) || 0
+        updateData.queue_position = maxPos + 1
       }
 
-      await supabaseAdmin.from('profiles').update(updatePayload).eq('id', authData.user.id)
+      const { error: updateError } = await supabaseAdmin
+        .from('profiles')
+        .update(updateData)
+        .eq('id', newUser.user.id)
+      
+      if (updateError) {
+        console.error('Profile update error:', updateError)
+      }
     }
 
-    return new Response(
-      JSON.stringify({ message: 'User created successfully', user: authData.user }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-    )
-  } catch (error: any) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: corsHeaders })
+    return new Response(JSON.stringify({ message: 'User created', user: newUser.user }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+
+  } catch (err: any) {
+    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders })
   }
 })
+
