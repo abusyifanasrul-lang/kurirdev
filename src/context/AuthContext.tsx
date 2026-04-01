@@ -113,10 +113,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     
     // Reset all global stores
-    useSessionStore.getState().reset();
-    useUserStore.getState().reset();
-    useOrderStore.getState().reset();
-    useNotificationStore.getState().reset();
+    try { useSessionStore.getState().reset(); } catch(e) {}
+    try { useUserStore.getState().reset(); } catch(e) {}
+    try { useOrderStore.getState().reset(); } catch(e) {}
+    try { useNotificationStore.getState().reset(); } catch(e) {}
+    try {
+      const { useCourierStore } = await import('@/stores/useCourierStore');
+      useCourierStore.getState().reset();
+    } catch(e) {}
     
     setState({ user: null, token: null, isAuthenticated: false, isLoading: false });
   }, []);

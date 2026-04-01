@@ -9,7 +9,6 @@ interface CourierState {
   queue: Courier[]
   readonly couriers: Courier[]
 
-  resetStore: () => void
   addCourier: (courier: Courier) => Promise<void>
   updateCourier: (id: string, data: Partial<Courier>) => Promise<void>
   updateCourierStatus: (id: string, data: Partial<Courier>) => Promise<void>
@@ -18,6 +17,7 @@ interface CourierState {
   rotateQueue: (assignedCourierId: string) => Promise<void>
   setCourierOffline: (courierId: string, reason: string) => Promise<void>
   setCourierOnline: (courierId: string, status: 'on' | 'stay') => Promise<void>
+  reset: () => void
 }
 
 const INITIAL_QUEUE: Courier[] = [
@@ -77,7 +77,7 @@ export const useCourierStore = create<CourierState>()(
         return useUserStore.getState().users.filter(u => u.role === 'courier') as Courier[]
       },
 
-      resetStore: () => set({
+      reset: () => set({
         queue: INITIAL_QUEUE,
         _storeVersion: STORE_VERSION
       }),
@@ -222,7 +222,7 @@ export const useCourierStore = create<CourierState>()(
       onRehydrateStorage: () => (state) => {
         if (state && state._storeVersion !== STORE_VERSION) {
           console.warn('Store version mismatch — resetting courier-storage')
-          state.resetStore()
+          state.reset()
         }
       }
     }
