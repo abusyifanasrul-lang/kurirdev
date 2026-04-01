@@ -185,8 +185,12 @@ export function Settings() {
   };
 
   const handleAddUser = async () => {
+    console.log('handleAddUser triggered', { newUser, isLoading });
+    if (isLoading) return;
+    
     setIsLoading(true);
     try {
+      console.log('Invoking addUser in store...');
       const userData: UserType = {
         id: crypto.randomUUID(),
         name: newUser.name,
@@ -200,14 +204,16 @@ export function Settings() {
       };
       await addUser(userData);
 
+      console.log('User added successfully, closing modal.');
       setIsAddUserModalOpen(false);
       setNewUser({ name: '', email: '', password: '', role: 'admin', phone: '' });
       showMessage('success', 'User added successfully!');
-    } catch (error) {
-      console.error('Error adding user:', error);
-      showMessage('error', 'Failed to add user. Please try again.');
+    } catch (error: any) {
+      console.error('Error in handleAddUser catch block:', error);
+      showMessage('error', `Failed to add user: ${error.message || 'Unknown error'}`);
     } finally {
       setIsLoading(false);
+      console.log('handleAddUser finished.');
     }
   };
 
