@@ -11,7 +11,7 @@ CREATE TABLE public.profiles (
   name VARCHAR(255) NOT NULL,
   email VARCHAR(255),
   phone VARCHAR(50),
-  role VARCHAR(50) NOT NULL DEFAULT 'courier' CHECK (role IN ('owner', 'admin_kurir', 'finance', 'courier')),
+  role VARCHAR(50) NOT NULL DEFAULT 'courier' CHECK (role IN ('admin', 'owner', 'admin_kurir', 'finance', 'courier')),
   is_online BOOLEAN DEFAULT false,
   is_active BOOLEAN DEFAULT true,
   queue_position BIGINT,
