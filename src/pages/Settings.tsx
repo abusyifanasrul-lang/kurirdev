@@ -101,7 +101,7 @@ export function Settings() {
   const [selectedUserToEdit, setSelectedUserToEdit] = useState<UserType | null>(null);
 
   const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'admin', phone: '' });
-  const [editUserForm, setEditUserForm] = useState({ name: '', email: '', phone: '', password: '' });
+  const [editUserForm, setEditUserForm] = useState({ name: '', email: '', phone: '', role: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -230,6 +230,7 @@ export function Settings() {
       name: u.name,
       email: u.email,
       phone: u.phone || '',
+      role: u.role,
       password: '' // Default empty, only update if filled
     });
     setIsEditUserModalOpen(true);
@@ -241,7 +242,8 @@ export function Settings() {
     const updates: Partial<UserType> & { password?: string } = {
       name: editUserForm.name,
       email: editUserForm.email,
-      phone: editUserForm.phone
+      phone: editUserForm.phone,
+      role: editUserForm.role as UserRole
     };
 
     if (editUserForm.password) {
@@ -790,6 +792,21 @@ export function Settings() {
             value={editUserForm.phone}
             onChange={(e) => setEditUserForm({ ...editUserForm, phone: e.target.value })}
           />
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-gray-500 ml-1">Role</label>
+            <select
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+              value={editUserForm.role}
+              onChange={(e) => setEditUserForm({ ...editUserForm, role: e.target.value })}
+              disabled={selectedUserToEdit?.id === user?.id} // Prevent user changing their own role in this UI
+            >
+               <option value="admin">Admin (Super)</option>
+               <option value="admin_kurir">Admin Kurir</option>
+               <option value="finance">Keuangan</option>
+               <option value="owner">Owner</option>
+               <option value="courier">Kurir</option>
+            </select>
+          </div>
           <div className="pt-2 border-t mt-2">
             <h4 className="text-sm font-medium text-gray-900 mb-2">Reset Password</h4>
             <div className="relative">

@@ -83,6 +83,14 @@ export const useUserStore = create<UserState>()((set, get) => ({
   addUser: async (user: User) => {
     set({ isLoading: true, error: null })
     try {
+      // 1. Proactive Frontend Validation
+      if (!user.name || !user.email || !user.password || !user.role) {
+        throw new Error('❌ Data tidak lengkap! Pastikan Nama, Email, Password, dan Role terisi.')
+      }
+      if (user.password.length < 8) {
+        throw new Error('❌ Password minimal harus 8 karakter.')
+      }
+
       const { data: { session }, error: sessionError } = await supabase.auth.getSession()
       if (sessionError || !session) {
         throw new Error('Session expired. Please log in again.')
@@ -102,7 +110,7 @@ export const useUserStore = create<UserState>()((set, get) => ({
       })
 
       const timeoutPromise = new Promise<{ data: null; error: Error }>((_, reject) => 
-        setTimeout(() => reject(new Error('Request timed out after 15 seconds. Please try again.')), 15000)
+        setTimeout(() => reject(new Error('Koneksi terputus. Server terlalu lama merespon.')), 15000)
       )
 
       const response = await Promise.race([invokePromise, timeoutPromise]) as any
@@ -110,13 +118,29 @@ export const useUserStore = create<UserState>()((set, get) => ({
       if (response.error) {
         // Supabase functions might wrap the actual error response body
         // We can extract custom error details thrown by our edge function
-        let detailedMessage = response.error.message || 'Failed to create user'
+        let detailedMessage = response.error.message || 'Gagal menambahkan user'
         
         try {
           if (response.error.context) {
             const body = await response.error.context.json()
             if (body && (body.error || body.details)) {
-              detailedMessage = `${body.error || ''} ${body.details ? `(${body.details})` : ''}`
+              
+              const rawError = `${body.error || ''} ${body.details || ''}`.toLowerCase()
+              
+              // Friendly Indonesian Error Mapping
+              if (rawError.includes('already registered')) {
+                detailedMessage = '❌ Email ini sudah pernah didaftarkan. Gunakan email lain.'
+              } else if (rawError.includes('password should be at least')) {
+                detailedMessage = '❌ Password terlalu pendek (Minimal 8 karakter).'
+              } else if (rawError.includes('missing required fields')) {
+                detailedMessage = '❌ Server menolak: Data penting ada yang kosong.'
+              } else if (rawError.includes('permission denied')) {
+                detailedMessage = '❌ Gagal menyimpan profil karena masalah hak akses database (Permission Denied).'
+              } else if (rawError.includes('violates check constraint')) {
+                detailedMessage = '❌ Gagal: Tipe Role yang dipilih tidak valid di database.'
+              } else {
+                detailedMessage = `❌ Gagal: ${body.error || ''} ${body.details ? `(${body.details})` : ''}`
+              }
             }
           }
         } catch (parseErr) {
