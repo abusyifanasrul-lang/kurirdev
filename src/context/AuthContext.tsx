@@ -88,29 +88,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Supabase Auth Event:', event);
       
-      // If we already have this user and it's just a regular SIGNED_IN (like a token refresh),
-      // don't re-fetch the entire profile to prevent UI flickering and double events.
+      if (event === 'SIGNED_OUT') {
+        storeLogout();
+        setState({ user: null, token: null, isAuthenticated: false, isLoading: false });
+        return;
+      }
+
       if (session?.user) {
-        if (state.user?.id === session.user.id && event === 'SIGNED_IN') {
-          console.log('Token refreshed for current user, skipping profile fetch.');
+        // Only fetch if session user ID is different from current state user ID
+        // Or if it's an initial sign in
+        if (state.user?.id === session.user.id && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
+          console.log('Session already active for user:', session.user.id);
           return;
         }
         await fetchProfile(session.user.id, session.user.email || '');
-      } else if (event === 'SIGNED_OUT') {
-        storeLogout();
-        setState({
-          user: null,
-          token: null,
-          isAuthenticated: false,
-          isLoading: false,
-        });
       }
     });
 
     return () => {
-      subscription.unsubscribe();
+      if (subscription && typeof subscription.unsubscribe === 'function') {
+        subscription.unsubscribe();
+      }
     };
-  }, [fetchProfile, storeLogout]);
+  }, [fetchProfile, storeLogout, state.user?.id]);
 
   const logout = useCallback(async () => {
     console.log('Initiating logout...');

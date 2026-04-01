@@ -108,10 +108,11 @@ serve(async (req) => {
         id: newUser.user.id, 
         role, 
         name, 
-        phone,
+        email, // CRITICAL: Added missing email field
+        phone: phone || null,
         updated_at: new Date().toISOString(),
         is_active: true,
-        queue_position: 0 // Simplified: Default to 0, manage queue elsewhere
+        queue_position: 0
       }
 
       console.log('Step 6: Upserting profile for user group:', role)
