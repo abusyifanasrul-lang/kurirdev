@@ -35,6 +35,7 @@ const roleNavItems: Record<string, NavItem[]> = {
     { path: '/admin/orders', label: 'Orders', icon: Package },
     { path: '/admin/couriers', label: 'Couriers', icon: Users },
     { path: '/admin/notifications', label: 'Notifikasi', icon: Bell },
+    { path: '/admin/settings', label: 'Settings', icon: Settings },
   ],
   // Owner: Business Pilot - analytics & financial insight, no operational menus
   owner: [
@@ -49,6 +50,7 @@ const roleNavItems: Record<string, NavItem[]> = {
     { path: '/admin/finance/analisa', label: 'Analisa', icon: BarChart3 },
     { path: '/admin/orders', label: 'Orders', icon: Package },
     { path: '/admin/reports', label: 'Reports', icon: FileText },
+    { path: '/admin/settings', label: 'Settings', icon: Settings },
   ],
   // Super Admin (admin): God View - full access + exclusive Diagnostics
   admin: [

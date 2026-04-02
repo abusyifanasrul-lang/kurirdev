@@ -204,7 +204,7 @@ export function App() {
 
     const currentUserStr = sessionStorage.getItem('user-session');
     let fcmRefreshInterval: ReturnType<typeof setInterval> | null = null;
-    let unsubFCM: (() => void) | undefined;
+    let unsubFCM: any;
 
     if (currentUserStr) {
       try {
@@ -241,7 +241,13 @@ export function App() {
 
     return () => {
       clearTimeout(syncTimer);
-      if (unsubFCM) unsubFCM();
+      if (unsubFCM) {
+        if (typeof unsubFCM === 'function') {
+          unsubFCM();
+        } else if (unsubFCM.then) {
+          unsubFCM.then((h: any) => h.remove?.());
+        }
+      }
       if (fcmRefreshInterval) clearInterval(fcmRefreshInterval);
     };
   }, [])
@@ -338,11 +344,10 @@ export function App() {
                   } 
                 />
 
-                {/* Settings - Owner & Super Admin */}
                 <Route 
                   path="settings" 
                   element={
-                    <ProtectedRoute allowedRoles={['owner', 'admin']}>
+                    <ProtectedRoute allowedRoles={['admin', 'owner', 'admin_kurir', 'finance']}>
                       <Settings />
                     </ProtectedRoute>
                   } 
