@@ -183,6 +183,9 @@ export interface Notification {
   data?: Record<string, unknown>;
   is_read: boolean;
   sent_at: string;
+  fcm_status?: 'pending' | 'sent' | 'failed' | 'skipped';
+  fcm_error?: string;
+  idempotency_key?: string;
 }
 
 export interface SendNotificationPayload {

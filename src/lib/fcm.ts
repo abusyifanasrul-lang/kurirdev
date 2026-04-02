@@ -62,7 +62,7 @@ const registerNativePush = async (userId: string): Promise<string | null> => {
     // Add listeners for native notifications
     await PushNotifications.addListener('registration', async ({ value: token }) => {
       console.log('🚀 Native FCM token received:', token.substring(0, 20) + '...')
-      await supabase.from('profiles').update({
+      await (supabase.from('profiles') as any).update({
         fcm_token: token,
         fcm_token_updated_at: new Date().toISOString(),
         platform: 'android'
@@ -76,6 +76,15 @@ const registerNativePush = async (userId: string): Promise<string | null> => {
     // Listen for notifications while app is open
     await PushNotifications.addListener('pushNotificationReceived', (notification) => {
       console.log('🔔 Notification received while app open:', notification.title)
+    })
+
+    // Listen for notification clicks (Deep Linking)
+    await PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
+      console.log('🚀 Push action performed:', action)
+      const data = action.notification.data
+      if (data && data.orderId) {
+        window.location.href = `/courier/orders/${data.orderId}`
+      }
     })
 
     await PushNotifications.register()
@@ -109,7 +118,7 @@ const registerWebPush = async (userId: string): Promise<string | null> => {
   })
 
   if (token) {
-    await supabase.from('profiles').update({
+    await (supabase.from('profiles') as any).update({
       fcm_token: token,
       fcm_token_updated_at: new Date().toISOString(),
       platform: 'web'
@@ -143,7 +152,7 @@ export const refreshFCMToken = async (userId: string): Promise<void> => {
         serviceWorkerRegistration: registration
       })
       if (token) {
-        await supabase.from('profiles').update({
+        await (supabase.from('profiles') as any).update({
           fcm_token: token,
           fcm_token_updated_at: new Date().toISOString()
         }).eq('id', userId)

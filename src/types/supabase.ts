@@ -242,6 +242,9 @@ export interface Database {
           data: Json
           is_read: boolean
           sent_at: string | null
+          fcm_status: string | null
+          fcm_error: string | null
+          idempotency_key: string | null
         }
         Insert: {
           id?: string
@@ -252,6 +255,9 @@ export interface Database {
           data?: Json
           is_read?: boolean
           sent_at?: string | null
+          fcm_status?: string | null
+          fcm_error?: string | null
+          idempotency_key?: string | null
         }
         Update: {
           id?: string
@@ -262,6 +268,9 @@ export interface Database {
           data?: Json
           is_read?: boolean
           sent_at?: string | null
+          fcm_status?: string | null
+          fcm_error?: string | null
+          idempotency_key?: string | null
         }
       }
     }

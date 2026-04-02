@@ -3,56 +3,49 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { GoogleAuth } from 'https://esm.sh/google-auth-library@8'
 
 serve(async (req) => {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
+  const supabaseServiceRole = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  const webhookSecret = Deno.env.get('WEBHOOK_SECRET')
+  
+  const supabaseClient = createClient(supabaseUrl, supabaseServiceRole)
+
   try {
-    const payload = await req.json()
-    console.log('Webhook payload received:', JSON.stringify(payload, null, 2))
-
-    // Only process UPDATE or INSERT events
-    if (payload.type !== 'UPDATE' && payload.type !== 'INSERT') {
-      return new Response(JSON.stringify({ message: "Not an UPDATE or INSERT event" }), { status: 200 })
-    }
-
-    const { record, old_record } = payload
-    
-    // Check if status changed to 'assigned' or if a new order is assigned immediately
-    const isNewAssignment = (payload.type === 'INSERT' && record.status === 'assigned') ||
-                            (payload.type === 'UPDATE' && old_record?.status !== 'assigned' && record.status === 'assigned')
-
-    if (!isNewAssignment) {
-      return new Response(JSON.stringify({ message: "Not a new assignment, ignoring." }), { status: 200 })
-    }
-
-    if (!record.courier_id) {
-       return new Response(JSON.stringify({ message: "No courier_id assigned." }), { status: 200 })
-    }
-
-    // Initialize Supabase Client to get courier's FCM token
+    // 1. Security Check
     const authHeader = req.headers.get('Authorization')
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader || '' } } }
-    )
+    if (webhookSecret && authHeader !== `Bearer ${webhookSecret}`) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 })
+    }
 
-    // Get the FCM token from profiles
-    const { data: profile, error } = await supabaseClient
+    const payload = await req.json()
+    console.log('Notification payload received:', JSON.stringify(payload, null, 2))
+
+    // Expecting trigger from 'notifications' table INSERT
+    if (payload.type !== 'INSERT' || payload.table !== 'notifications') {
+      return new Response(JSON.stringify({ message: "Not a notification insert, ignoring." }), { status: 200 })
+    }
+
+    const notification = payload.record
+    const notificationId = notification.id
+
+    // 2. Get Courier's FCM Token
+    const { data: profile, error: profileError } = await supabaseClient
       .from('profiles')
       .select('fcm_token')
-      .eq('id', record.courier_id)
+      .eq('id', notification.user_id)
       .single()
 
-    if (error || !profile?.fcm_token) {
-      console.log(`Courier ${record.courier_id} has no valid FCM token or error:`, error)
-      return new Response(JSON.stringify({ message: "Courier has no FCM token." }), { status: 200 })
+    if (profileError || !profile?.fcm_token) {
+      console.log(`Courier ${notification.user_id} has no valid FCM token, skipping push.`)
+      await supabaseClient
+        .from('notifications')
+        .update({ fcm_status: 'skipped', fcm_error: 'No FCM token' })
+        .eq('id', notificationId)
+      return new Response(JSON.stringify({ message: "Skipped: No FCM token" }), { status: 200 })
     }
 
-    const fcmToken = profile.fcm_token
-
-    // Initialize Google Auth
+    // 3. Initialize FCM Auth
     const serviceAccountJson = Deno.env.get('FIREBASE_SERVICE_ACCOUNT')
-    if (!serviceAccountJson) {
-       throw new Error('FIREBASE_SERVICE_ACCOUNT is not set in Edge Function secrets')
-    }
+    if (!serviceAccountJson) throw new Error('FIREBASE_SERVICE_ACCOUNT not set')
     
     const serviceAccount = JSON.parse(serviceAccountJson)
     const googleAuth = new GoogleAuth({
@@ -65,19 +58,25 @@ serve(async (req) => {
     })
     
     const accessToken = await googleAuth.getAccessToken()
-
-    // Send FCM v1 Request
     const fcmUrl = `https://fcm.googleapis.com/v1/projects/${serviceAccount.project_id}/messages:send`
-    const message = {
+
+    // 4. Send FCM v1 Request with TTL (2 hours = 7200s)
+    const fcmMessage = {
       message: {
-        token: fcmToken,
+        token: profile.fcm_token,
         notification: {
-          title: "Order Baru Masuk!",
-          body: `Order ${record.order_number} sebesar Rp ${record.total_fee.toLocaleString('id-ID')} menunggumu!`
+          title: notification.title,
+          body: notification.message
         },
-        data: {
-          orderId: record.id,
-          type: "NEW_ASSIGNMENT"
+        data: notification.data || {},
+        android: {
+          ttl: "7200s",
+          priority: "high"
+        },
+        apns: {
+          headers: {
+            "apns-expiration": Math.floor(Date.now() / 1000 + 7200).toString()
+          }
         }
       }
     }
@@ -88,19 +87,42 @@ serve(async (req) => {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(message)
+      body: JSON.stringify(fcmMessage)
     })
 
     const result = await response.json()
-    console.log('FCM Send Result:', result)
+    
+    // 5. Handle Results and Cleanup
+    if (response.ok) {
+      console.log('✅ FCM Send Success:', result)
+      await supabaseClient
+        .from('notifications')
+        .update({ fcm_status: 'sent' })
+        .eq('id', notificationId)
+    } else {
+      console.error('❌ FCM Send Error:', JSON.stringify(result, null, 2))
+      const errorMsg = result.error?.message || 'Unknown FCM error'
+      const ErrorCode = result.error?.status
+      
+      await supabaseClient
+        .from('notifications')
+        .update({ fcm_status: 'failed', fcm_error: errorMsg })
+        .eq('id', notificationId)
 
-    return new Response(JSON.stringify({ message: "Notification sent", result }), {
-      headers: { 'Content-Type': 'application/json' },
-      status: 200,
-    })
+      // Token Cleanup for UNREGISTERED or NOT_FOUND
+      if (ErrorCode === 'UNREGISTERED' || ErrorCode === 'NOT_FOUND' || errorMsg.includes('unregistered')) {
+        console.log('🗑️ Clearing invalid/stale token for user:', notification.user_id)
+        await supabaseClient
+          .from('profiles')
+          .update({ fcm_token: null, fcm_token_updated_at: null })
+          .eq('id', notification.user_id)
+      }
+    }
+
+    return new Response(JSON.stringify({ status: "processed", result }), { status: 200 })
 
   } catch (err: any) {
-    console.error('Edge Function Error:', err.message)
+    console.error('Edge Function Fatal Error:', err.message)
     return new Response(JSON.stringify({ error: err.message }), { status: 500 })
   }
 })

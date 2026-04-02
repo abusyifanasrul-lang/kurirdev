@@ -277,11 +277,30 @@ export function Notifications() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <p className="font-medium text-sm">{notification.title}</p>
-                          <Badge variant={notification.is_read ? 'success' : 'warning'} size="sm">
-                            {notification.is_read ? 'Read' : 'Unread'}
-                          </Badge>
+                          <div className="flex gap-1.5">
+                            <Badge variant={notification.is_read ? 'success' : 'warning'} size="sm">
+                              {notification.is_read ? 'Read' : 'Unread'}
+                            </Badge>
+                            {notification.fcm_status && (
+                              <Badge 
+                                variant={
+                                  notification.fcm_status === 'sent' ? 'success' : 
+                                  notification.fcm_status === 'failed' ? 'danger' : 
+                                  notification.fcm_status === 'skipped' ? 'default' : 'warning'
+                                } 
+                                size="sm"
+                              >
+                                FCM: {notification.fcm_status.toUpperCase()}
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                         <p className="text-sm text-gray-600">{notification.message}</p>
+                        {notification.fcm_error && (
+                          <p className="text-[10px] text-red-500 mt-1 italic">
+                            Error: {notification.fcm_error}
+                          </p>
+                        )}
                         <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
                           <span>To: {notification.user_name}</span>
                           <span>•</span>

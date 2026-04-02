@@ -113,14 +113,15 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
     return () => { supabase.removeChannel(channel) }
   },
 
-  addNotification: async (data) => {
+  addNotification: async (data: Omit<Notification, 'id' | 'sent_at' | 'is_read'>) => {
     const newNotification: Partial<Notification> = {
       ...data,
       is_read: false,
       sent_at: new Date().toISOString(),
+      fcm_status: data.fcm_status || 'pending'
     }
     
-    await supabase.from('notifications').insert(newNotification)
+    await supabase.from('notifications').insert(newNotification as any)
   },
 
   markAsRead: async (id) => {
