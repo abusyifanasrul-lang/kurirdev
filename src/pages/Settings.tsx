@@ -806,7 +806,7 @@ export function Settings() {
       <Modal
         isOpen={isAddUserModalOpen}
         onClose={() => setIsAddUserModalOpen(false)}
-        title="Tambah Admin Baru"
+        title="Tambah User Baru"
       >
         <div className="space-y-4">
           {message && (
@@ -903,7 +903,7 @@ export function Settings() {
               onClick={handleAddUser}
               disabled={!newUser.name || !newUser.email || !newUser.password}
             >
-              Tambah User
+              Simpan User
             </Button>
           </div>
         </div>
