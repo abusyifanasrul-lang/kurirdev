@@ -11,9 +11,16 @@ serve(async (req) => {
 
   try {
     // 1. Security Check
-    const authHeader = req.headers.get('Authorization')
-    if (webhookSecret && authHeader !== `Bearer ${webhookSecret}`) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 })
+    const xSecret = req.headers.get('X-Webhook-Secret')
+    const authHeader = req.headers.get('Authorization')?.replace('Bearer ', '')
+    const providedSecret = (xSecret || authHeader || '').trim()
+    const expectedSecret = (webhookSecret || '').trim()
+
+    if (webhookSecret && providedSecret !== expectedSecret) {
+      console.error(`Unauthorized: Secret mismatch.`)
+      // Diagnostic logging (safe to log lengths)
+      console.log(`Diag: Provided len=${providedSecret.length}, Expected len=${expectedSecret.length}`)
+      return new Response(JSON.stringify({ error: "Unauthorized", message: "Secret mismatch" }), { status: 401 })
     }
 
     const payload = await req.json()
