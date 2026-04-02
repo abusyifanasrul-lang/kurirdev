@@ -6,3 +6,5 @@ vercel-import.env
 .DS_Store
 *.local
 tsconfig.tsbuildinfo
+# Firebase Secrets
+firebase-adminsdk.json

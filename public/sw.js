@@ -9,33 +9,47 @@ self.addEventListener('push', (event) => {
     const payload = event.data.json()
     console.log('[sw.js] Push payload:', payload)
 
-    // Check if this is a data-only message (no "notification" key at top level)
-    // Firebase SDK's onBackgroundMessage should handle notification-bearing messages,
-    // but for data-only payloads we must show it ourselves.
-    const notif = payload.notification
-    const data = payload.data || {}
+    /**
+     * FCM v1 Payload Handling
+     * My Edge Function sends a message structure that looks like:
+     * {
+     *   "notification": { "title": "...", "body": "..." },
+     *   "data": { ... }
+     * }
+     */
+    const notification = payload.notification || (payload.message && payload.message.notification)
+    const data = payload.data || (payload.message && payload.message.data) || {}
 
-    // If there IS a notification key, Firebase SDK will handle showing it — don't duplicate.
-    // If there is NO notification key, we need to manually show it.
-    if (!notif && (data.title || data.body)) {
-      const title = data.title || 'KurirDev'
-      const body = data.body || ''
+    // Extract title and body with deep fallback checking
+    const title = notification?.title || data.title || payload.title || 'KurirDev'
+    const body = notification?.body || data.body || payload.body || 'Anda memiliki pesan baru'
+
+    console.log(`[sw.js] Attempting to show: "${title}" - "${body}"`)
+
+    // Only show if we have a title/body to display
+    if (title || body) {
+      const options = {
+        body,
+        icon: '/icons/android/android-launchericon-192-192.png',
+        badge: '/icons/android/android-launchericon-96-96.png',
+        vibrate: [200, 100, 200],
+        data: data,
+        tag: data.orderId || 'kurirdev-notification',
+        requireInteraction: true,
+        actions: [
+          { action: 'open', title: 'Buka Aplikasi' }
+        ]
+      }
 
       event.waitUntil(
-        self.registration.showNotification(title, {
-          body,
-          icon: '/icons/android/android-launchericon-192-192.png',
-          badge: '/icons/android/android-launchericon-96-96.png',
-          vibrate: [200, 100, 200],
-          data: data,
-          tag: data.orderId || 'kurirdev-notification',
-          requireInteraction: true
-        })
+        self.registration.showNotification(title, options)
+          .then(() => console.log('[sw.js] Notification shown successfully'))
+          .catch(err => console.error('[sw.js] showNotification failed:', err))
       )
     }
   } catch (e) {
     console.error('[sw.js] Push parse error:', e)
-    // Even if JSON parse fails, try to show something
+    // Fallback if JSON parse fails or data is missing
     event.waitUntil(
       self.registration.showNotification('KurirDev', {
         body: 'Anda memiliki notifikasi baru',

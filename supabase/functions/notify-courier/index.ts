@@ -93,6 +93,15 @@ serve(async (req) => {
           headers: {
             "apns-expiration": Math.floor(Date.now() / 1000 + 7200).toString()
           }
+        },
+        webpush: {
+          headers: {
+            "Urgency": "high"
+          },
+          notification: {
+            "requireInteraction": true,
+            "icon": "/icons/android/android-launchericon-192-192.png"
+          }
         }
       }
     }
