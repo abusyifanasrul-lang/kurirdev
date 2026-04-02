@@ -114,22 +114,26 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
   },
 
   addNotification: async (data: Omit<Notification, 'id' | 'sent_at' | 'is_read'>) => {
-    const newNotification: Partial<Notification> = {
-      ...data,
+    // Sanitize data: Remove non-database fields like user_name which cause 400 Bad Request
+    const { user_name, ...dbData } = data as any;
+    
+    const newNotification: any = {
+      ...dbData,
       is_read: false,
       sent_at: new Date().toISOString(),
+      type: data.type || 'manual_alert',
       fcm_status: data.fcm_status || 'pending'
     }
     
-    await supabase.from('notifications').insert(newNotification as any)
+    await supabase.from('notifications').insert(newNotification)
   },
 
   markAsRead: async (id) => {
-    await supabase.from('notifications').update({ is_read: true }).eq('id', id)
+    await (supabase.from('notifications') as any).update({ is_read: true }).eq('id', id)
   },
 
   markAllAsRead: async (userId) => {
-    await supabase.from('notifications').update({ is_read: true }).eq('user_id', userId).eq('is_read', false)
+    await (supabase.from('notifications') as any).update({ is_read: true }).eq('user_id', userId).eq('is_read', false)
   },
 
   getNotificationsByUser: (userId) => {

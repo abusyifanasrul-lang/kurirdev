@@ -50,15 +50,9 @@ export function Notifications() {
       });
 
       // 2. Trigger real push notification
-      if (courier.fcm_token) {
-        const { sendPushNotification } = await import('@/services/notificationService');
-        await sendPushNotification({
-          token: courier.fcm_token,
-          title: notificationTitle,
-          body: notificationBody,
-          data: { type: 'manual_alert' }
-        });
-      }
+      // Note: We no longer call the manual Vercel API. 
+      // The Supabase Trigger on the 'notifications' table will 
+      // automatically fire the Edge Function to send the push.
 
       setSelectedCourierId('');
       setNotificationTitle('');

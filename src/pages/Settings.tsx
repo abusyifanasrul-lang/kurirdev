@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { User, Lock, Users, Plus, CheckCircle, AlertCircle, Shield, Edit2, UserX, RefreshCw, Eye, EyeOff, Settings as SettingsIcon, Trash2, Edit3 } from 'lucide-react';
+import { User, Lock, Users, Plus, CheckCircle, AlertCircle, Shield, Edit2, UserX, RefreshCw, Eye, EyeOff, Settings as SettingsIcon, Trash2, Edit3, BellRing } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -60,8 +60,8 @@ export function Settings() {
   const syncSettingsToServer = async () => {
     try {
       const state = useSettingsStore.getState();
-      const { error } = await supabase
-        .from('settings')
+      const { error } = await (supabase
+        .from('settings') as any)
         .update({
           commission_rate: state.commission_rate,
           commission_threshold: state.commission_threshold,
@@ -136,6 +136,27 @@ export function Settings() {
     email: user?.email || '',
     phone: user?.phone || '',
   });
+
+  const [isRefreshingPush, setIsRefreshingPush] = useState(false);
+
+  const handleRefreshPush = async () => {
+    if (!user) return;
+    setIsRefreshingPush(true);
+    try {
+      const { requestFCMPermission } = await import('@/lib/fcm');
+      const token = await requestFCMPermission(user.id);
+      if (token) {
+        showMessage('success', 'Notifikasi berhasil diaktifkan kembali!');
+      } else {
+        showMessage('error', 'Gagal mengaktifkan notifikasi. Pastikan izin browser diberikan.');
+      }
+    } catch (err) {
+      console.error('Push refresh error:', err);
+      showMessage('error', 'Terjadi kesalahan sistem saat refresh push.');
+    } finally {
+      setIsRefreshingPush(false);
+    }
+  };
 
   // Password state
   const [passwordForm, setPasswordForm] = useState({
@@ -509,10 +530,26 @@ export function Settings() {
                   onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
                   placeholder="+628..."
                 />
-                <div className="pt-4">
+                <div className="pt-4 flex flex-col gap-3">
                   <Button onClick={handleUpdateProfile} isLoading={isLoading}>
                     Save Changes
                   </Button>
+                  
+                  {user?.role === 'courier' && (
+                    <div className="pt-4 border-t border-gray-100 mt-2">
+                        <p className="text-xs text-gray-500 mb-2 font-medium">Bermasalah dengan notifikasi?</p>
+                        <Button 
+                            variant="secondary" 
+                            size="sm" 
+                            className="w-full sm:w-auto"
+                            leftIcon={<BellRing className="h-4 w-4" />}
+                            onClick={handleRefreshPush}
+                            isLoading={isRefreshingPush}
+                        >
+                            Refresh Push Notification
+                        </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             </Card>

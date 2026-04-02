@@ -180,6 +180,7 @@ export interface Notification {
   user_name?: string;
   title: string;
   message: string;
+  type?: string;
   data?: Record<string, unknown>;
   is_read: boolean;
   sent_at: string;
