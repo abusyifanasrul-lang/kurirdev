@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Send, Bell, CheckCircle, Clock, AlertTriangle, Info, Smile } from 'lucide-react';
 import { format, isSameDay, parseISO } from 'date-fns';
 import { Header } from '@/components/layout/Header';
@@ -15,13 +15,19 @@ import { useUserStore } from '@/stores/useUserStore';
 export function Notifications() {
   const { user } = useAuth(); // Current tab-isolated admin session
   const { users } = useUserStore(); // To select recipient
-  const { notifications, addNotification } = useNotificationStore();
-
+  const [successMessage, setSuccessMessage] = useState('');
   const [selectedCourierId, setSelectedCourierId] = useState('');
   const [notificationTitle, setNotificationTitle] = useState('');
   const [notificationBody, setNotificationBody] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
+  const { subscribeAllNotifications, notifications, addNotification } = useNotificationStore();
+
+  useEffect(() => {
+    const unsubscribe = subscribeAllNotifications();
+    return () => {
+      unsubscribe();
+    };
+  }, [subscribeAllNotifications]);
 
   const activeCouriers = users.filter(u => u.role === 'courier' && u.is_active);
 
