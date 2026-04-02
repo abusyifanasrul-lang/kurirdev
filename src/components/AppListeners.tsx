@@ -108,5 +108,13 @@ export const AppListeners = () => {
     }
   }, [user?.id])
 
+  // 4. Admin-wide Users subscription
+  useEffect(() => {
+    if (user && user.role !== 'courier') {
+      const unsubUsers = useUserStore.getState().subscribeUsers()
+      return () => unsubUsers()
+    }
+  }, [user?.id, user?.role])
+
   return null
 }
