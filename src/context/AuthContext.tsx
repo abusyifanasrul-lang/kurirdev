@@ -26,11 +26,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchProfile = useCallback(async (userId: string, email: string) => {
     try {
-      const { data: profile, error } = await supabase
+      const { data: profile, error } = (await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single();
+        .single()) as any;
         
       if (error) throw error;
       
@@ -41,9 +41,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email: email,
           role: profile.role as UserRole,
           phone: profile.phone || undefined,
-          is_active: true,
+          is_active: profile.is_active ?? true,
           fcm_token: profile.fcm_token || undefined,
           is_online: profile.is_online,
+          courier_status: profile.courier_status,
+          off_reason: profile.off_reason,
+          vehicle_type: profile.vehicle_type,
+          plate_number: profile.plate_number,
+          queue_position: profile.queue_position,
           created_at: profile.created_at || new Date().toISOString(),
           updated_at: profile.updated_at || new Date().toISOString(),
           total_deliveries_alltime: profile.total_deliveries_alltime,

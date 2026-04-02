@@ -7,11 +7,13 @@ interface UserState {
   isLoading: boolean
   error: string | null
   fetchUsers: () => Promise<void>
+  fetchProfile: (id: string) => Promise<void>
   subscribeUsers: () => () => void
   addUser: (user: User) => Promise<{ success: boolean; error?: string }>
   updateUser: (id: string, data: Partial<User>) => Promise<void>
   removeUser: (id: string) => Promise<void>
   updateUserQueuePosition: (id: string, position: number) => Promise<void>
+  subscribeProfile: (id: string) => () => void
   initQueuePositions: () => Promise<void>
   reset: () => void
 }
@@ -53,6 +55,18 @@ export const useUserStore = create<UserState>()((set, get) => ({
     }
     set({ users: profiles.map(p => mapProfileToUser(p)), isLoading: false })
   },
+  
+  fetchProfile: async (id: string) => {
+    const { data: profile, error } = await supabase.from('profiles').select('*').eq('id', id).single()
+    if (error || !profile) return
+    
+    const user = mapProfileToUser(profile)
+    set(state => ({
+      users: state.users.some(u => u.id === id)
+        ? state.users.map(u => u.id === id ? user : u)
+        : [...state.users, user]
+    }))
+  },
 
   subscribeUsers: () => {
     get().fetchUsers()
@@ -75,6 +89,29 @@ export const useUserStore = create<UserState>()((set, get) => ({
           } else if (eventType === 'DELETE') {
             set({ users: currentUsers.filter(u => u.id !== oldRec.id) })
           }
+        }
+      )
+      .subscribe()
+      
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  },
+
+  subscribeProfile: (id: string) => {
+    // Initial fetch for this specific profile
+    get().fetchProfile(id)
+
+    const channelId = `profile_${id}_${Math.random().toString(36).substring(7)}`
+    const channel = supabase.channel(channelId)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${id}` },
+        (payload) => {
+          const user = mapProfileToUser(payload.new)
+          set(state => ({
+            users: state.users.map(u => u.id === id ? user : u)
+          }))
         }
       )
       .subscribe()
@@ -167,9 +204,25 @@ export const useUserStore = create<UserState>()((set, get) => ({
 
   updateUser: async (id, data) => {
     const { email, password, ...dbData } = data as any
-    await (supabase.from('profiles') as any)
+    
+    // Optimistic update
+    const currentUser = get().users.find(u => u.id === id)
+    if (currentUser) {
+      const updatedUser = { ...currentUser, ...data }
+      set(state => ({
+        users: state.users.map(u => u.id === id ? updatedUser : u)
+      }))
+    }
+
+    const { error } = await (supabase.from('profiles') as any)
       .update({ ...dbData, updated_at: new Date().toISOString() })
       .eq('id', id)
+
+    if (error) {
+      // Rollback if needed or fetch latest
+      get().fetchProfile(id)
+      throw error
+    }
   },
 
   removeUser: async (id) => {
@@ -178,10 +231,20 @@ export const useUserStore = create<UserState>()((set, get) => ({
   },
 
   updateUserQueuePosition: async (id, position) => {
-    await (supabase.from('profiles') as any).update({
+    // Optimistic update
+    set(state => ({
+      users: state.users.map(u => u.id === id ? { ...u, queue_position: position } : u)
+    }))
+
+    const { error } = await (supabase.from('profiles') as any).update({
       queue_position: position,
       updated_at: new Date().toISOString()
     }).eq('id', id)
+
+    if (error) {
+      get().fetchProfile(id)
+      throw error
+    }
   },
 
   initQueuePositions: async () => {

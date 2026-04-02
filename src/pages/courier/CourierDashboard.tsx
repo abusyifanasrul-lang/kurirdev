@@ -22,7 +22,7 @@ export function CourierDashboard() {
   const { activeOrdersByCourier } = useOrderStore();
 
   const { setCourierOffline, setCourierOnline } = useCourierStore();
-  const { users } = useUserStore();
+  const { users, subscribeProfile } = useUserStore();
   const { user: currentUser } = useSessionStore();
   const { commission_rate, commission_threshold } = useSettingsStore();
 
@@ -37,6 +37,7 @@ export function CourierDashboard() {
   const [showOffModal, setShowOffModal] = useState(false);
   const [selectedOffReason, setSelectedOffReason] = useState('');
   const [customOffReason, setCustomOffReason] = useState('');
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   const courierStatus = (liveUser as any)?.courier_status ?? (isOnline ? 'on' : 'off');
 
@@ -54,6 +55,12 @@ export function CourierDashboard() {
   }, [user?.id]);
 
   useEffect(() => { loadFromLocalDB(); }, [loadFromLocalDB]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const unsubscribe = subscribeProfile(user.id);
+    return () => unsubscribe();
+  }, [user?.id, subscribeProfile]);
 
   useEffect(() => {
     const handler = () => loadFromLocalDB();
@@ -118,35 +125,47 @@ export function CourierDashboard() {
     })
   }, [user?.id, courierOrders, commission_rate, commission_threshold])
 
-  // Polling simulation
   useEffect(() => {
-    const interval = setInterval(() => {
-      setIsConnected(true);
-    }, 5000);
-    return () => clearInterval(interval);
+    setIsConnected(true);
   }, []);
 
   const handleSetOn = async () => {
-    if (!user?.id || isSuspended) return;
-    await setCourierOnline(user.id, 'on');
-    useSessionStore.getState().updateUser({ is_online: true });
+    if (!user?.id || isSuspended || isUpdatingStatus) return;
+    setIsUpdatingStatus(true);
+    try {
+      await setCourierOnline(user.id, 'on');
+      useSessionStore.getState().updateUser({ is_online: true, courier_status: 'on' as any });
+    } finally {
+      setIsUpdatingStatus(false);
+    }
   };
 
   const handleSetStay = async () => {
-    if (!user?.id || isSuspended) return;
-    await setCourierOnline(user.id, 'stay');
-    useSessionStore.getState().updateUser({ is_online: true });
+    if (!user?.id || isSuspended || isUpdatingStatus) return;
+    setIsUpdatingStatus(true);
+    try {
+      await setCourierOnline(user.id, 'stay');
+      useSessionStore.getState().updateUser({ is_online: true, courier_status: 'stay' as any });
+    } finally {
+      setIsUpdatingStatus(false);
+    }
   };
 
   const handleConfirmOff = async () => {
-    if (!user?.id) return;
+    if (!user?.id || isUpdatingStatus) return;
     const reason = selectedOffReason === 'Lainnya' ? customOffReason : selectedOffReason;
     if (!reason) return;
-    await setCourierOffline(user.id, reason);
-    useSessionStore.getState().updateUser({ is_online: false });
-    setShowOffModal(false);
-    setSelectedOffReason('');
-    setCustomOffReason('');
+    
+    setIsUpdatingStatus(true);
+    try {
+      await setCourierOffline(user.id, reason);
+      useSessionStore.getState().updateUser({ is_online: false, courier_status: 'off' as any, off_reason: reason });
+      setShowOffModal(false);
+      setSelectedOffReason('');
+      setCustomOffReason('');
+    } finally {
+      setIsUpdatingStatus(false);
+    }
   };
 
   const formatCurrency = (value: number) => {
@@ -200,39 +219,42 @@ export function CourierDashboard() {
           <div className="flex gap-2">
             <button
               onClick={handleSetOn}
-              disabled={isSuspended}
+              disabled={isSuspended || isUpdatingStatus}
               className={cn(
-                "flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all",
+                "flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all relative overflow-hidden",
                 courierStatus === 'on'
                   ? "bg-green-500 text-white border-green-500"
-                  : "bg-white text-gray-500 border-gray-200 hover:border-green-300"
+                  : "bg-white text-gray-500 border-gray-200 hover:border-green-300",
+                isUpdatingStatus && "opacity-50 cursor-wait"
               )}
             >
-              🚀 ON
+              {isUpdatingStatus && courierStatus !== 'on' ? "..." : "🚀 ON"}
             </button>
             <button
               onClick={handleSetStay}
-              disabled={isSuspended}
+              disabled={isSuspended || isUpdatingStatus}
               className={cn(
-                "flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all",
+                "flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all relative overflow-hidden",
                 courierStatus === 'stay'
                   ? "bg-blue-500 text-white border-blue-500"
-                  : "bg-white text-gray-500 border-gray-200 hover:border-blue-300"
+                  : "bg-white text-gray-500 border-gray-200 hover:border-blue-300",
+                isUpdatingStatus && "opacity-50 cursor-wait"
               )}
             >
-              🏠 STAY
+              {isUpdatingStatus && courierStatus !== 'stay' ? "..." : "🏠 STAY"}
             </button>
             <button
               onClick={() => setShowOffModal(true)}
-              disabled={isSuspended}
+              disabled={isSuspended || isUpdatingStatus}
               className={cn(
-                "flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all",
+                "flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all relative overflow-hidden",
                 courierStatus === 'off'
                   ? "bg-red-500 text-white border-red-500"
-                  : "bg-white text-gray-500 border-gray-200 hover:border-red-300"
+                  : "bg-white text-gray-500 border-gray-200 hover:border-red-300",
+                isUpdatingStatus && "opacity-50 cursor-wait"
               )}
             >
-              🔴 OFF
+              {isUpdatingStatus && courierStatus !== 'off' ? "..." : "🔴 OFF"}
             </button>
           </div>
         )}

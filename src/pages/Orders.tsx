@@ -322,17 +322,10 @@ export function Orders() {
       'indexeddb-synced', loadWeekOrders
     )
 
-    // Refresh setiap 30 detik untuk
-    // menangkap perubahan dari mirror write
-    const interval = setInterval(
-      loadWeekOrders, 30000
-    )
-
     return () => {
       window.removeEventListener(
         'indexeddb-synced', loadWeekOrders
       )
-      clearInterval(interval)
     }
   }, [])
 
