@@ -232,6 +232,38 @@ export interface Database {
           changed_at?: string | null
         }
       }
+      notifications: {
+        Row: {
+          id: string
+          user_id: string
+          title: string
+          message: string
+          type: string
+          data: Json
+          is_read: boolean
+          sent_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          title: string
+          message: string
+          type?: string
+          data?: Json
+          is_read?: boolean
+          sent_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          message?: string
+          type?: string
+          data?: Json
+          is_read?: boolean
+          sent_at?: string | null
+        }
+      }
     }
     Views: {
       [_ in never]: never
@@ -246,8 +278,15 @@ export interface Database {
           p_order_id: string
           p_user_id: string
           p_user_name: string
+          p_notes: string
           p_commission_rate: number
           p_commission_threshold: number
+        }
+        Returns: undefined
+      }
+      mark_order_paid: {
+        Args: {
+          p_order_id: string
         }
         Returns: undefined
       }
@@ -260,3 +299,4 @@ export interface Database {
     }
   }
 }
+

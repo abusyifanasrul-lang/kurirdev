@@ -486,7 +486,7 @@ export function Orders() {
         user_id: courier.id,
         user_name: courier.name,
         title: notifTitle,
-        body: notifBody,
+        message: notifBody,
         data: { orderId: selectedOrder.id, type: 'order_assigned' },
       });
 

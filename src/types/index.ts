@@ -179,7 +179,7 @@ export interface Notification {
   user_id: string;
   user_name?: string;
   title: string;
-  body: string;
+  message: string;
   data?: Record<string, unknown>;
   is_read: boolean;
   sent_at: string;
@@ -188,7 +188,7 @@ export interface Notification {
 export interface SendNotificationPayload {
   user_id: string;
   title: string;
-  body: string;
+  message: string;
 }
 
 // API response types

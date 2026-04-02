@@ -45,7 +45,7 @@ export function Notifications() {
         user_id: courier.id,
         user_name: courier.name,
         title: notificationTitle,
-        body: notificationBody,
+        message: notificationBody,
         data: { type: 'manual_alert', sender_id: user?.id },
       });
 
@@ -281,7 +281,7 @@ export function Notifications() {
                             {notification.is_read ? 'Read' : 'Unread'}
                           </Badge>
                         </div>
-                        <p className="text-sm text-gray-600">{notification.body}</p>
+                        <p className="text-sm text-gray-600">{notification.message}</p>
                         <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
                           <span>To: {notification.user_name}</span>
                           <span>•</span>

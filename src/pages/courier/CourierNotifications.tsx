@@ -66,7 +66,7 @@ export function CourierNotifications() {
                                         </span>
                                     </div>
                                     <p className={`text-sm ${notif.is_read ? 'text-gray-600' : 'text-blue-800'}`}>
-                                        {notif.body}
+                                        {notif.message}
                                     </p>
 
                                     {!notif.is_read && (

@@ -29,7 +29,10 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
         if (data) set({ notifications: data as Notification[], isLoading: false })
       })
 
-    const channel = supabase.channel(`public:notifications:user_id=eq.${userId}`)
+    // Use a unique channel name for each subscription call to avoid "cannot add callbacks after subscribe" error
+    // when multiple components (Layout + Page) subscribe simultaneously.
+    const channelId = `notif_user_${userId}_${Math.random().toString(36).substring(7)}`
+    const channel = supabase.channel(channelId)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
@@ -38,17 +41,25 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
           const notifications = [...get().notifications]
           
           if (eventType === 'INSERT') {
-            notifications.unshift(newRec as Notification)
+            // Prevent duplicates if multiple channels receive the same event
+            if (!notifications.some(n => n.id === newRec.id)) {
+              notifications.unshift(newRec as Notification)
+            }
           } else if (eventType === 'UPDATE') {
             const idx = notifications.findIndex(n => n.id === newRec.id)
-            if (idx !== -1) notifications[idx] = { ...notifications[idx], ...newRec }
+            if (idx !== -1) {
+              notifications[idx] = { ...notifications[idx], ...newRec }
+            } else {
+              // If not found (maybe first subscription missed it), add it
+              notifications.unshift(newRec as Notification)
+            }
           } else if (eventType === 'DELETE') {
             const idx = notifications.findIndex(n => n.id === oldRec.id)
             if (idx !== -1) notifications.splice(idx, 1)
           }
           
           set({ 
-            notifications: notifications.sort((a,b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime()) 
+            notifications: notifications.sort((a,b) => new Date(b.sent_at || 0).getTime() - new Date(a.sent_at || 0).getTime()) 
           })
         }
       )
@@ -58,7 +69,7 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
   },
 
   subscribeAllNotifications: () => {
-    // Admins usually see everything, but this wasn't strictly filtered by role in firebase either
+    // Admins usually see everything
     supabase.from('notifications')
       .select('*')
       .order('sent_at', { ascending: false })
@@ -66,26 +77,34 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
         if (data) set({ notifications: data as Notification[], isLoading: false })
       })
 
-    const channel = supabase.channel(`public:notifications:all`)
+    const channelId = `notif_all_${Math.random().toString(36).substring(7)}`
+    const channel = supabase.channel(channelId)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'notifications' },
         (payload) => {
+
           const { eventType, new: newRec, old: oldRec } = payload
           const notifications = [...get().notifications]
           
           if (eventType === 'INSERT') {
-            notifications.unshift(newRec as Notification)
+            if (!notifications.some(n => n.id === newRec.id)) {
+              notifications.unshift(newRec as Notification)
+            }
           } else if (eventType === 'UPDATE') {
             const idx = notifications.findIndex(n => n.id === newRec.id)
-            if (idx !== -1) notifications[idx] = { ...notifications[idx], ...newRec }
+            if (idx !== -1) {
+              notifications[idx] = { ...notifications[idx], ...newRec }
+            } else {
+              notifications.unshift(newRec as Notification)
+            }
           } else if (eventType === 'DELETE') {
             const idx = notifications.findIndex(n => n.id === oldRec.id)
             if (idx !== -1) notifications.splice(idx, 1)
           }
           
           set({ 
-            notifications: notifications.sort((a,b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime()) 
+            notifications: notifications.sort((a,b) => new Date(b.sent_at || 0).getTime() - new Date(a.sent_at || 0).getTime()) 
           })
         }
       )
