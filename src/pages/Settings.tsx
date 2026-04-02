@@ -66,7 +66,7 @@ export function Settings() {
           commission_rate: state.commission_rate,
           commission_threshold: state.commission_threshold,
           courier_instructions: state.courier_instructions,
-        })
+        } as any)
         .eq('id', 'global');
         
       if (error) throw error;
@@ -691,7 +691,7 @@ export function Settings() {
                 </div>
 
                 {/* Super Admin Cleanup Section */}
-                {(user?.role === 'owner' || user?.role === 'admin') && (
+                {user?.role === 'admin' && (
                   <div className="pt-6 border-t mt-6">
                     <h4 className="text-sm font-medium text-gray-900 mb-4">🔧 Super Admin Tools</h4>
                     <div className="space-y-2">
@@ -1015,7 +1015,7 @@ export function Settings() {
       </Modal>
 
       {/* Cache Management Section - Super Admin Only */}
-      {user?.id === "1" && (
+      {user?.role === 'admin' && (
         <div className="max-w-4xl mx-auto p-4 lg:p-8">
           <div className="bg-gray-50 border
             border-gray-200 rounded-xl p-5">

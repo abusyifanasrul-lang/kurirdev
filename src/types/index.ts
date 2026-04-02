@@ -41,6 +41,8 @@ export interface User {
   off_reason?: string;
   created_at: string;
   updated_at: string;
+  vehicle_type?: 'motorcycle' | 'car' | 'bicycle' | 'van';
+  plate_number?: string;
   created_by?: string;
   queue_position?: number;
   total_deliveries_alltime?: number;
