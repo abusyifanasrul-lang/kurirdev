@@ -1,6 +1,6 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { GoogleAuth } from 'https://esm.sh/google-auth-library@8'
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { GoogleAuth } from "npm:google-auth-library@8.7.0"
 
 serve(async (req) => {
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
@@ -17,14 +17,14 @@ serve(async (req) => {
     const expectedSecret = (webhookSecret || '').trim()
 
     if (webhookSecret && providedSecret !== expectedSecret) {
-      console.error(`Unauthorized: Secret mismatch.`)
+      console.error(`Status 401: Secret mismatch.`)
       // Diagnostic logging (safe to log lengths)
-      console.log(`Diag: Provided len=${providedSecret.length}, Expected len=${expectedSecret.length}`)
+      console.log(`[AUTH] Provided len=${providedSecret.length}, Expected len=${expectedSecret.length}`)
       return new Response(JSON.stringify({ error: "Unauthorized", message: "Secret mismatch" }), { status: 401 })
     }
 
     const payload = await req.json()
-    console.log('Notification payload received:', JSON.stringify(payload, null, 2))
+    console.log('[NOTIF] Payload received:', JSON.stringify(payload, null, 2))
 
     // Expecting trigger from 'notifications' table INSERT
     if (payload.type !== 'INSERT' || payload.table !== 'notifications') {
@@ -42,19 +42,28 @@ serve(async (req) => {
       .single()
 
     if (profileError || !profile?.fcm_token) {
-      console.log(`Courier ${notification.user_id} has no valid FCM token, skipping push.`)
+      console.log(`[NOTIF] Courier ${notification.user_id} has no valid FCM token, skipping push.`)
       await supabaseClient
         .from('notifications')
-        .update({ fcm_status: 'skipped', fcm_error: 'No FCM token' })
+        .update({ fcm_status: 'skipped', fcm_error: 'No FCM token found in profiles' })
         .eq('id', notificationId)
       return new Response(JSON.stringify({ message: "Skipped: No FCM token" }), { status: 200 })
     }
 
     // 3. Initialize FCM Auth
     const serviceAccountJson = Deno.env.get('FIREBASE_SERVICE_ACCOUNT')
-    if (!serviceAccountJson) throw new Error('FIREBASE_SERVICE_ACCOUNT not set')
+    if (!serviceAccountJson) {
+      throw new Error('FIREBASE_SERVICE_ACCOUNT environment variable is not set')
+    }
     
-    const serviceAccount = JSON.parse(serviceAccountJson)
+    let serviceAccount
+    try {
+      serviceAccount = JSON.parse(serviceAccountJson)
+    } catch (e) {
+      console.error('[FATAL] FIREBASE_SERVICE_ACCOUNT JSON parse failure. Token likely malformed.')
+      throw new Error('FIREBASE_SERVICE_ACCOUNT is not valid JSON. Please re-save the secret in Supabase.')
+    }
+
     const googleAuth = new GoogleAuth({
       credentials: {
         client_email: serviceAccount.client_email,
@@ -101,15 +110,15 @@ serve(async (req) => {
     
     // 5. Handle Results and Cleanup
     if (response.ok) {
-      console.log('✅ FCM Send Success:', result)
+      console.log('[NOTIF] ✅ FCM Send Success:', result)
       await supabaseClient
         .from('notifications')
         .update({ fcm_status: 'sent' })
         .eq('id', notificationId)
     } else {
-      console.error('❌ FCM Send Error:', JSON.stringify(result, null, 2))
+      console.error('[NOTIF] ❌ FCM Send Error:', JSON.stringify(result, null, 2))
       const errorMsg = result.error?.message || 'Unknown FCM error'
-      const ErrorCode = result.error?.status
+      const fcmStatus = result.error?.status
       
       await supabaseClient
         .from('notifications')
@@ -117,8 +126,8 @@ serve(async (req) => {
         .eq('id', notificationId)
 
       // Token Cleanup for UNREGISTERED or NOT_FOUND
-      if (ErrorCode === 'UNREGISTERED' || ErrorCode === 'NOT_FOUND' || errorMsg.includes('unregistered')) {
-        console.log('🗑️ Clearing invalid/stale token for user:', notification.user_id)
+      if (fcmStatus === 'UNREGISTERED' || fcmStatus === 'NOT_FOUND' || errorMsg.includes('unregistered')) {
+        console.log('[CLEANUP] Clearing invalid token for user:', notification.user_id)
         await supabaseClient
           .from('profiles')
           .update({ fcm_token: null, fcm_token_updated_at: null })
@@ -129,7 +138,11 @@ serve(async (req) => {
     return new Response(JSON.stringify({ status: "processed", result }), { status: 200 })
 
   } catch (err: any) {
-    console.error('Edge Function Fatal Error:', err.message)
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 })
+    console.error('[FATAL ERROR]:', err.message)
+    return new Response(JSON.stringify({ 
+      error: "Internal Server Error", 
+      message: err.message,
+      hint: "Check if FIREBASE_SERVICE_ACCOUNT or WEBHOOK_SECRET are correctly set in Supabase Dashboard -> Edge Functions -> Secrets"
+    }), { status: 500 })
   }
 })
