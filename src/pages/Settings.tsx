@@ -23,6 +23,22 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 
+const ROLE_LEVELS: Record<string, number> = {
+  admin: 100,
+  owner: 80,
+  admin_kurir: 50,
+  finance: 50,
+  courier: 10
+};
+
+const ALL_TABS = [
+  { id: 'profile', label: 'Profile', icon: User },
+  { id: 'password', label: 'Password', icon: Lock },
+  { id: 'users', label: 'System Users', icon: Users },
+  { id: 'business', label: 'Business', icon: Shield },
+  { id: 'instructions', label: 'Instruksi Kurir', icon: SettingsIcon },
+] as const;
+
 export function Settings() {
   const { users, updateUser, addUser } = useUserStore();
   const { user, logout } = useAuth();
@@ -80,7 +96,39 @@ export function Settings() {
     showMessage('success', 'Pengaturan bisnis berhasil disimpan!')
   }
 
-  const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'users' | 'business' | 'instructions'>('profile');
+  const tabs = ALL_TABS.filter((tab) => {
+    if (tab.id === 'users') {
+      return ['admin', 'owner', 'admin_kurir'].includes(user?.role || '');
+    }
+    if (tab.id === 'business') {
+      return ['admin', 'owner', 'finance'].includes(user?.role || '');
+    }
+    if (tab.id === 'instructions') {
+      return ['admin', 'owner', 'admin_kurir'].includes(user?.role || '');
+    }
+    return true; // profile and password
+  });
+
+  const [activeTab, setActiveTab] = useState<typeof ALL_TABS[number]['id']>('profile');
+
+  useEffect(() => {
+    if (!tabs.find(t => t.id === activeTab)) {
+      setActiveTab('profile');
+    }
+  }, [user?.role, activeTab, tabs]);
+
+  const getAvailableRoles = () => {
+    const roles = [
+      { value: 'admin', label: 'Admin (Super)', level: 100 },
+      { value: 'owner', label: 'Owner', level: 80 },
+      { value: 'admin_kurir', label: 'Admin Kurir', level: 50 },
+      { value: 'finance', label: 'Keuangan', level: 50 },
+      { value: 'courier', label: 'Kurir', level: 10 },
+    ];
+    if (user?.role === 'admin') return roles;
+    const myLevel = ROLE_LEVELS[user?.role as string] || 0;
+    return roles.filter(r => r.level < myLevel);
+  };
 
   // Profile state
   const [profileForm, setProfileForm] = useState({
@@ -296,9 +344,13 @@ export function Settings() {
       showMessage('error', 'Anda tidak bisa menonaktifkan diri sendiri!');
       return;
     }
-    // RBAC: Only Owner or Admin can change status
+    // RBAC: Only Owner or Admin can change status, and ONLY for couriers
     if (user?.role !== 'owner' && user?.role !== 'admin') {
       showMessage('error', 'Hanya Owner atau Admin yang bisa mengubah status user!');
+      return;
+    }
+    if (u.role !== 'courier') {
+      showMessage('error', 'Hanya role Kurir yang bisa dinonaktifkan dari sini!');
       return;
     }
 
@@ -306,13 +358,7 @@ export function Settings() {
     showMessage('success', `User ${!u.is_active ? 'aktif' : 'non-aktif'} berhasil diperbarui!`);
   };
 
-  const tabs = [
-    { id: 'profile', label: 'Profile', icon: User },
-    { id: 'password', label: 'Password', icon: Lock },
-    { id: 'users', label: 'System Users', icon: Users },
-    { id: 'business', label: 'Business', icon: Shield },
-    { id: 'instructions', label: 'Instruksi Kurir', icon: SettingsIcon },
-  ] as const;
+  // Tabs are now defined at the top and filtered dynamically
 
   // Instructions state
   const [isAddInstructionModalOpen, setIsAddInstructionModalOpen] = useState(false);
@@ -373,11 +419,33 @@ export function Settings() {
   };
 
   const canEdit = (target: UserType) => {
-    if (user?.role === 'owner' || user?.role === 'admin') return true // Super Admin/Owner bisa edit semua
-    if (target.role === 'owner') return false // Tidak ada yang bisa edit Owner kecuali dirinya
-    if (target.role === 'admin' && target.id !== user?.id) return false // Admin tidak bisa edit admin lain
-    return true
+    if (!user) return false;
+    
+    // Super Admin can edit ANYONE
+    if (user.role === 'admin') return true;
+
+    // Users can theoretically edit themselves (handled mostly by Profile tab, 
+    // but useful if they are rendered in a list)
+    if (target.id === user.id) return true;
+
+    const myLevel = ROLE_LEVELS[user.role as string] || 0;
+    const targetLevel = ROLE_LEVELS[target.role as string] || 0;
+
+    // Everyone else can only edit users strictly lower than them in hierarchy
+    return targetLevel < myLevel;
   }
+
+  const visibleUsers = users.filter((u: UserType) => {
+    if (!user) return false;
+    // Super admin sees all
+    if (user.role === 'admin') return true;
+    
+    // Others see strictly inferior roles
+    const myLevel = ROLE_LEVELS[user.role as string] || 0;
+    const targetLevel = ROLE_LEVELS[u.role as string] || 0;
+    
+    return targetLevel < myLevel;
+  });
 
   return (
     <div className="min-h-screen">
@@ -503,11 +571,14 @@ export function Settings() {
                   <h3 className="text-lg font-semibold text-gray-900">System Users</h3>
                   <p className="text-sm text-gray-500">Manage admins and couriers access</p>
                 </div>
-                {(user?.role === 'admin' || user?.role === 'owner') && (
+                {(user?.role === 'admin' || user?.role === 'owner' || user?.role === 'admin_kurir') && (
                   <Button
                     size="sm"
                     leftIcon={<Plus className="h-4 w-4" />}
-                    onClick={() => setIsAddUserModalOpen(true)}
+                    onClick={() => {
+                        setIsAddUserModalOpen(true);
+                        setNewUser(prev => ({ ...prev, role: getAvailableRoles()[0]?.value as any || 'courier' }));
+                    }}
                   >
                     Add User
                   </Button>
@@ -515,7 +586,7 @@ export function Settings() {
               </div>
 
               <div className="space-y-4">
-                {users.map((u: UserType) => (
+                {visibleUsers.map((u: UserType) => (
                   <div
                     key={u.id}
                     className={`flex flex-col sm:flex-row items-center justify-between p-4 rounded-lg gap-4 transition-all ${u.is_active ? 'bg-gray-50 hover:bg-gray-100' : 'bg-gray-100/50 opacity-60 grayscale-[0.5]'} ${canEdit(u) ? 'cursor-pointer' : 'cursor-default'}`}
@@ -553,7 +624,7 @@ export function Settings() {
                       )}
 
                       {/* Status Toggle Action - RBAC Protected */}
-                      {(user?.role === 'admin' || user?.role === 'owner') && u.id !== user.id && (
+                      {(user?.role === 'admin' || user?.role === 'owner') && u.id !== user.id && u.role === 'courier' && (
                         <button
                           onClick={(e) => { e.stopPropagation(); handleToggleSuspend(u); }}
                           className={`p-2 rounded-lg transition-colors ${u.is_active ? 'text-red-400 hover:text-red-600 hover:bg-red-50' : 'text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50'}`}
@@ -790,11 +861,9 @@ export function Settings() {
                 value={newUser.role}
                 onChange={(e) => setNewUser({ ...newUser, role: e.target.value as any })}
               >
-                 <option value="admin">Admin (Super)</option>
-                 <option value="admin_kurir">Admin Kurir</option>
-                 <option value="finance">Keuangan</option>
-                 <option value="owner">Owner</option>
-                 <option value="courier">Kurir</option>
+                 {getAvailableRoles().map(r => (
+                   <option key={r.value} value={r.value}>{r.label}</option>
+                 ))}
               </select>
             </div>
 
@@ -887,11 +956,9 @@ export function Settings() {
               onChange={(e) => setEditUserForm({ ...editUserForm, role: e.target.value })}
               disabled={selectedUserToEdit?.id === user?.id} // Prevent user changing their own role in this UI
             >
-               <option value="admin">Admin (Super)</option>
-               <option value="admin_kurir">Admin Kurir</option>
-               <option value="finance">Keuangan</option>
-               <option value="owner">Owner</option>
-               <option value="courier">Kurir</option>
+               {getAvailableRoles().map(r => (
+                 <option key={r.value} value={r.value}>{r.label}</option>
+               ))}
             </select>
           </div>
 
