@@ -71,8 +71,24 @@ self.addEventListener('install', () => {
 })
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(clients.claim())
-})
+  const CACHE_VERSION = 'v1.0.7'; 
+  const CACHE_NAME = `kurirdev-${CACHE_VERSION}`;
+
+  event.waitUntil(
+    Promise.all([
+      clients.claim(),
+      caches.keys().then(keys => 
+        Promise.all(
+          keys.filter(key => 
+            (key.startsWith('kurirdev-') && key !== CACHE_NAME) ||
+            key === 'static-resources' // Clean up the old problematic cache
+          ).map(key => caches.delete(key))
+        )
+      )
+    ])
+  );
+});
+
 
 import { precacheAndRoute, createHandlerBoundToURL } from 'workbox-precaching';
 import { registerRoute, NavigationRoute } from 'workbox-routing';
@@ -142,14 +158,10 @@ registerRoute(
   })
 );
 
-// 4. Static Assets (StaleWhileRevalidate)
-// Must be registered BEFORE the generic API route
-registerRoute(
-  ({request}) => request.destination === 'script' || request.destination === 'style' || request.destination === 'worker',
-  new StaleWhileRevalidate({
-    cacheName: 'static-resources',
-  })
-);
+// Static Assets - Handled by precacheAndRoute(self.__WB_MANIFEST)
+// No need for redundant StaleWhileRevalidate for JS/CSS as it can lead to 
+// caching 404/HTML responses when chunks change between deployments.
+
 
 // 5. API / External Services (NetworkFirst)
 registerRoute(
@@ -176,20 +188,8 @@ registerRoute(
   })
 );
 
-const CACHE_VERSION = 'v1.0.6';
-const CACHE_NAME = `kurirdev-${CACHE_VERSION}`;
+// Activate and cleanup handled above
 
-self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(
-        keys
-          .filter(key => key.startsWith('kurirdev-') && key !== CACHE_NAME)
-          .map(key => caches.delete(key))
-      )
-    )
-  );
-});
 
 // For update banner to know when to skipWaiting
 self.addEventListener('message', (event) => {

@@ -3,8 +3,22 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import { App } from "./App";
 
-// Register PWA service worker is handled automatically by vite-plugin-pwa
-// through the injectRegister: "auto" / registerType: "autoUpdate" settings
+// Global error listener to handle dynamic import failures (e.g., stale service worker)
+window.addEventListener('error', (event) => {
+  if (event.message?.includes('Failed to fetch dynamically imported module')) {
+    console.error('Dynamic import failed, possibly due to stale service worker. Reloading...', event);
+    // Force a full reload to clear stale state
+    window.location.reload();
+  }
+}, true); // Capture phase to catch it before it crashes the React root
+
+// Also catch unhandled promise rejections for lazy load errors
+window.addEventListener('unhandledrejection', (event) => {
+  if (event.reason instanceof TypeError && event.reason.message.includes('Failed to fetch dynamically imported module')) {
+    console.error('Dynamic import failed (unhandled rejection). Reloading...', event);
+    window.location.reload();
+  }
+});
 
 // Setup push notification listener on the SW
 if ("serviceWorker" in navigator) {
