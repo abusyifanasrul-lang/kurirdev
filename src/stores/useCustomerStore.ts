@@ -58,37 +58,37 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
     }
   },
 
-  upsertCustomer: async (data) => {
+  upsertCustomer: async (data: Omit<Customer, 'id' | 'created_at' | 'updated_at'>) => {
     const { customers } = get()
-    // Normalisasi phone
-    const normalizedPhone = data.phone.replace(/\D/g, '')
-    const existing = customers.find(c => c.phone.replace(/\D/g, '') === normalizedPhone)
     
-    if (!existing) {
-      const newCustomer: Customer = {
-        id: crypto.randomUUID(),
-        name: data.name,
-        phone: data.phone,
-        addresses: data.addresses,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }
-      await supabase.from('customers').upsert(newCustomer)
-      await upsertCustomerLocal(newCustomer)
-      set({ customers: [...customers, newCustomer] })
-      return newCustomer
-    } else {
-      const updatedCustomer: Customer = {
-        ...existing,
-        name: data.name,
-        addresses: data.addresses,
-        updated_at: new Date().toISOString()
-      }
-      await supabase.from('customers').upsert(updatedCustomer)
-      await upsertCustomerLocal(updatedCustomer)
-      set({ customers: customers.map(c => c.id === updatedCustomer.id ? updatedCustomer : c) })
-      return updatedCustomer
+    // Use Supabase upsert with onConflict on 'phone' to handle existing customers correctly
+    // even if the local store is not yet synced.
+    const customerData = {
+      name: data.name,
+      phone: data.phone,
+      addresses: data.addresses,
+      updated_at: new Date().toISOString()
     }
+
+    const { data: upserted, error } = await supabase
+      .from('customers')
+      .upsert(customerData, { onConflict: 'phone' })
+      .select()
+      .single()
+
+    if (error) throw error
+
+    const customer = upserted as Customer
+    await upsertCustomerLocal(customer)
+    
+    const existingIndex = customers.findIndex(c => c.id === customer.id)
+    if (existingIndex === -1) {
+      set({ customers: [...customers, customer] })
+    } else {
+      set({ customers: customers.map(c => c.id === customer.id ? customer : c) })
+    }
+
+    return customer
   },
 
   addAddress: async (customerId, addr) => {

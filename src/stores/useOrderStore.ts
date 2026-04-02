@@ -137,7 +137,11 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
 
   addOrder: async (order) => {
     const { error } = await supabase.from('orders').insert(order)
-    if (error) throw error
+    
+    if (error) {
+      console.error('Supabase error inserting order:', error)
+      throw new Error(error.message || 'Gagal menyimpan order ke database')
+    }
     
     // Optimistically add to list
     set(state => ({ orders: [order, ...state.orders] }))
