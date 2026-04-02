@@ -114,11 +114,8 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
   },
 
   addNotification: async (data: Omit<Notification, 'id' | 'sent_at' | 'is_read'>) => {
-    // Sanitize data: Remove non-database fields like user_name which cause 400 Bad Request
-    const { user_name, ...dbData } = data as any;
-    
     const newNotification: any = {
-      ...dbData,
+      ...data,
       is_read: false,
       sent_at: new Date().toISOString(),
       type: data.type || 'manual_alert',

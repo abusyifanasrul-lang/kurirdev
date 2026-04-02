@@ -67,6 +67,8 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
       name: data.name,
       phone: data.phone,
       addresses: data.addresses,
+      order_count: (data as any).order_count,
+      last_order_at: (data as any).last_order_at,
       updated_at: new Date().toISOString()
     }
 
