@@ -14,11 +14,23 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 
 // Sub-components
-import { ProfileTab } from '@/components/settings/ProfileTab';
-import { PasswordTab } from '@/components/settings/PasswordTab';
-import { UsersTab } from '@/components/settings/UsersTab';
-import { BusinessTab } from '@/components/settings/BusinessTab';
-import { InstructionsTab } from '@/components/settings/InstructionsTab';
+import { lazy, Suspense } from 'react';
+
+// Lazy-loaded Sub-components
+const ProfileTab = lazy(() => import('@/components/settings/ProfileTab').then(m => ({ default: m.ProfileTab })));
+const PasswordTab = lazy(() => import('@/components/settings/PasswordTab').then(m => ({ default: m.PasswordTab })));
+const UsersTab = lazy(() => import('@/components/settings/UsersTab').then(m => ({ default: m.UsersTab })));
+const BusinessTab = lazy(() => import('@/components/settings/BusinessTab').then(m => ({ default: m.BusinessTab })));
+const InstructionsTab = lazy(() => import('@/components/settings/InstructionsTab').then(m => ({ default: m.InstructionsTab })));
+
+function TabLoading() {
+  return (
+    <div className="flex flex-col items-center justify-center py-12 animate-in fade-in duration-500">
+      <div className="w-8 h-8 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-3" />
+      <p className="text-xs text-gray-400 font-medium">Memuat pengaturan...</p>
+    </div>
+  );
+}
 
 
 
@@ -194,60 +206,66 @@ export function Settings() {
 
         {/* Tab Content */}
         <div className="space-y-6">
-          {activeTab === 'profile' && (
-            <ProfileTab 
-              user={user} 
-              onUpdate={handleUpdateProfile} 
-              onRefreshPush={handleRefreshPush}
-              isLoading={isLoading}
-              isRefreshingPush={isRefreshingPush}
-            />
-          )}
+          <Suspense fallback={<TabLoading />}>
+            {activeTab === 'profile' && (
+              <ProfileTab 
+                user={user} 
+                onUpdate={handleUpdateProfile} 
+                onRefreshPush={handleRefreshPush}
+                onResync={handleResync}
+                cacheMeta={cacheMeta}
+                isSyncing={isSyncing}
+                syncMessage={syncMessage}
+                isLoading={isLoading}
+                isRefreshingPush={isRefreshingPush}
+              />
+            )}
 
-          {activeTab === 'password' && (
-            <PasswordTab 
-              onUpdate={handleChangePassword} 
-              isLoading={isLoading} 
-            />
-          )}
+            {activeTab === 'password' && (
+              <PasswordTab 
+                onUpdate={handleChangePassword} 
+                isLoading={isLoading} 
+              />
+            )}
 
-          {activeTab === 'users' && (
-            <UsersTab 
-              currentUser={user}
-              users={users}
-              onAddUser={async (data: any) => {
-                const { password, ...userData } = data;
-                await addUser(userData, password);
-                return { success: true };
-              }}
-              onUpdateUser={updateUser}
-              onToggleSuspend={(u) => updateCourier(u.id, { is_active: !u.is_active })}
-            />
-          )}
+            {activeTab === 'users' && (
+              <UsersTab 
+                currentUser={user}
+                users={users}
+                onAddUser={async (data: any) => {
+                  const { password, ...userData } = data;
+                  await addUser(userData, password);
+                  return { success: true };
+                }}
+                onUpdateUser={updateUser}
+                onToggleSuspend={(u) => updateCourier(u.id, { is_active: !u.is_active })}
+              />
+            )}
 
-          {activeTab === 'business' && (
-            <BusinessTab 
-              commission_rate={commission_rate}
-              commission_threshold={commission_threshold}
-              onSaveSettings={handleSaveBusinessSettings}
-              onResync={handleResync}
-              cacheMeta={cacheMeta}
-              isSyncing={isSyncing}
-              syncMessage={syncMessage}
-              user={user}
-              users={users}
-              getOrphanedOrdersLocal={getOrphanedOrdersLocal}
-            />
-          )}
+            {activeTab === 'business' && (
+              <BusinessTab 
+                commission_rate={commission_rate}
+                commission_threshold={commission_threshold}
+                onSaveSettings={handleSaveBusinessSettings}
+                onResync={handleResync}
+                cacheMeta={cacheMeta}
+                isSyncing={isSyncing}
+                syncMessage={syncMessage}
+                user={user}
+                users={users}
+                getOrphanedOrdersLocal={getOrphanedOrdersLocal}
+              />
+            )}
 
-          {activeTab === 'instructions' && (
-            <InstructionsTab 
-              instructions={courier_instructions || []}
-              onAdd={async (data) => { await addCourierInstruction(data); }}
-              onUpdate={async (id, data) => { await updateCourierInstruction(id, data); }}
-              onDelete={async (id) => { await deleteCourierInstruction(id); }}
-            />
-          )}
+            {activeTab === 'instructions' && (
+              <InstructionsTab 
+                instructions={courier_instructions || []}
+                onAdd={async (data) => { await addCourierInstruction(data); }}
+                onUpdate={async (id, data) => { await updateCourierInstruction(id, data); }}
+                onDelete={async (id) => { await deleteCourierInstruction(id); }}
+              />
+            )}
+          </Suspense>
         </div>
       </div>
     </div>

@@ -22,7 +22,7 @@ interface OrderState {
   isFetchingCourierOrders: boolean
   historicalOrders: Order[]
   isFetchingHistory: boolean
-  fetchOrdersByDateRange: (start: Date, end: Date) => Promise<Order[]>
+  fetchOrdersByDateRange: (start: Date, end: Date, courierId?: string) => Promise<Order[]>
   activeOrdersByCourier: Order[]
   isFetchingActiveOrders: boolean
   currentOrder: Order | null
@@ -89,14 +89,20 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     }
   },
 
-  fetchOrdersByDateRange: async (start: Date, end: Date): Promise<Order[]> => {
+  fetchOrdersByDateRange: async (start: Date, end: Date, courierId?: string): Promise<Order[]> => {
     set({ isFetchingHistory: true })
     try {
-      const { data: historicalOrders, error } = await supabase
+      let query = supabase
         .from('orders')
         .select('*')
         .gte('created_at', start.toISOString())
         .lte('created_at', end.toISOString())
+
+      if (courierId) {
+        query = query.eq('courier_id', courierId)
+      }
+
+      const { data: historicalOrders, error } = await query
         .order('created_at', { ascending: false })
 
       if (error) throw error

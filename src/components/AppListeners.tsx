@@ -101,28 +101,36 @@ export const AppListeners = () => {
     }
   }, [user?.id, user?.role])
 
-  // 3. Background Sync & Integrity (Admin only or high-level)
+  // 3. Background Sync & Integrity (All Roles Mirroring)
   useEffect(() => {
-    if (user && user.role !== 'courier') {
+    if (user) {
       const runSync = async () => {
         const userId = user.id
-        const fetchFn = useOrderStore.getState().fetchOrdersByDateRange
+        const orderStore = useOrderStore.getState()
+        
+        // Define a filtered fetch function for background mirroring
+        const fetchFn = (start: Date, end: Date) => 
+          orderStore.fetchOrdersByDateRange(start, end, user.role === 'courier' ? user.id : undefined)
 
-        // Delay background sync to prioritize initial render
+        // Delay background sync to prioritize initial render and real-time connections
         setTimeout(async () => {
-          if (!isInitialSyncCompleted(userId)) {
-            console.log('🔄 First time load, syncing all final orders...')
-            await syncAllFinalOrders(fetchFn, userId)
-          } else if (needsDeltaSync(userId)) {
-            console.log('🔄 Daily delta sync...')
-            await deltaSyncYesterday(fetchFn, userId)
+          try {
+            if (!isInitialSyncCompleted(userId)) {
+              console.log(`[Sync] 🔄 Initial sync for ${user.role} (${userId})...`)
+              await syncAllFinalOrders(fetchFn, userId)
+            } else if (needsDeltaSync(userId)) {
+              console.log(`[Sync] 🔄 Incremental delta sync for ${userId}...`)
+              await deltaSyncYesterday(fetchFn, userId)
+            }
+            await checkIntegrity()
+          } catch (err) {
+            console.error('[Sync] ❌ Sync failed:', err)
           }
-          await checkIntegrity()
-        }, 1000)
+        }, 3000) // 3s delay for heavy background work
       }
       runSync()
     }
-  }, [user?.id])
+  }, [user?.id, user?.role])
 
   // 4. Admin-wide Users subscription
   useEffect(() => {

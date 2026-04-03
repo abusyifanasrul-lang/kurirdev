@@ -17,9 +17,26 @@ import { Select } from '@/components/ui/Select';
 import { Modal } from '@/components/ui/Modal';
 import { Textarea } from '@/components/ui/Textarea';
 import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
-import { OrderFilters } from '@/components/orders/OrderFilters';
-import { OrderTable } from '@/components/orders/OrderTable';
-import { OrderListMobile } from '@/components/orders/OrderListMobile';
+import { lazy, Suspense } from 'react';
+
+// Lazy-loaded Components
+const OrderFilters = lazy(() => import('@/components/orders/OrderFilters').then(m => ({ default: m.OrderFilters })));
+const OrderTable = lazy(() => import('@/components/orders/OrderTable').then(m => ({ default: m.OrderTable })));
+const OrderListMobile = lazy(() => import('@/components/orders/OrderListMobile').then(m => ({ default: m.OrderListMobile })));
+
+function OrdersLoading() {
+  return (
+    <div className="flex flex-col items-center justify-center py-20 animate-in fade-in duration-700">
+      <div className="relative">
+        <div className="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin" />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-2 h-2 bg-indigo-600 rounded-full animate-pulse" />
+        </div>
+      </div>
+      <p className="mt-4 text-sm text-gray-400 font-medium tracking-wide">Menyiapkan daftar pesanan...</p>
+    </div>
+  );
+}
 
 // Stores & Types
 import { useOrderStore } from '@/stores/useOrderStore';
@@ -790,16 +807,18 @@ export function Orders() {
         </div>
 
         {/* Filters */}
-        <OrderFilters 
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          searchCategory={searchCategory}
-          setSearchCategory={setSearchCategory}
-          statusFilter={statusFilter}
-          setStatusFilter={setStatusFilter}
-          dateFilter={dateFilter}
-          handleDateFilterChange={handleDateFilterChange}
-        />
+        <Suspense fallback={<div className="h-32 bg-gray-50/50 animate-pulse rounded-xl mb-6" />}>
+          <OrderFilters 
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            searchCategory={searchCategory}
+            setSearchCategory={setSearchCategory}
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+            dateFilter={dateFilter}
+            handleDateFilterChange={handleDateFilterChange}
+          />
+        </Suspense>
 
         {/* Cache Status UI */}
         {cacheStatus === 'missing' && (
@@ -858,27 +877,29 @@ export function Orders() {
         )}
 
         {/* Orders List (Desktop & Mobile) */}
-        <OrderTable 
-          orders={filteredOrders}
-          onSelect={(order) => { setSelectedOrder(order); setIsDetailModalOpen(true); }}
-          onSort={handleSort}
-          sortField={sortConfig.field}
-          sortOrder={sortConfig.order}
-          getCourierName={getCourierName}
-          isFinance={isFinance}
-          onBulkSettle={async (order) => {
-            const courierName = users.find(u => u.id === order.courier_id)?.name || 'Kurir'
-            setBulkSettleCourierName(courierName)
-            const unpaid = await getUnpaidOrdersByCourier(order.courier_id || '')
-            setBulkUnpaidOrders(unpaid)
-            setShowBulkSettle(true)
-          }}
-        />
+        <Suspense fallback={<OrdersLoading />}>
+          <OrderTable 
+            orders={filteredOrders}
+            onSelect={(order) => { setSelectedOrder(order); setIsDetailModalOpen(true); }}
+            onSort={handleSort}
+            sortField={sortConfig.field}
+            sortOrder={sortConfig.order}
+            getCourierName={getCourierName}
+            isFinance={isFinance}
+            onBulkSettle={async (order) => {
+              const courierName = users.find(u => u.id === order.courier_id)?.name || 'Kurir'
+              setBulkSettleCourierName(courierName)
+              const unpaid = await getUnpaidOrdersByCourier(order.courier_id || '')
+              setBulkUnpaidOrders(unpaid)
+              setShowBulkSettle(true)
+            }}
+          />
 
-        <OrderListMobile 
-          orders={filteredOrders}
-          onSelect={(order) => { setSelectedOrder(order); setIsDetailModalOpen(true); }}
-        />
+          <OrderListMobile 
+            orders={filteredOrders}
+            onSelect={(order) => { setSelectedOrder(order); setIsDetailModalOpen(true); }}
+          />
+        </Suspense>
       </div>
 
       {/* CREATE ORDER MODAL */}
