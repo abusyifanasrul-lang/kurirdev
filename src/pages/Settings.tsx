@@ -117,6 +117,19 @@ export function Settings() {
     }
   }, [user?.role, activeTab, tabs]);
 
+  // Subscribe to Users list when "System Users" tab is active
+  useEffect(() => {
+    // Only subscribe if we are in the 'users' tab and have permission
+    if (activeTab === 'users' && ['admin', 'owner', 'admin_kurir'].includes(user?.role || '')) {
+      console.log('🔄 Subscribing to users list...');
+      const unsubscribe = useUserStore.getState().subscribeUsers();
+      return () => {
+        console.log('🛑 Unsubscribing from users list');
+        unsubscribe();
+      };
+    }
+  }, [activeTab, user?.role]);
+
   const getAvailableRoles = () => {
     const roles = [
       { value: 'admin', label: 'Admin (Super)', level: 100 },
