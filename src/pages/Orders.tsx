@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Plus, Download, Search, ArrowUpDown, ChevronUp, ChevronDown, Printer, Pencil, Trash2, Check, XCircle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
-import { sendPushNotification } from '@/services/notificationService';
+
 import {
   getCachedOrdersByRange,
   cacheOrdersByDate,
@@ -412,7 +412,7 @@ export function Orders() {
 
       const orderData: Order = {
         id: crypto.randomUUID(),
-        order_number: generateOrderId(),
+        order_number: await generateOrderId(),
         ...newOrder,
         customer_id: customerId,
         customer_address_id: activeAddressId,
@@ -475,6 +475,7 @@ export function Orders() {
       const notifBody = `${customerName} • ${instruksi}`;
 
       // Simpan ke Supabase agar muncul di halaman notifikasi
+      // Database Webhook akan mentrigger Edge Function 'notify-courier' otomatis
       await addNotification({
         user_id: courier.id,
         user_name: courier.name,
@@ -482,17 +483,6 @@ export function Orders() {
         message: notifBody,
         data: { orderId: selectedOrder.id, type: 'order_assigned' },
       });
-
-      // Kirim push notification ke HP kurir
-      const courierData = users.find(u => u.id === courier.id);
-      if (courierData?.fcm_token) {
-        sendPushNotification({
-          token: courierData.fcm_token,
-          title: notifTitle,
-          body: notifBody,
-          data: { orderId: selectedOrder.id, type: 'order_assigned' }
-        }).catch(console.error);
-      }
 
       setIsDetailModalOpen(false);
       setAssignCourierId('');

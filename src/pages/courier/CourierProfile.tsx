@@ -18,18 +18,17 @@ import { useAuth } from '@/context/AuthContext';
 import { useUserStore } from '@/stores/useUserStore';
 import { useSessionStore } from '@/stores/useSessionStore';
 import { useCourierStore } from '@/stores/useCourierStore';
+import { supabase } from '@/lib/supabaseClient';
 
 export function CourierProfile() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { updateUser: updatePersistentUser } = useUserStore();
-  const { updateUser: updateSessionUser } = useSessionStore();
   const { couriers } = useCourierStore();
   const { users } = useUserStore();
   const { user: currentUser } = useSessionStore();
 
   // Real-time suspended check from useUserStore
-  const liveUser = users.find(u => u.id === currentUser?.id);
+  const liveUser = users.find((u: any) => u.id === currentUser?.id);
   const isSuspended = liveUser?.is_active === false;
 
   const courierData = useMemo(() =>
@@ -72,18 +71,15 @@ export function CourierProfile() {
       return;
     }
 
-    if (user?.password !== passwordForm.currentPassword) {
-      setMessage({ type: 'error', text: 'Password saat ini salah' });
-      return;
-    }
-
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    const { error } = await supabase.auth.updateUser({
+      password: passwordForm.newPassword
+    });
 
-    if (user?.id) {
-      updatePersistentUser(user.id, { password: passwordForm.newPassword });
-      updateSessionUser({ password: passwordForm.newPassword });
-
+    if (error) {
+      setMessage({ type: 'error', text: `Gagal memperbarui password: ${error.message}` });
+    } else {
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setIsChangePasswordOpen(false);
       setMessage({ type: 'success', text: 'Password berhasil diperbarui!' });

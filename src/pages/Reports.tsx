@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Download, Calendar, TrendingUp, DollarSign, Package, Award, Filter } from 'lucide-react';
 import { format, subDays, isWithinInterval, parseISO, startOfDay, endOfDay, eachDayOfInterval } from 'date-fns';
 import {
@@ -39,7 +39,7 @@ export function Reports() {
   const [cacheStatus, setCacheStatus] = useState<
     'idle' | 'checking' | 'missing' | 'loading' | 'loaded'
   >('idle')
-  const [missingDates, setMissingDates] = useState<string[]>([])
+  const [, setMissingDates] = useState<string[]>([])
   const { couriers } = useCourierStore();
   const { users } = useUserStore();
   const { commission_rate } = useSettingsStore();

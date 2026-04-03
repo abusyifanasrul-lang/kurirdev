@@ -140,8 +140,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         useCourierStore.getState().reset();
       } catch(e) {}
       
-      // Force clear local storage just in case
-      try { localStorage.clear(); } catch(e) {}
+      // 2. Selective LocalStorage Cleanup (Secure)
+      const keysToRemove = [
+        'session-storage',
+        'business-settings',
+        'kurirdev_db_meta'
+      ];
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      
+      // 3. Clear IndexedDB Cache (Mirroring)
+      try {
+        const { clearAllCache } = await import('@/lib/orderCache');
+        await clearAllCache();
+      } catch(e) {}
       
       setState({ user: null, token: null, isAuthenticated: false, isLoading: false });
       console.log('Logout cleanup complete.');

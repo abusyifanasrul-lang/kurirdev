@@ -131,7 +131,6 @@ export function Couriers() {
       id: crypto.randomUUID(),
       name: newCourier.name,
       email: newCourier.email,
-      password: newCourier.password,
       role: 'courier',
       phone: newCourier.phone,
       is_active: true,
@@ -142,7 +141,7 @@ export function Couriers() {
       updated_at: new Date().toISOString(),
     };
 
-    addCourier(courierData);
+    addCourier(courierData, newCourier.password);
     setIsAddModalOpen(false);
     setShowCourierPassword(false);
     setNewCourier({

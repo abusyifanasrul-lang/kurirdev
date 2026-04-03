@@ -74,7 +74,7 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
 
     const { data: upserted, error } = await supabase
       .from('customers')
-      .upsert(customerData, { onConflict: 'phone' })
+      .upsert(customerData as any, { onConflict: 'phone' })
       .select()
       .single()
 
@@ -105,7 +105,7 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
       updated_at: new Date().toISOString()
     }
 
-    await supabase.from('customers').upsert(updatedCustomer)
+    await (supabase.from('customers') as any).upsert(updatedCustomer)
     await upsertCustomerLocal(updatedCustomer)
     set({ customers: customers.map(c => c.id === customerId ? updatedCustomer : c) })
   },
@@ -121,7 +121,7 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
       updated_at: new Date().toISOString()
     }
 
-    await supabase.from('customers').upsert(updatedCustomer)
+    await (supabase.from('customers') as any).upsert(updatedCustomer)
     await upsertCustomerLocal(updatedCustomer)
     set({ customers: customers.map(c => c.id === customerId ? updatedCustomer : c) })
   },
@@ -137,7 +137,7 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
       updated_at: new Date().toISOString()
     }
 
-    await supabase.from('customers').upsert(updatedCustomer)
+    await (supabase.from('customers') as any).upsert(updatedCustomer)
     await upsertCustomerLocal(updatedCustomer)
     set({ customers: customers.map(c => c.id === customerId ? updatedCustomer : c) })
   },

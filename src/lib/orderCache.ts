@@ -19,13 +19,13 @@ function getLocalDateStr(
 // Per-user sync metadata
 // Setiap user punya status sync sendiri
 // agar shared DB bisa dipakai bergantian
-interface UserSyncStatus {
+export interface UserSyncStatus {
   sync_completed: boolean
   last_delta_sync: string  // ISO timestamp
   last_sync: string        // ISO timestamp
 }
 
-interface DBMeta {
+export interface DBMeta {
   total_records: number
   users: Record<string, UserSyncStatus>
   // Legacy fields (backward compat)

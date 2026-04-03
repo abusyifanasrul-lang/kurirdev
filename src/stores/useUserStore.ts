@@ -9,7 +9,7 @@ interface UserState {
   fetchUsers: () => Promise<void>
   fetchProfile: (id: string) => Promise<void>
   subscribeUsers: () => () => void
-  addUser: (user: User) => Promise<{ success: boolean; error?: string }>
+  addUser: (user: User, password: string) => Promise<{ success: boolean; error?: string }>
   updateUser: (id: string, data: Partial<User>) => Promise<void>
   removeUser: (id: string) => Promise<void>
   updateUserQueuePosition: (id: string, position: number) => Promise<void>
@@ -121,14 +121,14 @@ export const useUserStore = create<UserState>()((set, get) => ({
     }
   },
 
-  addUser: async (user: User) => {
+  addUser: async (user: User, password: string) => {
     set({ isLoading: true, error: null })
     try {
       // 1. Proactive Frontend Validation
-      if (!user.name || !user.email || !user.password || !user.role) {
+      if (!user.name || !user.email || !password || !user.role) {
         throw new Error('❌ Data tidak lengkap! Pastikan Nama, Email, Password, dan Role terisi.')
       }
-      if (user.password.length < 8) {
+      if (password.length < 8) {
         throw new Error('❌ Password minimal harus 8 karakter.')
       }
 
@@ -143,7 +143,7 @@ export const useUserStore = create<UserState>()((set, get) => ({
         },
         body: {
           email: user.email,
-          password: user.password,
+          password: password,
           name: user.name,
           role: user.role,
           phone: user.phone

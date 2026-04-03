@@ -12,7 +12,7 @@ import { useUserStore } from '@/stores/useUserStore';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import {
-  clearAllCache, getCacheMeta, checkIntegrity,
+  clearAllCache, getCacheMeta, checkIntegrity, DBMeta
 } from '@/lib/orderCache';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -47,7 +47,7 @@ export function SystemDiagnostics() {
   const [supabaseOk, setSupabaseOk] = useState<boolean | null>(null);
   const [integrity, setIntegrity] = useState<{ ok: boolean; localCount: number; metaCount: number } | null>(null);
   const [swVersion, setSWVersion] = useState<string>('-');
-  const [cacheMeta] = useState(getCacheMeta);
+  const [cacheMeta] = useState<DBMeta>(getCacheMeta);
 
   const checkSystemHealth = useCallback(async () => {
     // Supabase ping
@@ -115,7 +115,7 @@ export function SystemDiagnostics() {
     setForceLoading(true);
     setForceMsg('');
     try {
-      const { error } = await supabase.from('orders').update({
+      const { error } = await (supabase.from('orders') as any).update({
         status: forceStatus,
         updated_at: new Date().toISOString(),
       }).eq('id', forceOrderId.trim());

@@ -21,6 +21,7 @@ interface SettingsStore extends BusinessSettings {
   updateCourierInstruction: (id: string, instruction: Partial<CourierInstruction>) => void
   deleteCourierInstruction: (id: string) => void
   fetchSettings: () => Promise<void>
+  reset: () => void
 }
 
 const DEFAULT_INSTRUCTIONS: CourierInstruction[] = [
@@ -31,32 +32,39 @@ const DEFAULT_INSTRUCTIONS: CourierInstruction[] = [
   { id: '5', label: 'Cek kondisi barang saat diterima', instruction: 'Cek kondisi barang saat diterima', icon: '🔍' },
 ]
 
-export const useSettingsStore = create<any>()(
+export const useSettingsStore = create<SettingsStore>()(
   persist(
     (set) => ({
       commission_rate: 80,
       commission_threshold: 5000,
       courier_instructions: DEFAULT_INSTRUCTIONS,
-      updateSettings: (data: any) => set((state: any) => ({ ...state, ...data })),
-      addCourierInstruction: (instruction: any) => set((state: any) => ({
+      updateSettings: (data: Partial<BusinessSettings>) => set((state: SettingsStore) => ({ ...state, ...data })),
+      addCourierInstruction: (instruction: Omit<CourierInstruction, 'id'>) => set((state: SettingsStore) => ({
         courier_instructions: [...state.courier_instructions, { ...instruction, id: crypto.randomUUID() }]
       })),
-      updateCourierInstruction: (id: string, instruction: any) => set((state: any) => ({
-        courier_instructions: (state.courier_instructions as any[]).map(item =>
+      updateCourierInstruction: (id: string, instruction: Partial<CourierInstruction>) => set((state: SettingsStore) => ({
+        courier_instructions: state.courier_instructions.map(item =>
           item.id === id ? { ...item, ...instruction } : item
         )
       })),
-      deleteCourierInstruction: (id: string) => set((state: any) => ({
-        courier_instructions: (state.courier_instructions as any[]).filter(item => item.id !== id)
+      deleteCourierInstruction: (id: string) => set((state: SettingsStore) => ({
+        courier_instructions: state.courier_instructions.filter(item => item.id !== id)
       })),
       fetchSettings: async () => {
-        const { data, error } = await supabase.from('settings').select('*').single()
+        const { data, error } = await supabase.from('settings').select('*').single() as { data: any, error: any }
         if (error || !data) return
-        set({
+        set((state: SettingsStore) => ({
+          ...state,
           commission_rate: data.commission_rate,
           commission_threshold: data.commission_threshold
-        })
-      }
+        }))
+      },
+      reset: () => set((state: SettingsStore) => ({
+        ...state,
+        commission_rate: 80,
+        commission_threshold: 5000,
+        courier_instructions: DEFAULT_INSTRUCTIONS
+      }))
     }),
     {
       name: 'business-settings',

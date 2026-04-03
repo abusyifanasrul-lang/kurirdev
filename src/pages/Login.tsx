@@ -70,10 +70,14 @@ export function Login() {
         .from('profiles')
         .select('*')
         .eq('id', supabaseUser.id)
-        .single();
+        .single() as { data: any, error: any };
 
       if (profileError || !profile) {
         throw new Error('Data pengguna tidak ditemukan di database.');
+      }
+
+      if (profile.is_active === false) {
+        throw new Error('Akun Anda telah dinonaktifkan. Silakan hubungi admin.');
       }
 
       const userData: UserType = {
@@ -82,7 +86,7 @@ export function Login() {
           email: supabaseUser.email || '',
           role: profile.role as UserRole,
           phone: profile.phone || undefined,
-          is_active: true,
+          is_active: profile.is_active ?? true,
           fcm_token: profile.fcm_token || undefined,
           is_online: profile.is_online,
           created_at: profile.created_at || new Date().toISOString(),

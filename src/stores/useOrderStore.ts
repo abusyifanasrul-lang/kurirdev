@@ -44,7 +44,7 @@ interface OrderState {
   updateOrderWaiting: (orderId: string, isWaiting: boolean) => Promise<void>
   updateOrderField: (orderId: string, field: string, value: any) => Promise<void>
   
-  generateOrderId: () => string
+  generateOrderId: () => Promise<string>
   getOrdersByCourier: (courierId: string) => Order[]
   getRecentOrders: (limit?: number) => Order[]
   
@@ -461,14 +461,28 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     }).eq('id', orderId);
   },
 
-  generateOrderId: () => {
+  generateOrderId: async () => {
     const now = new Date()
     const DD = String(now.getDate()).padStart(2, '0')
     const MM = String(now.getMonth() + 1).padStart(2, '0')
     const YY = String(now.getFullYear()).slice(-2)
-    const dateKey = `${DD}${MM}${YY}` 
-    const todayOrders = get().orders.filter(o => o.order_number.startsWith(`P${dateKey}`))
-    return `P${dateKey}${String(todayOrders.length + 1).padStart(3, '0')}` 
+    const prefix = `P${DD}${MM}${YY}`
+    
+    // Count directly from Supabase for all orders today (using prefix match)
+    // we use await inside the async function
+    const { count, error } = await supabase
+      .from('orders')
+      .select('*', { count: 'exact', head: true })
+      .ilike('order_number', `${prefix}%`)
+      
+    if (error) {
+      console.error('Error generating order ID:', error)
+      // Fallback: randomized suffix to avoid collision if DB check fails
+      const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0')
+      return `${prefix}${random}`
+    }
+    
+    return `${prefix}${String((count ?? 0) + 1).padStart(3, '0')}`
   },
 
   getOrdersByCourier: (courierId) => {

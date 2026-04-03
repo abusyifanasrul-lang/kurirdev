@@ -32,7 +32,6 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
-  password?: string;
   phone?: string;
   is_active: boolean;
   is_online?: boolean;

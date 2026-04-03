@@ -1,15 +1,10 @@
 import { create } from 'zustand'
-import { persist, createJSONStorage } from 'zustand/middleware'
 import { Courier } from '@/types'
 import { useUserStore } from './useUserStore'
-import { supabase } from '@/lib/supabaseClient'
 
 interface CourierState {
-  _storeVersion: string
-  queue: Courier[]
   readonly couriers: Courier[]
-
-  addCourier: (courier: Courier) => Promise<void>
+  addCourier: (courier: Courier, password: string) => Promise<void>
   updateCourier: (id: string, data: Partial<Courier>) => Promise<void>
   updateCourierStatus: (id: string, data: Partial<Courier>) => Promise<void>
   removeCourier: (id: string) => Promise<void>
@@ -20,187 +15,100 @@ interface CourierState {
   reset: () => void
 }
 
-const INITIAL_QUEUE: Courier[] = [
-  {
-    id: "3",
-    name: 'Budi Santoso',
-    email: 'budi@courier.com',
-    role: 'courier',
-    password: 'courier123',
-    phone: '+6281298765432',
-    is_active: true,
-    is_online: true,
-    vehicle_type: 'motorcycle',
-    plate_number: 'B 1234 ABC',
-    created_at: '2024-01-15T00:00:00Z',
-    updated_at: '2024-01-15T00:00:00Z',
+export const useCourierStore = create<CourierState>()((_set, get) => ({
+  get couriers() {
+    return useUserStore.getState().users.filter(u => u.role === 'courier') as Courier[]
   },
-  {
-    id: "4",
-    name: 'Siti Aminah',
-    email: 'siti@courier.com',
-    role: 'courier',
-    password: 'courier123',
-    phone: '+6281345678901',
-    is_active: true,
-    is_online: true,
-    vehicle_type: 'motorcycle',
-    plate_number: 'B 5678 DEF',
-    created_at: '2024-01-20T00:00:00Z',
-    updated_at: '2024-01-20T00:00:00Z',
+
+  reset: () => {
+    // No local state to reset, data comes from useUserStore
   },
-  {
-    id: "5",
-    name: 'Agus Pratama',
-    email: 'agus@courier.com',
-    role: 'courier',
-    password: 'courier123',
-    phone: '+6281876543210',
-    is_active: true,
-    is_online: false,
-    vehicle_type: 'bicycle',
-    plate_number: '-',
-    created_at: '2024-02-10T00:00:00Z',
-    updated_at: '2024-02-10T00:00:00Z',
-  },
-]
 
-const STORE_VERSION = '1.0.4'
-
-export const useCourierStore = create<CourierState>()(
-  persist(
-    (set, get) => ({
-      _storeVersion: STORE_VERSION,
-      queue: INITIAL_QUEUE,
-
-      get couriers() {
-        return useUserStore.getState().users.filter(u => u.role === 'courier') as Courier[]
-      },
-
-      reset: () => set({
-        queue: INITIAL_QUEUE,
-        _storeVersion: STORE_VERSION
-      }),
-
-      addCourier: async (courier) => {
-        // 1. Create in Supabase (Auth + Profile) via UserStore
-        const result = await useUserStore.getState().addUser(courier)
-        
-        if (!result.success) {
-          throw new Error(result.error || 'Gagal membuat akun kurir')
-        }
-
-        // 2. Add to Local State (queue)
-        set((state) => ({ queue: [...state.queue, courier] }))
-      },
-
-      updateCourier: async (id, data) => {
-        set((state) => ({
-          queue: state.queue.map((c) =>
-            c.id === id
-              ? { ...c, ...data, updated_at: new Date().toISOString() }
-              : c
-          )
-        }))
-        await useUserStore.getState().updateUser(id, data)
-      },
-
-      updateCourierStatus: async (id, data) => {
-        await get().updateCourier(id, data)
-      },
-
-      removeCourier: async (id) => {
-        set((state) => ({
-          queue: state.queue.filter((c) => c.id !== id)
-        }))
-        await useUserStore.getState().removeUser(id)
-      },
-
-      getAvailableCouriers: () => {
-        const { users } = useUserStore.getState()
-        return users.filter(u =>
-          u.role === 'courier' && u.is_active && u.is_online
-        ) as Courier[]
-      },
-
-      rotateQueue: async (assignedCourierId) => {
-        const userStore = useUserStore.getState()
-        const allCouriers = userStore.users.filter(u => u.role === 'courier') as (Courier & { queue_position?: number })[]
-        if (allCouriers.length === 0) return
-        const sorted = [...allCouriers].sort((a, b) =>
-          (a.queue_position ?? 999) - (b.queue_position ?? 999)
-        )
-        const maxPosition = sorted.reduce((max, c) => Math.max(max, c.queue_position ?? 0), 0)
-        const assignedCourier = sorted.find(c => c.id === assignedCourierId)
-        if (!assignedCourier) return
-        const assignedCurrentPos = assignedCourier.queue_position ?? 1
-        const updatePromises = sorted
-          .filter(c => c.id !== assignedCourierId && (c.queue_position ?? 999) > assignedCurrentPos)
-          .map(c => userStore.updateUserQueuePosition(c.id, (c.queue_position ?? 999) - 1))
-        updatePromises.push(userStore.updateUserQueuePosition(assignedCourierId, maxPosition))
-        await Promise.all(updatePromises)
-        set((state) => {
-          const index = state.queue.findIndex(c => c.id === assignedCourierId)
-          if (index === -1) return state
-          const newQueue = [...state.queue]
-          const [courier] = newQueue.splice(index, 1)
-          newQueue.push(courier)
-          return { queue: newQueue }
-        })
-      },
-
-      setCourierOffline: async (courierId, reason) => {
-        const userStore = useUserStore.getState()
-        const allCouriers = userStore.users.filter(u => u.role === 'courier') as (Courier & { queue_position?: number })[]
-
-        const thisCourier = allCouriers.find(c => c.id === courierId)
-        const currentPos = thisCourier?.queue_position ?? 0
-
-        // Update status offline
-        await userStore.updateUser(courierId, {
-          is_online: false,
-          courier_status: 'off',
-          off_reason: reason,
-          queue_position: null as any,
-        })
-
-        // Geser posisi kurir lain yang di belakangnya
-        if (currentPos > 0) {
-          const shiftPromises = allCouriers
-            .filter(c => c.id !== courierId && (c.queue_position ?? 0) > currentPos)
-            .map(c => userStore.updateUserQueuePosition(c.id, (c.queue_position ?? 0) - 1))
-          await Promise.all(shiftPromises)
-        }
-      },
-
-      setCourierOnline: async (courierId, status) => {
-        const userStore = useUserStore.getState()
-        const allCouriers = userStore.users.filter(u => u.role === 'courier') as (Courier & { queue_position?: number })[]
-
-        // Hitung posisi terakhir
-        const maxPos = allCouriers
-          .filter(c => c.id !== courierId)
-          .reduce((max, c) => Math.max(max, c.queue_position ?? 0), 0)
-
-        await userStore.updateUser(courierId, {
-          is_online: true,
-          courier_status: status,
-          off_reason: '',
-        })
-
-        // Selalu masuk ke posisi terakhir
-        await userStore.updateUserQueuePosition(courierId, maxPos + 1)
-      },
-    }),
-    {
-      name: 'courier-storage',
-      storage: createJSONStorage(() => localStorage),
-      onRehydrateStorage: () => (state) => {
-        if (state && state._storeVersion !== STORE_VERSION) {
-          console.warn('Store version mismatch — resetting courier-storage')
-          state.reset()
-        }
-      }
+  addCourier: async (courier, password) => {
+    const result = await useUserStore.getState().addUser(courier, password)
+    if (!result.success) {
+      throw new Error(result.error || 'Gagal membuat akun kurir')
     }
-  )
-)
+  },
+
+  updateCourier: async (id, data) => {
+    await useUserStore.getState().updateUser(id, data)
+  },
+
+  updateCourierStatus: async (id, data) => {
+    await get().updateCourier(id, data)
+  },
+
+  removeCourier: async (id) => {
+    await useUserStore.getState().removeUser(id)
+  },
+
+  getAvailableCouriers: () => {
+    const { users } = useUserStore.getState()
+    return users.filter(u =>
+      u.role === 'courier' && u.is_active && u.is_online
+    ) as Courier[]
+  },
+
+  rotateQueue: async (assignedCourierId) => {
+    const userStore = useUserStore.getState()
+    const allCouriers = userStore.users.filter(u => u.role === 'courier') as (Courier & { queue_position?: number })[]
+    if (allCouriers.length === 0) return
+    
+    const sorted = [...allCouriers].sort((a, b) =>
+      (a.queue_position ?? 999) - (b.queue_position ?? 999)
+    )
+    
+    const maxPosition = sorted.reduce((max, c) => Math.max(max, c.queue_position ?? 0), 0)
+    const assignedCourier = sorted.find(c => c.id === assignedCourierId)
+    if (!assignedCourier) return
+    
+    const assignedCurrentPos = assignedCourier.queue_position ?? 1
+    
+    // Shift others up and move assigned to the end
+    const updatePromises = sorted
+      .filter(c => c.id !== assignedCourierId && (c.queue_position ?? 999) > assignedCurrentPos)
+      .map(c => userStore.updateUserQueuePosition(c.id, (c.queue_position ?? 999) - 1))
+    
+    updatePromises.push(userStore.updateUserQueuePosition(assignedCourierId, maxPosition))
+    await Promise.all(updatePromises)
+  },
+
+  setCourierOffline: async (courierId, reason) => {
+    const userStore = useUserStore.getState()
+    const allCouriers = userStore.users.filter(u => u.role === 'courier') as (Courier & { queue_position?: number })[]
+    const thisCourier = allCouriers.find(c => c.id === courierId)
+    const currentPos = thisCourier?.queue_position ?? 0
+
+    await userStore.updateUser(courierId, {
+      is_online: false,
+      courier_status: 'off',
+      off_reason: reason,
+      queue_position: null as any,
+    })
+
+    if (currentPos > 0) {
+      const shiftPromises = allCouriers
+        .filter(c => c.id !== courierId && (c.queue_position ?? 0) > currentPos)
+        .map(c => userStore.updateUserQueuePosition(c.id, (c.queue_position ?? 0) - 1))
+      await Promise.all(shiftPromises)
+    }
+  },
+
+  setCourierOnline: async (courierId, status) => {
+    const userStore = useUserStore.getState()
+    const allCouriers = userStore.users.filter(u => u.role === 'courier') as (Courier & { queue_position?: number })[]
+    
+    const maxPos = allCouriers
+      .filter(c => c.id !== courierId)
+      .reduce((max, c) => Math.max(max, c.queue_position ?? 0), 0)
+
+    await userStore.updateUser(courierId, {
+      is_online: true,
+      courier_status: status,
+      off_reason: '',
+    })
+
+    await userStore.updateUserQueuePosition(courierId, maxPos + 1)
+  },
+}))

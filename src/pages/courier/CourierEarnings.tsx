@@ -202,7 +202,7 @@ export function CourierEarnings() {
                 <RechartsLib.YAxis tick={{ fontSize: 11 }} tickFormatter={formatChartCurrency} width={45} />
                 <RechartsLib.Tooltip
                   formatter={(value: number | undefined) => [formatCurrency(value ?? 0), 'Pendapatan']}
-                  labelFormatter={(label) => `Periode: ${label}`}
+                  labelFormatter={(label: any) => `Periode: ${label}`}
                 />
                 <RechartsLib.Bar dataKey="earnings" fill="#6366f1" radius={[4, 4, 0, 0]} />
               </RechartsLib.BarChart>

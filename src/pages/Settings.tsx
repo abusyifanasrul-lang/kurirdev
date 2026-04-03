@@ -295,7 +295,6 @@ export function Settings() {
         id: crypto.randomUUID(),
         name: newUser.name,
         email: newUser.email,
-        password: newUser.password,
         role: newUser.role as UserRole,
         phone: newUser.phone,
         is_active: true,
@@ -304,7 +303,7 @@ export function Settings() {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
-      const result = await addUser(userData);
+      const result = await addUser(userData, newUser.password);
       
       if (result?.success) {
         console.log('User added successfully, closing modal.');
@@ -350,7 +349,7 @@ export function Settings() {
   const handleSaveEditUser = () => {
     if (!selectedUserToEdit) return;
 
-    const updates: Partial<UserType> & { password?: string } = {
+    const updates: Partial<UserType> = {
       name: editUserForm.name,
       email: editUserForm.email,
       phone: editUserForm.phone,
@@ -360,11 +359,9 @@ export function Settings() {
     };
 
     if (editUserForm.password) {
-      // Logic to update password would technically be separate or handled here
-      // For now we just pretend to update it in the User object, 
-      // though typically password isn't stored in plain text.
-      // The mock store doesn't check password anyway, so this is symbolic.
-      updates.password = editUserForm.password;
+      // NOTE: Password updates should handled via Supabase Auth RPC or a dedicated service.
+      // For now, we are omitting this to maintain User interface integrity.
+      console.warn('Password update requested but not yet implemented in secure flow.');
     }
 
     updateUser(selectedUserToEdit.id, updates);
