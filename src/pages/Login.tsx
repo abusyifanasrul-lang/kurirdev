@@ -231,9 +231,17 @@ export function Login() {
               </button>
             </div>
             {showForgotInfo && (
-              <p className="text-xs text-gray-500 text-center mt-1">
-                Hubungi admin untuk mereset password Anda.
-              </p>
+              <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-lg space-y-1">
+                <p className="text-[10px] text-indigo-700 font-semibold uppercase tracking-wider">
+                  Info Login
+                </p>
+                <p className="text-xs text-indigo-600">
+                  Password default: <span className="font-bold">kurirdev123</span>
+                </p>
+                <p className="text-[10px] text-indigo-400 italic">
+                  Hubungi admin jika Anda tetap tidak bisa masuk.
+                </p>
+              </div>
             )}
 
             <button

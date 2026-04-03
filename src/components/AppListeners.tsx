@@ -15,7 +15,7 @@ import {
 import { onForegroundMessage } from '@/lib/fcm'
 
 export const AppListeners = () => {
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   const { fetchProfile } = useUserStore()
   const { fetchSettings } = useSettingsStore()
 
@@ -35,8 +35,13 @@ export const AppListeners = () => {
             table: 'profiles',
             filter: `id=eq.${user.id}`
           },
-          () => {
-            fetchProfile(user.id)
+          (payload: any) => {
+            if (payload.new && payload.new.is_active === false) {
+              console.warn('⚠️ Akun disuspend oleh admin. Melakukan logout otomatis...')
+              logout()
+            } else {
+              fetchProfile(user.id)
+            }
           }
         )
         .subscribe()

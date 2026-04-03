@@ -48,7 +48,6 @@ export function CourierProfile() {
 
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
-    currentPassword: '',
     newPassword: '',
     confirmPassword: '',
   });
@@ -80,7 +79,7 @@ export function CourierProfile() {
     if (error) {
       setMessage({ type: 'error', text: `Gagal memperbarui password: ${error.message}` });
     } else {
-      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setPasswordForm({ newPassword: '', confirmPassword: '' });
       setIsChangePasswordOpen(false);
       setMessage({ type: 'success', text: 'Password berhasil diperbarui!' });
     }
@@ -212,32 +211,6 @@ export function CourierProfile() {
             <div className="p-4 bg-gray-50/50 space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
-                  Password Saat Ini
-                </label>
-                <input
-                  type="password"
-                  value={passwordForm.currentPassword}
-                  onChange={(e) => {
-                    setPasswordForm({ ...passwordForm, currentPassword: e.target.value });
-                    if (message?.text === 'Password saat ini salah') setMessage(null);
-                  }}
-                  className={cn(
-                    "w-full px-4 py-3 bg-white border rounded-xl focus:ring-2 transition-all",
-                    message?.text === 'Password saat ini salah'
-                      ? "border-red-500 focus:ring-red-200"
-                      : "border-gray-200 focus:ring-green-500"
-                  )}
-                  placeholder="Masukkan password saat ini"
-                />
-                {message?.text === 'Password saat ini salah' && (
-                  <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />
-                    {message.text}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
                   Password Baru
                 </label>
                 <input
@@ -291,7 +264,7 @@ export function CourierProfile() {
               </div>
               <button
                 onClick={handleChangePassword}
-                disabled={isLoading || !passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword}
+                disabled={isLoading || !passwordForm.newPassword || !passwordForm.confirmPassword}
                 className={cn(
                   "w-full py-3 bg-green-600 text-white font-bold rounded-xl shadow-lg shadow-green-200 transition-all active:scale-95",
                   isLoading ? "opacity-70 cursor-not-allowed" : "hover:bg-green-700"

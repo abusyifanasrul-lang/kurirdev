@@ -10,7 +10,6 @@ import {
 } from '@/lib/orderCache'
 import { sendMockNotification } from '@/utils/notification'
 import { useSettingsStore } from '@/stores/useSettingsStore'
-import { logger } from '@/lib/logger'
 
 interface OrderState {
   orders: Order[]
@@ -45,7 +44,6 @@ interface OrderState {
   updateOrderWaiting: (orderId: string, isWaiting: boolean) => Promise<void>
   updateOrderField: (orderId: string, field: string, value: any) => Promise<void>
   
-  generateOrderId: () => Promise<string>
   getOrdersByCourier: (courierId: string) => Order[]
   getRecentOrders: (limit?: number) => Order[]
   
@@ -269,20 +267,24 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     }
   },
 
-  addOrder: async (order: Order) => {
-    const { error } = await (supabase.from('orders') as any).insert(order)
+  addOrder: async (orderData: any) => {
+    const { data, error } = await (supabase.from('orders') as any)
+      .insert(orderData)
+      .select()
+      .single()
     
     if (error) {
       console.error('Supabase error inserting order:', error)
       throw new Error(error.message || 'Gagal menyimpan order ke database')
     }
     
-    set(state => ({ orders: [order, ...state.orders] }))
+    const newOrder = data as Order
+    set(state => ({ orders: [newOrder, ...state.orders] }))
 
     sendMockNotification(
       'Order Baru Masuk!',
-      `Order ${order.order_number} sebesar Rp ${order.total_fee.toLocaleString('id-ID')} menunggumu!`,
-      { orderId: order.id }
+      `Order ${newOrder.order_number} sebesar Rp ${newOrder.total_fee.toLocaleString('id-ID')} menunggumu!`,
+      { orderId: newOrder.id }
     )
   },
 
@@ -468,67 +470,6 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     }).eq('id', orderId);
   },
 
-  generateOrderId: async () => {
-    const maxRetries = 3
-    let retryCount = 0
-
-    const now = new Date()
-    const DD = String(now.getDate()).padStart(2, '0')
-    const MM = String(now.getMonth() + 1).padStart(2, '0')
-    const YY = String(now.getFullYear()).slice(-2)
-    const prefix = `P${DD}${MM}${YY}`
-
-    while (retryCount < maxRetries) {
-      try {
-        // Find the highest sequence number for today
-        const { data: latestOrdersRaw, error: fetchError } = await supabase
-          .from('orders')
-          .select('order_number')
-          .ilike('order_number', `${prefix}%`)
-          .order('order_number', { ascending: false })
-          .limit(1)
-
-        if (fetchError) throw fetchError
-
-        const latestOrders = latestOrdersRaw as { order_number: string }[]
-
-        let nextSequence = 1
-        if (latestOrders && latestOrders.length > 0) {
-          const lastId = latestOrders[0].order_number
-          const sequencePart = lastId.replace(prefix, '')
-          nextSequence = parseInt(sequencePart, 10) + 1
-        }
-
-        const candidateId = `${prefix}${String(nextSequence).padStart(3, '0')}`
-
-        // Double check if this candidate already exists (atomic-ish check)
-        const { data: existing, error: checkError } = await supabase
-          .from('orders')
-          .select('id')
-          .eq('order_number', candidateId)
-          .maybeSingle()
-
-        if (checkError) throw checkError
-
-        if (!existing) {
-          return candidateId
-        }
-
-        // Collision detected! Wait and retry
-        logger.warn(`Order ID collision detected for ${candidateId}. Retrying...`, { retryCount })
-        retryCount++
-        await new Promise(res => setTimeout(res, Math.random() * 200 * retryCount))
-      } catch (err) {
-        logger.error('Error generating order ID', err)
-        retryCount++
-      }
-    }
-
-    // Safety fallback: guaranteed unique but non-sequential
-    const fallbackId = `${prefix}X${Math.random().toString(36).substring(2, 5).toUpperCase()}`
-    logger.warn(`Using fallback Order ID: ${fallbackId}`)
-    return fallbackId
-  },
 
   getOrdersByCourier: (courierId) => {
     return get().orders.filter(o => o.courier_id === courierId)

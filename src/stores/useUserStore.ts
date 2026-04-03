@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabaseClient'
-import { User, UserRole } from '@/types'
+import { User, UserRole, CreateUserInput } from '@/types'
 import { logger } from '@/lib/logger'
 
 interface UserState {
@@ -10,7 +10,7 @@ interface UserState {
   fetchUsers: () => Promise<void>
   fetchProfile: (id: string) => Promise<void>
   subscribeUsers: () => () => void
-  addUser: (user: User, password: string) => Promise<{ success: boolean; error?: string }>
+  addUser: (data: CreateUserInput) => Promise<{ success: boolean; error?: string }>
   updateUser: (id: string, data: Partial<User>) => Promise<void>
   removeUser: (id: string) => Promise<void>
   updateUserQueuePosition: (id: string, position: number) => Promise<void>
@@ -127,11 +127,12 @@ export const useUserStore = create<UserState>()((set, get) => ({
     }
   },
 
-  addUser: async (user: User, password: string) => {
+  addUser: async (data: CreateUserInput) => {
     set({ isLoading: true, error: null })
     try {
+      const { name, email, password, role, phone } = data
       // 1. Proactive Frontend Validation
-      if (!user.name || !user.email || !password || !user.role) {
+      if (!name || !email || !password || !role) {
         throw new Error('❌ Data tidak lengkap! Pastikan Nama, Email, Password, dan Role terisi.')
       }
       if (password.length < 8) {
@@ -148,11 +149,11 @@ export const useUserStore = create<UserState>()((set, get) => ({
           Authorization: `Bearer ${session.access_token}`
         },
         body: {
-          email: user.email,
-          password: password,
-          name: user.name,
-          role: user.role,
-          phone: user.phone
+          email,
+          password,
+          name,
+          role,
+          phone
         }
       })
 
@@ -163,18 +164,14 @@ export const useUserStore = create<UserState>()((set, get) => ({
       const response = await Promise.race([invokePromise, timeoutPromise]) as any
 
       if (response.error) {
-        // Supabase functions might wrap the actual error response body
-        // We can extract custom error details thrown by our edge function
         let detailedMessage = response.error.message || 'Gagal menambahkan user'
         
         try {
           if (response.error.context) {
             const body = await response.error.context.json()
             if (body && (body.error || body.details)) {
-              
               const rawError = `${body.error || ''} ${body.details || ''}`.toLowerCase()
               
-              // Friendly Indonesian Error Mapping
               if (rawError.includes('already registered')) {
                 detailedMessage = '❌ Email ini sudah pernah didaftarkan. Gunakan email lain.'
               } else if (rawError.includes('password should be at least')) {

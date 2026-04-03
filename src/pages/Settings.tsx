@@ -233,9 +233,7 @@ export function Settings() {
                 currentUser={user}
                 users={users}
                 onAddUser={async (data: any) => {
-                  const { password, ...userData } = data;
-                  await addUser(userData, password);
-                  return { success: true };
+                  return await addUser(data);
                 }}
                 onUpdateUser={updateUser}
                 onToggleSuspend={(u) => updateCourier(u.id, { is_active: !u.is_active })}

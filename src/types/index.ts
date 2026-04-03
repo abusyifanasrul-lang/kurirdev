@@ -50,6 +50,14 @@ export interface User {
   unpaid_amount?: number;
 }
 
+export interface CreateUserInput {
+  name: string;
+  email: string;
+  role: UserRole;
+  phone?: string;
+  password?: string;
+}
+
 export interface CustomerAddress {
   id: string;
   label: string;

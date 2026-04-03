@@ -52,7 +52,7 @@ type SortField = 'order_number' | 'customer_name' | 'status' | 'courier_id' | 'p
 type SortOrder = 'asc' | 'desc';
 
 export function Orders() {
-  const { orders, fetchOrdersByDateRange, addOrder, assignCourier, cancelOrder, generateOrderId, updateOrder } = useOrderStore();
+  const { orders, fetchOrdersByDateRange, addOrder, assignCourier, cancelOrder, updateOrder } = useOrderStore();
   const { rotateQueue } = useCourierStore();
   const { users } = useUserStore();
   const { addNotification } = useNotificationStore();
@@ -396,9 +396,7 @@ export function Orders() {
         }
       }
 
-      const orderData: Order = {
-        id: crypto.randomUUID(),
-        order_number: await generateOrderId(),
+      const orderData: any = {
         ...newOrder,
         customer_id: customerId,
         customer_address_id: activeAddressId,

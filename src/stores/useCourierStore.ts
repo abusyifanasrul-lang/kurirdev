@@ -25,7 +25,7 @@ export const useCourierStore = create<CourierState>()((_set, get) => ({
   },
 
   addCourier: async (courier, password) => {
-    const result = await useUserStore.getState().addUser(courier, password)
+    const result = await useUserStore.getState().addUser({ ...courier, password })
     if (!result.success) {
       throw new Error(result.error || 'Gagal membuat akun kurir')
     }
