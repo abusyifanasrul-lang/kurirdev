@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Plus, Download, Search, ArrowUpDown, ChevronUp, ChevronDown, Printer, Pencil, Trash2, Check, XCircle } from 'lucide-react';
+import { Plus, Download, Printer, Pencil, Trash2, Check, XCircle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
 import {
@@ -11,22 +11,15 @@ import {
   getOrdersByDateRange
 } from '@/lib/orderCache';
 import { Header } from '@/components/layout/Header';
-import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Modal } from '@/components/ui/Modal';
 import { Textarea } from '@/components/ui/Textarea';
 import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
-import {
-  Table,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableHeader,
-  TableCell,
-  TableEmpty,
-} from '@/components/ui/Table';
+import { OrderFilters } from '@/components/orders/OrderFilters';
+import { OrderTable } from '@/components/orders/OrderTable';
+import { OrderListMobile } from '@/components/orders/OrderListMobile';
 
 // Stores & Types
 import { useOrderStore } from '@/stores/useOrderStore';
@@ -37,25 +30,6 @@ import { useSettingsStore } from '@/stores/useSettingsStore';
 import { useCustomerStore } from '@/stores/useCustomerStore';
 import { useAuth } from '@/context/AuthContext';
 import type { Order, CreateOrderPayload, PaymentStatus, Customer } from '@/types';
-
-const statusOptions = [
-  { value: '', label: 'Semua Status' },
-  { value: 'pending', label: '⏳ Menunggu Kurir' },
-  { value: 'assigned', label: '📲 Kurir Ditugaskan' },
-  { value: 'picked_up', label: '🛵 GAS — Menuju Penjual' },
-  { value: 'in_transit', label: '🛵 GAS — Menuju Customer' },
-  { value: 'delivered', label: '✅ CEKLIS — Terkirim' },
-  { value: 'cancelled', label: '❌ CANCEL — Dibatalkan' },
-];
-
-const searchCategories = [
-  { value: 'all', label: 'All Fields' },
-  { value: 'order_number', label: 'Order ID' },
-  { value: 'customer_name', label: 'Customer' },
-  { value: 'customer_phone', label: 'Phone' },
-  { value: 'courier_name', label: 'Courier' },
-  { value: 'customer_address', label: 'Address' },
-];
 
 type SortField = 'order_number' | 'customer_name' | 'status' | 'courier_id' | 'payment_status' | 'total_fee' | 'created_at';
 type SortOrder = 'asc' | 'desc';
@@ -293,12 +267,7 @@ export function Orders() {
     }));
   };
 
-  const getSortIcon = (field: SortField) => {
-    if (sortConfig.field !== field) return <ArrowUpDown className="h-3 w-3 ml-1 text-gray-400" />;
-    return sortConfig.order === 'asc' ?
-      <ChevronUp className="h-3 w-3 ml-1 text-indigo-600" /> :
-      <ChevronDown className="h-3 w-3 ml-1 text-indigo-600" />;
-  };
+
 
   const availableCouriers = users
     .filter(u => u.role === 'courier' && u.is_active === true && u.is_online === true)
@@ -821,39 +790,16 @@ export function Orders() {
         </div>
 
         {/* Filters */}
-        <Card className="mb-6">
-          <div className="flex flex-col lg:flex-row flex-wrap gap-4">
-            <div className="flex-1 min-w-[300px] flex gap-2">
-              <div className="w-40">
-                <Select
-                  options={searchCategories}
-                  value={searchCategory}
-                  onChange={(e) => setSearchCategory(e.target.value)}
-                />
-              </div>
-              <div className="flex-1">
-                <Input
-                  placeholder="Search orders..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  leftIcon={<Search className="h-4 w-4" />}
-                />
-              </div>
-            </div>
-            <div className="w-full lg:w-48">
-              <Select
-                options={statusOptions}
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                placeholder="All Status"
-              />
-            </div>
-            <div className="flex gap-2 w-full lg:w-auto">
-              <Input type="date" value={dateFilter.start} onChange={(e) => handleDateFilterChange(e.target.value, dateFilter.end)} />
-              <Input type="date" value={dateFilter.end} onChange={(e) => handleDateFilterChange(dateFilter.start, e.target.value)} />
-            </div>
-          </div>
-        </Card>
+        <OrderFilters 
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          searchCategory={searchCategory}
+          setSearchCategory={setSearchCategory}
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+          dateFilter={dateFilter}
+          handleDateFilterChange={handleDateFilterChange}
+        />
 
         {/* Cache Status UI */}
         {cacheStatus === 'missing' && (
@@ -911,136 +857,28 @@ export function Orders() {
           </div>
         )}
 
-        {/* Orders Table */}
-        <Card padding="none" className="hidden lg:block">
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableHeader
-                  className="cursor-pointer hover:bg-gray-100 transition-colors"
-                  onClick={() => handleSort('order_number')}
-                >
-                  <div className="flex items-center">Order # {getSortIcon('order_number')}</div>
-                </TableHeader>
-                <TableHeader
-                  className="cursor-pointer hover:bg-gray-100 transition-colors"
-                  onClick={() => handleSort('customer_name')}
-                >
-                  <div className="flex items-center">Customer {getSortIcon('customer_name')}</div>
-                </TableHeader>
-                <TableHeader
-                  className="cursor-pointer hover:bg-gray-100 transition-colors"
-                  onClick={() => handleSort('status')}
-                >
-                  <div className="flex items-center">Status {getSortIcon('status')}</div>
-                </TableHeader>
-                <TableHeader
-                  className="cursor-pointer hover:bg-gray-100 transition-colors"
-                  onClick={() => handleSort('courier_id')}
-                >
-                  <div className="flex items-center">Courier {getSortIcon('courier_id')}</div>
-                </TableHeader>
-                <TableHeader
-                  className="cursor-pointer hover:bg-gray-100 transition-colors"
-                  onClick={() => handleSort('payment_status')}
-                >
-                  <div className="flex items-center">Setoran {getSortIcon('payment_status')}</div>
-                </TableHeader>
-                <TableHeader
-                  className="cursor-pointer hover:bg-gray-100 transition-colors"
-                  onClick={() => handleSort('total_fee')}
-                >
-                  <div className="flex items-center">Fee {getSortIcon('total_fee')}</div>
-                </TableHeader>
-                <TableHeader
-                  className="cursor-pointer hover:bg-gray-100 transition-colors"
-                  onClick={() => handleSort('created_at')}
-                >
-                  <div className="flex items-center">Created {getSortIcon('created_at')}</div>
-                </TableHeader>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredOrders.length === 0 ? (
-                <TableEmpty colSpan={6} message="No orders found" />
-              ) : (
-                filteredOrders.map((order) => (
-                  <TableRow
-                    key={order.id}
-                    className="cursor-pointer hover:bg-gray-50 transition-colors"
-                    onClick={() => { setSelectedOrder(order); setIsDetailModalOpen(true); }}
-                  >
-                    <TableCell className="font-medium text-indigo-600">{order.order_number}</TableCell>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-medium text-gray-900">{order.customer_name}</span>
-                        <span className="text-xs text-gray-500">{order.customer_phone}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusBadgeVariant(order.status)}>{getStatusLabel(order.status)}</Badge>
-                    </TableCell>
-                    <TableCell>{getCourierName(order.courier_id) || <span className="text-gray-400 italic">Unassigned</span>}</TableCell>
-                    <TableCell>
-                      {order.status === 'delivered' ? (
-                        order.payment_status === 'paid' ? (
-                          <Badge variant="success">Sudah Setor</Badge>
-                        ) : (
-                          isFinance && (
-                            <Button
-                              size="sm"
-                              className="bg-orange-500 hover:bg-orange-600 text-white h-7 px-2 text-[10px]"
-                              onClick={async (e) => {
-                                e.stopPropagation()
-                                const courierName = users.find(
-                                  u => u.id === order.courier_id
-                                )?.name || 'Kurir'
-                                setBulkSettleCourierName(courierName)
-                                
-                                // Load unpaid dari IndexedDB
-                                const unpaid =
-                                  await getUnpaidOrdersByCourier(
-                                    order.courier_id || ''
-                                  )
-                                setBulkUnpaidOrders(unpaid)
-                                setShowBulkSettle(true)
-                              }}
-                            >
-                              Konfirmasi Setor
-                            </Button>
-                          )
-                        )
-                      ) : (
-                        <Badge variant="default" className="text-gray-400 border-gray-200">Belum Setor</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>{formatCurrency(order.total_fee)}</TableCell>
-                    <TableCell className="text-gray-500">{format(new Date(order.created_at), 'dd MMM HH:mm')}</TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </Card>
+        {/* Orders List (Desktop & Mobile) */}
+        <OrderTable 
+          orders={filteredOrders}
+          onSelect={(order) => { setSelectedOrder(order); setIsDetailModalOpen(true); }}
+          onSort={handleSort}
+          sortField={sortConfig.field}
+          sortOrder={sortConfig.order}
+          getCourierName={getCourierName}
+          isFinance={isFinance}
+          onBulkSettle={async (order) => {
+            const courierName = users.find(u => u.id === order.courier_id)?.name || 'Kurir'
+            setBulkSettleCourierName(courierName)
+            const unpaid = await getUnpaidOrdersByCourier(order.courier_id || '')
+            setBulkUnpaidOrders(unpaid)
+            setShowBulkSettle(true)
+          }}
+        />
 
-        {/* Mobile List Info */}
-        <div className="lg:hidden space-y-3">
-          {filteredOrders.map(order => (
-            <Card key={order.id} padding="sm" onClick={() => { setSelectedOrder(order); setIsDetailModalOpen(true); }}>
-              <div className="flex justify-between items-start mb-2">
-                <div>
-                  <p className="font-bold text-indigo-600">{order.order_number}</p>
-                  <p className="text-sm font-medium">{order.customer_name}</p>
-                </div>
-                <Badge variant={getStatusBadgeVariant(order.status)}>{getStatusLabel(order.status)}</Badge>
-              </div>
-              <div className="text-sm text-gray-500 flex justify-between">
-                <span>{formatCurrency(order.total_fee)}</span>
-                <span>{format(new Date(order.created_at), 'dd MMM')}</span>
-              </div>
-            </Card>
-          ))}
-        </div>
+        <OrderListMobile 
+          orders={filteredOrders}
+          onSelect={(order) => { setSelectedOrder(order); setIsDetailModalOpen(true); }}
+        />
       </div>
 
       {/* CREATE ORDER MODAL */}

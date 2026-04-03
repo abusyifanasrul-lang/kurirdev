@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabaseClient'
 import { User, UserRole } from '@/types'
+import { logger } from '@/lib/logger'
 
 interface UserState {
   users: User[]
@@ -71,7 +72,8 @@ export const useUserStore = create<UserState>()((set, get) => ({
   subscribeUsers: () => {
     get().fetchUsers()
 
-    const channel = supabase.channel('public:profiles')
+    const channelId = `users_list_${Math.random().toString(36).substring(7)}`
+    const channel = supabase.channel(channelId)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'profiles' },
@@ -91,7 +93,11 @@ export const useUserStore = create<UserState>()((set, get) => ({
           }
         }
       )
-      .subscribe()
+      .subscribe((status, err) => {
+        if (status === 'CHANNEL_ERROR') {
+          logger.error(`Realtime subscription error for ${channelId}`, err)
+        }
+      })
       
     return () => {
       supabase.removeChannel(channel)

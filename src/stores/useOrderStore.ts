@@ -10,6 +10,7 @@ import {
 } from '@/lib/orderCache'
 import { sendMockNotification } from '@/utils/notification'
 import { useSettingsStore } from '@/stores/useSettingsStore'
+import { logger } from '@/lib/logger'
 
 interface OrderState {
   orders: Order[]
@@ -462,27 +463,65 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   },
 
   generateOrderId: async () => {
+    const maxRetries = 3
+    let retryCount = 0
+
     const now = new Date()
     const DD = String(now.getDate()).padStart(2, '0')
     const MM = String(now.getMonth() + 1).padStart(2, '0')
     const YY = String(now.getFullYear()).slice(-2)
     const prefix = `P${DD}${MM}${YY}`
-    
-    // Count directly from Supabase for all orders today (using prefix match)
-    // we use await inside the async function
-    const { count, error } = await supabase
-      .from('orders')
-      .select('*', { count: 'exact', head: true })
-      .ilike('order_number', `${prefix}%`)
-      
-    if (error) {
-      console.error('Error generating order ID:', error)
-      // Fallback: randomized suffix to avoid collision if DB check fails
-      const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0')
-      return `${prefix}${random}`
+
+    while (retryCount < maxRetries) {
+      try {
+        // Find the highest sequence number for today
+        const { data: latestOrdersRaw, error: fetchError } = await supabase
+          .from('orders')
+          .select('order_number')
+          .ilike('order_number', `${prefix}%`)
+          .order('order_number', { ascending: false })
+          .limit(1)
+
+        if (fetchError) throw fetchError
+
+        const latestOrders = latestOrdersRaw as { order_number: string }[]
+
+        let nextSequence = 1
+        if (latestOrders && latestOrders.length > 0) {
+          const lastId = latestOrders[0].order_number
+          const sequencePart = lastId.replace(prefix, '')
+          nextSequence = parseInt(sequencePart, 10) + 1
+        }
+
+        const candidateId = `${prefix}${String(nextSequence).padStart(3, '0')}`
+
+        // Double check if this candidate already exists (atomic-ish check)
+        const { data: existing, error: checkError } = await supabase
+          .from('orders')
+          .select('id')
+          .eq('order_number', candidateId)
+          .maybeSingle()
+
+        if (checkError) throw checkError
+
+        if (!existing) {
+          return candidateId
+        }
+
+        // Collision detected! Wait and retry
+        logger.warn(`Order ID collision detected for ${candidateId}. Retrying...`, { retryCount })
+        retryCount++
+        await new Promise(res => setTimeout(res, Math.random() * 200 * retryCount))
+      } catch (err) {
+        logger.error('Error generating order ID', err)
+        retryCount++
+      }
     }
-    
-    return `${prefix}${String((count ?? 0) + 1).padStart(3, '0')}`
+
+    // Safety fallback: guaranteed unique but non-sequential
+    const fallbackId = `${prefix}X${Math.random().toString(36).substring(2, 5).toUpperCase()}`
+    logger.warn(`Using fallback Order ID: ${fallbackId}`)
+    return fallbackId
   },
 
   getOrdersByCourier: (courierId) => {

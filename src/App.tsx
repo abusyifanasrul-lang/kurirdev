@@ -185,6 +185,8 @@ function PWAUpdateBanner() {
   );
 }
 
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+
 export function App() {
   const loadFromLocal = useCustomerStore(s => s.loadFromLocal);
   const syncFromServer = useCustomerStore(s => s.syncFromServer);
@@ -253,145 +255,147 @@ export function App() {
   }, [])
 
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <AppListeners />
-        <PWAUpdateBanner />
-        <BrowserRouter>
-          <Suspense fallback={<LoadingScreen />}>
-            <Routes>
-              {/* Login Page */}
-              <Route
-                path="/"
-                element={
-                  <AuthRoute>
-                    <Login />
-                  </AuthRoute>
-                }
-              />
-
-              {/* Admin Routes - accessible by all admin sub-roles */}
-              <Route
-                path="/admin"
-                element={
-                  <ProtectedRoute allowedRoles={ADMIN_ROLES}>
-                    <AdminLayout />
-                  </ProtectedRoute>
-                }
-              >
-                {/* Dashboard - Admin Kurir focused */}
-                <Route path="dashboard" element={<Dashboard />} />
-
-                {/* Owner Overview */}
-                <Route 
-                  path="overview" 
+    <ErrorBoundary>
+      <ThemeProvider>
+        <AuthProvider>
+          <AppListeners />
+          <PWAUpdateBanner />
+          <BrowserRouter>
+            <Suspense fallback={<LoadingScreen />}>
+              <Routes>
+                {/* Login Page */}
+                <Route
+                  path="/"
                   element={
-                    <ProtectedRoute allowedRoles={['owner', 'admin']}>
-                      <OwnerOverview />
-                    </ProtectedRoute>
-                  } 
+                    <AuthRoute>
+                      <Login />
+                    </AuthRoute>
+                  }
                 />
 
-                {/* Orders - Admin Kurir full, others read-only */}
-                <Route path="orders" element={<Orders />} />
-
-                {/* Couriers */}
-                <Route path="couriers" element={<Couriers />} />
-
-                {/* Reports - Owner & Finance */}
-                <Route 
-                  path="reports" 
+                {/* Admin Routes - accessible by all admin sub-roles */}
+                <Route
+                  path="/admin"
                   element={
-                    <ProtectedRoute allowedRoles={['owner', 'finance', 'admin']}>
-                      <Reports />
+                    <ProtectedRoute allowedRoles={ADMIN_ROLES}>
+                      <AdminLayout />
                     </ProtectedRoute>
-                  } 
-                />
+                  }
+                >
+                  {/* Dashboard - Admin Kurir focused */}
+                  <Route path="dashboard" element={<Dashboard />} />
 
-                {/* Notifications - Admin Kurir only */}
-                <Route 
-                  path="notifications" 
+                  {/* Owner Overview */}
+                  <Route 
+                    path="overview" 
+                    element={
+                      <ProtectedRoute allowedRoles={['owner', 'admin']}>
+                        <OwnerOverview />
+                      </ProtectedRoute>
+                    } 
+                  />
+
+                  {/* Orders - Admin Kurir full, others read-only */}
+                  <Route path="orders" element={<Orders />} />
+
+                  {/* Couriers */}
+                  <Route path="couriers" element={<Couriers />} />
+
+                  {/* Reports - Owner & Finance */}
+                  <Route 
+                    path="reports" 
+                    element={
+                      <ProtectedRoute allowedRoles={['owner', 'finance', 'admin']}>
+                        <Reports />
+                      </ProtectedRoute>
+                    } 
+                  />
+
+                  {/* Notifications - Admin Kurir only */}
+                  <Route 
+                    path="notifications" 
+                    element={
+                      <ProtectedRoute allowedRoles={['admin_kurir', 'admin']}>
+                        <Notifications />
+                      </ProtectedRoute>
+                    } 
+                  />
+
+                  {/* Finance Routes */}
+                  <Route 
+                    path="finance" 
+                    element={
+                      <ProtectedRoute allowedRoles={['finance', 'owner', 'admin']}>
+                        <FinanceDashboard />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="finance/penagihan" 
+                    element={
+                      <ProtectedRoute allowedRoles={['finance', 'owner', 'admin']}>
+                        <FinancePenagihan />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="finance/analisa" 
+                    element={
+                      <ProtectedRoute allowedRoles={['finance', 'owner', 'admin']}>
+                        <FinanceAnalisa />
+                      </ProtectedRoute>
+                    } 
+                  />
+
+                  <Route 
+                    path="settings" 
+                    element={
+                      <ProtectedRoute allowedRoles={['admin', 'owner', 'admin_kurir', 'finance']}>
+                        <Settings />
+                      </ProtectedRoute>
+                    } 
+                  />
+
+                  {/* Diagnostics - Super Admin ONLY (God View) */}
+                  <Route 
+                    path="diagnostics" 
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <SystemDiagnostics />
+                      </ProtectedRoute>
+                    } 
+                  />
+
+                  {/* Default redirect for /admin */}
+                  <Route index element={<AdminRedirect />} />
+                </Route>
+
+                {/* Courier PWA Routes */}
+                <Route
+                  path="/courier"
                   element={
-                    <ProtectedRoute allowedRoles={['admin_kurir', 'admin']}>
-                      <Notifications />
+                    <ProtectedRoute allowedRoles={['courier']}>
+                      <CourierLayout />
                     </ProtectedRoute>
-                  } 
-                />
+                  }
+                >
+                  <Route index element={<CourierDashboard />} />
+                  <Route path="orders" element={<CourierOrders />} />
+                  <Route path="orders/:id" element={<CourierOrderDetail />} />
+                  <Route path="notifications" element={<CourierNotifications />} />
+                  <Route path="history" element={<CourierHistory />} />
+                  <Route path="earnings" element={<CourierEarnings />} />
+                  <Route path="profile" element={<CourierProfile />} />
+                </Route>
 
-                {/* Finance Routes */}
-                <Route 
-                  path="finance" 
-                  element={
-                    <ProtectedRoute allowedRoles={['finance', 'owner', 'admin']}>
-                      <FinanceDashboard />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="finance/penagihan" 
-                  element={
-                    <ProtectedRoute allowedRoles={['finance', 'owner', 'admin']}>
-                      <FinancePenagihan />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="finance/analisa" 
-                  element={
-                    <ProtectedRoute allowedRoles={['finance', 'owner', 'admin']}>
-                      <FinanceAnalisa />
-                    </ProtectedRoute>
-                  } 
-                />
-
-                <Route 
-                  path="settings" 
-                  element={
-                    <ProtectedRoute allowedRoles={['admin', 'owner', 'admin_kurir', 'finance']}>
-                      <Settings />
-                    </ProtectedRoute>
-                  } 
-                />
-
-                {/* Diagnostics - Super Admin ONLY (God View) */}
-                <Route 
-                  path="diagnostics" 
-                  element={
-                    <ProtectedRoute allowedRoles={['admin']}>
-                      <SystemDiagnostics />
-                    </ProtectedRoute>
-                  } 
-                />
-
-                {/* Default redirect for /admin */}
-                <Route index element={<AdminRedirect />} />
-              </Route>
-
-              {/* Courier PWA Routes */}
-              <Route
-                path="/courier"
-                element={
-                  <ProtectedRoute allowedRoles={['courier']}>
-                    <CourierLayout />
-                  </ProtectedRoute>
-                }
-              >
-                <Route index element={<CourierDashboard />} />
-                <Route path="orders" element={<CourierOrders />} />
-                <Route path="orders/:id" element={<CourierOrderDetail />} />
-                <Route path="notifications" element={<CourierNotifications />} />
-                <Route path="history" element={<CourierHistory />} />
-                <Route path="earnings" element={<CourierEarnings />} />
-                <Route path="profile" element={<CourierProfile />} />
-              </Route>
-
-              {/* Fallback */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </Suspense>
-        </BrowserRouter>
-      </AuthProvider>
-    </ThemeProvider>
+                {/* Fallback */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </Suspense>
+          </BrowserRouter>
+        </AuthProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 

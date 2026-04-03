@@ -144,7 +144,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const keysToRemove = [
         'session-storage',
         'business-settings',
-        'kurirdev_db_meta'
+        'kurirdev_db_meta',
+        'courier-storage'
       ];
       keysToRemove.forEach(key => localStorage.removeItem(key));
       
