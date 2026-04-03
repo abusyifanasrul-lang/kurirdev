@@ -4,7 +4,8 @@ import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useCustomerStore } from '@/stores/useCustomerStore';
-import { getCustomerSyncTime } from '@/lib/orderCache';
+import { useUserStore } from '@/stores/useUserStore';
+import { getCustomerSyncTime, getProfileSyncTime } from '@/lib/orderCache';
 import { AppListeners } from '@/components/AppListeners';
 // NOTE: fcm.ts is NOT statically imported — it's dynamically imported only for courier role
 // to avoid pulling firebase/messaging (~30KB) into the main bundle for all users.
@@ -190,16 +191,29 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 export function App() {
   const loadFromLocal = useCustomerStore(s => s.loadFromLocal);
   const syncFromServer = useCustomerStore(s => s.syncFromServer);
+  const loadUsersFromLocal = useUserStore(s => s.loadFromLocal);
+  const syncUsersFromServer = useUserStore(s => s.syncFromServer);
 
   useEffect(() => {
     // Defer non-critical customer sync — runs after current event loop
     const syncTimer = setTimeout(() => {
+      // Customer sync
       loadFromLocal().then(() => {
         const lastSyncRaw = getCustomerSyncTime();
         const lastSyncDate = lastSyncRaw ? new Date(lastSyncRaw).toDateString() : null;
         const today = new Date().toDateString();
         if (lastSyncDate !== today) {
           syncFromServer();
+        }
+      });
+
+      // User Profile sync
+      loadUsersFromLocal().then(() => {
+        const lastSyncRaw = getProfileSyncTime();
+        const lastSyncDate = lastSyncRaw ? new Date(lastSyncRaw).toDateString() : null;
+        const today = new Date().toDateString();
+        if (lastSyncDate !== today) {
+          syncUsersFromServer();
         }
       });
     }, 0);

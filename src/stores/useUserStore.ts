@@ -2,11 +2,15 @@ import { create } from 'zustand'
 import { supabase } from '@/lib/supabaseClient'
 import { User, UserRole, CreateUserInput } from '@/types'
 import { logger } from '@/lib/logger'
+import { cacheProfiles, getCachedProfiles, saveProfileSyncTime } from '@/lib/orderCache'
 
 interface UserState {
   users: User[]
   isLoading: boolean
+  isLoaded: boolean
   error: string | null
+  loadFromLocal: () => Promise<void>
+  syncFromServer: () => Promise<void>
   fetchUsers: () => Promise<void>
   fetchProfile: (id: string) => Promise<void>
   subscribeUsers: () => () => void
@@ -44,7 +48,34 @@ const mapProfileToUser = (profile: any): User => ({
 export const useUserStore = create<UserState>()((set, get) => ({
   users: [],
   isLoading: true,
+  isLoaded: false,
   error: null,
+
+  loadFromLocal: async () => {
+    try {
+      const cached = await getCachedProfiles()
+      if (cached.length > 0) {
+        set({ users: cached, isLoaded: true })
+      }
+    } catch (err) {
+      console.error('Failed to load users from local storage', err)
+    }
+  },
+
+  syncFromServer: async () => {
+    try {
+      const { data, error } = await supabase.from('profiles').select('*')
+      if (error) throw error
+      if (data) {
+        const users = data.map(p => mapProfileToUser(p))
+        await cacheProfiles(users)
+        set({ users, isLoaded: true })
+        saveProfileSyncTime()
+      }
+    } catch (err) {
+      console.error('Failed to sync users from server', err)
+    }
+  },
 
   fetchUsers: async () => {
     set({ isLoading: true })
@@ -80,16 +111,22 @@ export const useUserStore = create<UserState>()((set, get) => ({
         (payload) => {
           const { eventType, new: newRec, old: oldRec } = payload
           const currentUsers = [...get().users]
-          
+          const { profiles } = require('@/lib/orderCache').localDB // Reach into DB for atomic updates
+
           if (eventType === 'INSERT') {
-            set({ users: [...currentUsers, mapProfileToUser(newRec)] })
+            const newUser = mapProfileToUser(newRec)
+            set({ users: [...currentUsers, newUser] })
+            profiles.put(newUser)
           } else if (eventType === 'UPDATE') {
+            const updatedUser = mapProfileToUser(newRec)
             const updatedUsers = currentUsers.map(u => 
-              u.id === newRec.id ? { ...u, ...mapProfileToUser(newRec) } : u
+              u.id === newRec.id ? updatedUser : u
             )
             set({ users: updatedUsers })
+            profiles.put(updatedUser)
           } else if (eventType === 'DELETE') {
             set({ users: currentUsers.filter(u => u.id !== oldRec.id) })
+            profiles.delete(oldRec.id)
           }
         }
       )

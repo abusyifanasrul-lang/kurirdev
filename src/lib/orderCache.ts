@@ -33,6 +33,7 @@ export interface DBMeta {
   sync_completed?: boolean
   last_delta_sync?: string
   last_customer_sync?: string
+  last_profile_sync?: string
 }
 
 const META_KEY = 'kurirdev_db_meta'
@@ -87,6 +88,7 @@ class KurirDevDB extends Dexie {
   orders!: Table<Order & { _date: string }>
   customers!: Table<Customer>
   notifications!: Table<import('@/types').Notification>
+  profiles!: Table<import('@/types').User>
 
   constructor() {
     super('KurirDevCache')
@@ -97,10 +99,11 @@ class KurirDevDB extends Dexie {
       orders: 'id, _date, courier_id, status, created_at',
       customers: 'id, name, phone, updated_at'
     })
-    this.version(3).stores({
+    this.version(4).stores({
       orders: 'id, _date, courier_id, status, created_at',
       customers: 'id, name, phone, updated_at',
-      notifications: 'id, user_id, is_read, sent_at'
+      notifications: 'id, user_id, is_read, sent_at',
+      profiles: 'id, role, is_active, is_online'
     })
   }
 }
@@ -625,4 +628,23 @@ export async function markNotificationReadLocal(id: string): Promise<void> {
   if (notif) {
     await localDB.notifications.put({ ...notif, is_read: true })
   }
+}
+
+// --- Profile Cache Methods ---
+
+export async function cacheProfiles(profiles: import('@/types').User[]): Promise<void> {
+  if (profiles.length === 0) return
+  await localDB.profiles.bulkPut(profiles)
+}
+
+export async function getCachedProfiles(): Promise<import('@/types').User[]> {
+  return await localDB.profiles.toArray()
+}
+
+export function saveProfileSyncTime(timeIso?: string): void {
+  saveMeta({ last_profile_sync: timeIso || new Date().toISOString() })
+}
+
+export function getProfileSyncTime(): string | null {
+  return getMeta().last_profile_sync || null
 }

@@ -7,11 +7,8 @@ import {
   format, parseISO, startOfDay, endOfDay, subDays, isWithinInterval,
   eachDayOfInterval, startOfMonth
 } from 'date-fns';
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell
-} from 'recharts';
 import { Header } from '@/components/layout/Header';
+import { lazy, Suspense } from 'react';
 import { Card, StatCard } from '@/components/ui/Card';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useUserStore } from '@/stores/useUserStore';
@@ -21,6 +18,17 @@ import { getOrdersByDateRange } from '@/lib/orderCache';
 import type { Order } from '@/types';
 
 type Period = '7days' | '30days' | 'thisMonth';
+
+const RevenueBarChart = lazy(() => import('@/components/finance/FinanceCharts').then(m => ({ default: m.RevenueBarChart })));
+const PaymentPieChart = lazy(() => import('@/components/finance/FinanceCharts').then(m => ({ default: m.PaymentPieChart })));
+
+function ChartSkeleton({ height = 300 }: { height?: number }) {
+  return (
+    <div style={{ height }} className="w-full bg-gray-50 animate-pulse rounded-lg flex items-center justify-center">
+      <p className="text-xs text-gray-400">Memuat analisis...</p>
+    </div>
+  );
+}
 
 export function FinanceAnalisa() {
   const { orders } = useOrderStore();
@@ -244,19 +252,13 @@ export function FinanceAnalisa() {
         {/* Revenue Chart */}
         <Card>
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Tren Pendapatan</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={dailyData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-              <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="#9CA3AF" />
-              <YAxis tickFormatter={formatShortCurrency} tick={{ fontSize: 11 }} stroke="#9CA3AF" width={50} />
-              <Tooltip
-                formatter={(value) => [formatCurrency(Number(value || 0))]}
-                labelFormatter={(label) => `Tanggal: ${label}`}
-              />
-              <Bar dataKey="gross" fill="#6366F1" name="Kotor" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="net" fill="#10B981" name="Bersih" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <Suspense fallback={<ChartSkeleton height={300} />}>
+            <RevenueBarChart 
+              data={dailyData} 
+              formatCurrency={formatCurrency} 
+              formatShortCurrency={formatShortCurrency}
+            />
+          </Suspense>
         </Card>
 
         {/* Two Column Layout */}
@@ -269,23 +271,9 @@ export function FinanceAnalisa() {
             </h3>
             {paymentData.length > 0 ? (
               <div className="flex items-center gap-6">
-                <ResponsiveContainer width="50%" height={180}>
-                  <PieChart>
-                    <Pie
-                      data={paymentData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={40}
-                      outerRadius={60}
-                      dataKey="value"
-                    >
-                      {paymentData.map((entry, index) => (
-                        <Cell key={index} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
+              <Suspense fallback={<ChartSkeleton height={180} />}>
+                <PaymentPieChart data={paymentData} />
+              </Suspense>
                 <div className="space-y-3">
                   {paymentData.map((item) => (
                     <div key={item.name} className="flex items-center gap-2">

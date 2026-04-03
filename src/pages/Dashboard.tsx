@@ -5,19 +5,8 @@ import {
   Clock,
   TrendingUp
 } from 'lucide-react';
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-} from 'recharts';
 import { Link } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
 import { Header } from '@/components/layout/Header';
 import { Card, StatCard } from '@/components/ui/Card';
 import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
@@ -35,6 +24,18 @@ import { calcAdminEarning } from '@/lib/calcEarning';
 import type { Order, OrderStatus } from '@/types';
 
 const COLORS = ['#F59E0B', '#3B82F6', '#8B5CF6', '#06B6D4', '#22C55E', '#EF4444'];
+
+// Refined lazy approach: individual exports from the same chunk
+const RevenueChart = lazy(() => import('@/components/dashboard/DashboardCharts').then(m => ({ default: m.RevenueChart })));
+const StatusPieChart = lazy(() => import('@/components/dashboard/DashboardCharts').then(m => ({ default: m.StatusPieChart })));
+
+function ChartSkeleton({ height = 300 }: { height?: number }) {
+  return (
+    <div style={{ height }} className="w-full bg-gray-50 animate-pulse rounded-lg flex items-center justify-center">
+      <p className="text-xs text-gray-400">Memuat grafik...</p>
+    </div>
+  );
+}
 
 export function Dashboard() {
   const { orders } = useOrderStore();
@@ -272,33 +273,12 @@ export function Dashboard() {
                     <span className="text-sm font-medium">Live</span>
                   </div>
                 </div>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={revenueChartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                    <XAxis
-                      dataKey="date"
-                      tickFormatter={(value) => format(new Date(value), 'MMM dd')}
-                      stroke="#9CA3AF"
-                      fontSize={12}
-                    />
-                    <YAxis
-                      tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
-                      stroke="#9CA3AF"
-                      fontSize={12}
-                    />
-                    <Tooltip
-                      formatter={(value) => [formatCurrency(value as number), 'Revenue']}
-                      labelFormatter={(label) => format(new Date(label), 'MMM dd, yyyy')}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="revenue"
-                      stroke="#4F46E5"
-                      strokeWidth={2}
-                      dot={{ fill: '#4F46E5', strokeWidth: 2 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+                <Suspense fallback={<ChartSkeleton height={300} />}>
+                  <RevenueChart 
+                    data={revenueChartData} 
+                    formatCurrency={formatCurrency} 
+                  />
+                </Suspense>
               </Card>
             )}
 
@@ -417,24 +397,12 @@ export function Dashboard() {
                 <h3 className="text-lg font-semibold text-gray-900">Status Overview</h3>
                 <span className="text-xs text-gray-400">7 hari terakhir</span>
               </div>
-              <ResponsiveContainer width="100%" height={200}>
-                <PieChart>
-                  <Pie
-                    data={analytics.orders_by_status}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={70}
-                    paddingAngle={5}
-                    dataKey="count"
-                  >
-                    {analytics.orders_by_status.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
+              <Suspense fallback={<ChartSkeleton height={200} />}>
+                <StatusPieChart 
+                  data={analytics.orders_by_status} 
+                  colors={COLORS} 
+                />
+              </Suspense>
               <div className="grid grid-cols-2 gap-2 mt-4">
                 {analytics.orders_by_status.slice(0, 4).map((item, index) => (
                   <div key={item.status} className="flex items-center gap-2">
