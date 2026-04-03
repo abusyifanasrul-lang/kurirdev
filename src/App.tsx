@@ -16,8 +16,8 @@ function LoadingScreen() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center" role="status" aria-label="Memuat halaman">
       <div className="flex flex-col items-center gap-4">
-        <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
-        <p className="text-sm text-gray-500 font-medium">Memuat...</p>
+        <div className="w-12 h-12 border-4 border-teal-100 border-t-teal-600 rounded-full animate-spin shadow-sm" />
+        <p className="text-sm text-gray-600 font-medium">Memuat...</p>
       </div>
     </div>
   );
@@ -168,19 +168,19 @@ function PWAUpdateBanner() {
       isAuthenticated && user?.role === 'courier'
         ? 'bottom-24'
         : 'bottom-4'
-    } right-4 bg-white p-4 rounded-xl border border-gray-200 shadow-xl z-50 animate-in slide-in-from-bottom-5 fade-in w-72`}>
+    } right-4 bg-white p-4 rounded-xl border border-gray-100 shadow-2xl ring-1 ring-black/5 z-50 animate-in slide-in-from-bottom-5 fade-in w-72`}>
       <div className="flex gap-3 mb-3">
-        <div className="bg-indigo-100 p-2 rounded-lg text-indigo-600 h-9 w-9 flex items-center justify-center shrink-0">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+        <div className="bg-teal-50 p-2 rounded-lg text-teal-600 h-10 w-10 flex items-center justify-center shrink-0 shadow-sm">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
         </div>
         <div>
-          <h4 className="font-semibold text-gray-900 text-sm">Versi Baru Tersedia</h4>
-          <p className="text-xs text-gray-500 mt-1">Tap update agar aplikasi tersinkronisasi.</p>
+          <h4 className="font-bold text-gray-900 text-sm">Update Tersedia</h4>
+          <p className="text-xs text-gray-600 mt-1 leading-relaxed">Versi baru siap digunakan. Tap update sekarang.</p>
         </div>
       </div>
       <div className="flex gap-2">
-        <button onClick={handleUpdate} className="flex-1 bg-indigo-600 text-white text-xs font-medium py-2 rounded-lg hover:bg-indigo-700 transition">Update</button>
-        <button onClick={handleDismiss} className="flex-1 bg-gray-100 text-gray-700 text-xs font-medium py-2 rounded-lg hover:bg-gray-200 transition">Nanti</button>
+        <button onClick={handleUpdate} className="flex-[2] bg-teal-600 text-white text-xs font-bold py-2.5 rounded-lg hover:bg-teal-700 transition shadow-sm active:scale-95">Update Sekarang</button>
+        <button onClick={handleDismiss} className="flex-1 bg-gray-50 text-gray-500 text-xs font-medium py-2.5 rounded-lg hover:bg-gray-100 transition active:scale-95">Batal</button>
       </div>
     </div>
   );

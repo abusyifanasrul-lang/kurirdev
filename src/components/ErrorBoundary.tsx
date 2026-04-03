@@ -46,13 +46,13 @@ export class ErrorBoundary extends Component<Props, State> {
             <div className="flex flex-col gap-3">
               <button
                 onClick={() => window.location.reload()}
-                className="w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors"
+                className="w-full bg-teal-600 text-white font-semibold py-3 px-4 rounded-xl hover:bg-teal-700 transition shadow-md hover:shadow-lg active:scale-[0.98]"
               >
                 Segarkan Halaman
               </button>
               <button
                 onClick={() => this.setState({ hasError: false, error: null })}
-                className="w-full bg-gray-100 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors"
+                className="w-full bg-gray-100 text-gray-700 font-semibold py-3 px-4 rounded-xl hover:bg-gray-200 transition active:scale-[0.98]"
                 title="Coba kembali ke halaman sebelumnya"
               >
                 Coba Lagi

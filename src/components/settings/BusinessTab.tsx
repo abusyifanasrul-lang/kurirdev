@@ -61,41 +61,23 @@ export function BusinessTab({
       <h3 className="text-lg font-semibold text-gray-900 mb-6">Business Settings</h3>
       <p className="text-sm text-gray-500 mb-6">Konfigurasi komisi dan threshold ongkir</p>
       <div className="space-y-4 max-w-md">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Commission Rate (%)
-          </label>
-          <p className="text-xs text-gray-400 mb-2">
-            Persentase ongkir yang diterima kurir. Sisanya masuk ke admin.
-          </p>
           <Input
+            label="Commission Rate (%)"
+            helperText="Persentase ongkir yang diterima kurir. Sisanya masuk ke admin. Contoh: 80 → kurir dapat 80%, admin dapat 20%"
             type="number"
             value={form.commission_rate}
             onChange={e => setForm(prev => ({ ...prev, commission_rate: Number(e.target.value) }))}
             min={0}
             max={100}
           />
-          <p className="text-xs text-gray-400 mt-1">
-            Contoh: 80 → kurir dapat 80%, admin dapat 20%
-          </p>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Minimum Threshold (Rp)
-          </label>
-          <p className="text-xs text-gray-400 mb-2">
-            Ongkir di bawah atau sama dengan nilai ini → kurir dapat 100%, admin tidak dapat potongan.
-          </p>
           <Input
+            label="Minimum Threshold (Rp)"
+            helperText="Ongkir di bawah atau sama dengan nilai ini → kurir dapat 100%, admin tidak dapat potongan. Contoh: 5000 → ongkir ≤ Rp 5.000 tidak dipotong"
             type="number"
             value={form.commission_threshold}
             onChange={e => setForm(prev => ({ ...prev, commission_threshold: Number(e.target.value) }))}
             min={0}
           />
-          <p className="text-xs text-gray-400 mt-1">
-            Contoh: 5000 → ongkir ≤ Rp 5.000 tidak dipotong
-          </p>
-        </div>
         <div className="pt-4">
           <p className="text-xs text-gray-500 mb-4">
             Preview: Ongkir Rp 15.000 → kurir dapat Rp {Math.round(15000 * form.commission_rate / 100).toLocaleString('id-ID')}, admin dapat Rp {Math.round(15000 * (100 - form.commission_rate) / 100).toLocaleString('id-ID')}
@@ -114,7 +96,7 @@ export function BusinessTab({
                 <span className="text-gray-500">Record Terdeteksi:</span>
                 <span className="font-medium text-gray-700">{cacheMeta.total_records} order</span>
                 <span className="text-gray-500">Status Sync:</span>
-                <span className={`font-medium ${cacheMeta.sync_completed ? 'text-green-600' : 'text-amber-600'}`}>
+                <span className={`font-medium ${cacheMeta.sync_completed ? 'text-teal-600' : 'text-amber-600'}`}>
                   {cacheMeta.sync_completed ? 'Terverifikasi' : 'Parsial'}
                 </span>
                 <span className="text-gray-500">Sync Terakhir:</span>
@@ -169,7 +151,7 @@ export function BusinessTab({
                 </p>
                 <button
                   onClick={handleScanOrphans}
-                  className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
+                  className="w-full px-4 py-2 bg-teal-600 text-white rounded-lg text-sm hover:bg-teal-700 transition-all flex items-center justify-center gap-2"
                 >
                   <Shield className="w-4 h-4" />
                   Scan Orphaned Orders

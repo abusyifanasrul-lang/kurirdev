@@ -76,6 +76,7 @@ export function Header({
                 value={searchValue}
                 onChange={(e) => onSearchChange(e.target.value)}
                 leftIcon={<Search className="h-4 w-4" />}
+                aria-label="Cari data"
               />
             </div>
           )}
@@ -117,6 +118,7 @@ export function Header({
             value={searchValue}
             onChange={(e) => onSearchChange(e.target.value)}
             leftIcon={<Search className="h-4 w-4" />}
+            aria-label="Cari data"
           />
         </div>
       )}

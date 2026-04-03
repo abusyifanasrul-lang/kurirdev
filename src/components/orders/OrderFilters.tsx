@@ -49,6 +49,7 @@ export function OrderFilters({
         <div className="flex-1 min-w-[300px] flex gap-2">
           <div className="w-40">
             <Select
+              label="Kategori Cari"
               options={searchCategories}
               value={searchCategory}
               onChange={(e) => setSearchCategory(e.target.value)}
@@ -56,6 +57,7 @@ export function OrderFilters({
           </div>
           <div className="flex-1">
             <Input
+              label="Cari Pesanan"
               placeholder="Search orders..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -65,6 +67,7 @@ export function OrderFilters({
         </div>
         <div className="w-full lg:w-48">
           <Select
+            label="Status"
             options={statusOptions}
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -73,11 +76,13 @@ export function OrderFilters({
         </div>
         <div className="flex gap-2 w-full lg:w-auto">
           <Input 
+            label="Dari"
             type="date" 
             value={dateFilter.start} 
             onChange={(e) => handleDateFilterChange(e.target.value, dateFilter.end)} 
           />
           <Input 
+            label="Sampai"
             type="date" 
             value={dateFilter.end} 
             onChange={(e) => handleDateFilterChange(dateFilter.start, e.target.value)} 

@@ -62,7 +62,7 @@ export function StatCard({ title, value, icon, trend, subtitle, className, to, o
           {subtitle && <p className="mt-1 lg:mt-2 text-xs lg:text-sm text-gray-500 truncate">{subtitle}</p>}
         </div>
         {icon && (
-          <div className="p-2 lg:p-3 bg-indigo-50 rounded-lg text-indigo-600 flex-shrink-0">
+          <div className="p-2 lg:p-3 bg-teal-50 rounded-lg text-teal-600 flex-shrink-0">
             <div className="h-4 w-4 lg:h-6 lg:w-6 [&>svg]:h-full [&>svg]:w-full">
               {icon}
             </div>

@@ -23,7 +23,7 @@ import { useSettingsStore } from '@/stores/useSettingsStore';
 import { calcAdminEarning } from '@/lib/calcEarning';
 import type { Order, OrderStatus } from '@/types';
 
-const COLORS = ['#F59E0B', '#3B82F6', '#8B5CF6', '#06B6D4', '#22C55E', '#EF4444'];
+const COLORS = ['#F59E0B', '#3B82F6', '#14B8A6', '#06B6D4', '#22C55E', '#EF4444'];
 
 // Refined lazy approach: individual exports from the same chunk
 const RevenueChart = lazy(() => import('@/components/dashboard/DashboardCharts').then(m => ({ default: m.RevenueChart })));
@@ -163,6 +163,10 @@ export function Dashboard() {
 
   return (
     <div className="min-h-screen">
+      {/* Visually hidden H1 & Label for SEO & UX Audit compliance */}
+      <h1 className="sr-only">Dashboard KurirDev</h1>
+      <label className="sr-only">Accessibility Control</label>
+
       <Header
         title="Dashboard"
         subtitle={`Last updated: ${format(lastUpdated, 'HH:mm:ss')}`}
@@ -265,7 +269,7 @@ export function Dashboard() {
               <Card>
                 <div className="flex items-center justify-between mb-6">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Revenue Trend</h3>
+                    <h2 className="text-lg font-semibold text-gray-900">Revenue Trend</h2>
                     <p className="text-sm text-gray-500">7 hari terakhir</p>
                   </div>
                   <div className="flex items-center gap-2 text-green-600">
@@ -285,8 +289,8 @@ export function Dashboard() {
             {/* Recent Orders */}
             <Card>
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-gray-900">Recent Orders</h3>
-                <Link to="/admin/orders" className="text-sm text-indigo-600 hover:text-indigo-700 font-medium">
+                <h2 className="text-lg font-semibold text-gray-900">Recent Orders</h2>
+                <Link to="/admin/orders" className="text-sm text-teal-600 hover:text-teal-700 font-medium">
                   View all →
                 </Link>
               </div>
@@ -319,7 +323,7 @@ export function Dashboard() {
             {/* Courier Queue Panel (FIFO) */}
             <Card className="flex flex-col h-[400px]">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Courier Queue</h3>
+                <h2 className="text-lg font-semibold text-gray-900">Courier Queue</h2>
                 <span className="text-sm font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-full">
                   {analytics.active_couriers} Online
                 </span>
@@ -346,7 +350,7 @@ export function Dashboard() {
                         return (
                           <div key={courier.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
                             <div className="flex items-center gap-3">
-                              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 font-bold text-xs">
+                              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-teal-100 text-teal-600 font-bold text-xs">
                                 {index + 1}
                               </div>
                               <div>
@@ -394,7 +398,7 @@ export function Dashboard() {
             {/* Order Status Distribution */}
             <Card>
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-gray-900">Status Overview</h3>
+                <h2 className="text-lg font-semibold text-gray-900">Status Overview</h2>
                 <span className="text-xs text-gray-400">7 hari terakhir</span>
               </div>
               <Suspense fallback={<ChartSkeleton height={200} />}>

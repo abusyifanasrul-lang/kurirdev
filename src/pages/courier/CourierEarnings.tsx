@@ -132,14 +132,14 @@ export function CourierEarnings() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+      <div className="bg-gradient-to-r from-teal-600 to-emerald-600 text-white">
         <div className="flex items-center gap-3 p-4">
           <button onClick={() => navigate('/courier')} className="p-2 hover:bg-white/10 rounded-lg">
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
             <h1 className="text-lg font-bold">Pendapatan</h1>
-            <p className="text-xs text-indigo-200">Ringkasan pendapatan kamu</p>
+            <p className="text-xs text-teal-100">Ringkasan pendapatan kamu</p>
           </div>
         </div>
 
@@ -147,19 +147,19 @@ export function CourierEarnings() {
         <div className="grid grid-cols-2 gap-3 p-4 pt-0">
           <div className="bg-white/10 backdrop-blur rounded-xl p-3">
             <div className="flex items-center gap-2 mb-1">
-              <DollarSign className="w-4 h-4 text-indigo-200" />
-              <span className="text-xs text-indigo-200">Hari Ini</span>
+              <DollarSign className="w-4 h-4 text-teal-100" />
+              <span className="text-xs text-teal-100">Hari Ini</span>
             </div>
             <p className="text-lg font-bold break-words leading-tight">{formatCurrency(todayStats.earnings)}</p>
-            <p className="text-xs text-indigo-200">{todayStats.orders} pesanan</p>
+            <p className="text-xs text-teal-100">{todayStats.orders} pesanan</p>
           </div>
           <div className="bg-white/10 backdrop-blur rounded-xl p-3">
             <div className="flex items-center gap-2 mb-1">
-              <TrendingUp className="w-4 h-4 text-indigo-200" />
-              <span className="text-xs text-indigo-200">7 Hari Terakhir</span>
+              <TrendingUp className="w-4 h-4 text-teal-100" />
+              <span className="text-xs text-teal-100">7 Hari Terakhir</span>
             </div>
             <p className="text-lg font-bold break-words leading-tight">{formatCurrency(allTimeStats.earnings)}</p>
-            <p className="text-xs text-indigo-200">{allTimeStats.orders} pesanan</p>
+            <p className="text-xs text-teal-100">{allTimeStats.orders} pesanan</p>
           </div>
         </div>
       </div>
@@ -172,7 +172,7 @@ export function CourierEarnings() {
               key={p}
               onClick={() => setPeriod(p)}
               className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${period === p
-                ? 'bg-indigo-600 text-white'
+                ? 'bg-teal-600 text-white'
                 : 'text-gray-600 hover:bg-gray-50'
                 }`}
             >
@@ -204,7 +204,7 @@ export function CourierEarnings() {
                   formatter={(value: number | undefined) => [formatCurrency(value ?? 0), 'Pendapatan']}
                   labelFormatter={(label: any) => `Periode: ${label}`}
                 />
-                <RechartsLib.Bar dataKey="earnings" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                <RechartsLib.Bar dataKey="earnings" fill="#0d9488" radius={[4, 4, 0, 0]} />
               </RechartsLib.BarChart>
             </RechartsLib.ResponsiveContainer>
           ) : (
@@ -237,7 +237,7 @@ export function CourierEarnings() {
                       {format(parseISO(order.created_at), 'dd MMM yyyy, HH:mm')} • {order.customer_name}
                     </p>
                   </div>
-                  <span className="text-sm font-semibold text-green-600">+{formatCurrency(earning)}</span>
+                  <span className="text-sm font-semibold text-teal-600">+{formatCurrency(earning)}</span>
                 </div>
               );
             })}

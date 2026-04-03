@@ -28,9 +28,9 @@ function OrdersLoading() {
   return (
     <div className="flex flex-col items-center justify-center py-20 animate-in fade-in duration-700">
       <div className="relative">
-        <div className="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin" />
+        <div className="w-12 h-12 border-4 border-teal-100 border-t-teal-600 rounded-full animate-spin" />
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-2 h-2 bg-indigo-600 rounded-full animate-pulse" />
+          <div className="w-2 h-2 bg-teal-600 rounded-full animate-pulse" />
         </div>
       </div>
       <p className="mt-4 text-sm text-gray-400 font-medium tracking-wide">Menyiapkan daftar pesanan...</p>
@@ -621,7 +621,7 @@ export function Orders() {
           body { font-family: Arial, sans-serif; background: #fff; color: #111; }
           .invoice { width: 360px; margin: 0 auto; padding: 24px; }
           .header { text-align: center; padding-bottom: 12px; border-bottom: 2px solid #111; margin-bottom: 14px; }
-          .brand { font-size: 22px; font-weight: 800; color: #4338ca; }
+          .brand { font-size: 22px; font-weight: 800; color: #0d9488; }
           .brand-sub { font-size: 10px; color: #6b7280; letter-spacing: 0.1em; text-transform: uppercase; margin-top: 2px; }
           .order-number { font-size: 15px; font-weight: 700; margin-top: 10px; }
           .order-meta { font-size: 11px; color: #6b7280; margin-top: 2px; }
@@ -942,9 +942,9 @@ export function Orders() {
                 key={addr.id}
                 className={`flex items-center gap-2 px-2 py-1.5 rounded-lg border transition-colors ${
                   inlineEditAddrId === addr.id
-                    ? 'border-indigo-400 bg-indigo-50'
+                    ? 'border-teal-400 bg-teal-50'
                     : newOrder.customer_address === addr.address
-                    ? 'border-indigo-300 bg-indigo-50/40'
+                    ? 'border-teal-300 bg-teal-50/40'
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
@@ -960,18 +960,18 @@ export function Orders() {
                 >
                   <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${
                     newOrder.customer_address === addr.address && inlineEditAddrId !== addr.id
-                      ? 'border-indigo-500'
+                      ? 'border-teal-500'
                       : 'border-gray-300'
                   }`}>
                     {newOrder.customer_address === addr.address && inlineEditAddrId !== addr.id && (
-                      <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-teal-500" />
                     )}
                   </div>
                 </button>
 
                 {/* Label badge */}
                 <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded flex-shrink-0 ${
-                  addr.is_default ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500'
+                  addr.is_default ? 'bg-teal-100 text-teal-600' : 'bg-gray-100 text-gray-500'
                 }`}>{addr.label}</span>
 
                 {/* Inline edit mode */}
@@ -1014,7 +1014,7 @@ export function Orders() {
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); setInlineEditAddrId(addr.id); setInlineEditValue(addr.address) }}
-                      className="flex-shrink-0 text-gray-400 hover:text-indigo-600 transition-colors"
+                      className="flex-shrink-0 text-gray-400 hover:text-teal-600 transition-colors"
                     >
                       <Pencil className="w-3 h-3" />
                     </button>
@@ -1043,8 +1043,8 @@ export function Orders() {
             {/* Inline tambah alamat baru */}
             {selectedCustomer && (
               inlineAddingNew ? (
-                <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg border border-dashed border-indigo-400 bg-indigo-50">
-                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-600 flex-shrink-0">Baru</span>
+                <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg border border-dashed border-teal-400 bg-teal-50">
+                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-teal-100 text-teal-600 flex-shrink-0">Baru</span>
                   <input
                     className="flex-1 text-sm border-0 bg-transparent outline-none focus:outline-none text-gray-800 min-w-0"
                     placeholder="Ketik alamat baru..."
@@ -1084,7 +1084,7 @@ export function Orders() {
                 <button
                   type="button"
                   onClick={() => setInlineAddingNew(true)}
-                  className="text-xs text-indigo-600 font-medium hover:text-indigo-700 flex items-center gap-1 mt-0.5"
+                  className="text-xs text-teal-600 font-medium hover:text-teal-700 flex items-center gap-1 mt-0.5"
                 >
                   <Plus className="w-3 h-3" />
                   Tambah Alamat Baru
@@ -1125,15 +1125,19 @@ export function Orders() {
                 type="text"
                 placeholder="Nama barang"
                 id="new_item_nama"
-                className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                name="new_item_nama"
+                className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-teal-400"
               />
+              <label htmlFor="new_item_nama" className="sr-only">Nama barang</label>
               <input
                 type="text"
                 inputMode="numeric"
                 placeholder="Harga (Rp)"
                 id="new_item_harga"
-                className="w-32 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                name="new_item_harga"
+                className="w-32 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-teal-400"
               />
+              <label htmlFor="new_item_harga" className="sr-only">Harga barang</label>
               <button
                 type="button"
                 onClick={() => {
@@ -1146,7 +1150,7 @@ export function Orders() {
                   if (namaEl) namaEl.value = '';
                   if (hargaEl) hargaEl.value = '';
                 }}
-                className="px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-lg font-medium"
+                className="px-3 py-1.5 text-sm bg-teal-600 text-white rounded-lg font-medium"
               >+ Tambah</button>
             </div>
           </div>
@@ -1229,9 +1233,9 @@ export function Orders() {
                       key={addr.id}
                       className={`flex items-center gap-2 px-2 py-1.5 rounded-lg border transition-colors ${
                         editInlineAddrId === addr.id
-                          ? 'border-indigo-400 bg-indigo-50'
+                          ? 'border-teal-400 bg-teal-50'
                           : editForm.customer_address === addr.address
-                          ? 'border-indigo-300 bg-indigo-50/40'
+                          ? 'border-teal-300 bg-teal-50/40'
                           : 'border-gray-200 hover:border-gray-300'
                       }`}
                     >
@@ -1241,15 +1245,15 @@ export function Orders() {
                       }} className="flex-shrink-0">
                         <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${
                           editForm.customer_address === addr.address && editInlineAddrId !== addr.id
-                            ? 'border-indigo-500' : 'border-gray-300'
+                            ? 'border-teal-500' : 'border-gray-300'
                         }`}>
                           {editForm.customer_address === addr.address && editInlineAddrId !== addr.id && (
-                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                            <div className="w-1.5 h-1.5 rounded-full bg-teal-500" />
                           )}
                         </div>
                       </button>
                       <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded flex-shrink-0 ${
-                        addr.is_default ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500'
+                        addr.is_default ? 'bg-teal-100 text-teal-600' : 'bg-gray-100 text-gray-500'
                       }`}>{addr.label}</span>
 
                       {editInlineAddrId === addr.id ? (
@@ -1281,7 +1285,7 @@ export function Orders() {
                       ) : (
                         <>
                           <span className="flex-1 text-sm text-gray-700 truncate">{addr.address}</span>
-                          <button type="button" onClick={() => { setEditInlineAddrId(addr.id); setEditInlineAddrValue(addr.address) }} className="flex-shrink-0 text-gray-400 hover:text-indigo-600"><Pencil className="w-3 h-3" /></button>
+                          <button type="button" onClick={() => { setEditInlineAddrId(addr.id); setEditInlineAddrValue(addr.address) }} className="flex-shrink-0 text-gray-400 hover:text-teal-600"><Pencil className="w-3 h-3" /></button>
                           <button type="button" onClick={async () => {
                             await deleteAddress(editSelectedCustomer.id, addr.id)
                             const updated = { ...editSelectedCustomer, addresses: editSelectedCustomer.addresses.filter(a => a.id !== addr.id) }
@@ -1299,10 +1303,12 @@ export function Orders() {
                   {/* Tambah alamat baru inline */}
                   {editSelectedCustomer && (
                     editInlineAddingNew ? (
-                      <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg border border-dashed border-indigo-400 bg-indigo-50">
-                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-600 flex-shrink-0">Baru</span>
+                      <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg border border-dashed border-teal-400 bg-teal-50">
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-teal-100 text-teal-600 flex-shrink-0">Baru</span>
                         <input
                           className="flex-1 text-sm border-0 bg-transparent outline-none min-w-0 text-gray-800"
+                          id="edit_inline_new_addr"
+                          name="edit_inline_new_addr"
                           placeholder="Ketik alamat baru..."
                           autoFocus
                           value={editInlineAddrValue}
@@ -1331,7 +1337,7 @@ export function Orders() {
                       </div>
                     ) : (
                       <button type="button" onClick={() => { setEditInlineAddingNew(true); setEditInlineAddrValue('') }}
-                        className="text-xs text-indigo-600 font-medium hover:text-indigo-700 flex items-center gap-1">
+                        className="text-xs text-teal-600 font-medium hover:text-teal-700 flex items-center gap-1">
                         <Plus className="w-3 h-3" /> Tambah Alamat Baru
                       </button>
                     )
@@ -1398,17 +1404,23 @@ export function Orders() {
                     <input
                       type="text"
                       placeholder="Nama barang"
+                      id="edit_item_nama"
+                      name="edit_item_nama"
                       value={editItemNama}
                       onChange={e => setEditItemNama(e.target.value)}
-                      className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-teal-500"
                     />
+                    <label htmlFor="edit_item_nama" className="sr-only">Nama barang edit</label>
                     <input
                       type="number"
                       placeholder="Harga"
+                      id="edit_item_harga"
+                      name="edit_item_harga"
                       value={editItemHarga}
                       onChange={e => setEditItemHarga(e.target.value)}
-                      className="w-28 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      className="w-28 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-teal-500"
                     />
+                    <label htmlFor="edit_item_harga" className="sr-only">Harga barang edit</label>
                     <button
                       type="button"
                       onClick={() => {
@@ -1420,7 +1432,7 @@ export function Orders() {
                         setEditItemNama('');
                         setEditItemHarga('');
                       }}
-                      className="px-3 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700"
+                      className="px-3 py-2 bg-teal-600 text-white text-sm rounded-lg hover:bg-teal-700"
                     >
                       +
                     </button>
@@ -1501,8 +1513,8 @@ export function Orders() {
 
             <div className="border-t pt-2">
               {selectedOrder.status === 'pending' && isOpsAdmin ? (
-                <div className="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100">
-                  <label className="block text-xs font-medium text-indigo-900 mb-1.5">Assign Courier (FIFO)</label>
+                <div className="bg-teal-50 px-3 py-2 rounded-lg border border-teal-100">
+                  <label className="block text-xs font-medium text-teal-900 mb-1.5">Assign Courier (FIFO)</label>
                   <div className="flex gap-2">
                     <Select
                       className="flex-1"
@@ -1522,7 +1534,7 @@ export function Orders() {
                     <Button disabled={!assignCourierId} onClick={handleAssign}>Assign</Button>
                   </div>
                   {availableCouriers[0] && (
-                    <p className="text-xs text-indigo-600 mt-1">
+                    <p className="text-xs text-teal-600 mt-1">
                       Recommended: <strong>{availableCouriers[0].name}</strong>
                       {courierWaitingOrder(availableCouriers[0].id) && (
                         <span className="ml-1 text-yellow-600">📝 sedang PENDING di penjual</span>
@@ -1530,26 +1542,23 @@ export function Orders() {
                     </p>
                   )}
                   <div className="mt-2 space-y-1">
-                    <label className="block text-xs font-medium text-indigo-900">Instruksi untuk Kurir</label>
-                    <select
+                    <Select
+                      label="Instruksi untuk Kurir"
                       value={selectedOrder?.notes || ''}
                       onChange={e => setSelectedOrder(selectedOrder ? { ...selectedOrder, notes: e.target.value } : null)}
-                      className="w-full border border-indigo-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400 bg-white"
-                    >
-                      <option value="">— Tidak ada instruksi khusus —</option>
-                      {courier_instructions.map((instruction) => (
-                        <option key={instruction.id} value={instruction.label}>
-                          {instruction.icon} {instruction.label}
-                        </option>
-                      ))}
-                    </select>
+                      options={courier_instructions.map(i => ({
+                        value: i.label,
+                        label: `${i.icon} ${i.label}`
+                      }))}
+                      placeholder="— Tidak ada instruksi khusus —"
+                    />
 
                     {/* Preview ikon instruksi yang dipilih */}
                     {selectedOrder?.notes && (() => {
                       const match = courier_instructions.find(i => i.label === selectedOrder.notes)
                       if (!match) return null
                       return (
-                        <div className="flex items-center gap-1.5 text-xs text-indigo-600 mt-1">
+                        <div className="flex items-center gap-1.5 text-xs text-teal-600 mt-1">
                           <span>{match.icon}</span>
                           <span>{match.instruction}</span>
                         </div>
@@ -1634,7 +1643,7 @@ export function Orders() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-purple-600 hover:text-purple-800 hover:bg-purple-50 flex items-center gap-1"
+                    className="text-teal-600 hover:text-teal-800 hover:bg-teal-50 flex items-center gap-1"
                     onClick={() => {
                       const tgt = window.prompt(
                         `[SUPER ADMIN] Force update status (pending/assigned/picked_up/in_transit/delivered/cancelled):`,

@@ -14,7 +14,7 @@ export function Badge({ children, variant = 'default', size = 'sm', className }:
     warning: 'bg-yellow-100 text-yellow-800',
     danger: 'bg-red-100 text-red-800',
     info: 'bg-blue-100 text-blue-800',
-    secondary: 'bg-purple-100 text-purple-800',
+    secondary: 'bg-cyan-100 text-cyan-800',
   };
 
   const sizes = {

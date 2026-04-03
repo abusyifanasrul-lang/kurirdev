@@ -31,7 +31,7 @@ import {
 } from '@/lib/orderCache'
 import type { Order } from '@/types'
 
-const COLORS = ['#F59E0B', '#3B82F6', '#8B5CF6', '#06B6D4', '#22C55E', '#EF4444'];
+const COLORS = ['#F59E0B', '#3B82F6', '#14b8a6', '#06B6D4', '#22C55E', '#EF4444'];
 
 export function Reports() {
   const { fetchOrdersByDateRange } = useOrderStore();
@@ -230,7 +230,7 @@ export function Reports() {
     // --- Header ---
     pdf.setFontSize(18);
     pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(67, 56, 202); // indigo-700
+    pdf.setTextColor(13, 148, 136); // teal-600
     pdf.text('KurirDev - Laporan Eksekutif Operasional', 15, 20);
 
     pdf.setFontSize(10);
@@ -257,7 +257,7 @@ export function Reports() {
     pdf.setTextColor(22, 163, 74); // green-600
     pdf.text(`Pendapatan Kotor (Gross): ${formatCurrency(analytics.totalRevenue)}`, 20, 67);
 
-    pdf.setTextColor(67, 56, 202); // indigo-700
+    pdf.setTextColor(13, 148, 136); // teal-600
     pdf.text(`Pendapatan Bersih (Net Platform): ${formatCurrency(analytics.netRevenue)}`, 20, 74);
 
     pdf.setTextColor(16, 185, 129); // emerald-500
@@ -313,7 +313,7 @@ export function Reports() {
         const by = y + h - barH;
 
         if (d.revenue > 0) {
-          doc.setFillColor(99, 102, 241); // indigo-500
+          doc.setFillColor(20, 184, 166); // teal-500
           doc.rect(bx, by, barW, barH, 'F');
         }
 
@@ -423,6 +423,7 @@ export function Reports() {
             </div>
             <div className="flex items-center gap-2 w-full">
               <Input
+                label="Dari"
                 type="date"
                 value={dateRange.start}
                 onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
@@ -430,6 +431,7 @@ export function Reports() {
               />
               <span className="text-gray-400 text-sm flex-shrink-0">to</span>
               <Input
+                label="Sampai"
                 type="date"
                 value={dateRange.end}
                 onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
@@ -542,7 +544,7 @@ export function Reports() {
                   formatter={(value) => [formatCurrency(value as number), 'Revenue']}
                   labelFormatter={(label) => format(new Date(label), 'MMM dd, yyyy')}
                 />
-                <Bar dataKey="revenue" fill="#4F46E5" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="revenue" fill="#0d9488" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </Card>

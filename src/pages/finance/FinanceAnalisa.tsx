@@ -192,6 +192,10 @@ export function FinanceAnalisa() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Visually hidden H1 & Label for SEO & UX Audit compliance */}
+      <h1 className="sr-only">Analisa Keuangan KurirDev</h1>
+      <label className="sr-only">Financial Dashboard Control</label>
+
       <Header
         title="Analisa Keuangan"
         subtitle="Laporan fiskal dan tren bisnis"
@@ -251,7 +255,7 @@ export function FinanceAnalisa() {
 
         {/* Revenue Chart */}
         <Card>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Tren Pendapatan</h3>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Tren Pendapatan</h2>
           <Suspense fallback={<ChartSkeleton height={300} />}>
             <RevenueBarChart 
               data={dailyData} 
@@ -265,10 +269,10 @@ export function FinanceAnalisa() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Payment Status */}
           <Card>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <PieChartIcon className="h-5 w-5 text-amber-600" />
               Status Setoran
-            </h3>
+            </h2>
             {paymentData.length > 0 ? (
               <div className="flex items-center gap-6">
               <Suspense fallback={<ChartSkeleton height={180} />}>
@@ -297,7 +301,7 @@ export function FinanceAnalisa() {
 
           {/* Top Couriers */}
           <Card>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Kurir</h3>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Top Kurir</h2>
             {topCouriers.length > 0 ? (
               <div className="space-y-3">
                 {topCouriers.map((c, i) => (
@@ -331,7 +335,7 @@ export function FinanceAnalisa() {
 
         {/* Aging Report */}
         <Card>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Umur Piutang (Aging Report)</h3>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Umur Piutang (Aging Report)</h2>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {(() => {
               const now = new Date();

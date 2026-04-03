@@ -78,7 +78,7 @@ export function InstructionsTab({
           instructions.map((instruction) => (
             <div key={instruction.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
               <div className="flex items-center gap-3 flex-1">
-                <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-600">
+                <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center text-teal-600">
                   <span>{instruction.icon}</span>
                 </div>
                 <div>
@@ -91,7 +91,7 @@ export function InstructionsTab({
                   variant="ghost"
                   size="sm"
                   onClick={() => openEditModal(instruction)}
-                  className="text-blue-600 hover:text-blue-700"
+                  className="text-teal-600 hover:text-teal-700"
                 >
                   <Edit3 className="h-4 w-4" />
                 </Button>
@@ -125,7 +125,7 @@ export function InstructionsTab({
                   type="button"
                   onClick={() => setNewForm({ ...newForm, icon: emoji })}
                   className={`p-3 rounded-lg border transition-all flex items-center justify-center text-xl ${
-                    newForm.icon === emoji ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-gray-300'
+                    newForm.icon === emoji ? 'border-teal-500 bg-teal-50' : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
                   {emoji}
@@ -133,22 +133,18 @@ export function InstructionsTab({
               ))}
             </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Label</label>
             <Input
+              label="Label"
               value={newForm.label}
               onChange={(e) => setNewForm({ ...newForm, label: e.target.value })}
               placeholder="Contoh: Barang sudah siap"
             />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Pesan Notifikasi</label>
             <Input
+              label="Pesan Notifikasi"
               value={newForm.instruction}
               onChange={(e) => setNewForm({ ...newForm, instruction: e.target.value })}
               placeholder="Pesan yang akan dikirim ke kurir"
             />
-          </div>
           <div className="flex gap-3 pt-4">
             <Button variant="outline" onClick={() => setIsAddModalOpen(false)} className="flex-1">Batal</Button>
             <Button onClick={handleAdd} className="flex-1">Tambah</Button>
@@ -172,7 +168,7 @@ export function InstructionsTab({
                   type="button"
                   onClick={() => setEditForm({ ...editForm, icon: emoji })}
                   className={`p-3 rounded-lg border transition-all flex items-center justify-center text-xl ${
-                    editForm.icon === emoji ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-gray-300'
+                    editForm.icon === emoji ? 'border-teal-500 bg-teal-50' : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
                   {emoji}
@@ -180,20 +176,16 @@ export function InstructionsTab({
               ))}
             </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Label</label>
             <Input
+              label="Label"
               value={editForm.label}
               onChange={(e) => setEditForm({ ...editForm, label: e.target.value })}
             />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Pesan Notifikasi</label>
             <Input
+              label="Pesan Notifikasi"
               value={editForm.instruction}
               onChange={(e) => setEditForm({ ...editForm, instruction: e.target.value })}
             />
-          </div>
           <div className="flex gap-3 pt-4">
             <Button variant="outline" onClick={() => setIsEditModalOpen(false)} className="flex-1">Batal</Button>
             <Button onClick={handleEdit} className="flex-1">Simpan</Button>

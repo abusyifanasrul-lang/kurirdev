@@ -178,7 +178,7 @@ export function UsersTab({
             <div className="flex items-center gap-4 w-full sm:w-auto">
               <div className={`w-10 h-10 rounded-full flex items-center justify-center font-medium transition-opacity ${
                 !u.is_active ? 'opacity-50' : ''
-              } ${u.role === 'admin' || u.role === 'owner' ? 'bg-indigo-100 text-indigo-600' : 'bg-orange-100 text-orange-600'}`}>
+              } ${u.role === 'admin' || u.role === 'owner' ? 'bg-teal-100 text-teal-600' : 'bg-orange-100 text-orange-600'}`}>
                 {u.role === 'admin' || u.role === 'owner' ? <Shield className="w-5 h-5" /> : u.name.charAt(0)}
               </div>
               <div>
@@ -199,7 +199,7 @@ export function UsersTab({
               {canEdit(u) && (
                 <button
                   onClick={(e) => { e.stopPropagation(); openEditModal(u); }}
-                  className="p-2 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                  className="p-2 text-teal-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
                 >
                   <Edit2 className="h-4 w-4" />
                 </button>
@@ -209,7 +209,7 @@ export function UsersTab({
                 <button
                   onClick={(e) => { e.stopPropagation(); onToggleSuspend(u); }}
                   className={`p-2 rounded-lg transition-colors ${
-                    u.is_active ? 'text-red-400 hover:text-red-600 hover:bg-red-50' : 'text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50'
+                    u.is_active ? 'text-red-400 hover:text-red-600 hover:bg-red-50' : 'text-teal-400 hover:text-teal-600 hover:bg-teal-50'
                   }`}
                 >
                   {u.is_active ? <UserX className="h-4 w-4" /> : <RefreshCw className="h-4 w-4" />}
@@ -224,7 +224,7 @@ export function UsersTab({
       <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="Tambah User Baru">
         <div className="space-y-4">
           {message && (
-             <div className={`p-3 rounded-lg flex items-center gap-2 text-sm ${message.type === 'success' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+             <div className={`p-3 rounded-lg flex items-center gap-2 text-sm ${message.type === 'success' ? 'bg-teal-50 text-teal-700 border-teal-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
                {message.type === 'success' ? <CheckCircle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
                {message.text}
              </div>
@@ -242,16 +242,12 @@ export function UsersTab({
               </button>
             }
           />
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-500">Role</label>
-            <select
-              className="w-full px-3 py-2 border rounded-lg text-sm"
+            <Select
+              label="Role"
               value={newForm.role}
               onChange={(e) => setNewForm({ ...newForm, role: e.target.value as any })}
-            >
-              {getAvailableRoles().map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-            </select>
-          </div>
+              options={getAvailableRoles()}
+            />
           {newForm.role === 'courier' && (
             <div className="grid grid-cols-2 gap-4">
               <Select
@@ -277,17 +273,13 @@ export function UsersTab({
           <Input label="Nama Lengkap" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
           <Input label="Alamat Email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} />
           <Input label="Telepon" value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} />
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-500">Role</label>
-            <select
-              className="w-full px-3 py-2 border rounded-lg text-sm"
+            <Select
+              label="Role"
               value={editForm.role}
               onChange={(e) => setEditForm({ ...editForm, role: e.target.value as any })}
+              options={getAvailableRoles()}
               disabled={selectedUser?.id === currentUser?.id}
-            >
-              {getAvailableRoles().map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-            </select>
-          </div>
+            />
           {editForm.role === 'courier' && (
             <div className="grid grid-cols-2 gap-4">
               <Select
@@ -303,8 +295,10 @@ export function UsersTab({
             <h4 className="font-medium mb-1">Reset Password</h4>
             <div className="relative">
               <input
+                id="reset-password-input"
                 type={showPassword ? 'text' : 'password'}
-                className="w-full px-3 py-2 border rounded-lg"
+                aria-label="Set new password for user"
+                className="w-full px-3 py-2 border rounded-lg focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
                 placeholder="Kosongkan jika tidak ingin diubah"
                 value={editForm.password}
                 onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}

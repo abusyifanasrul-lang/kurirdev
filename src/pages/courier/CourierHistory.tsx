@@ -13,11 +13,11 @@ import { Order } from '@/types';
 type StatusFilter = 'all' | 'delivered' | 'cancelled';
 
 const statusConfig: Record<string, { color: string; bg: string; icon: typeof CheckCircle; label: string }> = {
-  delivered: { color: 'text-green-600', bg: 'bg-green-50', icon: CheckCircle, label: '✅ CEKLIS — Terkirim' },
+  delivered: { color: 'text-teal-600', bg: 'bg-teal-50', icon: CheckCircle, label: '✅ CEKLIS — Terkirim' },
   cancelled: { color: 'text-red-600', bg: 'bg-red-50', icon: XCircle, label: '❌ CANCEL — Dibatalkan' },
-  in_transit: { color: 'text-blue-600', bg: 'bg-blue-50', icon: Package, label: 'GAS — Customer' },
+  in_transit: { color: 'text-emerald-600', bg: 'bg-emerald-50', icon: Package, label: 'GAS — Customer' },
   picked_up: { color: 'text-orange-600', bg: 'bg-orange-50', icon: Package, label: 'GAS — Penjual' },
-  assigned: { color: 'text-indigo-600', bg: 'bg-indigo-50', icon: Clock, label: 'Order Diterima' },
+  assigned: { color: 'text-teal-700', bg: 'bg-teal-50', icon: Clock, label: 'Order Diterima' },
   pending: { color: 'text-gray-600', bg: 'bg-gray-50', icon: Clock, label: 'Menunggu Kurir' },
 };
 
@@ -118,7 +118,7 @@ export function CourierHistory() {
     return (
       <div className="flex items-center justify-center py-16">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-4 border-green-200 border-t-green-600 rounded-full animate-spin" />
+          <div className="w-8 h-8 border-4 border-teal-200 border-t-teal-600 rounded-full animate-spin" />
           <p className="text-sm text-gray-500">Memuat riwayat...</p>
         </div>
       </div>
@@ -144,19 +144,23 @@ export function CourierHistory() {
         {/* Search & Filter */}
         <div className="px-4 pb-3 flex gap-2">
           <div className="flex-1 relative">
+            <label htmlFor="order-search" className="sr-only">Cari pesanan</label>
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
+              id="order-search"
               type="text"
               placeholder="Cari pesanan..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
             />
           </div>
+          <label htmlFor="status-filter" className="sr-only">Filter status</label>
           <select
+            id="status-filter"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-            className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
           >
             <option value="all">Semua</option>
             <option value="delivered">✅ CEKLIS — Terkirim</option>
@@ -214,7 +218,7 @@ export function CourierHistory() {
                       <div className="flex justify-between items-center mt-3 pt-2 border-t border-gray-50">
                         <span className="text-xs text-gray-500">Total Fee: {formatCurrency(order.total_fee)}</span>
                         {courierEarning > 0 && (
-                          <span className="text-sm font-semibold text-green-600">+{formatCurrency(courierEarning)}</span>
+                          <span className="text-sm font-semibold text-teal-600">+{formatCurrency(courierEarning)}</span>
                         )}
                       </div>
                     </div>
@@ -240,7 +244,7 @@ export function CourierHistory() {
               {/* Preview Invoice */}
               <div className="text-xs space-y-0 text-gray-700">
                 <div className="text-center pb-3 border-b-2 border-gray-900 mb-3">
-                  <p className="font-extrabold text-indigo-700 text-lg">🛵 KurirDev</p>
+                  <p className="font-extrabold text-teal-700 text-lg">🛵 KurirDev</p>
                   <p className="text-gray-500 text-[10px] tracking-widest uppercase">Invoice Pengiriman</p>
                   <p className="font-bold text-gray-900 text-sm mt-2">{selectedOrder.order_number}</p>
                   <p className="text-gray-500 mt-0.5">{format(parseISO(selectedOrder.created_at), 'dd MMM yyyy, HH:mm')}</p>
@@ -325,7 +329,7 @@ export function CourierHistory() {
             <div className="px-4 py-3 border-t">
               <button
                 onClick={handleBagikanInvoice}
-                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
+                className="w-full py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
               >
                 📸 Bagikan Invoice ke Customer
               </button>
@@ -341,7 +345,7 @@ export function CourierHistory() {
 
             {/* Header */}
             <div style={{ textAlign: 'center', paddingBottom: '12px', borderBottom: '2px solid #111827', marginBottom: '14px' }}>
-              <div style={{ fontSize: '20px', fontWeight: '800', color: '#4338ca' }}>🛵 KurirDev</div>
+              <div style={{ fontSize: '20px', fontWeight: '800', color: '#0f766e' }}>🛵 KurirDev</div>
               <div style={{ fontSize: '10px', color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '2px' }}>Invoice Pengiriman</div>
               <div style={{ fontSize: '14px', fontWeight: '700', color: '#111827', marginTop: '10px' }}>{selectedOrder.order_number}</div>
               <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>{format(parseISO(selectedOrder.created_at), 'dd MMM yyyy, HH:mm')}</div>

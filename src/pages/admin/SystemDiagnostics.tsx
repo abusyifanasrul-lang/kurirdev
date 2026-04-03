@@ -192,13 +192,13 @@ export function SystemDiagnostics() {
 
       <div className="p-4 lg:p-8 space-y-6">
         {/* Identity Banner */}
-        <div className="flex items-center gap-3 p-4 bg-purple-50 border border-purple-200 rounded-xl">
-          <ShieldAlert className="h-6 w-6 text-purple-700 shrink-0" />
+        <div className="flex items-center gap-3 p-4 bg-teal-50 border border-teal-200 rounded-xl">
+          <ShieldAlert className="h-6 w-6 text-teal-700 shrink-0" />
           <div>
-            <p className="text-sm font-semibold text-purple-900">
+            <p className="text-sm font-semibold text-teal-900">
               Logged in as Super Admin: {user?.name} ({user?.email})
             </p>
-            <p className="text-xs text-purple-600 mt-0.5">
+            <p className="text-xs text-teal-600 mt-0.5">
               Semua aksi di halaman ini dicatat dan tidak dapat dibatalkan.
             </p>
           </div>
@@ -207,7 +207,7 @@ export function SystemDiagnostics() {
         {/* Quick Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {[
-            { label: 'Total Orders (Live)', value: orders.length, icon: Package, color: 'indigo' },
+            { label: 'Total Orders (Live)', value: orders.length, icon: Package, color: 'teal' },
             { label: 'Total Users', value: users.length, icon: Users, color: 'blue' },
             { label: 'IndexedDB Records', value: cacheMeta.total_records, icon: Database, color: 'emerald' },
             { label: 'Pending Orders', value: orders.filter(o => o.status === 'pending').length, icon: Clock, color: 'amber' },
@@ -232,7 +232,7 @@ export function SystemDiagnostics() {
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === tab.id
-                  ? 'border-purple-600 text-purple-700'
+                  ? 'border-teal-600 text-teal-700'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
@@ -314,7 +314,7 @@ export function SystemDiagnostics() {
                   <button
                     key={t}
                     onClick={() => { setInspectType(t); setInspectResult(null); setInspectError(''); }}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${inspectType === t ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${inspectType === t ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                   >
                     {t === 'order' ? 'Order' : 'User'}
                   </button>
@@ -327,7 +327,8 @@ export function SystemDiagnostics() {
                   onChange={e => setInspectId(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleInspect()}
                   placeholder={`Enter ${inspectType} ID...`}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 font-mono"
+                  aria-label={`Record ID to inspect (${inspectType})`}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 font-mono"
                 />
                 <Button onClick={handleInspect} leftIcon={<Search className="h-4 w-4" />}>
                   Inspect
@@ -374,7 +375,7 @@ export function SystemDiagnostics() {
                     value={forceOrderId}
                     onChange={e => setForceOrderId(e.target.value)}
                     placeholder="Paste order document ID..."
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 font-mono"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 font-mono"
                   />
                 </div>
                 <div>
@@ -382,7 +383,7 @@ export function SystemDiagnostics() {
                   <select
                     value={forceStatus}
                     onChange={e => setForceStatus(e.target.value as OrderStatus)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500"
                   >
                     {ORDER_STATUSES.map(s => (
                       <option key={s} value={s}>{STATUS_LABELS[s]}</option>
@@ -451,7 +452,7 @@ export function SystemDiagnostics() {
               <div className="space-y-2">
                 {auditLogs.map(log => (
                   <div key={log.id} className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
-                    <div className="w-2 h-2 rounded-full bg-purple-500 mt-2 shrink-0" />
+                    <div className="w-2 h-2 rounded-full bg-teal-500 mt-2 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
                         <p className="text-sm font-medium text-gray-900 truncate">

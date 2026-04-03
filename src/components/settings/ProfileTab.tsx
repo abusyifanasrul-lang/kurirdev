@@ -89,7 +89,7 @@ export function ProfileTab({
       {/* Sync Maintenance Section */}
       <Card>
         <div className="flex items-center gap-2 mb-4">
-          <Database className="h-5 w-5 text-indigo-600" />
+          <Database className="h-5 w-5 text-teal-600" />
           <h3 className="text-lg font-semibold text-gray-900">Data & Sinkronisasi</h3>
         </div>
         <p className="text-sm text-gray-500 mb-6">
@@ -99,10 +99,10 @@ export function ProfileTab({
         <div className="space-y-6 max-w-md">
           {cacheMeta && (
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-indigo-50/50 p-3 rounded-xl border border-indigo-100/50">
-                <p className="text-[10px] uppercase tracking-wider font-bold text-indigo-400 mb-1">Total Record</p>
-                <p className="text-xl font-bold text-indigo-700">{cacheMeta.total_records}</p>
-                <p className="text-[10px] text-indigo-500 mt-1">Orders ter-cache</p>
+              <div className="bg-teal-50/50 p-3 rounded-xl border border-teal-100/50">
+                <p className="text-[10px] uppercase tracking-wider font-bold text-teal-400 mb-1">Total Record</p>
+                <p className="text-xl font-bold text-teal-700">{cacheMeta.total_records}</p>
+                <p className="text-[10px] text-teal-500 mt-1">Orders ter-cache</p>
               </div>
               <div className="bg-emerald-50/50 p-3 rounded-xl border border-emerald-100/50">
                 <p className="text-[10px] uppercase tracking-wider font-bold text-emerald-400 mb-1">Status Sync</p>

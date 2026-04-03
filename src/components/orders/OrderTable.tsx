@@ -37,8 +37,8 @@ export function OrderTable({
   const getSortIcon = (field: string) => {
     if (sortField !== field) return <ArrowUpDown className="h-3 w-3 ml-1 text-gray-400" />;
     return sortOrder === 'asc' ? 
-      <ChevronUp className="h-3 w-3 ml-1 text-indigo-600" /> : 
-      <ChevronDown className="h-3 w-3 ml-1 text-indigo-600" />;
+      <ChevronUp className="h-3 w-3 ml-1 text-teal-600" /> : 
+      <ChevronDown className="h-3 w-3 ml-1 text-teal-600" />;
   };
 
   const formatCurrency = (val: number) => 
@@ -84,7 +84,7 @@ export function OrderTable({
                 className="cursor-pointer hover:bg-gray-50 transition-colors"
                 onClick={() => onSelect(order)}
               >
-                <TableCell className="font-medium text-indigo-600">{order.order_number}</TableCell>
+                <TableCell className="font-medium text-teal-600">{order.order_number}</TableCell>
                 <TableCell>
                   <div className="flex flex-col">
                     <span className="font-medium text-gray-900">{order.customer_name}</span>

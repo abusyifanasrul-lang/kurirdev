@@ -133,7 +133,7 @@ export function Layout() {
         </button>
 
         <div className="flex items-center gap-2">
-          <div className="p-1.5 bg-indigo-600 rounded-lg">
+          <div className="p-1.5 bg-teal-600 rounded-lg">
             <Truck className="h-5 w-5" />
           </div>
           <span className="font-bold">KurirDev</span>
@@ -170,7 +170,7 @@ export function Layout() {
         {/* Logo */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-gray-800">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-indigo-600 rounded-lg">
+            <div className="p-2 bg-teal-600 rounded-lg">
               <Truck className="h-6 w-6" />
             </div>
             <div>
@@ -203,7 +203,7 @@ export function Layout() {
                 cn(
                   'flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium transition-colors group',
                   isActive
-                    ? 'bg-indigo-600 text-white'
+                    ? 'bg-teal-600 text-white'
                     : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                 )
               }
@@ -222,10 +222,10 @@ export function Layout() {
           <div className="flex items-center gap-3 px-4 py-3">
             <div className={cn(
               "w-10 h-10 rounded-full flex items-center justify-center font-semibold",
-              user?.role === 'admin' ? 'bg-purple-600' :
+              user?.role === 'admin' ? 'bg-teal-600' :
               user?.role === 'finance' ? 'bg-amber-600' :
               user?.role === 'owner' ? 'bg-emerald-600' :
-              'bg-indigo-600'
+              'bg-cyan-600'
             )}>
               {user?.name?.charAt(0).toUpperCase() || 'A'}
             </div>

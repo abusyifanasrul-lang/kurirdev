@@ -93,8 +93,8 @@ export function CourierProfile() {
       {/* Profile Card */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
         <div className="flex items-center gap-4 mb-6">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
-            <span className="text-3xl font-bold text-green-600">
+          <div className="w-20 h-20 bg-teal-100 rounded-full flex items-center justify-center">
+            <span className="text-3xl font-bold text-teal-600">
               {user?.name?.charAt(0) || 'C'}
             </span>
           </div>
@@ -102,8 +102,8 @@ export function CourierProfile() {
             <h2 className="text-xl font-bold text-gray-900">{user?.name || 'Kurir'}</h2>
             <p className="text-sm text-gray-500">Kurir</p>
             <div className="flex items-center gap-1 mt-1">
-              <span className={`w-2 h-2 rounded-full ${isSuspended ? 'bg-red-500' : 'bg-green-500'}`} />
-              <span className={`text-xs ${isSuspended ? 'text-red-600' : 'text-green-600'}`}>
+              <span className={`w-2 h-2 rounded-full ${isSuspended ? 'bg-red-500' : 'bg-teal-500'}`} />
+              <span className={`text-xs ${isSuspended ? 'text-red-600' : 'text-teal-600'}`}>
                 {isSuspended ? 'Disuspend' : 'Aktif'}
               </span>
             </div>
@@ -180,8 +180,8 @@ export function CourierProfile() {
             )}
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center">
-                <Lock className="h-5 w-5 text-green-600" />
+              <div className="w-10 h-10 bg-teal-50 rounded-xl flex items-center justify-center">
+                <Lock className="h-5 w-5 text-teal-600" />
               </div>
               <div className="text-left">
                 <p className="font-medium text-gray-900">Ganti Password</p>
@@ -210,10 +210,14 @@ export function CourierProfile() {
           {isChangePasswordOpen && !isSuspended && (
             <div className="p-4 bg-gray-50/50 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+                <label 
+                  htmlFor="new-password"
+                  className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1"
+                >
                   Password Baru
                 </label>
                 <input
+                  id="new-password"
                   type="password"
                   value={passwordForm.newPassword}
                   onChange={(e) => {
@@ -224,7 +228,7 @@ export function CourierProfile() {
                     "w-full px-4 py-3 bg-white border rounded-xl focus:ring-2 transition-all",
                     message?.text === 'Password minimal 8 karakter'
                       ? "border-red-500 focus:ring-red-200"
-                      : "border-gray-200 focus:ring-green-500"
+                      : "border-gray-200 focus:ring-teal-500"
                   )}
                   placeholder="Masukkan password baru"
                 />
@@ -237,10 +241,14 @@ export function CourierProfile() {
                 )}
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+                <label 
+                  htmlFor="confirm-password"
+                  className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1"
+                >
                   Konfirmasi Password Baru
                 </label>
                 <input
+                  id="confirm-password"
                   type="password"
                   value={passwordForm.confirmPassword}
                   onChange={(e) => {
@@ -251,7 +259,7 @@ export function CourierProfile() {
                     "w-full px-4 py-3 bg-white border rounded-xl focus:ring-2 transition-all",
                     message?.text === 'Password tidak cocok'
                       ? "border-red-500 focus:ring-red-200"
-                      : "border-gray-200 focus:ring-green-500"
+                      : "border-gray-200 focus:ring-teal-500"
                   )}
                   placeholder="Konfirmasi password baru"
                 />
@@ -266,15 +274,15 @@ export function CourierProfile() {
                 onClick={handleChangePassword}
                 disabled={isLoading || !passwordForm.newPassword || !passwordForm.confirmPassword}
                 className={cn(
-                  "w-full py-3 bg-green-600 text-white font-bold rounded-xl shadow-lg shadow-green-200 transition-all active:scale-95",
-                  isLoading ? "opacity-70 cursor-not-allowed" : "hover:bg-green-700"
+                  "w-full py-3 bg-teal-600 text-white font-bold rounded-xl shadow-lg shadow-teal-200 transition-all active:scale-95",
+                  isLoading ? "opacity-70 cursor-not-allowed" : "hover:bg-teal-700"
                 )}
               >
                 {isLoading ? 'Memperbarui...' : 'Simpan Password Baru'}
               </button>
 
               {message?.type === 'success' && (
-                <div className="flex items-center gap-2 px-4 py-3 bg-green-50 border border-green-200 text-green-700 text-sm font-medium rounded-xl">
+                <div className="flex items-center gap-2 px-4 py-3 bg-teal-50 border border-teal-200 text-teal-700 text-sm font-medium rounded-xl">
                   <CheckCircle className="h-4 w-4 flex-shrink-0" />
                   {message.text}
                 </div>
@@ -288,18 +296,18 @@ export function CourierProfile() {
           <div className="flex items-center justify-between p-4">
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                notifPermission === 'granted' ? 'bg-green-50' :
+                notifPermission === 'granted' ? 'bg-teal-50' :
                 notifPermission === 'denied' ? 'bg-red-50' : 'bg-yellow-50'
               }`}>
                 <Bell className={`h-5 w-5 ${
-                  notifPermission === 'granted' ? 'text-green-600' :
+                  notifPermission === 'granted' ? 'text-teal-600' :
                   notifPermission === 'denied' ? 'text-red-500' : 'text-yellow-500'
                 }`} />
               </div>
               <div className="text-left">
                 <p className="font-medium text-gray-900">Notifikasi Order</p>
                 <p className={`text-sm font-medium ${
-                  notifPermission === 'granted' ? 'text-green-600' :
+                  notifPermission === 'granted' ? 'text-teal-600' :
                   notifPermission === 'denied' ? 'text-red-500' : 'text-yellow-500'
                 }`}>
                   {notifPermission === 'granted' ? '✅ Diizinkan' :
@@ -310,7 +318,7 @@ export function CourierProfile() {
             {notifPermission === 'default' && (
               <button
                 onClick={handleRequestNotifPermission}
-                className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-full hover:bg-indigo-100"
+                className="text-xs font-semibold text-teal-600 bg-teal-50 px-3 py-1.5 rounded-full hover:bg-teal-100"
               >
                 Izinkan
               </button>

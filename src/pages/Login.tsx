@@ -128,30 +128,30 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-800 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-teal-900 via-cyan-900 to-emerald-900 flex items-center justify-center p-4">
       {/* Background decoration */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500/10 rounded-full" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-500/10 rounded-full" />
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-teal-500/10 rounded-full" />
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-cyan-500/10 rounded-full" />
       </div>
 
       <div className="relative w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-2xl shadow-xl mb-4">
-            <Truck className="h-10 w-10 text-indigo-600" />
+            <Truck className="h-10 w-10 text-teal-600" />
           </div>
           <h1 className="text-3xl font-bold text-white">KurirDev</h1>
-          <p className="text-indigo-200 mt-2">Sistem Manajemen Pengiriman</p>
+          <p className="text-teal-200 mt-2">Sistem Manajemen Pengiriman</p>
         </div>
 
         {/* Login Card */}
         <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
-          <div className="px-8 py-6 bg-indigo-600 text-center">
+          <div className="px-8 py-6 bg-teal-600 text-center">
             <h2 className="text-2xl font-bold text-white mb-1">
               Selamat Datang
             </h2>
-            <p className="text-indigo-100 text-sm">
+            <p className="text-teal-100 text-sm">
               Silakan login untuk masuk ke dasbor Anda
             </p>
           </div>
@@ -175,7 +175,7 @@ export function Login() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                  className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
                   placeholder="Masukkan email Anda"
                   required
                 />
@@ -194,7 +194,7 @@ export function Login() {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                  className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
                   placeholder="Masukkan password Anda"
                   required
                 />
@@ -218,27 +218,27 @@ export function Login() {
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                  className="w-4 h-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
                 />
                 <span className="text-sm text-gray-600">Ingat saya</span>
               </label>
               <button
                 type="button"
                 onClick={() => setShowForgotInfo(!showForgotInfo)}
-                className="text-sm text-indigo-600 hover:underline"
+                className="text-sm text-teal-600 hover:underline"
               >
                 Lupa password?
               </button>
             </div>
             {showForgotInfo && (
-              <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-lg space-y-1">
-                <p className="text-[10px] text-indigo-700 font-semibold uppercase tracking-wider">
+              <div className="p-3 bg-teal-50 border border-teal-100 rounded-lg space-y-1">
+                <p className="text-[10px] text-teal-700 font-semibold uppercase tracking-wider">
                   Info Login
                 </p>
-                <p className="text-xs text-indigo-600">
+                <p className="text-xs text-teal-600">
                   Password default: <span className="font-bold">kurirdev123</span>
                 </p>
-                <p className="text-[10px] text-indigo-400 italic">
+                <p className="text-[10px] text-teal-400 italic">
                   Hubungi admin jika Anda tetap tidak bisa masuk.
                 </p>
               </div>
@@ -248,7 +248,7 @@ export function Login() {
               type="submit"
               disabled={isLoading}
               className={cn(
-                "w-full py-3 px-4 rounded-xl font-medium text-white transition-all duration-200 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700",
+                "w-full py-3 px-4 rounded-xl font-medium text-white transition-all duration-200 flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700",
                 isLoading && 'opacity-70 cursor-not-allowed'
               )}
             >
@@ -268,7 +268,7 @@ export function Login() {
             <p className="text-xs text-gray-500 text-center mb-3 font-medium">Auto-Routing Demo Credentials</p>
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="text-left p-2 bg-white rounded-lg border border-gray-200">
-                <p className="font-medium text-indigo-600">Super Admin</p>
+                <p className="font-medium text-teal-600">Super Admin</p>
                 <p className="text-gray-400 truncate">admin@kurirdev.com</p>
               </div>
               <div className="text-left p-2 bg-white rounded-lg border border-gray-200">
@@ -293,7 +293,7 @@ export function Login() {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-indigo-200 text-sm mt-8">
+        <p className="text-center text-teal-200 text-sm mt-8">
           KurirDev v1.0
         </p>
       </div>

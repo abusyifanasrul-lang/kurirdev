@@ -157,7 +157,7 @@ export function FinanceDashboard() {
             </h3>
             <button
               onClick={() => navigate('/admin/finance/penagihan')}
-              className="text-sm text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"
+              className="text-sm text-teal-600 hover:text-teal-700 font-medium flex items-center gap-1"
             >
               Lihat Semua <ArrowRight className="h-4 w-4" />
             </button>
@@ -189,7 +189,7 @@ export function FinanceDashboard() {
                     <p className="font-bold text-amber-700">{formatCurrency(item.totalAmount)}</p>
                     <button
                       onClick={() => navigate('/admin/finance/penagihan')}
-                      className="text-xs text-indigo-600 hover:underline mt-1"
+                      className="text-xs text-teal-600 hover:underline mt-1"
                     >
                       Tagih
                     </button>
@@ -204,10 +204,10 @@ export function FinanceDashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <button
             onClick={() => navigate('/admin/finance/penagihan')}
-            className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-xl hover:border-indigo-300 hover:shadow-sm transition-all"
+            className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-xl hover:border-teal-300 hover:shadow-sm transition-all"
           >
-            <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
-              <DollarSign className="h-5 w-5 text-indigo-600" />
+            <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center">
+              <DollarSign className="h-5 w-5 text-teal-600" />
             </div>
             <div className="text-left">
               <p className="font-medium text-gray-900">Penagihan</p>
@@ -228,10 +228,10 @@ export function FinanceDashboard() {
           </button>
           <button
             onClick={() => navigate('/admin/reports')}
-            className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-xl hover:border-purple-300 hover:shadow-sm transition-all"
+            className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-xl hover:border-teal-300 hover:shadow-sm transition-all"
           >
-            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-              <Package className="h-5 w-5 text-purple-600" />
+            <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center">
+              <Package className="h-5 w-5 text-teal-600" />
             </div>
             <div className="text-left">
               <p className="font-medium text-gray-900">Laporan</p>

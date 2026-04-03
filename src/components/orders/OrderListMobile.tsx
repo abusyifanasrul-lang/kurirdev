@@ -27,7 +27,7 @@ export function OrderListMobile({ orders, onSelect }: OrderListMobileProps) {
         >
           <div className="flex justify-between items-start mb-2">
             <div>
-              <p className="font-bold text-indigo-600">{order.order_number}</p>
+              <p className="font-bold text-teal-600">{order.order_number}</p>
               <p className="text-sm font-medium text-gray-900">{order.customer_name}</p>
             </div>
             <Badge variant={getStatusBadgeVariant(order.status)}>

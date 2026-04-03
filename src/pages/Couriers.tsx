@@ -284,7 +284,7 @@ export function Couriers() {
                   >
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold text-xs">
+                        <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center text-teal-600 font-bold text-xs">
                           {courier.name.charAt(0)}
                         </div>
                         <div className="flex flex-col">
@@ -383,11 +383,12 @@ export function Couriers() {
             placeholder="courier@example.com"
           />
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <label htmlFor="courier-password" theme-color="teal" className="block text-sm font-medium text-gray-700 mb-1">Password</label>
             <div className="relative">
             <input
+              id="courier-password"
               type={showCourierPassword ? 'text' : 'password'}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
               value={newCourier.password}
               onChange={(e) => setNewCourier({ ...newCourier, password: e.target.value })}
               placeholder="Min 8 characters"
@@ -453,7 +454,7 @@ export function Couriers() {
             {/* Header / Actions */}
             <div className="flex justify-between items-center bg-gray-50 p-4 rounded-lg">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xl font-bold">
+                <div className="w-12 h-12 bg-teal-600 text-white rounded-full flex items-center justify-center text-xl font-bold">
                   {selectedCourier.name.charAt(0)}
                 </div>
                 <div>
@@ -569,7 +570,7 @@ export function Couriers() {
                   selectedCourierStats.recent_orders?.map((order) => (
                     <div key={order.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded border-b last:border-0 border-gray-100">
                       <div>
-                        <p className="font-medium text-sm text-indigo-600">{order.order_number}</p>
+                        <p className="font-medium text-sm text-teal-600">{order.order_number}</p>
                         <p className="text-xs text-gray-500">{format(new Date(order.created_at), 'MMM dd, HH:mm')}</p>
                       </div>
                       <div className="text-right">

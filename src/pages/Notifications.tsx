@@ -84,8 +84,8 @@ export function Notifications() {
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card className="flex items-center gap-4">
-            <div className="p-3 bg-indigo-100 rounded-lg">
-              <Bell className="h-6 w-6 text-indigo-600" />
+            <div className="p-3 bg-teal-100 rounded-lg">
+              <Bell className="h-6 w-6 text-teal-600" />
             </div>
             <div>
               <p className="text-2xl font-bold">{notifications.length}</p>
@@ -185,7 +185,7 @@ export function Notifications() {
                     setNotificationBody('Kak, jangan lupa tanya harga barangnya dulu ke customer sebelum dibeli. Kalau sudah deal, update di aplikasi ya 👍');
                   }}
                 >
-                  <div className="p-1.5 bg-indigo-100 rounded-md text-indigo-600 mt-0.5">
+                  <div className="p-1.5 bg-cyan-100 rounded-md text-cyan-600 mt-0.5">
                     <Info className="w-4 h-4" />
                   </div>
                   <div>
@@ -230,7 +230,7 @@ export function Notifications() {
                     setNotificationBody('Kak, masih ada setoran yang belum masuk nih. Kalau sudah disetor, konfirmasi ke admin ya biar langsung dicatat 🙏');
                   }}
                 >
-                  <div className="p-1.5 bg-purple-100 rounded-md text-purple-600 mt-0.5">
+                  <div className="p-1.5 bg-teal-100 rounded-md text-teal-600 mt-0.5">
                     <Bell className="w-4 h-4" />
                   </div>
                   <div>

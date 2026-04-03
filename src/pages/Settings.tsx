@@ -26,7 +26,7 @@ const InstructionsTab = lazy(() => import('@/components/settings/InstructionsTab
 function TabLoading() {
   return (
     <div className="flex flex-col items-center justify-center py-12 animate-in fade-in duration-500">
-      <div className="w-8 h-8 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-3" />
+      <div className="w-8 h-8 border-2 border-teal-200 border-t-teal-600 rounded-full animate-spin mb-3" />
       <p className="text-xs text-gray-400 font-medium">Memuat pengaturan...</p>
     </div>
   );
@@ -182,7 +182,7 @@ export function Settings() {
         {/* Global Feedback */}
         {message && (
           <div className={`mb-6 p-4 rounded-xl flex items-center gap-2 border ${
-            message.type === 'success' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'
+            message.type === 'success' ? 'bg-teal-50 text-teal-700 border-teal-200' : 'bg-red-50 text-red-700 border-red-200'
           }`}>
             <span>{message.text}</span>
           </div>
@@ -195,7 +195,7 @@ export function Settings() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
-                activeTab === tab.id ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                activeTab === tab.id ? 'border-teal-600 text-teal-600' : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
               <tab.icon className="h-4 w-4" />
