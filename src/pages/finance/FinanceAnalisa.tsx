@@ -8,6 +8,7 @@ import {
   eachDayOfInterval, startOfMonth
 } from 'date-fns';
 import { Header } from '@/components/layout/Header';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { lazy, Suspense } from 'react';
 import { Card, StatCard } from '@/components/ui/Card';
 import { useOrderStore } from '@/stores/useOrderStore';
@@ -256,13 +257,15 @@ export function FinanceAnalisa() {
         {/* Revenue Chart */}
         <Card>
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Tren Pendapatan</h2>
-          <Suspense fallback={<ChartSkeleton height={300} />}>
-            <RevenueBarChart 
-              data={dailyData} 
-              formatCurrency={formatCurrency} 
-              formatShortCurrency={formatShortCurrency}
-            />
-          </Suspense>
+          <ErrorBoundary>
+            <Suspense fallback={<ChartSkeleton height={300} />}>
+              <RevenueBarChart 
+                data={dailyData} 
+                formatCurrency={formatCurrency} 
+                formatShortCurrency={formatShortCurrency}
+              />
+            </Suspense>
+          </ErrorBoundary>
         </Card>
 
         {/* Two Column Layout */}
@@ -275,9 +278,11 @@ export function FinanceAnalisa() {
             </h2>
             {paymentData.length > 0 ? (
               <div className="flex items-center gap-6">
-              <Suspense fallback={<ChartSkeleton height={180} />}>
-                <PaymentPieChart data={paymentData} />
-              </Suspense>
+              <ErrorBoundary>
+                <Suspense fallback={<ChartSkeleton height={180} />}>
+                  <PaymentPieChart data={paymentData} />
+                </Suspense>
+              </ErrorBoundary>
                 <div className="space-y-3">
                   {paymentData.map((item) => (
                     <div key={item.name} className="flex items-center gap-2">

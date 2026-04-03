@@ -23,6 +23,31 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     logger.error('Uncaught component error', { error, errorInfo })
+    
+    // Log to Supabase for developer review
+    this.logErrorToSupabase(error, errorInfo)
+  }
+
+  private async logErrorToSupabase(error: Error, errorInfo: ErrorInfo) {
+    try {
+      const { supabase } = await import('../lib/supabaseClient')
+      const { user } = (await supabase.auth.getSession()).data.session || { user: null }
+      
+      await (supabase.from('client_logs') as any).insert({
+        level: 'error',
+        message: error.message || 'Unknown React Error',
+        stack_trace: error.stack,
+        context: {
+          componentStack: errorInfo.componentStack,
+          userAgent: navigator.userAgent,
+          platform: navigator.platform
+        },
+        user_id: user?.id,
+        url: window.location.href
+      })
+    } catch (e) {
+      console.error('Failed to log error to Supabase:', e)
+    }
   }
 
   public render() {

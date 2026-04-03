@@ -187,6 +187,7 @@ function PWAUpdateBanner() {
 }
 
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { ToastContainer } from '@/components/ui/ToastContainer';
 
 export function App() {
   const loadFromLocal = useCustomerStore(s => s.loadFromLocal);
@@ -273,6 +274,7 @@ export function App() {
       <ThemeProvider>
         <AuthProvider>
           <AppListeners />
+          <ToastContainer />
           <PWAUpdateBanner />
           <BrowserRouter>
             <Suspense fallback={<LoadingScreen />}>
@@ -291,9 +293,11 @@ export function App() {
                 <Route
                   path="/admin"
                   element={
-                    <ProtectedRoute allowedRoles={ADMIN_ROLES}>
-                      <AdminLayout />
-                    </ProtectedRoute>
+                    <ErrorBoundary>
+                      <ProtectedRoute allowedRoles={ADMIN_ROLES}>
+                        <AdminLayout />
+                      </ProtectedRoute>
+                    </ErrorBoundary>
                   }
                 >
                   {/* Dashboard - Admin Kurir focused */}
@@ -388,9 +392,11 @@ export function App() {
                 <Route
                   path="/courier"
                   element={
-                    <ProtectedRoute allowedRoles={['courier']}>
-                      <CourierLayout />
-                    </ProtectedRoute>
+                    <ErrorBoundary>
+                      <ProtectedRoute allowedRoles={['courier']}>
+                        <CourierLayout />
+                      </ProtectedRoute>
+                    </ErrorBoundary>
                   }
                 >
                   <Route index element={<CourierDashboard />} />

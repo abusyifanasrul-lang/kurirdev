@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabaseClient'
+import { withRetry } from '@/utils/retry'
+import { useToastStore } from '@/stores/useToastStore'
 import { Order, OrderStatus, OrderStatusHistory } from '@/types'
 import {
   moveToLocalDB,
@@ -49,6 +51,8 @@ interface OrderState {
   
   setOrders: (orders: Order[]) => void
   setActiveOrdersByCourier: (orders: Order[]) => void
+  isSyncingOrders: Set<string>
+  setSyncing: (orderId: string, isSyncing: boolean) => void
   reset: () => void
 }
 
@@ -63,6 +67,14 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   activeOrdersByCourier: [],
   isFetchingActiveOrders: false,
   currentOrder: null,
+  isSyncingOrders: new Set(),
+
+  setSyncing: (orderId, isSyncing) => set((state) => {
+    const next = new Set(state.isSyncingOrders)
+    if (isSyncing) next.add(orderId)
+    else next.delete(orderId)
+    return { isSyncingOrders: next }
+  }),
 
   fetchOrdersByCourier: async (courierId: string) => {
     set({ isFetchingCourierOrders: true })
@@ -268,143 +280,194 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   },
 
   addOrder: async (orderData: any) => {
-    // 1. Generate Order Number via RPC (Atomic & Daily Reset)
-    const { data: orderNumber, error: rpcError } = await supabase.rpc('generate_order_number')
-    
-    if (rpcError) {
-      console.error('Failed to generate order number:', rpcError)
-      throw new Error('Sistem gagal membuat nomor pesanan. Silakan coba lagi dalam beberapa saat.')
-    }
+    const addToast = useToastStore.getState().addToast
+    const removeToast = useToastStore.getState().removeToast
+    let retryToastId: string | undefined
 
-    // 2. Insert with the atomic number
-    const finalOrderData = {
-      ...orderData,
-      order_number: orderNumber
-    }
+    try {
+      await withRetry(async () => {
+        // 1. Generate Order Number via RPC (Atomic & Daily Reset)
+        const { data: orderNumber, error: rpcError } = await supabase.rpc('generate_order_number')
+        
+        if (rpcError) throw rpcError
 
-    const { data, error } = await (supabase.from('orders') as any)
-      .insert(finalOrderData)
-      .select()
-      .single()
-    
-    if (error) {
-      throw new Error(error.message || 'Gagal menyimpan order ke database')
-    }
-    
-    const newOrder = data as Order
-    set(state => ({ orders: [newOrder, ...state.orders] }))
+        // 2. Insert with the atomic number
+        const finalOrderData = {
+          ...orderData,
+          order_number: orderNumber
+        }
 
-    sendMockNotification(
-      'Order Baru Masuk!',
-      `Order ${newOrder.order_number} sebesar Rp ${newOrder.total_fee.toLocaleString('id-ID')} menunggumu!`,
-      { orderId: newOrder.id }
-    )
+        const { data, error } = await (supabase.from('orders') as any)
+          .insert(finalOrderData)
+          .select()
+          .single()
+        
+        if (error) throw error
+        
+        const newOrder = data as Order
+        set(state => ({ orders: [newOrder, ...state.orders] }))
+
+        sendMockNotification(
+          'Order Baru Masuk!',
+          `Order ${newOrder.order_number} sebesar Rp ${newOrder.total_fee.toLocaleString('id-ID')} menunggumu!`,
+          { orderId: newOrder.id }
+        )
+      }, {
+        onRetry: (attempt) => {
+          if (!retryToastId) {
+            retryToastId = addToast(`Koneksi tidak stabil. Mencoba kembali... (Sisa ${3 - attempt} percobaan)`, 'loading', 0)
+          } else {
+            useToastStore.getState().updateToast(retryToastId, {
+              message: `Mencoba kembali... (Sisa ${3 - attempt} percobaan)`
+            })
+          }
+        }
+      })
+    } catch (error: any) {
+      throw new Error(error.message || 'Gagal menyimpan order setelah beberapa kali mencoba. Silakan cek koneksi internet Anda.')
+    } finally {
+      if (retryToastId) removeToast(retryToastId)
+    }
   },
 
   updateOrderStatus: async (orderId, status, userId, userName, notes) => {
+    const isSyncing = get().isSyncingOrders.has(orderId)
+    if (isSyncing) return // Prevent duplicate syncs while one is in progress
+
     const order = get().orders.find(o => o.id === orderId)
       || get().currentOrder
       || get().activeOrdersByCourier.find(o => o.id === orderId)
       
     if (!order) return
+    if (order.status === status) return // Already updated
 
-    if (status === 'delivered') {
-      const { commission_rate, commission_threshold } = useSettingsStore.getState()
-      
-      await (supabase.from('tracking_logs') as any).insert({
-        order_id: orderId,
-        status,
-        changed_by: userId,
-        changed_by_name: userName,
-        notes: notes || ''
-      })
-      
-      const { error } = await (supabase.rpc as any)('complete_order', {
-         p_order_id: orderId,
-         p_user_id: userId,
-         p_user_name: userName,
-         p_notes: notes || '',
-         p_commission_rate: commission_rate,
-         p_commission_threshold: commission_threshold
-      })
-      
-      if (error) throw error
-      
-      const updatedOrder = { 
-        ...order, 
-        status: 'delivered', 
-        is_waiting: false, 
-        applied_commission_rate: commission_rate, 
-        applied_commission_threshold: commission_threshold, 
-        actual_delivery_time: new Date().toISOString() 
-      }
-      moveToLocalDB(updatedOrder as Order).catch(err => console.error('Mirror write error:', err))
+    const setSyncing = get().setSyncing
+    const addToast = useToastStore.getState().addToast
+    const removeToast = useToastStore.getState().removeToast
+    let retryToastId: string | undefined
 
-    } else {
-      const updates: Partial<Order> = {
-        status,
-        updated_at: new Date().toISOString()
-      }
+    setSyncing(orderId, true)
 
-      if (status === 'picked_up' && !order.actual_pickup_time) {
-        updates.actual_pickup_time = new Date().toISOString()
-      }
+    try {
+      await withRetry(async () => {
+        if (status === 'delivered') {
+          const { commission_rate, commission_threshold } = useSettingsStore.getState()
+          
+          await (supabase.from('tracking_logs') as any).insert({
+            order_id: orderId,
+            status,
+            changed_by: userId,
+            changed_by_name: userName,
+            notes: notes || ''
+          })
+          
+          const { error } = await (supabase.rpc as any)('complete_order', {
+             p_order_id: orderId,
+             p_user_id: userId,
+             p_user_name: userName,
+             p_notes: notes || '',
+             p_commission_rate: commission_rate,
+             p_commission_threshold: commission_threshold
+          })
+          
+          if (error) throw error
+          
+          const updatedOrder = { 
+            ...order, 
+            status: 'delivered', 
+            is_waiting: false, 
+            applied_commission_rate: commission_rate, 
+            applied_commission_threshold: commission_threshold, 
+            actual_delivery_time: new Date().toISOString() 
+          }
+          moveToLocalDB(updatedOrder as Order).catch(err => console.error('Mirror write error:', err))
 
-      if (status === 'cancelled') {
-        updates.is_waiting = false
-        updates.cancelled_at = new Date().toISOString()
-        updates.cancellation_reason = notes || ''
-      }
+        } else {
+          const updates: Partial<Order> = {
+            status,
+            updated_at: new Date().toISOString()
+          }
 
-      const { error: updateError } = await (supabase.from('orders') as any).update(updates).eq('id', orderId)
-      if (updateError) throw updateError
+          if (status === 'picked_up' && !order.actual_pickup_time) {
+            updates.actual_pickup_time = new Date().toISOString()
+          }
 
-      const newHistory: OrderStatusHistory = {
-        id: crypto.randomUUID(),
-        order_id: orderId,
-        status,
-        changed_by: userId,
-        changed_by_name: userName,
-        changed_at: new Date().toISOString(),
-        notes: notes || ''
-      }
-      
-      await (supabase.from('tracking_logs') as any).insert({
-        order_id: orderId,
-        status,
-        changed_by: userId,
-        changed_by_name: userName,
-        notes: notes || ''
-      })
+          if (status === 'cancelled') {
+            updates.is_waiting = false
+            updates.cancelled_at = new Date().toISOString()
+            updates.cancellation_reason = notes || ''
+          }
 
-      if (status === 'cancelled') {
-        const updatedOrder = { ...order, ...updates }
-        moveToLocalDB(updatedOrder as Order).catch(err => console.error('Mirror write error:', err))
-      }
+          const { error: updateError } = await (supabase.from('orders') as any).update(updates).eq('id', orderId)
+          if (updateError) throw updateError
 
-      const currentHistory = get().statusHistory[orderId] || []
-      set(state => ({
-        statusHistory: {
-          ...state.statusHistory,
-          [orderId]: [...currentHistory, newHistory]
+          await (supabase.from('tracking_logs') as any).insert({
+            order_id: orderId,
+            status,
+            changed_by: userId,
+            changed_by_name: userName,
+            notes: notes || ''
+          })
+
+          if (status === 'cancelled') {
+            const updatedOrder = { ...order, ...updates }
+            moveToLocalDB(updatedOrder as Order).catch(err => console.error('Mirror write error:', err))
+          }
         }
-      }))
+      }, {
+        onRetry: (attempt) => {
+          if (!retryToastId) {
+            retryToastId = addToast(`Gagal sinkronasi... Mencoba kembali (${attempt}/3)`, 'loading', 0)
+          } else {
+            useToastStore.getState().updateToast(retryToastId, {
+              message: `Sinkronasi status ${status}... (${attempt}/3)`
+            })
+          }
+        }
+      })
+    } catch (error: any) {
+      addToast(`Gagal memperbarui status order: ${error.message}`, 'error', 5000)
+    } finally {
+      setSyncing(orderId, false)
+      if (retryToastId) removeToast(retryToastId)
     }
   },
 
   assignCourier: async (orderId, courierId, courierName, userId, userName) => {
-    const { error } = await (supabase.from('orders') as any)
-      .update({ 
-        status: 'assigned', 
-        courier_id: courierId,
-        assigned_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+    const addToast = useToastStore.getState().addToast
+    const removeToast = useToastStore.getState().removeToast
+    let retryToastId: string | undefined
+
+    try {
+      await withRetry(async () => {
+        const { error } = await (supabase.from('orders') as any)
+          .update({ 
+            status: 'assigned', 
+            courier_id: courierId,
+            assigned_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', orderId)
+
+        if (error) throw error
+
+        await get().updateOrderStatus(orderId, 'assigned', userId, userName, `Assigned to ${courierName}`)
+      }, {
+        onRetry: (attempt) => {
+          if (!retryToastId) {
+            retryToastId = addToast(`Gagal menetapkan kurir... Mencoba kembali (${attempt}/3)`, 'loading', 0)
+          } else {
+            useToastStore.getState().updateToast(retryToastId, {
+              message: `Menetapkan ${courierName}... (${attempt}/3)`
+            })
+          }
+        }
       })
-      .eq('id', orderId)
-
-    if (error) throw error
-
-    await get().updateOrderStatus(orderId, 'assigned', userId, userName, `Assigned to ${courierName}`)
+    } catch (error: any) {
+      addToast(`Gagal menetapkan kurir: ${error.message}`, 'error', 5000)
+    } finally {
+      if (retryToastId) removeToast(retryToastId)
+    }
   },
 
   cancelOrder: async (orderId, reason, userId, userName, cancelReasonType) => {
