@@ -17,7 +17,6 @@ export function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [showForgotInfo, setShowForgotInfo] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -222,28 +221,7 @@ export function Login() {
                 />
                 <span className="text-sm text-gray-600">Ingat saya</span>
               </label>
-              <button
-                type="button"
-                onClick={() => setShowForgotInfo(!showForgotInfo)}
-                className="text-sm text-teal-600 hover:underline"
-              >
-                Lupa password?
-              </button>
             </div>
-            {showForgotInfo && (
-              <div className="p-3 bg-teal-50 border border-teal-100 rounded-lg space-y-1">
-                <p className="text-[10px] text-teal-700 font-semibold uppercase tracking-wider">
-                  Info Login
-                </p>
-                <p className="text-xs text-teal-600">
-                  Password default: <span className="font-bold">kurirdev123</span>
-                </p>
-                <p className="text-[10px] text-teal-400 italic">
-                  Hubungi admin jika Anda tetap tidak bisa masuk.
-                </p>
-              </div>
-            )}
-
             <button
               type="submit"
               disabled={isLoading}
@@ -262,34 +240,6 @@ export function Login() {
               )}
             </button>
           </form>
-
-          {/* Demo credentials info */}
-          <div className="p-6 bg-gray-50 border-t border-gray-100">
-            <p className="text-xs text-gray-500 text-center mb-3 font-medium">Auto-Routing Demo Credentials</p>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="text-left p-2 bg-white rounded-lg border border-gray-200">
-                <p className="font-medium text-teal-600">Super Admin</p>
-                <p className="text-gray-400 truncate">admin@kurirdev.com</p>
-              </div>
-              <div className="text-left p-2 bg-white rounded-lg border border-gray-200">
-                <p className="font-medium text-blue-600">Admin Kurir</p>
-                <p className="text-gray-400 truncate">rina@delivery.com</p>
-              </div>
-              <div className="text-left p-2 bg-white rounded-lg border border-gray-200">
-                <p className="font-medium text-emerald-600">Owner</p>
-                <p className="text-gray-400 truncate">owner@delivery.com</p>
-              </div>
-              <div className="text-left p-2 bg-white rounded-lg border border-gray-200">
-                <p className="font-medium text-amber-600">Keuangan</p>
-                <p className="text-gray-400 truncate">finance@delivery.com</p>
-              </div>
-              <div className="text-left p-2 bg-white rounded-lg border border-gray-200 mb-2 col-span-2">
-                <p className="font-medium text-green-600">Kurir</p>
-                <p className="text-gray-400">siti@courier.com</p>
-              </div>
-            </div>
-            <p className="text-xs text-center text-gray-400 mt-2">Password default: *[nama_role]123*</p>
-          </div>
         </div>
 
         {/* Footer */}

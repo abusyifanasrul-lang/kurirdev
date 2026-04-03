@@ -268,13 +268,26 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   },
 
   addOrder: async (orderData: any) => {
+    // 1. Generate Order Number via RPC (Atomic & Daily Reset)
+    const { data: orderNumber, error: rpcError } = await supabase.rpc('generate_order_number')
+    
+    if (rpcError) {
+      console.error('Failed to generate order number:', rpcError)
+      throw new Error('Sistem gagal membuat nomor pesanan. Silakan coba lagi dalam beberapa saat.')
+    }
+
+    // 2. Insert with the atomic number
+    const finalOrderData = {
+      ...orderData,
+      order_number: orderNumber
+    }
+
     const { data, error } = await (supabase.from('orders') as any)
-      .insert(orderData)
+      .insert(finalOrderData)
       .select()
       .single()
     
     if (error) {
-      console.error('Supabase error inserting order:', error)
       throw new Error(error.message || 'Gagal menyimpan order ke database')
     }
     
