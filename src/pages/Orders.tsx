@@ -370,7 +370,7 @@ export function Orders() {
     if (isCreating) return;
     setIsCreating(true);
     try {
-      // Upsert Customer logic local state & firebase
+      // Upsert Customer logic local state & storage
       let customerId = selectedCustomer?.id;
       const existingCustomer = findByPhone(newOrder.customer_phone);
 
@@ -474,7 +474,7 @@ export function Orders() {
       const notifTitle = `🛵 Order Baru — ${selectedOrder.order_number}`;
       const notifBody = `${customerName} • ${instruksi}`;
 
-      // Simpan ke Firestore agar muncul di halaman notifikasi
+      // Simpan ke Supabase agar muncul di halaman notifikasi
       await addNotification({
         user_id: courier.id,
         user_name: courier.name,
@@ -759,7 +759,7 @@ export function Orders() {
       const start = new Date(dateFilter.start)
       const end = new Date(dateFilter.end)
 
-      // Fetch dari Firestore
+      // Fetch dari Supabase
       await fetchOrdersByDateRange(start, end)
 
       // Ambil data terbaru langsung dari store

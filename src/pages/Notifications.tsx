@@ -46,7 +46,7 @@ export function Notifications() {
     const courier = activeCouriers.find((c) => c.id === selectedCourierId);
 
     if (courier) {
-      // 1. Save to Firestore for history
+      // 1. Save to Supabase for history
       await addNotification({
         user_id: courier.id,
         user_name: courier.name,

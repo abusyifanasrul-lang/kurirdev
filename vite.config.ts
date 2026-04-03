@@ -102,8 +102,6 @@ export default defineConfig({
           // — they're only needed for courier push notifications (lazy-loaded via fcm.ts)
           'vendor-firebase': [
             'firebase/app',
-            'firebase/firestore',
-            'firebase/auth',
           ],
           // React core
           'vendor-react': [

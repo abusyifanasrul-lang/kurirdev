@@ -4,7 +4,7 @@ export async function cleanupDummyOrders() {
   const { data: snapshot, error } = await supabase
     .from('orders')
     .select('*')
-    .not('status', 'in', '("delivered","cancelled")')
+    .not('status', 'in', '("delivered","cancelled")') as { data: any[] | null, error: any }
 
   if (error || !snapshot || snapshot.length === 0) {
     console.log('No orders to cleanup')
@@ -16,7 +16,7 @@ export async function cleanupDummyOrders() {
   let deliveredCount = 0
   let cancelledCount = 0
 
-  // Promise.all for updates instead of Firestore batch
+  // Promise.all for updates instead of Supabase bulk/RPC if needed
   const promises = snapshot.map(order => {
     if (order.total_fee && order.total_fee > 0) {
       deliveredCount++

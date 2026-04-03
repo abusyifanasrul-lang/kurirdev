@@ -199,7 +199,7 @@ export function needsDeltaSync(
 }
 
 // Sync semua order final (delivered/cancelled)
-// dari Firestore ke IndexedDB
+// dari Supabase ke IndexedDB
 // Dipanggil SEKALI saat device baru
 export async function syncAllFinalOrders(
   fetchFn: (start: Date, end: Date)

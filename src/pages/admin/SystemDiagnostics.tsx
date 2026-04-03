@@ -44,7 +44,7 @@ export function SystemDiagnostics() {
   const [activeTab, setActiveTab] = useState<PanelTab>('health');
 
   // ── System Health ────────────────────────────────────────
-  const [firebaseOk, setFirebaseOk] = useState<boolean | null>(null);
+  const [supabaseOk, setSupabaseOk] = useState<boolean | null>(null);
   const [integrity, setIntegrity] = useState<{ ok: boolean; localCount: number; metaCount: number } | null>(null);
   const [swVersion, setSWVersion] = useState<string>('-');
   const [cacheMeta] = useState(getCacheMeta);
@@ -54,9 +54,9 @@ export function SystemDiagnostics() {
     try {
       const { error } = await supabase.from('settings').select('id').eq('id', 'global').single();
       if (error) throw error;
-      setFirebaseOk(true);
+      setSupabaseOk(true);
     } catch {
-      setFirebaseOk(false);
+      setSupabaseOk(false);
     }
 
     // IndexedDB integrity
@@ -254,10 +254,10 @@ export function SystemDiagnostics() {
             <div className="space-y-4">
               {[
                 {
-                  label: 'Firebase Connection',
-                  status: firebaseOk,
+                  label: 'Supabase Connection',
+                  status: supabaseOk,
                   ok: 'Connected (Read/Write OK)',
-                  fail: 'Cannot reach Firestore',
+                  fail: 'Cannot reach Supabase',
                   pending: 'Checking...',
                 },
                 {
@@ -307,7 +307,7 @@ export function SystemDiagnostics() {
         {/* ── DATA INSPECTOR ──────────────────────────── */}
         {activeTab === 'inspector' && (
           <Card>
-            <h3 className="text-lg font-semibold text-gray-900 mb-6">Firestore Document Inspector</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-6">Supabase Record Inspector</h3>
             <div className="flex gap-3 mb-6 flex-wrap">
               <div className="flex gap-2">
                 {(['order', 'user'] as const).map(t => (
@@ -349,7 +349,7 @@ export function SystemDiagnostics() {
             {!inspectResult && !inspectError && (
               <div className="text-center py-16 text-gray-400">
                 <Eye className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                <p className="text-sm">Masukkan ID document untuk melihat raw data Firestore</p>
+                <p className="text-sm">Masukkan ID record untuk melihat raw data Supabase</p>
               </div>
             )}
           </Card>
@@ -362,7 +362,7 @@ export function SystemDiagnostics() {
               <div className="flex items-center gap-3 mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
                 <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
                 <p className="text-sm text-amber-800 font-medium">
-                  Force Actions mengubah data Firestore secara langsung. Gunakan hanya saat diperlukan untuk memperbaiki order yang tersangkut.
+                  Force Actions mengubah data Supabase secara langsung. Gunakan hanya saat diperlukan untuk memperbaiki order yang tersangkut.
                 </p>
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Force Update Order Status</h3>
@@ -440,7 +440,7 @@ export function SystemDiagnostics() {
             {auditLoading ? (
               <div className="text-center py-12 text-gray-400">
                 <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-3" />
-                <p className="text-sm">Loading audit logs from Firestore...</p>
+                <p className="text-sm">Loading audit logs from Supabase...</p>
               </div>
             ) : auditLogs.length === 0 ? (
               <div className="text-center py-12 text-gray-400">

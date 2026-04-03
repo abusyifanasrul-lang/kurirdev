@@ -291,7 +291,7 @@ export function CourierOrderDetail() {
           i => i.label.toLowerCase() === order.notes?.toLowerCase().trim()
         );
 
-        // Fallback untuk kode lama (sls, pss, dll) yang mungkin masih ada di order lama di Firestore
+        // Fallback untuk kode lama (sls, pss, dll) yang mungkin masih ada di order lama di Supabase
         const notes = order.notes.toLowerCase().trim();
         const legacyConfig: Record<string, { bg: string; border: string; icon: string; label: string; desc: string; text: string }> = {
           'sls': { bg: 'bg-green-50', border: 'border-green-400', icon: '✅', label: 'BARANG SUDAH SIAP', desc: 'Langsung ambil ke penjual, tidak perlu nunggu.', text: 'text-green-800' },
