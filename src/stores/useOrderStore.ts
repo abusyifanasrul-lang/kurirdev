@@ -1,12 +1,15 @@
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabaseClient'
 import { Order, OrderStatus, OrderStatusHistory } from '@/types'
-import { sendMockNotification } from '@/utils/notification'
-import { useSettingsStore } from '@/stores/useSettingsStore'
 import {
   moveToLocalDB,
+  removeFromLocalDB,
+  getOrdersForWeek,
+  getOrdersByCourierFromLocal,
   markAsPaidInLocalDB
 } from '@/lib/orderCache'
+import { sendMockNotification } from '@/utils/notification'
+import { useSettingsStore } from '@/stores/useSettingsStore'
 
 interface OrderState {
   orders: Order[]
@@ -25,6 +28,7 @@ interface OrderState {
   fetchActiveOrdersByCourier: (courierId: string) => Promise<void>
   
   // Realtime "oneSnapshot" pattern
+  fetchInitialOrders: (filter?: { courierId?: string; activeOnly?: boolean }) => Promise<void>
   subscribeOrders: (filter?: { courierId?: string; activeOnly?: boolean }) => () => void
   subscribeOrderById: (orderId: string) => () => void
   
@@ -54,7 +58,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   courierOrders: [],
   historicalOrders: [],
   statusHistory: {},
-  isLoading: true,
+  isLoading: false,
   isFetchingCourierOrders: false,
   isFetchingHistory: false,
   activeOrdersByCourier: [],
@@ -121,43 +125,52 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     }
   },
 
-  subscribeOrders: (filter) => {
-    const { courierId, activeOnly } = filter || {}
+  fetchInitialOrders: async (filter) => {
+    const { courierId } = filter || {}
     
-    // 1. Initial Fetch
-    const fetchInitial = async () => {
-      set({ isLoading: true })
-      let query = supabase.from('orders').select('*')
-      
-      if (courierId) {
-        query = query.eq('courier_id', courierId)
-      }
-      
-      if (activeOnly) {
-        query = query.in('status', ['pending', 'assigned', 'picked_up', 'in_transit'])
-      } else {
-        const yesterday = new Date()
-        yesterday.setDate(yesterday.getDate() - 1)
-        query = query.or(`created_at.gte.${yesterday.toISOString()},status.not.in.(delivered,cancelled)`)
-      }
-
-      const { data, error } = await query.order('created_at', { ascending: false })
-      
-      if (error) {
-        console.error('Initial fetch error:', error)
-      } else {
-        if (courierId && activeOnly) {
-          set({ activeOrdersByCourier: (data as Order[]) || [], isFetchingActiveOrders: false })
-        } else {
-          set({ orders: (data as Order[]) || [], isLoading: false })
-        }
-      }
-      set({ isLoading: false })
+    // 1. Load FINAL orders from Cache for history (Mirroring)
+    if (courierId) {
+      const cachedFinal = await getOrdersByCourierFromLocal(courierId)
+      set({ orders: cachedFinal })
+    } else {
+      const cachedRecent = await getOrdersForWeek()
+      set({ orders: cachedRecent })
     }
 
-    fetchInitial()
+    // 2. Clear Active Store if needed
+    set({ activeOrdersByCourier: [], isFetchingActiveOrders: true })
 
-    // 2. Realtime Subscription
+    // 3. Fetch ACTIVE orders from Supabase (Strictly Real-time)
+    let query = supabase.from('orders').select('*')
+    
+    if (courierId) {
+      query = query.eq('courier_id', courierId)
+    }
+    
+    // Fetch only active statuses from server to save reads
+    const activeStatuses = ['pending', 'assigned', 'picked_up', 'in_transit']
+    query = query.in('status', activeStatuses)
+
+    const { data: activeData, error } = await query.order('created_at', { ascending: false })
+    
+    if (error) {
+      console.error('Fetch active orders error:', error)
+      set({ isFetchingActiveOrders: false })
+      return
+    }
+
+    const fetchedActive = (activeData as Order[]) || []
+    
+    set({ 
+      activeOrdersByCourier: fetchedActive, 
+      isFetchingActiveOrders: false,
+      isLoading: false 
+    })
+  },
+
+  subscribeOrders: (filter) => {
+    const { courierId } = filter || {}
+    
     const channelId = courierId ? `orders:courier:${courierId}` : 'orders:global'
     const filterStr = courierId ? `courier_id=eq.${courierId}` : undefined
 
@@ -165,40 +178,58 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'orders', filter: filterStr },
-        (payload) => {
+        async (payload) => {
           const { eventType, new: newRec, old: oldRec } = payload
+          const order = newRec as Order
           
+          // Hybrid Logic: If final state, move to Local DB
+          if (eventType === 'UPDATE' || eventType === 'INSERT') {
+            const isFinal = ['delivered', 'cancelled'].includes(order.status)
+            if (isFinal) {
+              await moveToLocalDB(order)
+            }
+          }
+
           set((state) => {
-            const currentOrders = activeOnly ? state.activeOrdersByCourier : state.orders
-            let updatedOrders = [...currentOrders]
+            let updatedActive = [...state.activeOrdersByCourier]
+            let updatedHistory = [...state.orders]
 
             if (eventType === 'INSERT') {
-              const isActive = !['delivered', 'cancelled'].includes(newRec.status)
-              if (!activeOnly || isActive) {
-                updatedOrders = [newRec as Order, ...updatedOrders]
+              const isNowActive = !['delivered', 'cancelled'].includes(order.status)
+              if (isNowActive) {
+                updatedActive = [order, ...updatedActive]
+              } else {
+                updatedHistory = [order, ...updatedHistory]
               }
             } else if (eventType === 'UPDATE') {
-              const index = updatedOrders.findIndex(o => o.id === newRec.id)
-              const isActive = !['delivered', 'cancelled'].includes(newRec.status)
+              // Handle movement between Active and History slots
+              const wasActive = updatedActive.some(o => o.id === order.id)
+              const isNowActive = !['delivered', 'cancelled'].includes(order.status)
 
-              if (index !== -1) {
-                if (activeOnly && !isActive) {
-                  updatedOrders = updatedOrders.filter(o => o.id !== newRec.id)
-                } else {
-                  updatedOrders[index] = { ...updatedOrders[index], ...(newRec as Order) }
-                }
+              if (wasActive && !isNowActive) {
+                // Move from Active to History
+                updatedActive = updatedActive.filter(o => o.id !== order.id)
+                updatedHistory = [order, ...updatedHistory]
+              } else if (isNowActive) {
+                // Update in Active
+                const idx = updatedActive.findIndex(o => o.id === order.id)
+                if (idx !== -1) updatedActive[idx] = order
+                else updatedActive = [order, ...updatedActive]
               } else {
-                if (!activeOnly || isActive) {
-                  updatedOrders = [newRec as Order, ...updatedOrders]
-                }
+                // Update in History
+                const idx = updatedHistory.findIndex(o => o.id === order.id)
+                if (idx !== -1) updatedHistory[idx] = order
               }
             } else if (eventType === 'DELETE') {
-              updatedOrders = updatedOrders.filter(o => o.id !== oldRec.id)
+              updatedActive = updatedActive.filter(o => o.id !== oldRec.id)
+              updatedHistory = updatedHistory.filter(o => o.id !== oldRec.id)
+              removeFromLocalDB(oldRec.id)
             }
 
-            return activeOnly 
-              ? { activeOrdersByCourier: updatedOrders }
-              : { orders: updatedOrders }
+            return { 
+              activeOrdersByCourier: updatedActive,
+              orders: updatedHistory
+            }
           })
         }
       )
@@ -376,8 +407,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
         if (Object.keys(restUpdates).length > 0) {
            await (supabase.from('orders') as any).update({ ...restUpdates, updated_at: new Date().toISOString() }).eq('id', orderId)
         }
-        
-        markAsPaidInLocalDB(orderId).catch(err => console.error('Mirror paid error:', err))
+        markAsPaidInLocalDB(orderId).catch(err => console.error('Confirm payment error:', err))
     } else {
        await (supabase.from('orders') as any).update({
          ...updates,

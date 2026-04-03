@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabaseClient'
 import { Notification } from '@/types'
+import { cacheNotifications, getCachedNotifications, markNotificationReadLocal } from '@/lib/orderCache'
 
 interface NotificationState {
   notifications: Notification[]
@@ -20,13 +21,26 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
   isLoading: true,
 
   subscribeNotifications: (userId: string) => {
-    // Initial fetch
+    // 1. Initial Load from Local Cache (Mirroring)
+    getCachedNotifications(userId).then(cached => {
+      if (cached.length > 0) {
+        set({ notifications: cached, isLoading: false })
+      }
+    })
+
+    // 2. Fetch Latest from Supabase
     supabase.from('notifications')
       .select('*')
       .eq('user_id', userId)
       .order('sent_at', { ascending: false })
+      .limit(50)
       .then(({ data }) => {
-        if (data) set({ notifications: data as Notification[], isLoading: false })
+        if (data) {
+          const fetched = data as Notification[]
+          set({ notifications: fetched, isLoading: false })
+          // 3. Update Mirror
+          cacheNotifications(fetched)
+        }
       })
 
     // Use a unique channel name for each subscription call to avoid "cannot add callbacks after subscribe" error
@@ -38,28 +52,27 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
         { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
         (payload) => {
           const { eventType, new: newRec, old: oldRec } = payload
-          const notifications = [...get().notifications]
-          
-          if (eventType === 'INSERT') {
-            // Prevent duplicates if multiple channels receive the same event
-            if (!notifications.some(n => n.id === newRec.id)) {
-              notifications.unshift(newRec as Notification)
+          set((state) => {
+            const updated = [...state.notifications]
+            if (eventType === 'INSERT') {
+              if (!updated.some(n => n.id === (newRec as any).id)) {
+                updated.unshift(newRec as Notification)
+                cacheNotifications([newRec as Notification])
+              }
+            } else if (eventType === 'UPDATE') {
+              const idx = updated.findIndex(n => n.id === (newRec as any).id)
+              if (idx !== -1) {
+                updated[idx] = { ...updated[idx], ...newRec }
+                cacheNotifications([updated[idx]])
+              }
+            } else if (eventType === 'DELETE') {
+              const idx = updated.findIndex(n => n.id === (oldRec as any).id)
+              if (idx !== -1) updated.splice(idx, 1)
             }
-          } else if (eventType === 'UPDATE') {
-            const idx = notifications.findIndex(n => n.id === newRec.id)
-            if (idx !== -1) {
-              notifications[idx] = { ...notifications[idx], ...newRec }
-            } else {
-              // If not found (maybe first subscription missed it), add it
-              notifications.unshift(newRec as Notification)
+            
+            return { 
+              notifications: updated.sort((a,b) => new Date(b.sent_at || 0).getTime() - new Date(a.sent_at || 0).getTime()) 
             }
-          } else if (eventType === 'DELETE') {
-            const idx = notifications.findIndex(n => n.id === oldRec.id)
-            if (idx !== -1) notifications.splice(idx, 1)
-          }
-          
-          set({ 
-            notifications: notifications.sort((a,b) => new Date(b.sent_at || 0).getTime() - new Date(a.sent_at || 0).getTime()) 
           })
         }
       )
@@ -83,28 +96,28 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
         'postgres_changes',
         { event: '*', schema: 'public', table: 'notifications' },
         (payload) => {
-
           const { eventType, new: newRec, old: oldRec } = payload
-          const notifications = [...get().notifications]
-          
-          if (eventType === 'INSERT') {
-            if (!notifications.some(n => n.id === newRec.id)) {
-              notifications.unshift(newRec as Notification)
+          set((state) => {
+            const updated = [...state.notifications]
+            if (eventType === 'INSERT') {
+              if (!updated.some(n => n.id === (newRec as any).id)) {
+                updated.unshift(newRec as Notification)
+                cacheNotifications([newRec as Notification])
+              }
+            } else if (eventType === 'UPDATE') {
+              const idx = updated.findIndex(n => n.id === (newRec as any).id)
+              if (idx !== -1) {
+                updated[idx] = { ...updated[idx], ...newRec }
+                cacheNotifications([updated[idx]])
+              }
+            } else if (eventType === 'DELETE') {
+              const idx = updated.findIndex(n => n.id === (oldRec as any).id)
+              if (idx !== -1) updated.splice(idx, 1)
             }
-          } else if (eventType === 'UPDATE') {
-            const idx = notifications.findIndex(n => n.id === newRec.id)
-            if (idx !== -1) {
-              notifications[idx] = { ...notifications[idx], ...newRec }
-            } else {
-              notifications.unshift(newRec as Notification)
+            
+            return { 
+              notifications: updated.sort((a,b) => new Date(b.sent_at || 0).getTime() - new Date(a.sent_at || 0).getTime()) 
             }
-          } else if (eventType === 'DELETE') {
-            const idx = notifications.findIndex(n => n.id === oldRec.id)
-            if (idx !== -1) notifications.splice(idx, 1)
-          }
-          
-          set({ 
-            notifications: notifications.sort((a,b) => new Date(b.sent_at || 0).getTime() - new Date(a.sent_at || 0).getTime()) 
           })
         }
       )
@@ -126,6 +139,7 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
   },
 
   markAsRead: async (id) => {
+    markNotificationReadLocal(id)
     await (supabase.from('notifications') as any).update({ is_read: true }).eq('id', id)
   },
 

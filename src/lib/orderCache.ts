@@ -86,6 +86,8 @@ function saveUserSyncStatus(
 class KurirDevDB extends Dexie {
   orders!: Table<Order & { _date: string }>
   customers!: Table<Customer>
+  notifications!: Table<import('@/types').Notification>
+
   constructor() {
     super('KurirDevCache')
     this.version(1).stores({
@@ -94,6 +96,11 @@ class KurirDevDB extends Dexie {
     this.version(2).stores({
       orders: 'id, _date, courier_id, status, created_at',
       customers: 'id, name, phone, updated_at'
+    })
+    this.version(3).stores({
+      orders: 'id, _date, courier_id, status, created_at',
+      customers: 'id, name, phone, updated_at',
+      notifications: 'id, user_id, is_read, sent_at'
     })
   }
 }
@@ -407,6 +414,22 @@ export async function getOrdersByCourierFromLocal(
     )
 }
 
+// Ambil semua order aktif milik kurir tertentu dari IndexedDB
+export async function getCachedOrdersByCourierActive(
+  courierId: string
+): Promise<import('@/types').Order[]> {
+  const all = await localDB.orders
+    .where('courier_id')
+    .equals(courierId)
+    .toArray()
+
+  return all
+    .filter(o => 
+      ['pending', 'assigned', 'picked_up', 'in_transit'].includes(o.status)
+    )
+    .map(({ _date, ...o }) => o as import('@/types').Order)
+}
+
 // Reset semua cache (untuk manual sync)
 export async function clearAllCache()
   : Promise<void> {
@@ -577,4 +600,29 @@ export async function getOrphanedOrdersLocal(
       !activeCourierIds.includes(o.courier_id)
     )
     .map(({ _date, ...o }) => o as import('@/types').Order);
+}
+
+// --- Notification Cache Methods ---
+
+export async function cacheNotifications(notifications: import('@/types').Notification[]): Promise<void> {
+  if (notifications.length === 0) return
+  await localDB.notifications.bulkPut(notifications)
+}
+
+export async function getCachedNotifications(userId?: string): Promise<import('@/types').Notification[]> {
+  let query = localDB.notifications.toCollection()
+  
+  if (userId) {
+    query = localDB.notifications.where('user_id').equals(userId)
+  }
+  
+  const all = await query.reverse().sortBy('sent_at')
+  return all as import('@/types').Notification[]
+}
+
+export async function markNotificationReadLocal(id: string): Promise<void> {
+  const notif = await localDB.notifications.get(id)
+  if (notif) {
+    await localDB.notifications.put({ ...notif, is_read: true })
+  }
 }

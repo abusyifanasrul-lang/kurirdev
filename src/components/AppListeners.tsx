@@ -3,6 +3,7 @@ import { useAuth } from '@/context/AuthContext'
 import { useUserStore } from '@/stores/useUserStore'
 import { useOrderStore } from '@/stores/useOrderStore'
 import { useSettingsStore } from '@/stores/useSettingsStore'
+import { useNotificationStore } from '@/stores/useNotificationStore'
 import { supabase } from '@/lib/supabaseClient'
 import {
   isInitialSyncCompleted,
@@ -57,24 +58,35 @@ export const AppListeners = () => {
       }
     }
   }, [user?.id])
-
   // 2. Orders & FCM Sync (The "oneSnapshot" paradigm)
   useEffect(() => {
     if (!user) return
 
-    // Subscribe to Orders
-    const unsubOrders = useOrderStore.getState().subscribeOrders(
-      user.role === 'courier' 
-        ? { courierId: user.id, activeOnly: true } 
-        : undefined
-    )
+    // Memoize filter options to prevent redundant effect runs
+    const filter = {
+      courierId: user.role === 'courier' ? user.id : undefined,
+      activeOnly: user.role === 'courier'
+    }
 
-    // Integration with FCM for Foreground Refresh
+    // 2.a Initial Load (Cache-first then background fetch)
+    const orderStore = useOrderStore.getState()
+    orderStore.fetchInitialOrders(filter)
+
+    // 2.b Real-time Subscription
+    const unsubOrders = orderStore.subscribeOrders(filter)
+
+    // 2.c Notifications Subscription
+    const notifStore = useNotificationStore.getState()
+    const unsubNotifs = user.role === 'courier' 
+      ? notifStore.subscribeNotifications(user.id)
+      : notifStore.subscribeAllNotifications()
+
+    // 2.d Integration with FCM for Foreground Refresh
     let unsubFCM = () => {}
     if (user.role === 'courier') {
       const cleanup = onForegroundMessage((payload) => {
         console.log('🔔 Foreground FCM caught, refreshing active orders...', payload)
-        useOrderStore.getState().fetchActiveOrdersByCourier(user.id)
+        orderStore.fetchActiveOrdersByCourier(user.id)
       })
       
       if (typeof cleanup === 'function') {
@@ -84,6 +96,7 @@ export const AppListeners = () => {
 
     return () => {
       unsubOrders()
+      unsubNotifs()
       unsubFCM()
     }
   }, [user?.id, user?.role])
@@ -95,14 +108,17 @@ export const AppListeners = () => {
         const userId = user.id
         const fetchFn = useOrderStore.getState().fetchOrdersByDateRange
 
-        if (!isInitialSyncCompleted(userId)) {
-          console.log('🔄 First time load, syncing all final orders...')
-          await syncAllFinalOrders(fetchFn, userId)
-        } else if (needsDeltaSync(userId)) {
-          console.log('🔄 Daily delta sync...')
-          await deltaSyncYesterday(fetchFn, userId)
-        }
-        await checkIntegrity()
+        // Delay background sync to prioritize initial render
+        setTimeout(async () => {
+          if (!isInitialSyncCompleted(userId)) {
+            console.log('🔄 First time load, syncing all final orders...')
+            await syncAllFinalOrders(fetchFn, userId)
+          } else if (needsDeltaSync(userId)) {
+            console.log('🔄 Daily delta sync...')
+            await deltaSyncYesterday(fetchFn, userId)
+          }
+          await checkIntegrity()
+        }, 1000)
       }
       runSync()
     }
