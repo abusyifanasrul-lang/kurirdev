@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { supabase } from '@/lib/supabaseClient'
 import { User, UserRole, CreateUserInput } from '@/types'
 import { logger } from '@/lib/logger'
-import { cacheProfiles, getCachedProfiles, saveProfileSyncTime } from '@/lib/orderCache'
+import { cacheProfiles, getCachedProfiles, saveProfileSyncTime, localDB } from '@/lib/orderCache'
 
 interface UserState {
   users: User[]
@@ -111,19 +111,43 @@ export const useUserStore = create<UserState>()((set, get) => ({
         (payload) => {
           const { eventType, new: newRec, old: oldRec } = payload
           const currentUsers = [...get().users]
-          const { profiles } = require('@/lib/orderCache').localDB // Reach into DB for atomic updates
+          const { profiles } = localDB // Reach into DB for atomic updates
 
           if (eventType === 'INSERT') {
             const newUser = mapProfileToUser(newRec)
             set({ users: [...currentUsers, newUser] })
             profiles.put(newUser)
           } else if (eventType === 'UPDATE') {
-            const updatedUser = mapProfileToUser(newRec)
-            const updatedUsers = currentUsers.map(u => 
-              u.id === newRec.id ? updatedUser : u
-            )
-            set({ users: updatedUsers })
-            profiles.put(updatedUser)
+            const existingUser = currentUsers.find(u => u.id === newRec.id)
+            if (!existingUser) {
+              // If not in state, treat as full new mapping (likely a full record anyway if first time seen)
+              const newUser = mapProfileToUser(newRec)
+              set({ users: [...currentUsers, newUser] })
+              profiles.put(newUser)
+            } else {
+              // MERGE partial update
+              const updatedUser = { ...existingUser }
+              // Pick only non-undefined fields from payload
+              Object.keys(newRec).forEach(key => {
+                if (newRec[key] !== undefined) {
+                  // Map specific field names if they differ from DB
+                  if (key === 'is_online') (updatedUser as any).is_online = newRec[key]
+                  else if (key === 'courier_status') (updatedUser as any).courier_status = newRec[key]
+                  else if (key === 'off_reason') (updatedUser as any).off_reason = newRec[key]
+                  else if (key === 'queue_position') (updatedUser as any).queue_position = newRec[key]
+                  else if (key === 'is_active') (updatedUser as any).is_active = newRec[key]
+                  else if (key === 'fcm_token') (updatedUser as any).fcm_token = newRec[key]
+                  else if (key === 'total_deliveries_alltime') updatedUser.total_deliveries_alltime = newRec[key]
+                  else if (key === 'total_earnings_alltime') updatedUser.total_earnings_alltime = newRec[key]
+                  else if (key === 'unpaid_count') updatedUser.unpaid_count = newRec[key]
+                  else if (key === 'unpaid_amount') updatedUser.unpaid_amount = newRec[key]
+                  else (updatedUser as any)[key] = newRec[key]
+                }
+              })
+              
+              set({ users: currentUsers.map(u => u.id === newRec.id ? updatedUser : u) })
+              profiles.put(updatedUser)
+            }
           } else if (eventType === 'DELETE') {
             set({ users: currentUsers.filter(u => u.id !== oldRec.id) })
             profiles.delete(oldRec.id)
@@ -151,9 +175,24 @@ export const useUserStore = create<UserState>()((set, get) => ({
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${id}` },
         (payload) => {
-          const user = mapProfileToUser(payload.new)
+          const existingUsers = get().users
+          const existingUser = existingUsers.find(u => u.id === id)
+          
+          let updatedUser: User
+          if (existingUser) {
+             // Merge partial update
+             updatedUser = { ...existingUser }
+             Object.keys(payload.new).forEach(key => {
+               if (payload.new[key] !== undefined) {
+                  (updatedUser as any)[key] = payload.new[key]
+               }
+             })
+          } else {
+             updatedUser = mapProfileToUser(payload.new)
+          }
+
           set(state => ({
-            users: state.users.map(u => u.id === id ? user : u)
+            users: state.users.map(u => u.id === id ? updatedUser : u)
           }))
         }
       )

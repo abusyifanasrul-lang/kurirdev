@@ -205,11 +205,10 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
         { event: '*', schema: 'public', table: 'orders', filter: filterStr },
         async (payload) => {
           const { eventType, new: newRec, old: oldRec } = payload
-          const order = newRec as Order
           
           // MIRRORING ARCHITECTURE: Every change goes to localDB
           if (eventType === 'UPDATE' || eventType === 'INSERT') {
-            await moveToLocalDB(order)
+            await moveToLocalDB(newRec as Order, eventType === 'UPDATE')
           }
 
           set((state) => {
@@ -217,6 +216,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
             let updatedHistory = [...state.orders]
 
             if (eventType === 'INSERT') {
+              const order = newRec as Order
               const isNowActive = !['delivered', 'cancelled'].includes(order.status)
               if (isNowActive) {
                 updatedActive = [order, ...updatedActive]
@@ -224,7 +224,23 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
                 updatedHistory = [order, ...updatedHistory]
               }
             } else if (eventType === 'UPDATE') {
-              // Handle movement between Active and History slots
+              const orderId = (newRec as Order).id
+              const existingActive = updatedActive.find(o => o.id === orderId)
+              const existingHistory = updatedHistory.find(o => o.id === orderId)
+              
+              // MERGE partial data
+              let order: Order
+              if (existingActive) {
+                order = { ...existingActive }
+                Object.keys(newRec).forEach(k => { if (newRec[k] !== undefined) (order as any)[k] = newRec[k] })
+              } else if (existingHistory) {
+                order = { ...existingHistory }
+                Object.keys(newRec).forEach(k => { if (newRec[k] !== undefined) (order as any)[k] = newRec[k] })
+              } else {
+                // If not in state, treat as full new mapping (unlikely but safe)
+                order = newRec as Order
+              }
+
               const wasActive = updatedActive.some(o => o.id === order.id)
               const isNowActive = !['delivered', 'cancelled'].includes(order.status)
 
@@ -273,6 +289,15 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `id=eq.${orderId}` }, (payload) => {
         if (payload.eventType === 'DELETE') {
            set({ currentOrder: null })
+        } else if (payload.eventType === 'UPDATE') {
+           const existing = get().currentOrder
+           if (existing && existing.id === orderId) {
+             const merged = { ...existing }
+             Object.keys(payload.new).forEach(k => { if (payload.new[k] !== undefined) (merged as any)[k] = payload.new[k] })
+             set({ currentOrder: merged })
+           } else {
+             set({ currentOrder: payload.new as Order })
+           }
         } else {
            set({ currentOrder: payload.new as Order })
         }

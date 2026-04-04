@@ -277,13 +277,34 @@ export async function deltaSyncYesterday(
   return finalOrders.length
 }
 
-// Simpan satu order final ke IndexedDB
+// Simpan satu order final ke IndexedDB, mendukung merging jika ini adalah update
 export async function moveToLocalDB(
-  order: import('@/types').Order
+  order: import('@/types').Order,
+  isPartial: boolean = false
 ): Promise<void> {
+  const { localDB } = await import('./orderCache')
+  
+  if (isPartial) {
+    const existing = await localDB.orders.get(order.id)
+    if (existing) {
+      const merged = { ...existing }
+      Object.keys(order).forEach(key => {
+        if ((order as any)[key] !== undefined) {
+          (merged as any)[key] = (order as any)[key]
+        }
+      })
+      // Ensure specific fields are updated if present in the partial
+      if (order.created_at) (merged as any)._date = getLocalDateStr(order.created_at)
+      
+      await localDB.orders.put(merged)
+      return
+    }
+  }
+
+  // Fallback to full put if not partial or not found
   await localDB.orders.put({
     ...order,
-    _date: getLocalDateStr(order.created_at)
+    _date: getLocalDateStr(order.created_at || new Date().toISOString())
   })
   const total = await localDB.orders.count()
   saveMeta({ total_records: total })
