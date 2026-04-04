@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useSEO } from '@/hooks/useSEO';
 import {
   TrendingUp, DollarSign, Users,
   Award, BarChart3, ShoppingBag,
@@ -19,7 +20,7 @@ import { calcAdminEarning } from '@/lib/calcEarning';
 import { getOrdersForWeek, getTopCustomers, getTopCouriers } from '@/lib/orderCache';
 import type { Order } from '@/types';
 
-const COLORS = ['#F59E0B', '#3B82F6', '#8B5CF6', '#06B6D4', '#22C55E', '#EF4444'];
+const COLORS = ['#F59E0B', '#3B82F6', '#0D9488', '#06B6D4', '#22C55E', '#EF4444'];
 
 type Period = 'today' | '7days' | '30days';
 
@@ -33,6 +34,10 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export function OwnerOverview() {
+  useSEO({
+    title: 'Business Overview',
+    description: 'Ringkasan bisnis KurirDev — revenue, performa kurir, dan statistik pelanggan.',
+  });
   const { orders } = useOrderStore();
   const { users } = useUserStore();
   const { commission_rate, commission_threshold } = useSettingsStore();

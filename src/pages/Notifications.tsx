@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSEO } from '@/hooks/useSEO';
 import { Send, Bell, CheckCircle, Clock, AlertTriangle, Info, Smile } from 'lucide-react';
 import { format, isSameDay, parseISO } from 'date-fns';
 import { Header } from '@/components/layout/Header';
@@ -13,6 +14,10 @@ import { useNotificationStore } from '@/stores/useNotificationStore';
 import { useUserStore } from '@/stores/useUserStore';
 
 export function Notifications() {
+  useSEO({
+    title: 'Notifications Center',
+    description: 'Send push notifications to couriers and manage system alerts.'
+  });
   const { user } = useAuth(); // Current tab-isolated admin session
   const { users } = useUserStore(); // To select recipient
   const [successMessage, setSuccessMessage] = useState('');

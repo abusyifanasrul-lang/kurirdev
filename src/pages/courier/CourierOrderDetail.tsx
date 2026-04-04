@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
+import { useSEO } from '@/hooks/useSEO';
+import { supabase } from '@/lib/supabaseClient';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Phone, MapPin, Navigation, CheckCircle, Package, Truck, Plus, X, AlertTriangle, Pencil, Trash2, Check, XCircle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
@@ -25,6 +27,10 @@ const parseRupiah = (val: string): string => {
 
 
 export function CourierOrderDetail() {
+  useSEO({
+    title: 'Order Details',
+    description: 'Detailed information for the current delivery including customer info and items.'
+  });
   const { id } = useParams();
   const navigate = useNavigate();
   const { activeOrdersByCourier, currentOrder, subscribeOrderById, updateOrderStatus, cancelOrder, updateBiayaTambahan, updateItems, updateOngkir, updateOrderWaiting, updateOrder } = useOrderStore();
@@ -37,7 +43,7 @@ export function CourierOrderDetail() {
   const isSuspended = liveUser?.is_active === false;
   const { commission_rate, commission_threshold, courier_instructions } = useSettingsStore();
   const commissionRate = commission_rate;
-  const { findByPhone, addAddress, updateAddress, deleteAddress, upsertCustomer } = useCustomerStore();
+  const { findByPhone, addAddress, updateAddress, deleteAddress, submitChangeRequest } = useCustomerStore();
 
   useEffect(() => {
     if (!id) return
@@ -76,6 +82,7 @@ export function CourierOrderDetail() {
   const [courierInlineEditValue, setCourierInlineEditValue] = useState('')
   const [courierInlineAddingNew, setCourierInlineAddingNew] = useState(false)
   const [courierInlineNewValue, setCourierInlineNewValue] = useState('')
+  const [hasPendingRequest, setHasPendingRequest] = useState(false);
 
   const isLocked = order?.status === 'delivered' || isSuspended;
 
@@ -95,6 +102,28 @@ export function CourierOrderDetail() {
       setCourierInlineAddingNew(false)
     }
   }, [order, showItemForm, editCustomer]);
+
+  useEffect(() => {
+    const customerId = order?.customer_id;
+    if (!customerId) return;
+    
+    const checkPending = async () => {
+      const { data, error } = await supabase
+        .from('customer_change_requests')
+        .select('id')
+        .eq('customer_id', customerId)
+        .eq('status', 'pending')
+        .limit(1);
+      
+      if (!error && data && data.length > 0) {
+        setHasPendingRequest(true);
+      } else {
+        setHasPendingRequest(false);
+      }
+    };
+
+    checkPending();
+  }, [order?.customer_id]);
 
   if (!order) return <div className="p-8 text-center">Order not found</div>;
 
@@ -169,39 +198,49 @@ export function CourierOrderDetail() {
   const handleSimpanCustomer = async () => {
     if (!editName || !editPhone || !editAddress || !order) return;
     
-    // Sync ke master customer store
-    const existing = findByPhone(editPhone);
-    if (existing) {
-      const addrExists = existing.addresses.find(a => a.address.toLowerCase() === editAddress.toLowerCase());
-      if (!addrExists) {
-        await addAddress(existing.id, {
-          label: `Koreksi Kurir ${existing.addresses.length + 1}`,
-          address: editAddress,
-          is_default: existing.addresses.length === 0,
-          notes: ''
-        });
-      }
-    } else {
-      await upsertCustomer({
-        name: editName,
-        phone: editPhone,
-        addresses: [{
-          id: crypto.randomUUID(),
-          label: 'Alamat Utama',
-          address: editAddress,
-          is_default: true,
-          notes: ''
-        }]
-      });
-    }
+    setIsUpdating(true);
+    try {
+      // 1. Submit Change Request to Master Customer record
+      // This is for Unit 3B Option A (Security Approval Flow)
+      if (order.customer_id && user?.id) {
+        const oldData = {
+          name: order.customer_name,
+          phone: order.customer_phone,
+          addresses: courierAddrCustomer?.addresses || []
+        };
 
-    // Update dokumen order
-    await updateOrder(order.id, {
-      customer_name: editName,
-      customer_phone: editPhone,
-      customer_address: editAddress
-    });
-    setEditCustomer(false);
+        const requestedData = {
+          name: editName,
+          phone: editPhone,
+          addresses: courierAddrCustomer 
+            ? courierAddrCustomer.addresses.map(a => a.address === order.customer_address ? { ...a, address: editAddress } : a)
+            : [{
+                id: crypto.randomUUID(),
+                label: 'Alamat Utama',
+                address: editAddress,
+                is_default: true,
+                notes: ''
+              }]
+        };
+
+        await submitChangeRequest(order.customer_id, user.id, oldData, requestedData, order.id);
+      }
+
+      // 2. Update current order snapshot immediately 
+      // This ensures the courier sees their correction for this specific delivery
+      await updateOrder(order.id, {
+        customer_name: editName,
+        customer_phone: editPhone,
+        customer_address: editAddress
+      });
+
+      setEditCustomer(false);
+      setHasPendingRequest(true);
+    } catch (err) {
+      console.error('Failed to submit customer change request:', err);
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const handleCancelTap = () => {
@@ -350,6 +389,15 @@ export function CourierOrderDetail() {
               </button>
             )}
           </div>
+
+          {hasPendingRequest && (
+            <div className="bg-amber-50 border border-amber-200 px-3 py-2 rounded-lg flex items-center gap-2 mb-1">
+              <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+              <p className="text-[10px] text-amber-700 font-medium leading-tight">
+                Menunggu persetujuan admin untuk perubahan data master customer.
+              </p>
+            </div>
+          )}
 
           {!editCustomer ? (
             <>

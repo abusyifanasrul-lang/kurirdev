@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useSEO } from '@/hooks/useSEO';
 import {
   DollarSign, AlertTriangle, CheckCircle, Package, TrendingUp,
   ArrowRight
@@ -16,6 +17,10 @@ import { useNavigate } from 'react-router-dom';
 import type { Order } from '@/types';
 
 export function FinanceDashboard() {
+  useSEO({
+    title: 'Dashboard Keuangan',
+    description: 'Ringkasan performa finansial, tagihan kurir, dan revenue KurirDev.',
+  });
   const navigate = useNavigate();
   const { user } = useAuth();
   const { orders } = useOrderStore();

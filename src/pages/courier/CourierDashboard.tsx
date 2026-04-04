@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useSEO } from '@/hooks/useSEO';
 import { useNavigate } from 'react-router-dom';
 import { Package, DollarSign, CheckCircle, Clock, Wifi, WifiOff, ChevronRight, AlertTriangle } from 'lucide-react';
 import { format, isToday } from 'date-fns';
@@ -17,6 +18,10 @@ import { Order } from '@/types';
 // Removed unused CourierOrder interface as we use global Order type
 
 export function CourierDashboard() {
+  useSEO({
+    title: 'Courier Dashboard',
+    description: 'Monitor your delivery progress, earnings, and active orders.'
+  });
   const navigate = useNavigate();
   const { user } = useAuth();
   const { activeOrdersByCourier } = useOrderStore();

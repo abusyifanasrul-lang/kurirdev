@@ -20,6 +20,7 @@ import {
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/context/AuthContext';
 import { getRoleLabel, getRoleBadgeColor } from '@/types';
+import { ApprovalListener } from '@/components/notifications/ApprovalListener';
 
 interface NavItem {
   path: string;
@@ -260,6 +261,9 @@ export function Layout() {
 
         <Outlet />
       </main>
+
+      {/* Real-time Listeners */}
+      <ApprovalListener />
     </div>
   );
 }

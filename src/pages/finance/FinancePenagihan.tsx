@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useSEO } from '@/hooks/useSEO';
 import {
   Search, CheckCircle, AlertTriangle, Clock,
   ChevronDown, ChevronUp
@@ -23,6 +24,10 @@ import type { Order } from '@/types';
 type FilterType = 'unpaid' | 'paid' | 'all';
 
 export function FinancePenagihan() {
+  useSEO({
+    title: 'Penagihan Setoran',
+    description: 'Manajemen penagihan setoran kurir dan piutang KurirDev.',
+  });
   const { orders, updateOrder } = useOrderStore();
   const { users } = useUserStore();
   const { commission_rate, commission_threshold } = useSettingsStore();

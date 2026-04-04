@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useSEO } from '@/hooks/useSEO';
 import {
   TrendingUp, DollarSign, Package,
   BarChart3, PieChart as PieChartIcon
@@ -35,6 +36,10 @@ function ChartSkeleton({ height = 300 }: { height?: number }) {
 }
 
 export function FinanceAnalisa() {
+  useSEO({
+    title: 'Analisa Keuangan',
+    description: 'Analisis mendalam pendapatan, pengeluaran, dan performa finansial KurirDev.',
+  });
   const { orders } = useOrderStore();
   const { users } = useUserStore();
   const { commission_rate, commission_threshold } = useSettingsStore();

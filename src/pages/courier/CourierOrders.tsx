@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSEO } from '@/hooks/useSEO';
 import { useNavigate } from 'react-router-dom';
 import { Package, ChevronRight, Search } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
@@ -6,6 +7,10 @@ import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Ba
 import { useOrderStore } from '@/stores/useOrderStore';
 
 export function CourierOrders() {
+  useSEO({
+    title: 'Active Orders',
+    description: 'View and manage your currently assigned active orders.'
+  });
   const navigate = useNavigate();
   const { activeOrdersByCourier } = useOrderStore();
 

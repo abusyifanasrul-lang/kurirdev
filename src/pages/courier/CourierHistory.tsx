@@ -1,4 +1,5 @@
 import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
+import { useSEO } from '@/hooks/useSEO';
 import { ArrowLeft, Package, Clock, CheckCircle, XCircle, Search } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { format, isToday, isYesterday, parseISO } from 'date-fns';
@@ -22,6 +23,10 @@ const statusConfig: Record<string, { color: string; bg: string; icon: typeof Che
 };
 
 export function CourierHistory() {
+  useSEO({
+    title: 'Order History',
+    description: 'Track your past deliveries, historical earnings, and synchronization logs.'
+  });
   const navigate = useNavigate();
   const location = useLocation();
   const highlightOrderId = (location.state as any)?.highlightOrderId;

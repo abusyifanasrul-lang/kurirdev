@@ -1,4 +1,5 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { useSEO } from '@/hooks/useSEO';
 import { useEffect } from 'react';
 import { Home, Package, History, DollarSign, User, LogOut, Bell } from 'lucide-react';
 import { cn } from '@/utils/cn';
@@ -11,6 +12,10 @@ import { supabase } from '@/lib/supabaseClient';
 import { Order } from '@/types';
 
 export function CourierLayout() {
+  useSEO({
+    title: 'Courier Panel',
+    description: 'KurirDev Courier Panel — manage orders, earnings, and profile.',
+  });
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { users } = useUserStore();

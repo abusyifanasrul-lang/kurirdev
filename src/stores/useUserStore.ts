@@ -23,26 +23,30 @@ interface UserState {
   reset: () => void
 }
 
-const mapProfileToUser = (profile: any): User => ({
+import { Database } from '@/types/supabase'
+
+type ProfileRow = Database['public']['Tables']['profiles']['Row']
+
+const mapProfileToUser = (profile: ProfileRow): User => ({
   id: profile.id,
   name: profile.name,
   email: profile.email || '', 
   role: profile.role as UserRole,
   phone: profile.phone || undefined,
   is_active: profile.is_active ?? true,
-  is_online: profile.is_online,
-  fcm_token: profile.fcm_token || undefined,
-  courier_status: profile.courier_status,
-  off_reason: profile.off_reason,
-  vehicle_type: profile.vehicle_type,
-  plate_number: profile.plate_number,
-  queue_position: profile.queue_position,
-  created_at: profile.created_at || new Date().toISOString(),
-  updated_at: profile.updated_at || new Date().toISOString(),
-  total_deliveries_alltime: profile.total_deliveries_alltime,
-  total_earnings_alltime: profile.total_earnings_alltime,
-  unpaid_count: profile.unpaid_count,
-  unpaid_amount: profile.unpaid_amount,
+  is_online: profile.is_online ?? undefined,
+  fcm_token: profile.fcm_token ?? undefined,
+  courier_status: (profile.courier_status as User['courier_status']) ?? undefined,
+  off_reason: profile.off_reason ?? undefined,
+  vehicle_type: (profile.vehicle_type as User['vehicle_type']) ?? undefined,
+  plate_number: profile.plate_number ?? undefined,
+  queue_position: profile.queue_position ?? undefined,
+  created_at: profile.created_at ?? new Date().toISOString(),
+  updated_at: profile.updated_at ?? new Date().toISOString(),
+  total_deliveries_alltime: profile.total_deliveries_alltime ?? undefined,
+  total_earnings_alltime: profile.total_earnings_alltime ?? undefined,
+  unpaid_count: profile.unpaid_count ?? undefined,
+  unpaid_amount: profile.unpaid_amount ?? undefined,
 })
 
 export const useUserStore = create<UserState>()((set, get) => ({
@@ -72,7 +76,7 @@ export const useUserStore = create<UserState>()((set, get) => ({
         set({ users, isLoaded: true })
         saveProfileSyncTime()
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to sync users from server', err)
     }
   },
@@ -114,11 +118,11 @@ export const useUserStore = create<UserState>()((set, get) => ({
           const { profiles } = require('@/lib/orderCache').localDB // Reach into DB for atomic updates
 
           if (eventType === 'INSERT') {
-            const newUser = mapProfileToUser(newRec)
+            const newUser = mapProfileToUser(newRec as ProfileRow)
             set({ users: [...currentUsers, newUser] })
             profiles.put(newUser)
           } else if (eventType === 'UPDATE') {
-            const updatedUser = mapProfileToUser(newRec)
+            const updatedUser = mapProfileToUser(newRec as ProfileRow)
             const updatedUsers = currentUsers.map(u => 
               u.id === newRec.id ? updatedUser : u
             )
@@ -132,7 +136,7 @@ export const useUserStore = create<UserState>()((set, get) => ({
       )
       .subscribe((status, err) => {
         if (status === 'CHANNEL_ERROR') {
-          logger.error(`Realtime subscription error for ${channelId}`, err)
+          logger.error(`Realtime subscription error for ${channelId}`, (err as unknown as Error))
         }
       })
       
@@ -151,7 +155,7 @@ export const useUserStore = create<UserState>()((set, get) => ({
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${id}` },
         (payload) => {
-          const user = mapProfileToUser(payload.new)
+          const user = mapProfileToUser(payload.new as ProfileRow)
           set(state => ({
             users: state.users.map(u => u.id === id ? user : u)
           }))
@@ -243,7 +247,8 @@ export const useUserStore = create<UserState>()((set, get) => ({
   },
 
   updateUser: async (id, data) => {
-    const { email, password, ...dbData } = data as any
+    // Suppress password/email if passed (Auth handles these separately)
+    const { email, password, ...dbData } = (data as any)
     
     // Optimistic update
     const currentUser = get().users.find(u => u.id === id)
@@ -254,8 +259,8 @@ export const useUserStore = create<UserState>()((set, get) => ({
       }))
     }
 
-    const { error } = await (supabase.from('profiles') as any)
-      .update({ ...dbData, updated_at: new Date().toISOString() })
+    const { error } = await supabase.from('profiles')
+      .update({ ...dbData, updated_at: new Date().toISOString() } as any)
       .eq('id', id)
 
     if (error) {
@@ -267,7 +272,7 @@ export const useUserStore = create<UserState>()((set, get) => ({
 
   removeUser: async (id) => {
     if (id === '1') return
-    await (supabase.from('profiles') as any).update({ is_active: false }).eq('id', id)
+    await supabase.from('profiles').update({ is_active: false }).eq('id', id)
   },
 
   updateUserQueuePosition: async (id, position) => {
@@ -276,7 +281,7 @@ export const useUserStore = create<UserState>()((set, get) => ({
       users: state.users.map(u => u.id === id ? { ...u, queue_position: position } : u)
     }))
 
-    const { error } = await (supabase.from('profiles') as any).update({
+    const { error } = await supabase.from('profiles').update({
       queue_position: position,
       updated_at: new Date().toISOString()
     }).eq('id', id)
@@ -294,8 +299,8 @@ export const useUserStore = create<UserState>()((set, get) => ({
       
     if (error || !profiles) return
 
-    const alreadyHasPosition = (profiles as any[]).filter(c => c.queue_position != null)
-    const needsPosition = (profiles as any[]).filter(c => c.queue_position == null)
+    const alreadyHasPosition = (profiles as ProfileRow[]).filter(c => c.queue_position != null)
+    const needsPosition = (profiles as ProfileRow[]).filter(c => c.queue_position == null)
 
     if (needsPosition.length === 0) return
 
@@ -304,14 +309,14 @@ export const useUserStore = create<UserState>()((set, get) => ({
     )
 
     const sorted = [...needsPosition].sort(
-      (a, b) => new Date((a as any).created_at || 0).getTime() - new Date((b as any).created_at || 0).getTime()
+      (a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
     )
 
     for (let i = 0; i < sorted.length; i++) {
-        await (supabase.from('profiles') as any).update({
+        await supabase.from('profiles').update({
             queue_position: maxExisting + i + 1,
             updated_at: new Date().toISOString()
-        }).eq('id', (sorted[i] as any).id)
+        }).eq('id', sorted[i].id)
     }
   },
 

@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useSEO } from '@/hooks/useSEO';
 import { Plus, Download } from 'lucide-react';
 import { formatWIB, getWIBNow } from '@/utils/date';
 
@@ -54,6 +55,10 @@ type SortField = 'order_number' | 'customer_name' | 'status' | 'courier_id' | 'p
 type SortOrder = 'asc' | 'desc';
 
 export function Orders() {
+  useSEO({
+    title: 'Order Management',
+    description: 'Track, assign, and manage all customer orders in various stages of delivery.'
+  });
   const { orders, fetchOrdersByDateRange, addOrder, assignCourier, cancelOrder, updateOrder, updateOrderStatus } = useOrderStore();
   const { rotateQueue } = useCourierStore();
   const { users } = useUserStore();

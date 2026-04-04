@@ -84,6 +84,28 @@ export interface AuthState {
   isLoading: boolean;
 }
 
+// Customer Change Request types
+export type CustomerChangeStatus = 'pending' | 'approved' | 'rejected';
+
+export interface CustomerChangeRequest {
+  id: string;
+  customer_id: string;
+  requester_id: string;
+  order_id?: string;
+  old_data: Partial<Customer>;
+  requested_data: Partial<Customer>;
+  status: CustomerChangeStatus;
+  admin_notes?: string;
+  reviewed_by?: string;
+  reviewed_at?: string;
+  created_at: string;
+  updated_at: string;
+  // Optional join fields
+  customer_name?: string;
+  requester_name?: string;
+  order_number?: string;
+}
+
 // Order types
 export type OrderStatus = 'pending' | 'assigned' | 'picked_up' | 'in_transit' | 'delivered' | 'cancelled';
 export type PaymentStatus = 'unpaid' | 'paid';

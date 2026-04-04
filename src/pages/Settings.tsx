@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { User, Lock, Users, Shield, Settings as SettingsIcon, Database } from 'lucide-react';
+import { useSEO } from '@/hooks/useSEO';
+import { User, Lock, Users, Shield, Settings as SettingsIcon, Database, CheckCircle } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { useUserStore } from '@/stores/useUserStore';
 import { useAuth } from '@/context/AuthContext';
@@ -23,6 +24,7 @@ const UsersTab = lazy(() => import('@/components/settings/UsersTab').then(m => (
 const BusinessTab = lazy(() => import('@/components/settings/BusinessTab').then(m => ({ default: m.BusinessTab })));
 const InstructionsTab = lazy(() => import('@/components/settings/InstructionsTab').then(m => ({ default: m.InstructionsTab })));
 const StorageTab = lazy(() => import('@/components/settings/StorageTab').then(m => ({ default: m.StorageTab })));
+const CustomerApprovalTab = lazy(() => import('@/components/settings/CustomerApprovalTab').then(m => ({ default: m.CustomerApprovalTab })));
 
 function TabLoading() {
   return (
@@ -47,11 +49,16 @@ const ALL_TABS = [
   { id: 'password', label: 'Keamanan', icon: Lock, category: 'account' },
   { id: 'users', label: 'User Sistem', icon: Users, category: 'ops' },
   { id: 'instructions', label: 'Instruksi Kurir', icon: SettingsIcon, category: 'ops' },
+  { id: 'approvals', label: 'Persetujuan Data', icon: CheckCircle, category: 'ops' },
   { id: 'business', label: 'Komisi & Biaya', icon: Shield, category: 'finance' },
   { id: 'storage', label: 'Penyimpanan', icon: Database, category: 'system' },
 ] as const;
 
 export function Settings() {
+  useSEO({
+    title: 'Settings',
+    description: 'Configure your profile, security settings, business rules, and system preferences.'
+  });
   const { users, updateUser, addUser } = useUserStore();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -179,6 +186,9 @@ export function Settings() {
     }
     if (tab.id === 'instructions') {
       return user?.role === 'admin' || user?.role === 'owner';
+    }
+    if (tab.id === 'approvals') {
+      return user?.role === 'admin' || user?.role === 'owner' || user?.role === 'admin_kurir';
     }
     return true;
   });
@@ -320,6 +330,10 @@ export function Settings() {
                       users={users}
                       getOrphanedOrdersLocal={getOrphanedOrdersLocal}
                     />
+                  )}
+
+                  {activeTab === 'approvals' && (
+                    <CustomerApprovalTab />
                   )}
                 </Suspense>
               </div>

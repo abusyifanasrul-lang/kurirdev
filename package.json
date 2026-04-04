@@ -8,7 +8,10 @@
     "build": "vite build",
     "preview": "vite preview",
     "pwa:build": "npm run build && npx cap copy",
-    "pwa:sync": "npm run build && npx cap sync"
+    "pwa:sync": "npm run build && npx cap sync",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.0",
@@ -50,6 +53,7 @@
     "@vitejs/plugin-react": "^5.1.1",
     "happy-dom": "^20.8.9",
     "jsdom": "^29.0.1",
+    "supabase": "^2.84.10",
     "tailwindcss": "4.1.17",
     "typescript": "5.9.3",
     "vite": "7.2.4",

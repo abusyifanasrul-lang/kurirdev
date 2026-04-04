@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSEO } from '@/hooks/useSEO';
 import {
   ShieldAlert, Activity, Database, RefreshCw, Terminal,
   AlertTriangle, CheckCircle, XCircle, Search, Eye,
@@ -36,6 +37,10 @@ type PanelTab = 'health' | 'inspector' | 'force' | 'audit' | 'cache';
 // ---
 
 export function SystemDiagnostics() {
+  useSEO({
+    title: 'System Diagnostics',
+    description: 'System health, inspector, and emergency actions for KurirDev Super Admin.',
+  });
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { orders } = useOrderStore();
