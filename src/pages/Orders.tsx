@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Plus, Download } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { formatWIB, getWIBNow } from '@/utils/date';
 
 import {
   getCachedOrdersByRange,
@@ -185,18 +185,8 @@ export function Orders() {
       .filter((order) => {
         const matchesStatus = !statusFilter || order.status === statusFilter;
 
-        // Gunakan _date local untuk perbandingan
-        // bukan created_at UTC
-        const orderLocalDate = (order as any)._date ||
-          (() => {
-            const d = new Date(order.created_at)
-            const y = d.getFullYear()
-            const m = String(d.getMonth() + 1)
-              .padStart(2, '0')
-            const day = String(d.getDate())
-              .padStart(2, '0')
-            return `${y}-${m}-${day}` 
-          })()
+        // Gunakan date string WIB untuk perbandingan
+        const orderLocalDate = (order as any)._date || formatWIB(order.created_at, 'yyyy-MM-dd');
 
         const matchesDateStart = !dateFilter.start ||
           orderLocalDate >= dateFilter.start
@@ -372,8 +362,8 @@ export function Orders() {
         total_fee: newOrder.total_fee || 0,
         status: 'pending',
         payment_status: newOrder.payment_status || 'unpaid',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        created_at: getWIBNow().toISOString(),
+        updated_at: getWIBNow().toISOString(),
         created_by: user?.id || "1",
       };
 
@@ -497,7 +487,7 @@ export function Orders() {
 
       return [
         q(o.order_number),
-        q(format(new Date(o.created_at), 'dd/MM/yyyy HH:mm')),
+        q(formatWIB(o.created_at, 'dd/MM/yyyy HH:mm')),
         q(o.customer_name),
         q(o.customer_phone),
         q(o.customer_address),
@@ -514,8 +504,8 @@ export function Orders() {
         q(o.notes || ''),
         q(cancelTypeLabel),
         q(o.cancellation_reason || ''),
-        q(o.actual_delivery_time ? format(new Date(o.actual_delivery_time), 'dd/MM/yyyy HH:mm') : ''),
-        q(o.cancelled_at ? format(new Date(o.cancelled_at), 'dd/MM/yyyy HH:mm') : ''),
+        q(o.actual_delivery_time ? formatWIB(o.actual_delivery_time, 'dd/MM/yyyy HH:mm') : ''),
+        q(o.cancelled_at ? formatWIB(o.cancelled_at, 'dd/MM/yyyy HH:mm') : ''),
       ];
     });
 
@@ -524,7 +514,7 @@ export function Orders() {
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `orders_export_${format(new Date(), 'yyyyMMdd_HHmm')}.csv`;
+    link.download = `orders_export_${formatWIB(getWIBNow(), 'yyyyMMdd_HHmm')}.csv`;
     link.click();
   };
 
@@ -613,7 +603,7 @@ export function Orders() {
             <div class="brand">🛵 KurirDev</div>
             <div class="brand-sub">Invoice Pengiriman</div>
             <div class="order-number">${order.order_number}</div>
-            <div class="order-meta">${format(parseISO(order.created_at), 'dd MMM yyyy, HH:mm')}</div>
+            <div class="order-meta">${formatWIB(order.created_at, 'dd MMM yyyy, HH:mm')}</div>
             <div class="order-meta">Kurir: ${courierName}</div>
           </div>
 
@@ -666,9 +656,7 @@ export function Orders() {
       return
     }
 
-    const today = format(
-      new Date(), 'yyyy-MM-dd'
-    )
+    const today = formatWIB(getWIBNow(), 'yyyy-MM-dd');
     if (start === today || !start) {
       setCacheStatus('idle')
       setCachedOrders([])

@@ -1,17 +1,28 @@
 import { useState, useEffect } from 'react';
-import { Database, RefreshCw, Trash2, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
+import { Database, RefreshCw, Trash2, CheckCircle2, AlertCircle, Clock, Shield, Zap } from 'lucide-react';
 import { useCustomerStore } from '@/stores/useCustomerStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { localDB } from '@/lib/orderCache';
+import type { User as UserType, Order } from '@/types';
 
 interface StorageTabProps {
   onResync: () => void;
   isSyncing: boolean;
   syncMessage: string;
+  user: UserType | null;
+  users: UserType[];
+  getOrphanedOrdersLocal: (activeIds: string[]) => Promise<Order[]>;
 }
 
-export function StorageTab({ onResync, isSyncing, syncMessage }: StorageTabProps) {
+export function StorageTab({ 
+  onResync, 
+  isSyncing, 
+  syncMessage,
+  user,
+  users,
+  getOrphanedOrdersLocal
+}: StorageTabProps) {
   const [stats, setStats] = useState({
     orders: 0,
     customers: 0,
@@ -66,6 +77,18 @@ export function StorageTab({ onResync, isSyncing, syncMessage }: StorageTabProps
       console.error(`Manual sync failed for ${type}:`, err);
     } finally {
       setLocalSyncing(null);
+    }
+  };
+
+  const handleScanOrphans = async () => {
+    const activeIds = users.filter(u => u.role === 'courier').map(u => u.id);
+    const orphans = await getOrphanedOrdersLocal(activeIds);
+    if (orphans.length === 0) {
+      alert('✅ Tidak ditemukan order yatim. Semua data sinkron!');
+    } else {
+      if (window.confirm(`⚠️ Ditemukan ${orphans.length} order yatim! Apa Anda ingin melihat detailnya di halaman Penagihan? (Dikelompokkan di "Kurir Terhapus")`)) {
+        window.location.href = '/finance/penagihan';
+      }
     }
   };
 
@@ -197,6 +220,55 @@ export function StorageTab({ onResync, isSyncing, syncMessage }: StorageTabProps
           </p>
         </div>
       </div>
+
+      {/* Super Admin Section */}
+      {user?.role === 'admin' && (
+        <div className="bg-rose-50 p-6 rounded-2xl border border-rose-100 shadow-sm mt-8">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="bg-rose-100 p-2.5 rounded-xl text-rose-600">
+              <Zap className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-gray-900">Super Admin Maintenance</h3>
+              <p className="text-sm text-gray-500">Powerful tools to maintain database integrity.</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-4 bg-white rounded-xl border border-rose-100 space-y-3">
+              <h4 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                <Shield className="h-4 w-4 text-rose-500" />
+                Data Integrity
+              </h4>
+              <p className="text-xs text-gray-500">Scan for orders assigned to deleted or invalid courier IDs.</p>
+              <button
+                onClick={handleScanOrphans}
+                className="w-full py-2 bg-rose-600 text-white rounded-lg text-xs font-bold hover:bg-rose-700 transition shadow-sm"
+              >
+                Scan Orphaned Orders
+              </button>
+            </div>
+
+            <div className="p-4 bg-white rounded-xl border border-rose-100 space-y-3">
+              <h4 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                <Trash2 className="h-4 w-4 text-rose-500" />
+                Database Cleanup
+              </h4>
+              <p className="text-xs text-gray-500">Remove incomplete or temporary "dummy" orders from the server.</p>
+              <button
+                onClick={async () => {
+                  const { cleanupDummyOrders } = await import('@/scripts/cleanupOrders');
+                  await cleanupDummyOrders();
+                  alert('Cleanup selesai!');
+                }}
+                className="w-full py-2 border border-rose-200 text-rose-700 rounded-lg text-xs font-bold hover:bg-rose-50 transition"
+              >
+                Cleanup Dummy Orders
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -127,43 +127,44 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-900 via-cyan-900 to-emerald-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-900 via-teal-900 to-cyan-900 flex items-center justify-center p-4">
       {/* Background decoration */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-teal-500/10 rounded-full" />
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-emerald-500/10 rounded-full" />
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-cyan-500/10 rounded-full" />
       </div>
 
       <div className="relative w-full max-w-md">
         {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-2xl shadow-xl mb-4">
-            <Truck className="h-10 w-10 text-teal-600" />
+        <div className="text-center mb-8 flex flex-col items-center">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-3xl shadow-2xl shadow-emerald-900/20 mb-4 transform hover:rotate-3 transition-transform">
+            <Truck className="h-10 w-10 text-emerald-600" />
           </div>
-          <h1 className="text-3xl font-bold text-white">KurirDev</h1>
-          <p className="text-teal-200 mt-2">Sistem Manajemen Pengiriman</p>
+          <h1 className="text-4xl font-black text-white tracking-tight">KurirDev</h1>
+          <p className="text-emerald-200 mt-2 font-medium">Sistem Manajemen Pengiriman</p>
         </div>
 
         {/* Login Card */}
-        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
-          <div className="px-8 py-6 bg-teal-600 text-center">
-            <h2 className="text-2xl font-bold text-white mb-1">
+        <div className="bg-white rounded-[2rem] shadow-2xl overflow-hidden border border-white/20">
+          <div className="px-8 py-8 bg-emerald-600 text-center relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16" />
+            <h2 className="text-2xl font-bold text-white mb-1 relative z-10">
               Selamat Datang
             </h2>
-            <p className="text-teal-100 text-sm">
+            <p className="text-emerald-100 text-sm relative z-10 font-medium">
               Silakan login untuk masuk ke dasbor Anda
             </p>
           </div>
 
-          <form onSubmit={handleLogin} className="p-8 space-y-5">
+          <form onSubmit={handleLogin} className="p-8 space-y-6">
             {error && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+              <div className="p-4 bg-red-50 border border-red-100 rounded-2xl text-red-600 text-sm font-medium animate-in fade-in zoom-in duration-300">
                 {error}
               </div>
             )}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700 ml-1">
                 Email
               </label>
               <div className="relative">
@@ -174,15 +175,15 @@ export function Login() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
+                  className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus-ring focus:border-emerald-600 focus:bg-white transition-all text-gray-900 placeholder:text-gray-400 min-h-[48px]"
                   placeholder="Masukkan email Anda"
                   required
                 />
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700 ml-1">
                 Password
               </label>
               <div className="relative">
@@ -193,50 +194,51 @@ export function Login() {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
+                  className="w-full pl-12 pr-12 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus-ring focus:border-emerald-600 focus:bg-white transition-all text-gray-900 placeholder:text-gray-400 min-h-[48px]"
                   placeholder="Masukkan password Anda"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-4 flex items-center"
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center touch-target"
                 >
                   {showPassword ? (
-                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-emerald-600 transition-colors" />
                   ) : (
-                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                    <Eye className="h-5 w-5 text-gray-400 hover:text-emerald-600 transition-colors" />
                   )}
                 </button>
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 cursor-pointer">
+            <div className="flex items-center justify-between ml-1">
+              <label className="flex items-center gap-3 cursor-pointer group">
                 <input
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
+                  className="w-5 h-5 text-emerald-600 border-gray-300 rounded-lg focus-ring"
                 />
-                <span className="text-sm text-gray-600">Ingat saya</span>
+                <span className="text-sm text-gray-600 font-medium group-hover:text-gray-900 transition-colors">Ingat saya</span>
               </label>
             </div>
+
             <button
               type="submit"
               disabled={isLoading}
               className={cn(
-                "w-full py-3 px-4 rounded-xl font-medium text-white transition-all duration-200 flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700",
-                isLoading && 'opacity-70 cursor-not-allowed'
+                "w-full py-4 px-6 rounded-2xl font-bold text-white transition-all duration-300 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-200 active:scale-[0.98] min-h-[52px]",
+                isLoading ? 'opacity-70 cursor-not-allowed' : 'hover:shadow-emerald-300/50'
               )}
             >
               {isLoading ? (
                 <>
                   <Loader2 className="h-5 w-5 animate-spin" />
-                  Masuk...
+                  Memproses...
                 </>
               ) : (
-                'Masuk'
+                'Masuk Sekarang'
               )}
             </button>
           </form>

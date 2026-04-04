@@ -3,7 +3,7 @@ import {
   DollarSign, AlertTriangle, CheckCircle, Package, TrendingUp,
   ArrowRight
 } from 'lucide-react';
-import { isToday, parseISO } from 'date-fns';
+import { isWIBToday } from '@/utils/date';
 import { Header } from '@/components/layout/Header';
 import { Card, StatCard } from '@/components/ui/Card';
 import { useAuth } from '@/context/AuthContext';
@@ -54,7 +54,7 @@ export function FinanceDashboard() {
   // Today stats
   const todayStats = useMemo(() => {
     const todayDelivered = deliveredOrders.filter(o =>
-      isToday(parseISO(o.created_at))
+      isWIBToday(o.created_at)
     );
     const totalFee = todayDelivered.reduce((sum, o) => sum + (o.total_fee || 0), 0);
     const courierPayout = todayDelivered.reduce((sum, o) =>
@@ -103,7 +103,7 @@ export function FinanceDashboard() {
   // Paid today
   const paidToday = useMemo(() => {
     return deliveredOrders.filter(o =>
-      o.payment_status === 'paid' && isToday(parseISO(o.updated_at))
+      o.payment_status === 'paid' && isWIBToday(o.updated_at)
     );
   }, [deliveredOrders]);
 

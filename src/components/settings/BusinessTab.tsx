@@ -2,38 +2,27 @@ import { useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { RefreshCw, Shield } from 'lucide-react';
+import { Shield } from 'lucide-react';
 import type { User as UserType, Order } from '@/types';
 
 interface BusinessTabProps {
   commission_rate: number;
   commission_threshold: number;
   onSaveSettings: (data: { commission_rate: number; commission_threshold: number }) => void;
-  onResync: () => Promise<void>;
-  cacheMeta: {
-    last_sync?: string;
-    total_records: number;
-    sync_completed?: boolean;
-    last_delta_sync?: string;
-  } | null;
-  isSyncing: boolean;
-  syncMessage: string;
-  user: UserType | null;
-  users: UserType[];
-  getOrphanedOrdersLocal: (activeIds: string[]) => Promise<Order[]>;
+  // Props moved to StorageTab but kept in interface for compatibility if needed (or cleaned up)
+  onResync?: () => Promise<void>;
+  cacheMeta?: any;
+  isSyncing?: boolean;
+  syncMessage?: string;
+  user?: UserType | null;
+  users?: UserType[];
+  getOrphanedOrdersLocal?: (activeIds: string[]) => Promise<Order[]>;
 }
 
 export function BusinessTab({
   commission_rate,
   commission_threshold,
   onSaveSettings,
-  onResync,
-  cacheMeta,
-  isSyncing,
-  syncMessage,
-  user,
-  users,
-  getOrphanedOrdersLocal,
 }: BusinessTabProps) {
   const [form, setForm] = useState({
     commission_rate,
@@ -44,123 +33,84 @@ export function BusinessTab({
     onSaveSettings(form);
   };
 
-  const handleScanOrphans = async () => {
-    const activeIds = users.filter(u => u.role === 'courier').map(u => u.id);
-    const orphans = await getOrphanedOrdersLocal(activeIds);
-    if (orphans.length === 0) {
-      alert('✅ Tidak ditemukan order yatim. Semua data sinkron!');
-    } else {
-      if (window.confirm(`⚠️ Ditemukan ${orphans.length} order yatim! Apa Anda ingin melihat detailnya di halaman Penagihan? (Dikelompokkan di "Kurir Terhapus")`)) {
-        window.location.href = '/finance/penagihan';
-      }
-    }
-  };
-
   return (
-    <Card>
-      <h3 className="text-lg font-semibold text-gray-900 mb-6">Business Settings</h3>
-      <p className="text-sm text-gray-500 mb-6">Konfigurasi komisi dan threshold ongkir</p>
-      <div className="space-y-4 max-w-md">
-          <Input
-            label="Commission Rate (%)"
-            helperText="Persentase ongkir yang diterima kurir. Sisanya masuk ke admin. Contoh: 80 → kurir dapat 80%, admin dapat 20%"
-            type="number"
-            value={form.commission_rate}
-            onChange={e => setForm(prev => ({ ...prev, commission_rate: Number(e.target.value) }))}
-            min={0}
-            max={100}
-          />
-          <Input
-            label="Minimum Threshold (Rp)"
-            helperText="Ongkir di bawah atau sama dengan nilai ini → kurir dapat 100%, admin tidak dapat potongan. Contoh: 5000 → ongkir ≤ Rp 5.000 tidak dipotong"
-            type="number"
-            value={form.commission_threshold}
-            onChange={e => setForm(prev => ({ ...prev, commission_threshold: Number(e.target.value) }))}
-            min={0}
-          />
-        <div className="pt-4">
-          <p className="text-xs text-gray-500 mb-4">
-            Preview: Ongkir Rp 15.000 → kurir dapat Rp {Math.round(15000 * form.commission_rate / 100).toLocaleString('id-ID')}, admin dapat Rp {Math.round(15000 * (100 - form.commission_rate) / 100).toLocaleString('id-ID')}
-          </p>
-          <Button onClick={handleSave}>
-            Simpan Pengaturan
-          </Button>
-        </div>
-
-        {/* Cache Sync Section */}
-        <div className="pt-6 border-t mt-6">
-          <h4 className="text-sm font-medium text-gray-900 mb-2">⚙️ Local Cache</h4>
-          {cacheMeta && (
-            <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 mb-4">
-              <div className="grid grid-cols-2 gap-y-2 text-xs">
-                <span className="text-gray-500">Record Terdeteksi:</span>
-                <span className="font-medium text-gray-700">{cacheMeta.total_records} order</span>
-                <span className="text-gray-500">Status Sync:</span>
-                <span className={`font-medium ${cacheMeta.sync_completed ? 'text-teal-600' : 'text-amber-600'}`}>
-                  {cacheMeta.sync_completed ? 'Terverifikasi' : 'Parsial'}
-                </span>
-                <span className="text-gray-500">Sync Terakhir:</span>
-                <span className="font-medium text-gray-700">{cacheMeta.last_sync || 'N/A'}</span>
-              </div>
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+      <Card>
+        <div className="p-2">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="bg-teal-50 p-2.5 rounded-xl text-teal-600">
+              <Shield className="h-5 w-5" />
             </div>
-          )}
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="w-full"
-            leftIcon={<RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />}
-            onClick={onResync}
-            disabled={isSyncing}
-          >
-            {isSyncing ? syncMessage : 'Reset & Re-sync Cache'}
-          </Button>
-          <p className="text-[10px] text-gray-400 mt-2">
-            Gunakan jika data di perangkat ini tidak akurat atau stale.
-          </p>
-        </div>
-
-        {/* Super Admin Cleanup Section */}
-        {user?.role === 'admin' && (
-          <div className="pt-6 border-t mt-6">
-            <h4 className="text-sm font-medium text-gray-900 mb-4">🔧 Super Admin Tools</h4>
-            <div className="space-y-4">
-              <div>
-                <p className="text-xs text-gray-500 mb-2">
-                  Bersihkan order dummy yang tidak lengkap (tanpa ongkir)
-                </p>
-                <button
-                  onClick={async () => {
-                    const { cleanupDummyOrders } = await import('@/scripts/cleanupOrders');
-                    await cleanupDummyOrders();
-                    alert('Cleanup selesai!');
-                  }}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 transition-colors"
-                >
-                  🧹 Cleanup Dummy Orders
-                </button>
-              </div>
-
-              <hr className="border-gray-100" />
-
-              <div>
-                <h5 className="text-xs font-semibold text-gray-700 mb-1 uppercase tracking-wider">
-                  💾 Data Integrity
-                </h5>
-                <p className="text-xs text-gray-500 mb-3">
-                  Deteksi order yang kehilangan referensi kurir (yatim).
-                </p>
-                <button
-                  onClick={handleScanOrphans}
-                  className="w-full px-4 py-2 bg-teal-600 text-white rounded-lg text-sm hover:bg-teal-700 transition-all flex items-center justify-center gap-2"
-                >
-                  <Shield className="w-4 h-4" />
-                  Scan Orphaned Orders
-                </button>
-              </div>
+            <div>
+              <h3 className="text-lg font-bold text-gray-900">Konfigurasi Keuangan</h3>
+              <p className="text-sm text-gray-500">Atur persentase bagi hasil dan ambang batas potongan admin.</p>
             </div>
           </div>
-        )}
+          
+          <div className="space-y-6 max-w-lg">
+            <Input
+              label="Komisi Kurir (%)"
+              helperText="Persentase dari total ongkir yang diterima oleh kurir. Contoh: 80% berarti Kurir Rp12.000 & Admin Rp3.000 dari total Rp15.000."
+              type="number"
+              value={form.commission_rate}
+              onChange={e => setForm(prev => ({ ...prev, commission_rate: Number(e.target.value) }))}
+              min={0}
+              max={100}
+              className="text-lg font-semibold"
+            />
+            
+            <Input
+              label="Ambang Batas Potongan (Rp)"
+              helperText="Ongkir di bawah atau sama dengan nilai ini TIDAK akan dipotong admin (Kurir 100%)."
+              type="number"
+              value={form.commission_threshold}
+              onChange={e => setForm(prev => ({ ...prev, commission_threshold: Number(e.target.value) }))}
+              min={0}
+              className="text-lg font-semibold"
+            />
+
+            <div className="bg-teal-50 border border-teal-100 p-5 rounded-2xl">
+              <h4 className="text-sm font-bold text-teal-800 mb-3 flex items-center gap-2">
+                <Shield className="h-4 w-4" />
+                Simulasi Bagi Hasil
+              </h4>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between items-center">
+                  <span className="text-teal-600">Ongkir Standar (Rp15.000):</span>
+                  <div className="text-right">
+                    <p className="font-bold text-teal-900">Kurir: Rp {Math.round(15000 * form.commission_rate / 100).toLocaleString('id-ID')}</p>
+                    <p className="text-[10px] text-teal-600">Admin: Rp {Math.round(15000 * (100 - form.commission_rate) / 100).toLocaleString('id-ID')}</p>
+                  </div>
+                </div>
+                <div className="border-t border-teal-100 pt-2 flex justify-between items-center">
+                  <span className="text-teal-600">Ongkir Kecil (≤ Rp{form.commission_threshold.toLocaleString('id-ID')}):</span>
+                  <div className="text-right">
+                    <p className="font-bold text-teal-900 text-base">Kurir: 100%</p>
+                    <p className="text-[10px] text-teal-600 underline">Tanpa Potongan Admin</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4">
+              <Button onClick={handleSave} className="w-full lg:w-auto px-10">
+                Simpan Pengaturan
+              </Button>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl flex gap-3 text-emerald-800">
+        <Shield className="h-5 w-5 shrink-0 mt-0.5" />
+        <div>
+          <h4 className="text-sm font-bold">Keamanan Finansial</h4>
+          <p className="text-xs mt-1 leading-relaxed">
+            Perubahan pada pengaturan ini akan berdampak langsung pada perhitungan pendapatan kurir untuk order baru. 
+            Order yang sudah selesai tidak akan terpengaruh secara retroaktif.
+          </p>
+        </div>
       </div>
-    </Card>
+    </div>
   );
 }

@@ -30,12 +30,12 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             ref={ref}
             id={inputId}
             className={cn(
-              'block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm placeholder-gray-400',
-              'focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500',
-              'disabled:bg-gray-50 disabled:text-gray-500',
+              'block w-full rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm placeholder-gray-400 min-h-[44px]',
+              'focus-ring focus:border-emerald-600',
+              'disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed',
               error && 'border-red-500 focus:border-red-500 focus:ring-red-500',
-              leftIcon && 'pl-10',
-              rightIcon && 'pr-10',
+              leftIcon && 'pl-11',
+              rightIcon && 'pr-11',
               className
             )}
             {...props}

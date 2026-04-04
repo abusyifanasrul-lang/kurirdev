@@ -35,13 +35,20 @@ function TabLoading() {
 
 
 
+const ALL_CATEGORIES = [
+  { id: 'account', label: 'Akun', icon: User },
+  { id: 'ops', label: 'Operasional', icon: SettingsIcon },
+  { id: 'finance', label: 'Keuangan', icon: Shield },
+  { id: 'system', label: 'Sistem', icon: Database },
+] as const;
+
 const ALL_TABS = [
-  { id: 'profile', label: 'Profile', icon: User },
-  { id: 'password', label: 'Password', icon: Lock },
-  { id: 'users', label: 'System Users', icon: Users },
-  { id: 'business', label: 'Business', icon: Shield },
-  { id: 'instructions', label: 'Instruksi Kurir', icon: SettingsIcon },
-  { id: 'storage', label: 'Storage & Sync', icon: Database },
+  { id: 'profile', label: 'Profil Saya', icon: User, category: 'account' },
+  { id: 'password', label: 'Keamanan', icon: Lock, category: 'account' },
+  { id: 'users', label: 'User Sistem', icon: Users, category: 'ops' },
+  { id: 'instructions', label: 'Instruksi Kurir', icon: SettingsIcon, category: 'ops' },
+  { id: 'business', label: 'Komisi & Biaya', icon: Shield, category: 'finance' },
+  { id: 'storage', label: 'Penyimpanan', icon: Database, category: 'system' },
 ] as const;
 
 export function Settings() {
@@ -178,102 +185,146 @@ export function Settings() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20 lg:pb-0">
-      <Header title="Settings" />
+      <Header title="Pengaturan" />
       
-      <div className="max-w-4xl mx-auto p-4 lg:p-8">
-        {/* Global Feedback */}
-        {message && (
-          <div className={`mb-6 p-4 rounded-xl flex items-center gap-2 border ${
-            message.type === 'success' ? 'bg-teal-50 text-teal-700 border-teal-200' : 'bg-red-50 text-red-700 border-red-200'
-          }`}>
-            <span>{message.text}</span>
+      <div className="max-w-6xl mx-auto p-4 lg:p-8">
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Left Sidebar - Desktop */}
+          <aside className="hidden lg:block w-64 flex-shrink-0">
+            <nav className="space-y-8 sticky top-24">
+              {ALL_CATEGORIES.map(cat => (
+                <div key={cat.id}>
+                  <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-2 flex items-center gap-2">
+                    <cat.icon className="h-3 w-3" />
+                    {cat.label}
+                  </h4>
+                  <div className="space-y-1">
+                    {tabs.filter(t => t.category === cat.id).map(tab => (
+                      <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
+                          activeTab === tab.id 
+                            ? 'bg-teal-50 text-teal-700 shadow-sm border border-teal-100' 
+                            : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900 border border-transparent'
+                        }`}
+                      >
+                        <tab.icon className={`h-4 w-4 ${activeTab === tab.id ? 'text-teal-600' : 'text-gray-400'}`} />
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </nav>
+          </aside>
+
+          {/* Mobile Categories - Horizontal Scroll or Grid */}
+          <div className="lg:hidden">
+            {/* Horizontal Tabs for Mobile */}
+            <div className="flex gap-2 mb-6 overflow-x-auto pb-px scrollbar-hide -mx-4 px-4">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-full border transition-all whitespace-nowrap ${
+                    activeTab === tab.id 
+                      ? 'bg-teal-600 text-white border-teal-600 shadow-md scale-105' 
+                      : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <tab.icon className="h-4 w-4" />
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
-        )}
 
-        {/* Tab Navigation */}
-        <div className="flex gap-2 mb-6 border-b border-gray-200 overflow-x-auto pb-px">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
-                activeTab === tab.id ? 'border-teal-600 text-teal-600' : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <tab.icon className="h-4 w-4" />
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Tab Content */}
-        <div className="space-y-6">
-          <Suspense fallback={<TabLoading />}>
-            {activeTab === 'profile' && (
-              <ProfileTab 
-                user={user} 
-                onUpdate={handleUpdateProfile} 
-                onRefreshPush={handleRefreshPush}
-                onResync={handleResync}
-                cacheMeta={cacheMeta}
-                isSyncing={isSyncing}
-                syncMessage={syncMessage}
-                isLoading={isLoading}
-                isRefreshingPush={isRefreshingPush}
-              />
+          {/* Main Content Area */}
+          <main className="flex-1 min-w-0">
+            {/* Global Feedback */}
+            {message && (
+              <div className={`mb-6 p-4 rounded-xl flex items-center gap-2 border animate-in slide-in-from-top duration-300 ${
+                message.type === 'success' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-rose-50 text-rose-700 border-rose-100'
+              }`}>
+                <span>{message.text}</span>
+              </div>
             )}
 
-            {activeTab === 'password' && (
-              <PasswordTab 
-                onUpdate={handleChangePassword} 
-                isLoading={isLoading} 
-              />
-            )}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden min-h-[400px]">
+              <div className="p-6 lg:p-8">
+                <Suspense fallback={<TabLoading />}>
+                  {activeTab === 'profile' && (
+                    <ProfileTab 
+                      user={user} 
+                      onUpdate={handleUpdateProfile} 
+                      onRefreshPush={handleRefreshPush}
+                      onResync={handleResync}
+                      cacheMeta={cacheMeta}
+                      isSyncing={isSyncing}
+                      syncMessage={syncMessage}
+                      isLoading={isLoading}
+                      isRefreshingPush={isRefreshingPush}
+                    />
+                  )}
 
-            {activeTab === 'users' && (
-              <UsersTab 
-                currentUser={user}
-                users={users}
-                onAddUser={async (data: any) => {
-                  return await addUser(data);
-                }}
-                onUpdateUser={updateUser}
-                onToggleSuspend={(u) => updateCourier(u.id, { is_active: !u.is_active })}
-              />
-            )}
+                  {activeTab === 'password' && (
+                    <PasswordTab 
+                      onUpdate={handleChangePassword} 
+                      isLoading={isLoading} 
+                    />
+                  )}
 
-            {activeTab === 'business' && (
-              <BusinessTab 
-                commission_rate={commission_rate}
-                commission_threshold={commission_threshold}
-                onSaveSettings={handleSaveBusinessSettings}
-                onResync={handleResync}
-                cacheMeta={cacheMeta}
-                isSyncing={isSyncing}
-                syncMessage={syncMessage}
-                user={user}
-                users={users}
-                getOrphanedOrdersLocal={getOrphanedOrdersLocal}
-              />
-            )}
+                  {activeTab === 'users' && (
+                    <UsersTab 
+                      currentUser={user}
+                      users={users}
+                      onAddUser={async (data: any) => {
+                        return await addUser(data);
+                      }}
+                      onUpdateUser={updateUser}
+                      onToggleSuspend={(u) => updateCourier(u.id, { is_active: !u.is_active })}
+                    />
+                  )}
 
-            {activeTab === 'instructions' && (
-              <InstructionsTab 
-                instructions={courier_instructions || []}
-                onAdd={async (data) => { await addCourierInstruction(data); }}
-                onUpdate={async (id, data) => { await updateCourierInstruction(id, data); }}
-                onDelete={async (id) => { await deleteCourierInstruction(id); }}
-              />
-            )}
+                  {activeTab === 'business' && (
+                    <BusinessTab 
+                      commission_rate={commission_rate}
+                      commission_threshold={commission_threshold}
+                      onSaveSettings={handleSaveBusinessSettings}
+                      onResync={handleResync}
+                      cacheMeta={cacheMeta}
+                      isSyncing={isSyncing}
+                      syncMessage={syncMessage}
+                      user={user}
+                      users={users}
+                      getOrphanedOrdersLocal={getOrphanedOrdersLocal}
+                    />
+                  )}
 
-            {activeTab === 'storage' && (
-              <StorageTab 
-                onResync={handleResync}
-                isSyncing={isSyncing}
-                syncMessage={syncMessage}
-              />
-            )}
-          </Suspense>
+                  {activeTab === 'instructions' && (
+                    <InstructionsTab 
+                      instructions={courier_instructions || []}
+                      onAdd={async (data) => { await addCourierInstruction(data); }}
+                      onUpdate={async (id, data) => { await updateCourierInstruction(id, data); }}
+                      onDelete={async (id) => { await deleteCourierInstruction(id); }}
+                    />
+                  )}
+
+                  {activeTab === 'storage' && (
+                    <StorageTab 
+                      onResync={handleResync}
+                      isSyncing={isSyncing}
+                      syncMessage={syncMessage}
+                      user={user}
+                      users={users}
+                      getOrphanedOrdersLocal={getOrphanedOrdersLocal}
+                    />
+                  )}
+                </Suspense>
+              </div>
+            </div>
+          </main>
         </div>
       </div>
     </div>

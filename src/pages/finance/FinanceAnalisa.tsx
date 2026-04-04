@@ -3,10 +3,13 @@ import {
   TrendingUp, DollarSign, Package,
   BarChart3, PieChart as PieChartIcon
 } from 'lucide-react';
-import {
-  format, parseISO, startOfDay, endOfDay, subDays, isWithinInterval,
-  eachDayOfInterval, startOfMonth
+import { 
+  parseISO, startOfDay, endOfDay, subDays, isWithinInterval,
+  eachDayOfInterval, format
 } from 'date-fns';
+import { 
+  getWIBNow, getWIBStartOfMonth
+} from '@/utils/date';
 import { Header } from '@/components/layout/Header';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { lazy, Suspense } from 'react';
@@ -41,11 +44,11 @@ export function FinanceAnalisa() {
   const [periodOrders, setPeriodOrders] = useState<Order[]>([]);
 
   const loadPeriodOrders = useCallback(async () => {
-    const now = new Date();
+    const now = getWIBNow();
     let start: Date;
     if (period === '7days') start = startOfDay(subDays(now, 6));
     else if (period === '30days') start = startOfDay(subDays(now, 29));
-    else start = startOfMonth(now);
+    else start = getWIBStartOfMonth();
     const end = endOfDay(now);
 
     const dbOrders = await getOrdersByDateRange(start.toISOString(), end.toISOString());
@@ -65,16 +68,15 @@ export function FinanceAnalisa() {
     return Array.from(map.values());
   }, [periodOrders, orders]);
 
-  // Period range
   const dateRange = useMemo(() => {
-    const now = new Date();
+    const now = getWIBNow();
     if (period === '7days') {
       return { start: startOfDay(subDays(now, 6)), end: endOfDay(now) };
     }
     if (period === '30days') {
       return { start: startOfDay(subDays(now, 29)), end: endOfDay(now) };
     }
-    return { start: startOfMonth(now), end: endOfDay(now) };
+    return { start: getWIBStartOfMonth(), end: endOfDay(now) };
   }, [period]);
 
   // Filtered orders in range
@@ -343,7 +345,7 @@ export function FinanceAnalisa() {
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Umur Piutang (Aging Report)</h2>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {(() => {
-              const now = new Date();
+              const now = getWIBNow();
               const unpaid = filteredDelivered.filter(o => o.payment_status === 'unpaid');
               const buckets = [
                 { label: '0-3 hari', min: 0, max: 3, color: 'green' },
@@ -353,7 +355,7 @@ export function FinanceAnalisa() {
               ];
               return buckets.map(bucket => {
                 const bucketOrders = unpaid.filter(o => {
-                  const days = Math.floor((now.getTime() - parseISO(o.created_at).getTime()) / (1000 * 60 * 60 * 24));
+                  const days = Math.floor((now.getTime() - new Date(o.created_at).getTime()) / (1000 * 60 * 60 * 24));
                   return days >= bucket.min && days <= bucket.max;
                 });
                 const total = bucketOrders.reduce((sum, o) =>

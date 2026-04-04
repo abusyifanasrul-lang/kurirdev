@@ -4,9 +4,9 @@ import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
 import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
 import { Printer } from 'lucide-react';
-import { format } from 'date-fns';
-import { Order, User } from '@/types';
 import { formatCurrency } from '@/utils/formatter';
+import { formatWIB } from '@/utils/date';
+import { Order, User } from '@/types';
 
 interface OrderDetailsModalProps {
   isOpen: boolean;
@@ -47,7 +47,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
           <div>
             <h3 className="text-lg font-bold text-gray-900">{order.order_number}</h3>
             <p className="text-sm text-gray-500">
-              Dibuat pada {format(new Date(order.created_at), 'dd MMM yyyy, HH:mm')}
+              Dibuat pada {formatWIB(order.created_at)}
             </p>
           </div>
           <div className="flex flex-col items-end gap-2">

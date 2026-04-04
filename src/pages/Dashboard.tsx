@@ -10,7 +10,8 @@ import { lazy, Suspense } from 'react';
 import { Header } from '@/components/layout/Header';
 import { Card, StatCard } from '@/components/ui/Card';
 import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
-import { format, isToday, subDays, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
+import { subDays, startOfDay, endOfDay } from 'date-fns';
+import { formatWIB, isWIBToday, getWIBTodayRange } from '@/utils/date';
 
 // Cache
 import { getOrdersForWeek } from '@/lib/orderCache';
@@ -93,7 +94,7 @@ export function Dashboard() {
 
   // --- Derived Analytics ---
   const analytics = useMemo(() => {
-    const todayOrders = (allOrders || []).filter(o => isToday(new Date(o.created_at)));
+    const todayOrders = (allOrders || []).filter(o => isWIBToday(o.created_at));
     const pendingOrders = (orders || []).filter(o => o.status === 'pending');
 
     // Revenue: Sum of total_fee for 'delivered' orders today
@@ -133,16 +134,19 @@ export function Dashboard() {
   }, [orders, allOrders, users]);
 
   const revenueChartData = useMemo(() => {
-    // Last 7 days
+    // Last 7 days in WIB
     const data = [];
+    const { start: todayStart } = getWIBTodayRange();
+    
     for (let i = 6; i >= 0; i--) {
-      const date = subDays(new Date(), i);
+      const date = subDays(todayStart, i);
       const start = startOfDay(date);
       const end = endOfDay(date);
 
-      const dayOrders = (allOrders || []).filter(o =>
-        isWithinInterval(new Date(o.created_at), { start, end })
-      );
+      const dayOrders = (allOrders || []).filter(o => {
+        const itemTime = new Date(o.created_at).getTime();
+        return itemTime >= start.getTime() && itemTime <= end.getTime();
+      });
 
       const revenue = dayOrders
         .filter(o => o.status === 'delivered')
@@ -169,7 +173,7 @@ export function Dashboard() {
 
       <Header
         title="Dashboard"
-        subtitle={`Last updated: ${format(lastUpdated, 'HH:mm:ss')}`}
+        subtitle={`Last updated: ${formatWIB(lastUpdated, 'HH:mm:ss')}`}
         isConnected={isConnected}
         onRefresh={handleRefresh}
       />
@@ -243,7 +247,7 @@ export function Dashboard() {
               />
               <StatCard
                 title="Terkirim Hari Ini"
-                value={allOrders.filter(o => o.status === 'delivered' && isToday(new Date(o.actual_delivery_time || o.created_at))).length}
+                value={allOrders.filter(o => o.status === 'delivered' && isWIBToday(o.actual_delivery_time || o.created_at)).length}
                 icon={<Package className="h-6 w-6" />}
                 subtitle="Sudah sampai"
                 to="/admin/orders"
