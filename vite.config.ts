@@ -25,14 +25,13 @@ export default defineConfig({
       ],
       manifest: {
         id: "/",
-        name: "KurirDev - Sistem Manajemen Pengiriman",
-        short_name: "KurirDev",
-        description:
-          "Sistem manajemen pengiriman profesional untuk admin dan kurir",
+        name: 'KurirDev',
+        short_name: 'KurirDev',
+        description: 'Logistics and Delivery Management System',
         start_url: "/",
         display: "standalone",
         background_color: "#111827",
-        theme_color: "#0D9488",
+        theme_color: '#059669',
         orientation: "portrait",
         categories: ["business", "productivity"],
         icons: [
@@ -96,34 +95,37 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
+        manualChunks(id) {
           // Firebase core — dipakai semua user
           // NOTE: firebase/messaging & firebase/installations intentionally excluded
           // — they're only needed for courier push notifications (lazy-loaded via fcm.ts)
-          'vendor-firebase': [
-            'firebase/app',
-          ],
+          if (id.includes('firebase/app') || id.includes('firebase/auth') || id.includes('firebase/firestore')) {
+            return 'vendor-firebase';
+          }
           // React core
-          'vendor-react': [
-            'react',
-            'react-dom',
-            'react-router-dom',
-          ],
+          if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
+            return 'vendor-react';
+          }
           // State management
-          'vendor-zustand': [
-            'zustand',
-          ],
+          if (id.includes('zustand')) {
+            return 'vendor-zustand';
+          }
           // Date utility
-          'vendor-date': [
-            'date-fns',
-          ],
+          if (id.includes('date-fns')) {
+            return 'vendor-date';
+          }
           // IndexedDB
-          'vendor-dexie': [
-            'dexie',
-          ],
-          // NOTE: vendor-charts (recharts) and vendor-pdf (jspdf) 
-          // intentionally NOT in manualChunks — they will be 
-          // dynamically imported only when needed (admin pages only)
+          if (id.includes('dexie')) {
+            return 'vendor-dexie';
+          }
+          if (id.includes('jspdf') || id.includes('jspdf-autotable')) {
+            return 'vendor-pdf';
+          }
+          if (id.includes('recharts') || id.includes('d3')) {
+            return 'vendor-charts';
+          }
+          // Firebase messaging is lazy-loaded in App.tsx
+          // to avoid bloat for non-courier roles.
         },
       },
     },

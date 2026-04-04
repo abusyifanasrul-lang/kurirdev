@@ -31,7 +31,7 @@ import {
 } from '@/lib/orderCache'
 import type { Order } from '@/types'
 
-const COLORS = ['#F59E0B', '#3B82F6', '#14b8a6', '#06B6D4', '#22C55E', '#EF4444'];
+const COLORS = ['#F59E0B', '#3B82F6', '#10b981', '#06B6D4', '#22C55E', '#EF4444'];
 
 export function Reports() {
   const { fetchOrdersByDateRange } = useOrderStore();
@@ -313,7 +313,7 @@ export function Reports() {
         const by = y + h - barH;
 
         if (d.revenue > 0) {
-          doc.setFillColor(20, 184, 166); // teal-500
+          doc.setFillColor(16, 185, 129); // emerald-500
           doc.rect(bx, by, barW, barH, 'F');
         }
 
@@ -544,7 +544,7 @@ export function Reports() {
                   formatter={(value) => [formatCurrency(value as number), 'Revenue']}
                   labelFormatter={(label) => format(new Date(label), 'MMM dd, yyyy')}
                 />
-                <Bar dataKey="revenue" fill="#0d9488" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="revenue" fill="#059669" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </Card>

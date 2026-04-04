@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
+import { RefreshCw } from 'lucide-react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
@@ -15,8 +16,8 @@ function LoadingScreen() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center" role="status" aria-label="Memuat halaman">
       <div className="flex flex-col items-center gap-4">
-        <div className="w-12 h-12 border-4 border-teal-100 border-t-teal-600 rounded-full animate-spin shadow-sm" />
-        <p className="text-sm text-gray-600 font-medium">Memuat...</p>
+        <div className="w-12 h-12 border-4 border-emerald-100 border-t-emerald-600 rounded-full animate-spin shadow-sm" />
+        <p className="text-sm text-gray-600 font-medium">Memuat KurirDev...</p>
       </div>
     </div>
   );
@@ -167,19 +168,31 @@ function PWAUpdateBanner() {
       isAuthenticated && user?.role === 'courier'
         ? 'bottom-24'
         : 'bottom-4'
-    } right-4 bg-white p-4 rounded-xl border border-gray-100 shadow-2xl ring-1 ring-black/5 z-50 animate-in slide-in-from-bottom-5 fade-in w-72`}>
-      <div className="flex gap-3 mb-3">
-        <div className="bg-teal-50 p-2 rounded-lg text-teal-600 h-10 w-10 flex items-center justify-center shrink-0 shadow-sm">
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+    } left-4 right-4 md:left-auto md:right-4 md:w-96 bg-white border-l-4 border-emerald-600 rounded-lg shadow-xl p-4 z-50 animate-in fade-in slide-in-from-bottom-4`}>
+      <div className="flex items-start gap-3">
+        <div className="p-2 bg-emerald-50 rounded-lg text-emerald-600">
+          <RefreshCw className="w-5 h-5 animate-spin-slow" />
         </div>
-        <div>
-          <h4 className="font-bold text-gray-900 text-sm">Update Tersedia</h4>
-          <p className="text-xs text-gray-600 mt-1 leading-relaxed">Versi baru siap digunakan. Tap update sekarang.</p>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-sm font-semibold text-gray-900">Pembaruan Tersedia</h3>
+          <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+            Versi terbaru KurirDev sudah siap. Silakan muat ulang untuk fitur baru.
+          </p>
+          <div className="mt-3 flex items-center gap-3">
+            <button
+              onClick={handleUpdate}
+              className="px-3 py-1.5 bg-emerald-600 text-white text-xs font-semibold rounded-md hover:bg-emerald-700 transition-colors shadow-sm focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+            >
+              Update Sekarang
+            </button>
+            <button
+              onClick={handleDismiss}
+              className="px-3 py-1.5 text-gray-500 text-xs font-medium hover:text-gray-700 transition-colors"
+            >
+              Nanti saja
+            </button>
+          </div>
         </div>
-      </div>
-      <div className="flex gap-2">
-        <button onClick={handleUpdate} className="flex-[2] bg-teal-600 text-white text-xs font-bold py-2.5 rounded-lg hover:bg-teal-700 transition shadow-sm active:scale-95">Update Sekarang</button>
-        <button onClick={handleDismiss} className="flex-1 bg-gray-50 text-gray-500 text-xs font-medium py-2.5 rounded-lg hover:bg-gray-100 transition active:scale-95">Batal</button>
       </div>
     </div>
   );
