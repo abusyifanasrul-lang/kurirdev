@@ -18,5 +18,5 @@ export const calcAdminEarning = (order: Order, settings: EarningSettings): numbe
   const effectiveRate = (order.applied_commission_rate ?? settings.commission_rate) / 100
   const effectiveThreshold = order.applied_commission_threshold ?? settings.commission_threshold
   if (order.total_fee <= effectiveThreshold) return 0
-  return order.total_fee * (1 - effectiveRate)
+  return Math.round(order.total_fee * (1 - effectiveRate))
 }

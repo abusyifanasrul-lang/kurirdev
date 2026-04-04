@@ -386,49 +386,57 @@ export function Orders() {
     }
   };
 
+  const [isAssigning, setIsAssigning] = useState(false);
+
   const handleAssign = async () => {
-    if (!selectedOrder || !assignCourierId) return;
+    if (!selectedOrder || !assignCourierId || isAssigning) return;
 
     const courier = availableCouriers.find(c => c.id === assignCourierId);
     if (courier) {
-      // Simpan instruksi (notes) ke order jika ada perubahan
-      if (selectedOrder.notes !== undefined) {
-        updateOrder(selectedOrder.id, { notes: selectedOrder.notes });
+      setIsAssigning(true);
+      try {
+        // 1. Simpan instruksi (notes) ke order jika ada perubahan
+        // Await ini krusial agar data sinkron sebelum assignment
+        if (selectedOrder.notes !== undefined) {
+          await updateOrder(selectedOrder.id, { notes: selectedOrder.notes });
+        }
+
+        // 2. Lakukan assignment
+        await assignCourier(selectedOrder.id, courier.id, courier.name, user?.id || "1", user?.name || 'Admin');
+        await rotateQueue(courier.id);
+
+        // 3. Persiapkan dan kirim notifikasi
+        const notes = (selectedOrder.notes || '').toLowerCase().trim();
+        const selectedInstruction = courier_instructions.find(
+          instruction => instruction.label.toLowerCase() === notes
+        );
+        const emoji = selectedInstruction ? (selectedInstruction.icon || '📋') : '';
+        const instruksi = selectedInstruction
+          ? `${emoji} ${selectedInstruction.instruction}`
+          : notes
+          ? `📋 ${selectedOrder.notes}`
+          : 'Segera proses!';
+
+        const customerName = selectedOrder.customer_name || 'Customer';
+        const notifTitle = `🛵 Order Baru — ${selectedOrder.order_number}`;
+        const notifBody = `${customerName} • ${instruksi}`;
+
+        await addNotification({
+          user_id: courier.id,
+          user_name: courier.name,
+          title: notifTitle,
+          message: notifBody,
+          data: { orderId: selectedOrder.id, type: 'order_assigned' },
+        });
+
+        setIsDetailModalOpen(false);
+        setAssignCourierId('');
+      } catch (error) {
+        console.error("Assignment failed:", error);
+        // Tampilkan error ke UI jika perlu (menggunakan toast atau state lain)
+      } finally {
+        setIsAssigning(false);
       }
-
-      await assignCourier(selectedOrder.id, courier.id, courier.name, user?.id || "1", user?.name || 'Admin');
-      await rotateQueue(courier.id);
-
-      // Buat teks instruksi (dinamis dari settings)
-      const notes = (selectedOrder.notes || '').toLowerCase().trim();
-      const selectedInstruction = courier_instructions.find(
-        instruction => instruction.label.toLowerCase() === notes
-      );
-      const emoji = selectedInstruction
-        ? (selectedInstruction.icon || '📋')
-        : '';
-      const instruksi = selectedInstruction
-        ? `${emoji} ${selectedInstruction.instruction}`
-        : notes
-        ? `📋 ${selectedOrder.notes}`
-        : 'Segera proses!';
-
-      const customerName = selectedOrder.customer_name || 'Customer';
-      const notifTitle = `🛵 Order Baru — ${selectedOrder.order_number}`;
-      const notifBody = `${customerName} • ${instruksi}`;
-
-      // Simpan ke Supabase agar muncul di halaman notifikasi
-      // Database Webhook akan mentrigger Edge Function 'notify-courier' otomatis
-      await addNotification({
-        user_id: courier.id,
-        user_name: courier.name,
-        title: notifTitle,
-        message: notifBody,
-        data: { orderId: selectedOrder.id, type: 'order_assigned' },
-      });
-
-      setIsDetailModalOpen(false);
-      setAssignCourierId('');
     }
   };
 

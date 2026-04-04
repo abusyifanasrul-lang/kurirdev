@@ -35,16 +35,16 @@ const COLORS = ['#F59E0B', '#3B82F6', '#10b981', '#06B6D4', '#22C55E', '#EF4444'
 
 export function Reports() {
   const { fetchOrdersByDateRange } = useOrderStore();
-  const [reportOrders, setReportOrders] = useState<Order[]>([])
-  const [cacheStatus, setCacheStatus] = useState<
-    'idle' | 'checking' | 'missing' | 'loading' | 'loaded'
-  >('idle')
-  const [, setMissingDates] = useState<string[]>([])
   const { couriers } = useCourierStore();
   const { users } = useUserStore();
   const { commission_rate } = useSettingsStore();
-  const courierMap = Object.fromEntries(
-    users.filter(u => u.role === 'courier').map(u => [u.id, u.name])
+
+  const [reportOrders, setReportOrders] = useState<Order[]>([]);
+  const [cacheStatus, setCacheStatus] = useState<'idle' | 'checking' | 'missing' | 'loading' | 'loaded'>('idle');
+
+  const courierMap = useMemo(() => 
+    Object.fromEntries(users.filter(u => u.role === 'courier').map(u => [u.id, u.name])),
+    [users]
   );
 
   const [dateRange, setDateRange] = useState({
@@ -55,26 +55,22 @@ export function Reports() {
   const [appliedRange, setAppliedRange] = useState(dateRange);
 
   const handleApplyFilter = async () => {
-    setAppliedRange(dateRange)
-    setCacheStatus('checking')
+    setAppliedRange(dateRange);
+    setCacheStatus('checking');
 
     try {
-      const results = await getOrdersByDateRange(
-        dateRange.start,
-        dateRange.end
-      )
+      const results = await getOrdersByDateRange(dateRange.start, dateRange.end);
       if (results.length > 0) {
-        setReportOrders(results as Order[])
-        setCacheStatus('loaded')
+        setReportOrders(results as Order[]);
+        setCacheStatus('loaded');
       } else {
-        setMissingDates([dateRange.start])
-        setCacheStatus('missing')
+        setCacheStatus('missing');
       }
-    } catch {
-      setMissingDates([dateRange.start])
-      setCacheStatus('missing')
+    } catch (error) {
+      console.error('Error applying filter:', error);
+      setCacheStatus('missing');
     }
-  }
+  };
 
   const handleFetchAndCache = async () => {
     setCacheStatus('loading')

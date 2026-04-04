@@ -40,6 +40,7 @@ export function FinancePenagihan() {
   const [confirmCourier, setConfirmCourier] = useState<{ id: string; name: string; orders: Order[] } | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [confirmSuccess, setConfirmSuccess] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
 
   const loadLocalOrders = useCallback(async () => {
     const [recentOrders, unpaidOrders] = await Promise.all([
@@ -151,15 +152,17 @@ export function FinancePenagihan() {
   const totalUnpaid = courierSummary.reduce((sum, c) => sum + c.totalEarning, 0);
   const totalUnpaidOrders = courierSummary.reduce((sum, c) => sum + c.unpaidOrders.length, 0);
 
-  const handleConfirmSettlement = (courierId: string, courierName: string, orders: Order[]) => {
+   const handleConfirmSettlement = (courierId: string, courierName: string, orders: Order[]) => {
     setConfirmCourier({ id: courierId, name: courierName, orders });
     setShowConfirmModal(true);
     setConfirmSuccess(false);
+    setConfirmError(null);
   };
 
-  const processSettlement = async () => {
+   const processSettlement = async () => {
     if (!confirmCourier) return;
     setConfirmLoading(true);
+    setConfirmError(null);
 
     try {
       for (const order of confirmCourier.orders) {
@@ -179,6 +182,7 @@ export function FinancePenagihan() {
       }, 1500);
     } catch (err) {
       console.error('Settlement error:', err);
+      setConfirmError(err instanceof Error ? err.message : 'Gagal memproses setoran. Silakan coba lagi.');
     } finally {
       setConfirmLoading(false);
     }
@@ -472,7 +476,14 @@ export function FinancePenagihan() {
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
+             <div className="space-y-4">
+              {confirmError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700 text-sm">
+                  <AlertTriangle className="h-4 w-4" />
+                  <p>{confirmError}</p>
+                </div>
+              )}
+
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
                 <p className="font-medium text-amber-900">{confirmCourier.name}</p>
                 <p className="text-2xl font-bold text-amber-700 mt-1">
