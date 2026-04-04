@@ -1,5 +1,4 @@
 import { useState, useMemo } from 'react';
-import { useSEO } from '@/hooks/useSEO';
 import { useNavigate } from 'react-router-dom';
 import {
   Mail,
@@ -22,10 +21,6 @@ import { useCourierStore } from '@/stores/useCourierStore';
 import { supabase } from '@/lib/supabaseClient';
 
 export function CourierProfile() {
-  useSEO({
-    title: 'Your Profile',
-    description: 'Manage your personal information, security settings, and notification preferences.'
-  });
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { couriers } = useCourierStore();

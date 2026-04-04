@@ -317,9 +317,8 @@ ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can read own notifications" ON notifications
   FOR SELECT USING (user_id = auth.uid() OR public.get_auth_user_role() IN ('owner', 'admin_kurir'));
 
-CREATE POLICY "Only admins can send notifications" ON notifications
-  FOR INSERT WITH CHECK (public.get_auth_user_role() IN ('owner', 'admin_kurir', 'admin'));
-
+CREATE POLICY "System and Admins can insert notifications" ON notifications
+  FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
 CREATE POLICY "Users can update own notifications" ON notifications
   FOR UPDATE USING (user_id = auth.uid());

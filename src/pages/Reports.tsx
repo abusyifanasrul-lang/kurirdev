@@ -1,5 +1,4 @@
 import { useState, useMemo } from 'react';
-import { useSEO } from '@/hooks/useSEO';
 import { Download, Calendar, TrendingUp, DollarSign, Package, Award, Filter } from 'lucide-react';
 import { format, subDays, isWithinInterval, parseISO, startOfDay, endOfDay, eachDayOfInterval } from 'date-fns';
 import {
@@ -35,10 +34,6 @@ import type { Order } from '@/types'
 const COLORS = ['#F59E0B', '#3B82F6', '#10b981', '#06B6D4', '#22C55E', '#EF4444'];
 
 export function Reports() {
-  useSEO({
-    title: 'Operational Reports',
-    description: 'Analyze business performance, courier efficiency, and revenue trends.'
-  });
   const { fetchOrdersByDateRange } = useOrderStore();
   const [reportOrders, setReportOrders] = useState<Order[]>([])
   const [cacheStatus, setCacheStatus] = useState<

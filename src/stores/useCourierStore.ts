@@ -84,7 +84,7 @@ export const useCourierStore = create<CourierState>()((_set, get) => ({
       is_online: false,
       courier_status: 'off',
       off_reason: reason,
-      queue_position: undefined,
+      queue_position: null as any,
     })
 
     if (currentPos > 0) {

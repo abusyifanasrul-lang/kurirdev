@@ -51,12 +51,12 @@ export const useSettingsStore = create<SettingsStore>()(
         courier_instructions: state.courier_instructions.filter(item => item.id !== id)
       })),
       fetchSettings: async () => {
-        const { data, error } = await supabase.from('settings').select('*').single()
+        const { data, error } = await supabase.from('settings').select('*').single() as { data: any, error: any }
         if (error || !data) return
         set((state: SettingsStore) => ({
           ...state,
-          commission_rate: data.commission_rate ?? state.commission_rate,
-          commission_threshold: data.commission_threshold ?? state.commission_threshold
+          commission_rate: data.commission_rate,
+          commission_threshold: data.commission_threshold
         }))
       },
       reset: () => set((state: SettingsStore) => ({

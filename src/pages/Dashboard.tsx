@@ -12,7 +12,6 @@ import { Card, StatCard } from '@/components/ui/Card';
 import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
 import { subDays, startOfDay, endOfDay } from 'date-fns';
 import { formatWIB, isWIBToday, getWIBTodayRange } from '@/utils/date';
-import { useSEO } from '@/hooks/useSEO';
 
 // Cache
 import { getOrdersForWeek } from '@/lib/orderCache';
@@ -40,10 +39,6 @@ function ChartSkeleton({ height = 300 }: { height?: number }) {
 }
 
 export function Dashboard() {
-  useSEO({
-    title: 'Admin Dashboard',
-    description: 'Monitor orders, couriers, and business performance in real-time.'
-  });
   const { orders } = useOrderStore();
   const { users } = useUserStore();
   const { user } = useAuth();

@@ -1,5 +1,4 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
-import { useSEO } from '@/hooks/useSEO';
 import { ArrowLeft, TrendingUp, DollarSign, Package, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO, startOfDay, subDays, startOfWeek, isWithinInterval, endOfDay } from 'date-fns';
@@ -12,10 +11,6 @@ import { Order } from '@/types';
 type Period = 'daily' | 'weekly';
 
 export function CourierEarnings() {
-  useSEO({
-    title: 'Your Earnings',
-    description: 'Track your daily and weekly delivery earnings and performance metrics.'
-  });
   const navigate = useNavigate();
   const { user } = useAuth();
 

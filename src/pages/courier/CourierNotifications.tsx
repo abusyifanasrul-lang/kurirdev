@@ -1,15 +1,10 @@
 import { useEffect } from 'react';
-import { useSEO } from '@/hooks/useSEO';
 import { Bell, CheckCircle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import { useAuth } from '@/context/AuthContext';
 
 export function CourierNotifications() {
-    useSEO({
-        title: 'Notifications',
-        description: 'Stay updated with real-time delivery alerts and system notifications.'
-    });
     const { user } = useAuth();
     const { notifications, markAsRead, markAllAsRead, subscribeNotifications } = useNotificationStore();
 

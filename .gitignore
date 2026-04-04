@@ -8,3 +8,4 @@ vercel-import.env
 tsconfig.tsbuildinfo
 # Firebase Secrets
 firebase-adminsdk.json
+nul

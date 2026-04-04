@@ -92,8 +92,8 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
 
       if (error) throw error
 
-      set({ courierOrders: (allOrders as unknown as Order[]), isFetchingCourierOrders: false })
-    } catch (error: unknown) {
+      set({ courierOrders: allOrders as Order[], isFetchingCourierOrders: false })
+    } catch (error) {
       console.error('fetchOrdersByCourier error:', error)
       set({ isFetchingCourierOrders: false })
     }
@@ -116,9 +116,9 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
         .order('created_at', { ascending: false })
 
       if (error) throw error
-      set({ historicalOrders: (historicalOrders as unknown as Order[]), isFetchingHistory: false })
-      return (historicalOrders as unknown as Order[]) || []
-    } catch (error: unknown) {
+      set({ historicalOrders: historicalOrders as Order[], isFetchingHistory: false })
+      return (historicalOrders as Order[]) || []
+    } catch (error) {
       console.error('fetchOrdersByDateRange error:', error)
       set({ isFetchingHistory: false })
       return []
@@ -135,8 +135,8 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
         .in('status', ['assigned', 'picked_up', 'in_transit'])
         
       if (error) throw error
-      set({ activeOrdersByCourier: (activeOrdersByCourier as unknown as Order[]), isFetchingActiveOrders: false })
-    } catch (error: unknown) {
+      set({ activeOrdersByCourier: activeOrdersByCourier as Order[], isFetchingActiveOrders: false })
+    } catch (error) {
       console.error('fetchActiveOrdersByCourier error:', error)
       set({ isFetchingActiveOrders: false })
     }
@@ -175,7 +175,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
       
       if (error) throw error
 
-      const fetchedActive = (activeData as unknown as Order[]) || []
+      const fetchedActive = (activeData as Order[]) || []
       
       // Mirror active orders to local DB for offline access
       for (const order of fetchedActive) {
@@ -187,7 +187,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
         isFetchingActiveOrders: false,
         isLoading: false 
       })
-    } catch (error: unknown) {
+    } catch (error) {
       console.error('fetchInitialOrders error:', error)
       set({ isFetchingActiveOrders: false, isLoading: false })
     }
@@ -205,7 +205,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
         { event: '*', schema: 'public', table: 'orders', filter: filterStr },
         async (payload) => {
           const { eventType, new: newRec, old: oldRec } = payload
-          const order = newRec as unknown as Order
+          const order = newRec as Order
           
           // MIRRORING ARCHITECTURE: Every change goes to localDB
           if (eventType === 'UPDATE' || eventType === 'INSERT') {
@@ -265,7 +265,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   subscribeOrderById: (orderId: string) => {
     const fetchCurrent = async () => {
        const { data } = await supabase.from('orders').select('*').eq('id', orderId).single()
-       if (data) set({ currentOrder: data as unknown as Order })
+       if (data) set({ currentOrder: data as Order })
     }
     fetchCurrent()
 
@@ -274,7 +274,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
         if (payload.eventType === 'DELETE') {
            set({ currentOrder: null })
         } else {
-           set({ currentOrder: payload.new as unknown as Order })
+           set({ currentOrder: payload.new as Order })
         }
       })
       .subscribe()
@@ -302,14 +302,14 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
           order_number: orderNumber
         }
 
-        const { data, error } = await supabase.from('orders')
+        const { data, error } = await (supabase.from('orders') as any)
           .insert(finalOrderData)
           .select()
           .single()
         
         if (error) throw error
         
-        const newOrder = data as unknown as Order
+        const newOrder = data as Order
         set(state => ({ orders: [newOrder, ...state.orders] }))
 
         sendMockNotification(
@@ -329,8 +329,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
         }
       })
     } catch (error: any) {
-      const message = error instanceof Error ? error.message : 'Gagal menyimpan order setelah beberapa kali mencoba.'
-      throw new Error(message)
+      throw new Error(error.message || 'Gagal menyimpan order setelah beberapa kali mencoba. Silakan cek koneksi internet Anda.')
     } finally {
       if (retryToastId) removeToast(retryToastId)
     }
@@ -359,7 +358,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
         if (status === 'delivered') {
           const { commission_rate, commission_threshold } = useSettingsStore.getState()
           
-          await supabase.from('tracking_logs').insert({
+          await (supabase.from('tracking_logs') as any).insert({
             order_id: orderId,
             status,
             changed_by: userId,
@@ -367,7 +366,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
             notes: notes || ''
           })
           
-          const { error } = await supabase.rpc('complete_order', {
+          const { error } = await (supabase.rpc as any)('complete_order', {
              p_order_id: orderId,
              p_user_id: userId,
              p_user_name: userName,
@@ -386,7 +385,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
             applied_commission_threshold: commission_threshold, 
             actual_delivery_time: new Date().toISOString() 
           }
-          moveToLocalDB(updatedOrder as unknown as Order).catch(err => console.error('Mirror write error:', err))
+          moveToLocalDB(updatedOrder as Order).catch(err => console.error('Mirror write error:', err))
 
         } else {
           const updates: Partial<Order> = {
@@ -404,10 +403,10 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
             updates.cancellation_reason = notes || ''
           }
 
-          const { error: updateError } = await supabase.from('orders').update(updates).eq('id', orderId)
+          const { error: updateError } = await (supabase.from('orders') as any).update(updates).eq('id', orderId)
           if (updateError) throw updateError
 
-          await supabase.from('tracking_logs').insert({
+          await (supabase.from('tracking_logs') as any).insert({
             order_id: orderId,
             status,
             changed_by: userId,
@@ -417,7 +416,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
 
           if (status === 'cancelled') {
             const updatedOrder = { ...order, ...updates }
-            moveToLocalDB(updatedOrder as unknown as Order).catch(err => console.error('Mirror write error:', err))
+            moveToLocalDB(updatedOrder as Order).catch(err => console.error('Mirror write error:', err))
           }
         }
       }, {
@@ -431,9 +430,8 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
           }
         }
       })
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Unknown error'
-      addToast(`Gagal memperbarui status order: ${message}`, 'error', 5000)
+    } catch (error: any) {
+      addToast(`Gagal memperbarui status order: ${error.message}`, 'error', 5000)
     } finally {
       setSyncing(orderId, false)
       if (retryToastId) removeToast(retryToastId)
@@ -447,7 +445,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
 
     try {
       await withRetry(async () => {
-        const { error } = await supabase.from('orders')
+        const { error } = await (supabase.from('orders') as any)
           .update({ 
             status: 'assigned', 
             courier_id: courierId,
@@ -478,9 +476,9 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   },
 
   cancelOrder: async (orderId, reason, userId, userName, cancelReasonType) => {
-    const { error } = await supabase.from('orders').update({
+    const { error } = await (supabase.from('orders') as any).update({
       cancellation_reason: reason,
-      cancel_reason_type: (cancelReasonType as any) || null,
+      cancel_reason_type: cancelReasonType ?? null,
       cancelled_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     }).eq('id', orderId)
@@ -492,65 +490,65 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
 
   updateOrder: async (orderId, updates) => {
     if (updates.payment_status === 'paid') {
-        const { error: rpcError } = await supabase.rpc('mark_order_paid', { p_order_id: orderId })
+        const { error: rpcError } = await (supabase.rpc as any)('mark_order_paid', { p_order_id: orderId })
         if (rpcError) throw rpcError
         
-        const { payment_status, ...restUpdates } = updates as Partial<Order>
+        const { payment_status, ...restUpdates } = updates as any
         if (Object.keys(restUpdates).length > 0) {
-           await supabase.from('orders').update({ ...restUpdates, updated_at: new Date().toISOString() } as any).eq('id', orderId)
+           await (supabase.from('orders') as any).update({ ...restUpdates, updated_at: new Date().toISOString() }).eq('id', orderId)
         }
         markAsPaidInLocalDB(orderId).catch(err => console.error('Confirm payment error:', err))
     } else {
-       await supabase.from('orders').update({
+       await (supabase.from('orders') as any).update({
          ...updates,
          updated_at: new Date().toISOString()
-       } as any).eq('id', orderId)
+       }).eq('id', orderId)
     }
   },
   
   updateBiayaTambahan: async (orderId, titik, beban) => {
     const total_biaya_titik = titik * 3000;
-    const total_biaya_beban = beban.reduce((sum: number, b: { biaya: number }) => sum + b.biaya, 0);
-    await supabase.from('orders').update({
+    const total_biaya_beban = beban.reduce((sum: number, b: any) => sum + b.biaya, 0);
+    await (supabase.from('orders') as any).update({
       titik,
       total_biaya_titik,
-      beban: (beban as any),
+      beban,
       total_biaya_beban,
       updated_at: new Date().toISOString()
-    } as any).eq('id', orderId)
+    }).eq('id', orderId)
   },
 
   updateItemBarang: async (orderId, itemName, itemPrice) => {
-    await supabase.from('orders').update({
+    await (supabase.from('orders') as any).update({
       item_name: itemName,
       item_price: itemPrice,
       updated_at: new Date().toISOString()
-    } as any).eq('id', orderId);
+    }).eq('id', orderId);
   },
 
   updateOrderField: async (orderId: string, field: string, value: any) => {
-    await supabase.from('orders').update({ [field]: value, updated_at: new Date().toISOString() } as any).eq('id', orderId)
+    await (supabase.from('orders') as any).update({ [field]: value, updated_at: new Date().toISOString() }).eq('id', orderId)
   },
 
   updateItems: async (orderId, items) => {
-    await supabase.from('orders').update({
-      items: (items as any),
+    await (supabase.from('orders') as any).update({
+      items,
       updated_at: new Date().toISOString()
-    } as any).eq('id', orderId);
+    }).eq('id', orderId);
   },
 
   updateOngkir: async (orderId, totalFee) => {
-    await supabase.from('orders').update({
+    await (supabase.from('orders') as any).update({
       total_fee: totalFee,
       updated_at: new Date().toISOString()
-    } as any).eq('id', orderId);
+    }).eq('id', orderId);
   },
 
   updateOrderWaiting: async (orderId, isWaiting) => {
-    await supabase.from('orders').update({
+    await (supabase.from('orders') as any).update({
       is_waiting: isWaiting,
       updated_at: new Date().toISOString()
-    } as any).eq('id', orderId);
+    }).eq('id', orderId);
   },
 
 

@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useSEO } from '@/hooks/useSEO';
 import { Plus, Eye, EyeOff, ToggleLeft, ToggleRight, TrendingUp, Package, DollarSign, Phone, Mail, Award, Truck, Hash } from 'lucide-react';
 import { format } from 'date-fns';
 import { Header } from '@/components/layout/Header';
@@ -30,10 +29,6 @@ import { calcCourierEarning, calcAdminEarning } from '@/lib/calcEarning';
 import { markAsPaidInLocalDB, getUnpaidOrdersByCourier, getOrdersForWeek } from '@/lib/orderCache';
 
 export function Couriers() {
-  useSEO({
-    title: 'Courier Management',
-    description: 'Manage courier profiles, monitor performance, and track delivery statistics.'
-  });
   const { addCourier, updateCourier } = useCourierStore();
   const { users } = useUserStore();
   const couriers = users.filter(u => u.role === 'courier') as Courier[];

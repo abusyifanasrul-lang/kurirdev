@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useSEO } from '@/hooks/useSEO';
 import { useNavigate } from 'react-router-dom';
 import {
   Truck, Eye, EyeOff, Loader2, Mail, Lock
@@ -12,10 +11,6 @@ import { requestFCMPermission } from '@/lib/fcm';
 import { supabase } from '@/lib/supabaseClient';
 
 export function Login() {
-  useSEO({
-    title: 'Login',
-    description: 'Sign in to KurirDev Delivery Management System to manage your orders and operations.'
-  });
   const navigate = useNavigate();
 
   const [email, setEmail] = useState('');
