@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { User, Lock, Users, Shield, Settings as SettingsIcon } from 'lucide-react';
+import { User, Lock, Users, Shield, Settings as SettingsIcon, Database } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { useUserStore } from '@/stores/useUserStore';
 import { useAuth } from '@/context/AuthContext';
@@ -22,6 +22,7 @@ const PasswordTab = lazy(() => import('@/components/settings/PasswordTab').then(
 const UsersTab = lazy(() => import('@/components/settings/UsersTab').then(m => ({ default: m.UsersTab })));
 const BusinessTab = lazy(() => import('@/components/settings/BusinessTab').then(m => ({ default: m.BusinessTab })));
 const InstructionsTab = lazy(() => import('@/components/settings/InstructionsTab').then(m => ({ default: m.InstructionsTab })));
+const StorageTab = lazy(() => import('@/components/settings/StorageTab').then(m => ({ default: m.StorageTab })));
 
 function TabLoading() {
   return (
@@ -40,6 +41,7 @@ const ALL_TABS = [
   { id: 'users', label: 'System Users', icon: Users },
   { id: 'business', label: 'Business', icon: Shield },
   { id: 'instructions', label: 'Instruksi Kurir', icon: SettingsIcon },
+  { id: 'storage', label: 'Storage & Sync', icon: Database },
 ] as const;
 
 export function Settings() {
@@ -261,6 +263,14 @@ export function Settings() {
                 onAdd={async (data) => { await addCourierInstruction(data); }}
                 onUpdate={async (id, data) => { await updateCourierInstruction(id, data); }}
                 onDelete={async (id) => { await deleteCourierInstruction(id); }}
+              />
+            )}
+
+            {activeTab === 'storage' && (
+              <StorageTab 
+                onResync={handleResync}
+                isSyncing={isSyncing}
+                syncMessage={syncMessage}
               />
             )}
           </Suspense>

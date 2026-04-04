@@ -4,13 +4,15 @@ import { useUserStore } from '@/stores/useUserStore'
 import { useOrderStore } from '@/stores/useOrderStore'
 import { useSettingsStore } from '@/stores/useSettingsStore'
 import { useNotificationStore } from '@/stores/useNotificationStore'
+import { useCustomerStore } from '@/stores/useCustomerStore'
 import { supabase } from '@/lib/supabaseClient'
 import {
   isInitialSyncCompleted,
   syncAllFinalOrders,
   needsDeltaSync,
   deltaSyncYesterday,
-  checkIntegrity
+  checkIntegrity,
+  pruneOldCache
 } from '@/lib/orderCache'
 import { onForegroundMessage } from '@/lib/fcm'
 
@@ -106,6 +108,18 @@ export const AppListeners = () => {
     }
   }, [user?.id, user?.role])
 
+  // 2.e Support Stores Loading (Customers & Profiles)
+  useEffect(() => {
+    if (user) {
+       useUserStore.getState().loadFromLocal().then(() => {
+         useUserStore.getState().syncFromServer()
+       })
+       useCustomerStore.getState().loadFromLocal().then(() => {
+         useCustomerStore.getState().syncFromServer()
+       })
+    }
+  }, [user?.id])
+
   // 3. Background Sync & Integrity (All Roles Mirroring)
   useEffect(() => {
     if (user) {
@@ -128,6 +142,7 @@ export const AppListeners = () => {
               await deltaSyncYesterday(fetchFn, userId)
             }
             await checkIntegrity()
+            await pruneOldCache()
           } catch (err) {
             console.error('[Sync] ❌ Sync failed:', err)
           }

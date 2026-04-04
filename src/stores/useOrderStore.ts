@@ -144,45 +144,53 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
 
   fetchInitialOrders: async (filter) => {
     const { courierId } = filter || {}
+    set({ isLoading: true })
     
-    // 1. Load FINAL orders from Cache for history (Mirroring)
+    // 1. LATEST MIRROR LOAD (Optimistic)
+    // Prefer cache for history to avoid heavy initial reads
     if (courierId) {
-      const cachedFinal = await getOrdersByCourierFromLocal(courierId)
-      set({ orders: cachedFinal })
+      const cached = await getOrdersByCourierFromLocal(courierId)
+      if (cached.length > 0) {
+        set({ orders: cached })
+      }
     } else {
-      const cachedRecent = await getOrdersForWeek()
-      set({ orders: cachedRecent })
+      const cached = await getOrdersForWeek()
+      if (cached.length > 0) {
+        set({ orders: cached })
+      }
     }
 
-    // 2. Clear Active Store if needed
+    // 2. Clear/Fetch Active Stores (Strictly Real-time)
     set({ activeOrdersByCourier: [], isFetchingActiveOrders: true })
 
-    // 3. Fetch ACTIVE orders from Supabase (Strictly Real-time)
-    let query = supabase.from('orders').select('*')
-    
-    if (courierId) {
-      query = query.eq('courier_id', courierId)
-    }
-    
-    // Fetch only active statuses from server to save reads
-    const activeStatuses = ['pending', 'assigned', 'picked_up', 'in_transit']
-    query = query.in('status', activeStatuses)
+    try {
+      let query = supabase.from('orders').select('*')
+      if (courierId) query = query.eq('courier_id', courierId)
+      
+      // Fetch active statuses from server to save reads
+      const activeStatuses = ['pending', 'assigned', 'picked_up', 'in_transit']
+      query = query.in('status', activeStatuses)
 
-    const { data: activeData, error } = await query.order('created_at', { ascending: false })
-    
-    if (error) {
-      console.error('Fetch active orders error:', error)
-      set({ isFetchingActiveOrders: false })
-      return
-    }
+      const { data: activeData, error } = await query.order('created_at', { ascending: false })
+      
+      if (error) throw error
 
-    const fetchedActive = (activeData as Order[]) || []
-    
-    set({ 
-      activeOrdersByCourier: fetchedActive, 
-      isFetchingActiveOrders: false,
-      isLoading: false 
-    })
+      const fetchedActive = (activeData as Order[]) || []
+      
+      // Mirror active orders to local DB for offline access
+      for (const order of fetchedActive) {
+        await moveToLocalDB(order)
+      }
+
+      set({ 
+        activeOrdersByCourier: fetchedActive, 
+        isFetchingActiveOrders: false,
+        isLoading: false 
+      })
+    } catch (error) {
+      console.error('fetchInitialOrders error:', error)
+      set({ isFetchingActiveOrders: false, isLoading: false })
+    }
   },
 
   subscribeOrders: (filter) => {
@@ -199,12 +207,9 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
           const { eventType, new: newRec, old: oldRec } = payload
           const order = newRec as Order
           
-          // Hybrid Logic: If final state, move to Local DB
+          // MIRRORING ARCHITECTURE: Every change goes to localDB
           if (eventType === 'UPDATE' || eventType === 'INSERT') {
-            const isFinal = ['delivered', 'cancelled'].includes(order.status)
-            if (isFinal) {
-              await moveToLocalDB(order)
-            }
+            await moveToLocalDB(order)
           }
 
           set((state) => {

@@ -433,6 +433,28 @@ export async function getCachedOrdersByCourierActive(
     .map(({ _date, ...o }) => o as import('@/types').Order)
 }
 
+// Prune old cache (3 months limit)
+export async function pruneOldCache(): Promise<void> {
+  const threeMonthsAgo = new Date()
+  threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3)
+  const limitStr = getLocalDateStr(threeMonthsAgo.toISOString())
+
+  try {
+    const deletedCount = await localDB.orders
+      .where('_date')
+      .below(limitStr)
+      .delete()
+    
+    if (deletedCount > 0) {
+      console.log(`Pruned ${deletedCount} old orders from cache`)
+      const total = await localDB.orders.count()
+      saveMeta({ total_records: total })
+    }
+  } catch (e) {
+    console.error('Pruning error:', e)
+  }
+}
+
 // Reset semua cache (untuk manual sync)
 export async function clearAllCache()
   : Promise<void> {
@@ -648,3 +670,4 @@ export function saveProfileSyncTime(timeIso?: string): void {
 export function getProfileSyncTime(): string | null {
   return getMeta().last_profile_sync || null
 }
+

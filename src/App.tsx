@@ -3,10 +3,9 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { useOrderStore } from '@/stores/useOrderStore';
-import { useCustomerStore } from '@/stores/useCustomerStore';
-import { useUserStore } from '@/stores/useUserStore';
-import { getCustomerSyncTime, getProfileSyncTime } from '@/lib/orderCache';
+// Removed useCustomerStore, useUserStore, and sync sync helpers as they are moved to AppListeners
 import { AppListeners } from '@/components/AppListeners';
+import { OfflineBanner } from '@/components/ui/OfflineBanner';
 // NOTE: fcm.ts is NOT statically imported — it's dynamically imported only for courier role
 // to avoid pulling firebase/messaging (~30KB) into the main bundle for all users.
 import type { UserRole } from '@/types';
@@ -135,7 +134,7 @@ function PWAUpdateBanner() {
 
     if (isAuthenticated && user?.role === 'courier') {
       const activeOrders = activeOrdersByCourier.filter(
-        (o) => o.status === 'picked_up' || o.status === 'in_transit'
+        (o: any) => o.status === 'picked_up' || o.status === 'in_transit'
       );
       if (activeOrders.length > 0) {
         return;
@@ -188,37 +187,10 @@ function PWAUpdateBanner() {
 
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ToastContainer } from '@/components/ui/ToastContainer';
-
 export function App() {
-  const loadFromLocal = useCustomerStore(s => s.loadFromLocal);
-  const syncFromServer = useCustomerStore(s => s.syncFromServer);
-  const loadUsersFromLocal = useUserStore(s => s.loadFromLocal);
-  const syncUsersFromServer = useUserStore(s => s.syncFromServer);
-
   useEffect(() => {
-    // Defer non-critical customer sync — runs after current event loop
-    const syncTimer = setTimeout(() => {
-      // Customer sync
-      loadFromLocal().then(() => {
-        const lastSyncRaw = getCustomerSyncTime();
-        const lastSyncDate = lastSyncRaw ? new Date(lastSyncRaw).toDateString() : null;
-        const today = new Date().toDateString();
-        if (lastSyncDate !== today) {
-          syncFromServer();
-        }
-      });
-
-      // User Profile sync
-      loadUsersFromLocal().then(() => {
-        const lastSyncRaw = getProfileSyncTime();
-        const lastSyncDate = lastSyncRaw ? new Date(lastSyncRaw).toDateString() : null;
-        const today = new Date().toDateString();
-        if (lastSyncDate !== today) {
-          syncUsersFromServer();
-        }
-      });
-    }, 0);
-
+    // Note: Customer and Profile sync is now handled by AppListeners
+    
     const currentUserStr = sessionStorage.getItem('user-session');
     let fcmRefreshInterval: ReturnType<typeof setInterval> | null = null;
     let unsubFCM: any;
@@ -257,7 +229,7 @@ export function App() {
     }
 
     return () => {
-      clearTimeout(syncTimer);
+      // clearTimeout(syncTimer); // Removed: sync logic moved to AppListeners
       if (unsubFCM) {
         if (typeof unsubFCM === 'function') {
           unsubFCM();
@@ -273,6 +245,7 @@ export function App() {
     <ErrorBoundary>
       <ThemeProvider>
         <AuthProvider>
+          <OfflineBanner />
           <AppListeners />
           <ToastContainer />
           <PWAUpdateBanner />

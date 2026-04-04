@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Plus, Download, Printer, Pencil, Trash2, Check, XCircle } from 'lucide-react';
+import { Plus, Download } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
 import {
@@ -12,17 +12,19 @@ import {
 } from '@/lib/orderCache';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
-import { Modal } from '@/components/ui/Modal';
-import { Textarea } from '@/components/ui/Textarea';
-import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
+import { getStatusLabel } from '@/components/ui/Badge';
 import { lazy, Suspense } from 'react';
 
 // Lazy-loaded Components
 const OrderFilters = lazy(() => import('@/components/orders/OrderFilters').then(m => ({ default: m.OrderFilters })));
 const OrderTable = lazy(() => import('@/components/orders/OrderTable').then(m => ({ default: m.OrderTable })));
 const OrderListMobile = lazy(() => import('@/components/orders/OrderListMobile').then(m => ({ default: m.OrderListMobile })));
+
+import { AddOrderModal } from '@/components/orders/modals/AddOrderModal';
+import { OrderDetailsModal } from '@/components/orders/modals/OrderDetailsModal';
+import { EditOrderModal } from '@/components/orders/modals/EditOrderModal';
+import { BulkSettleModal } from '@/components/orders/modals/BulkSettleModal';
+import { CancelOrderModal } from '@/components/orders/modals/CancelOrderModal';
 
 function OrdersLoading() {
   return (
@@ -46,13 +48,13 @@ import { useNotificationStore } from '@/stores/useNotificationStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { useCustomerStore } from '@/stores/useCustomerStore';
 import { useAuth } from '@/context/AuthContext';
-import type { Order, CreateOrderPayload, PaymentStatus, Customer } from '@/types';
+import type { Order, Customer } from '@/types';
 
 type SortField = 'order_number' | 'customer_name' | 'status' | 'courier_id' | 'payment_status' | 'total_fee' | 'created_at';
 type SortOrder = 'asc' | 'desc';
 
 export function Orders() {
-  const { orders, fetchOrdersByDateRange, addOrder, assignCourier, cancelOrder, updateOrder } = useOrderStore();
+  const { orders, fetchOrdersByDateRange, addOrder, assignCourier, cancelOrder, updateOrder, updateOrderStatus } = useOrderStore();
   const { rotateQueue } = useCourierStore();
   const { users } = useUserStore();
   const { addNotification } = useNotificationStore();
@@ -128,6 +130,7 @@ export function Orders() {
   // Modals
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
 
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -139,7 +142,7 @@ export function Orders() {
   const [isCreating, setIsCreating] = useState(false);
 
   // Form State
-  const [newOrder, setNewOrder] = useState<CreateOrderPayload>({
+  const [newOrder, setNewOrder] = useState<Partial<Order>>({
     customer_name: '',
     customer_phone: '',
     customer_address: '',
@@ -151,13 +154,7 @@ export function Orders() {
   });
 
   // Edit Form State
-  const [editForm, setEditForm] = useState<{
-    customer_name: string;
-    customer_phone: string;
-    customer_address: string;
-    total_fee: number;
-    payment_status: PaymentStatus;
-  }>({
+  const [editForm, setEditForm] = useState<Partial<Order>>({
     customer_name: '',
     customer_phone: '',
     customer_address: '',
@@ -167,9 +164,8 @@ export function Orders() {
 
   const [cancelReason, setCancelReason] = useState('');
 
-  const { search: searchCustomers, upsertCustomer, addAddress, updateAddress, deleteAddress, findByPhone } = useCustomerStore()
-  const [customerSuggestions, setCustomerSuggestions] = useState<Customer[]>([])
-  const [showSuggestions, setShowSuggestions] = useState(false)
+  const { upsertCustomer, addAddress, updateAddress, deleteAddress, findByPhone, customers } = useCustomerStore()
+  // customerSuggestions, showSuggestions removed - handled by AddOrderModal internally
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
   // showNewAddressInput reserved - unused after inline-edit refactor
   const [inlineEditAddrId, setInlineEditAddrId] = useState<string | null>(null)
@@ -182,33 +178,6 @@ export function Orders() {
   const [editInlineAddrId, setEditInlineAddrId] = useState<string | null>(null)
   const [editInlineAddrValue, setEditInlineAddrValue] = useState('')
   const [editInlineAddingNew, setEditInlineAddingNew] = useState(false)
-
-  const handleCustomerNameChange = (value: string) => {
-    setNewOrder({ ...newOrder, customer_name: value })
-    setSelectedCustomer(null)
-    setInlineEditAddrId(null)
-    setInlineAddingNew(false)
-    if (value.length >= 2) {
-      setCustomerSuggestions(searchCustomers(value).slice(0, 5))
-      setShowSuggestions(true)
-    } else {
-      setShowSuggestions(false)
-    }
-  }
-
-  const handleSelectCustomer = (customer: Customer) => {
-    const defaultAddress = customer.addresses.find(a => a.is_default) || customer.addresses[0]
-    setNewOrder({ 
-      ...newOrder, 
-      customer_name: customer.name, 
-      customer_phone: customer.phone, 
-      customer_address: defaultAddress ? defaultAddress.address : '' 
-    })
-    setSelectedCustomer(customer)
-    setInlineEditAddrId(null)
-    setInlineAddingNew(false)
-    setShowSuggestions(false)
-  }
 
   // Derived State
   const filteredOrders = useMemo(() => {
@@ -358,7 +327,7 @@ export function Orders() {
     try {
       // Upsert Customer logic local state & storage
       let customerId = selectedCustomer?.id;
-      const existingCustomer = findByPhone(newOrder.customer_phone);
+      const existingCustomer = findByPhone(newOrder.customer_phone || '');
 
       if (existingCustomer) {
         customerId = existingCustomer.id;
@@ -366,19 +335,19 @@ export function Orders() {
         if (!existingAddress) {
           await addAddress(customerId, {
             label: `Alamat ${existingCustomer.addresses.length + 1}`,
-            address: newOrder.customer_address,
+            address: newOrder.customer_address || '',
             is_default: existingCustomer.addresses.length === 0,
             notes: ''
           });
         }
       } else {
         const newCustomer = await upsertCustomer({
-          name: newOrder.customer_name,
-          phone: newOrder.customer_phone,
+          name: newOrder.customer_name || '',
+          phone: newOrder.customer_phone || '',
           addresses: [{
             id: crypto.randomUUID(),
             label: 'Alamat Utama',
-            address: newOrder.customer_address,
+            address: newOrder.customer_address || '',
             is_default: true,
             notes: ''
           }]
@@ -388,7 +357,7 @@ export function Orders() {
 
       // Re-fetch customer to get exact address ID if newly added
       let activeAddressId = '';
-      const latestCustomer = useCustomerStore.getState().findByPhone(newOrder.customer_phone);
+      const latestCustomer = useCustomerStore.getState().findByPhone(newOrder.customer_phone || '');
       if (latestCustomer) {
         const matchingAddr = latestCustomer.addresses.find(a => a.address === newOrder.customer_address);
         if (matchingAddr) {
@@ -686,8 +655,6 @@ export function Orders() {
     printWindow.document.close();
   };
 
-  const formatCurrency = (val: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
-
   const handleDateFilterChange = async (
     start: string, end: string
   ) => {
@@ -900,909 +867,110 @@ export function Orders() {
         </Suspense>
       </div>
 
-      {/* CREATE ORDER MODAL */}
-      <Modal isOpen={isCreateModalOpen} onClose={() => { setIsCreateModalOpen(false); setFormError(''); setIsCreating(false); }} title="New Order" size="lg">
-        <div className="space-y-4">
-          <div className="relative">
-            <Input 
-              label="Customer Name" 
-              id="search_customer_name_field"
-              name="search_customer_name_field"
-              value={newOrder.customer_name} 
-              onChange={e => handleCustomerNameChange(e.target.value)} 
-              autoComplete="off"
-            />
-            {showSuggestions && customerSuggestions.length > 0 && (
-              <div className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1">
-                {customerSuggestions.map((c, i) => (
-                  <button key={i} type="button" onClick={() => handleSelectCustomer(c)}
-                    className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b last:border-0">
-                    <p className="font-medium text-gray-900">{c.name}</p>
-                    <p className="text-sm text-gray-500">{c.phone}</p>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <Input 
-            label="Phone Number" 
-            id="search_customer_phone_field"
-            name="search_customer_phone_field"
-            value={newOrder.customer_phone} 
-            onChange={e => setNewOrder({ ...newOrder, customer_phone: e.target.value })} 
-            autoComplete="off"
-          />
-          
-          <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-gray-700">Address</label>
+      <AddOrderModal
+        isOpen={isCreateModalOpen}
+        onClose={() => { setIsCreateModalOpen(false); setFormError(''); setIsCreating(false); }}
+        newOrder={newOrder}
+        setNewOrder={setNewOrder}
+        handleCreateOrder={handleCreateOrder}
+        isCreating={isCreating}
+        setIsCreating={setIsCreating}
+        formError={formError}
+        setFormError={setFormError}
+        customers={customers}
+        selectedCustomer={selectedCustomer}
+        setSelectedCustomer={setSelectedCustomer}
+        inlineEditAddrId={inlineEditAddrId}
+        setInlineEditAddrId={setInlineEditAddrId}
+        inlineEditValue={inlineEditValue}
+        setInlineEditValue={setInlineEditValue}
+        inlineAddingNew={inlineAddingNew}
+        setInlineAddingNew={setInlineAddingNew}
+        inlineNewAddr={inlineNewAddr}
+        setInlineNewAddr={setInlineNewAddr}
+        addAddress={addAddress}
+        updateAddress={updateAddress}
+        deleteAddress={deleteAddress}
+      />
 
-            {/* List alamat tersimpan — satu baris per item */}
-            {selectedCustomer && selectedCustomer.addresses.map((addr) => (
-              <div
-                key={addr.id}
-                className={`flex items-center gap-2 px-2 py-1.5 rounded-lg border transition-colors ${
-                  inlineEditAddrId === addr.id
-                    ? 'border-teal-400 bg-teal-50'
-                    : newOrder.customer_address === addr.address
-                    ? 'border-teal-300 bg-teal-50/40'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                {/* Radio pilih */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (inlineEditAddrId !== addr.id) {
-                      setNewOrder({ ...newOrder, customer_address: addr.address })
-                    }
-                  }}
-                  className="flex-shrink-0"
-                >
-                  <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${
-                    newOrder.customer_address === addr.address && inlineEditAddrId !== addr.id
-                      ? 'border-teal-500'
-                      : 'border-gray-300'
-                  }`}>
-                    {newOrder.customer_address === addr.address && inlineEditAddrId !== addr.id && (
-                      <div className="w-1.5 h-1.5 rounded-full bg-teal-500" />
-                    )}
-                  </div>
-                </button>
+      <OrderDetailsModal
+        isOpen={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+        order={selectedOrder}
+        isOpsAdmin={isOpsAdmin}
+        assignCourierId={assignCourierId}
+        setAssignCourierId={setAssignCourierId}
+        availableCouriers={users as any}
+        handleAssign={handleAssign}
+        courierWaitingOrder={courierWaitingOrder}
+        handlePrintInvoice={handlePrintInvoice}
+        getCourierName={getCourierName as any}
+        onEdit={() => {
+          setIsDetailModalOpen(false);
+          setIsEditModalOpen(true);
+        }}
+      />
 
-                {/* Label badge */}
-                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded flex-shrink-0 ${
-                  addr.is_default ? 'bg-teal-100 text-teal-600' : 'bg-gray-100 text-gray-500'
-                }`}>{addr.label}</span>
+      <EditOrderModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        order={selectedOrder}
+        setSelectedOrder={setSelectedOrder}
+        isOpsAdmin={isOpsAdmin}
+        isFinance={isFinance}
+        editForm={editForm}
+        setEditForm={setEditForm}
+        editItems={editItems}
+        setEditItems={setEditItems}
+        editItemNama={editItemNama}
+        setEditItemNama={setEditItemNama}
+        editItemHarga={editItemHarga}
+        setEditItemHarga={setEditItemHarga}
+        handleSaveChanges={handleSaveChanges}
+        handleAssign={handleAssign}
+        assignCourierId={assignCourierId}
+        setAssignCourierId={setAssignCourierId}
+        availableCouriers={availableCouriers as any}
+        courierWaitingOrder={courierWaitingOrder}
+        courier_instructions={courier_instructions}
+        setIsCancelModalOpen={setIsCancelModalOpen}
+        updateOrder={updateOrder}
+        updateOrderStatus={updateOrderStatus}
+        handlePrintInvoice={handlePrintInvoice}
+        getCourierName={getCourierName as any}
+        user={user}
+        editSelectedCustomer={editSelectedCustomer}
+        setEditSelectedCustomer={setEditSelectedCustomer}
+        editInlineAddrId={editInlineAddrId}
+        setEditInlineAddrId={setEditInlineAddrId}
+        editInlineAddrValue={editInlineAddrValue}
+        setEditInlineAddrValue={setEditInlineAddrValue}
+        editInlineAddingNew={editInlineAddingNew}
+        setEditInlineAddingNew={setEditInlineAddingNew}
+        updateAddress={updateAddress}
+        deleteAddress={deleteAddress}
+        addAddress={addAddress}
+      />
+      <CancelOrderModal
+        isOpen={isCancelModalOpen}
+        onClose={() => setIsCancelModalOpen(false)}
+        order={selectedOrder}
+        cancelReason={cancelReason}
+        setCancelReason={setCancelReason}
+        handleCancel={handleCancel}
+      />
 
-                {/* Inline edit mode */}
-                {inlineEditAddrId === addr.id ? (
-                  <>
-                    <input
-                      className="flex-1 text-sm border-0 bg-transparent outline-none focus:outline-none text-gray-800 min-w-0"
-                      value={inlineEditValue}
-                      autoFocus
-                      onChange={e => setInlineEditValue(e.target.value)}
-                      onKeyDown={async (e) => {
-                        if (e.key === 'Enter') {
-                          await updateAddress(selectedCustomer.id, addr.id, { address: inlineEditValue })
-                          const updated = { ...selectedCustomer, addresses: selectedCustomer.addresses.map(a => a.id === addr.id ? { ...a, address: inlineEditValue } : a) }
-                          setSelectedCustomer(updated)
-                          if (newOrder.customer_address === addr.address) setNewOrder({ ...newOrder, customer_address: inlineEditValue })
-                          setInlineEditAddrId(null)
-                        } else if (e.key === 'Escape') {
-                          setInlineEditAddrId(null)
-                        }
-                      }}
-                    />
-                    <button type="button" onClick={async () => {
-                      await updateAddress(selectedCustomer.id, addr.id, { address: inlineEditValue })
-                      const updated = { ...selectedCustomer, addresses: selectedCustomer.addresses.map(a => a.id === addr.id ? { ...a, address: inlineEditValue } : a) }
-                      setSelectedCustomer(updated)
-                      if (newOrder.customer_address === addr.address) setNewOrder({ ...newOrder, customer_address: inlineEditValue })
-                      setInlineEditAddrId(null)
-                    }} className="flex-shrink-0 text-green-600 hover:text-green-700">
-                      <Check className="w-3.5 h-3.5" />
-                    </button>
-                    <button type="button" onClick={() => setInlineEditAddrId(null)} className="flex-shrink-0 text-gray-400 hover:text-gray-600">
-                      <XCircle className="w-3.5 h-3.5" />
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <span className="flex-1 text-sm text-gray-700 truncate">{addr.address}</span>
-                    {/* Tombol edit */}
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); setInlineEditAddrId(addr.id); setInlineEditValue(addr.address) }}
-                      className="flex-shrink-0 text-gray-400 hover:text-teal-600 transition-colors"
-                    >
-                      <Pencil className="w-3 h-3" />
-                    </button>
-                    {/* Tombol hapus */}
-                    <button
-                      type="button"
-                      onClick={async (e) => {
-                        e.stopPropagation()
-                        await deleteAddress(selectedCustomer.id, addr.id)
-                        const updated = { ...selectedCustomer, addresses: selectedCustomer.addresses.filter(a => a.id !== addr.id) }
-                        setSelectedCustomer(updated)
-                        if (newOrder.customer_address === addr.address) {
-                          const next = updated.addresses[0]
-                          setNewOrder({ ...newOrder, customer_address: next ? next.address : '' })
-                        }
-                      }}
-                      className="flex-shrink-0 text-gray-400 hover:text-red-500 transition-colors"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  </>
-                )}
-              </div>
-            ))}
-
-            {/* Inline tambah alamat baru */}
-            {selectedCustomer && (
-              inlineAddingNew ? (
-                <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg border border-dashed border-teal-400 bg-teal-50">
-                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-teal-100 text-teal-600 flex-shrink-0">Baru</span>
-                  <input
-                    className="flex-1 text-sm border-0 bg-transparent outline-none focus:outline-none text-gray-800 min-w-0"
-                    placeholder="Ketik alamat baru..."
-                    value={inlineNewAddr}
-                    autoFocus
-                    onChange={e => setInlineNewAddr(e.target.value)}
-                    onKeyDown={async (e) => {
-                      if (e.key === 'Enter' && inlineNewAddr.trim()) {
-                        const newAddrObj = { label: `Alamat ${selectedCustomer.addresses.length + 1}`, address: inlineNewAddr.trim(), is_default: selectedCustomer.addresses.length === 0, notes: '' }
-                        await addAddress(selectedCustomer.id, newAddrObj)
-                        const withNew = { ...selectedCustomer, addresses: [...selectedCustomer.addresses, { ...newAddrObj, id: 'temp' }] }
-                        setSelectedCustomer(withNew)
-                        setNewOrder({ ...newOrder, customer_address: inlineNewAddr.trim() })
-                        setInlineNewAddr('')
-                        setInlineAddingNew(false)
-                      } else if (e.key === 'Escape') {
-                        setInlineNewAddr(''); setInlineAddingNew(false)
-                      }
-                    }}
-                  />
-                  <button type="button" onClick={async () => {
-                    if (!inlineNewAddr.trim()) return
-                    const newAddrObj = { label: `Alamat ${selectedCustomer.addresses.length + 1}`, address: inlineNewAddr.trim(), is_default: selectedCustomer.addresses.length === 0, notes: '' }
-                    await addAddress(selectedCustomer.id, newAddrObj)
-                    const withNew = { ...selectedCustomer, addresses: [...selectedCustomer.addresses, { ...newAddrObj, id: 'temp' }] }
-                    setSelectedCustomer(withNew)
-                    setNewOrder({ ...newOrder, customer_address: inlineNewAddr.trim() })
-                    setInlineNewAddr(''); setInlineAddingNew(false)
-                  }} className="flex-shrink-0 text-green-600 hover:text-green-700">
-                    <Check className="w-3.5 h-3.5" />
-                  </button>
-                  <button type="button" onClick={() => { setInlineNewAddr(''); setInlineAddingNew(false) }} className="flex-shrink-0 text-gray-400 hover:text-gray-600">
-                    <XCircle className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setInlineAddingNew(true)}
-                  className="text-xs text-teal-600 font-medium hover:text-teal-700 flex items-center gap-1 mt-0.5"
-                >
-                  <Plus className="w-3 h-3" />
-                  Tambah Alamat Baru
-                </button>
-              )
-            )}
-
-            {/* Input alamat untuk konsumen baru (tanpa selected customer) */}
-            {!selectedCustomer && (
-              <Textarea
-                placeholder="Masukkan alamat lengkap..."
-                value={newOrder.customer_address}
-                onChange={e => setNewOrder({ ...newOrder, customer_address: e.target.value })}
-              />
-            )}
-          </div>
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-gray-700">Daftar Barang (opsional)</p>
-            {(newOrder.items || []).length > 0 && (
-              <div className="space-y-1">
-                {(newOrder.items || []).map((item, i) => (
-                  <div key={i} className="flex items-center justify-between bg-gray-50 px-3 py-1.5 rounded-lg text-sm">
-                    <span className="text-gray-800">{item.nama}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-600">Rp {item.harga.toLocaleString('id-ID')}</span>
-                      <button
-                        type="button"
-                        onClick={() => setNewOrder({ ...newOrder, items: (newOrder.items || []).filter((_, idx) => idx !== i) })}
-                        className="text-gray-400 hover:text-red-500"
-                      >✕</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Nama barang"
-                id="new_item_nama"
-                name="new_item_nama"
-                className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-teal-400"
-              />
-              <label htmlFor="new_item_nama" className="sr-only">Nama barang</label>
-              <input
-                type="text"
-                inputMode="numeric"
-                placeholder="Harga (Rp)"
-                id="new_item_harga"
-                name="new_item_harga"
-                className="w-32 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-teal-400"
-              />
-              <label htmlFor="new_item_harga" className="sr-only">Harga barang</label>
-              <button
-                type="button"
-                onClick={() => {
-                  const namaEl = document.getElementById('new_item_nama') as HTMLInputElement;
-                  const hargaEl = document.getElementById('new_item_harga') as HTMLInputElement;
-                  const nama = namaEl?.value.trim();
-                  const harga = Number((hargaEl?.value || '').replace(/[^0-9]/g, ''));
-                  if (!nama) return;
-                  setNewOrder({ ...newOrder, items: [...(newOrder.items || []), { nama, harga }] });
-                  if (namaEl) namaEl.value = '';
-                  if (hargaEl) hargaEl.value = '';
-                }}
-                className="px-3 py-1.5 text-sm bg-teal-600 text-white rounded-lg font-medium"
-              >+ Tambah</button>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Fee Ongkir"
-              type="text"
-              value={newOrder.total_fee !== undefined ? `Rp ${newOrder.total_fee.toLocaleString('id-ID')}` : ''}
-              onChange={e => {
-                const numericValue = Number(e.target.value.replace(/[^0-9]/g, ''));
-                setNewOrder({ ...newOrder, total_fee: numericValue });
-              }}
-              placeholder="Rp 0"
-            />
-            <Input
-              label="Estimated Delivery Time"
-              type="datetime-local"
-              value={newOrder.estimated_delivery_time}
-              onChange={e => setNewOrder({ ...newOrder, estimated_delivery_time: e.target.value })}
-            />
-
-          </div>
-          <Select
-            label="Payment Status"
-            value={newOrder.payment_status}
-            onChange={e => setNewOrder({ ...newOrder, payment_status: e.target.value as any })}
-            options={[
-              { value: 'unpaid', label: 'Belum Setor' },
-              { value: 'paid', label: 'Sudah Setor' }
-            ]}
-          />
-          {formError && (
-            <p className="text-sm text-red-500 mb-2">
-              {formError}
-            </p>
-          )}
-          <div className="flex justify-end gap-2 pt-4">
-            <Button variant="outline" onClick={() => { setIsCreateModalOpen(false); setFormError(''); setIsCreating(false); }}>Cancel</Button>
-            <Button onClick={handleCreateOrder} disabled={isCreating} isLoading={isCreating}>
-              {isCreating ? 'Menyimpan...' : 'Create Order'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* DETAIL / ASSIGN MODAL */}
-      <Modal isOpen={isDetailModalOpen} onClose={() => setIsDetailModalOpen(false)} title="Order Details" size="md">
-        {selectedOrder && (
-          <div className="space-y-3">
-            {/* Header - compact */}
-            <div className="flex justify-between items-center bg-gray-50 px-3 py-2 rounded-lg">
-              <div>
-                <span className="text-base font-bold text-gray-900">{selectedOrder.order_number}</span>
-                <span className="text-xs text-gray-400 ml-2">{format(new Date(selectedOrder.created_at), 'dd MMM yy, HH:mm')}</span>
-              </div>
-              <Badge variant={getStatusBadgeVariant(selectedOrder.status)} size="sm">{getStatusLabel(selectedOrder.status)}</Badge>
-            </div>
-
-            {/* Customer + Payment — form if pending AND ops admin, otherwise read-only */}
-            {selectedOrder.status === 'pending' && isOpsAdmin ? (
-              <div className="space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <Input
-                    label="Name"
-                    value={editForm.customer_name}
-                    onChange={e => setEditForm(prev => ({ ...prev, customer_name: e.target.value }))}
-                  />
-                  <Input
-                    label="Phone"
-                    value={editForm.customer_phone}
-                    onChange={e => setEditForm(prev => ({ ...prev, customer_phone: e.target.value }))}
-                  />
-                </div>
-                {/* Address — inline picker jika ada data customer, fallback Textarea */}
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-gray-700">Address</label>
-
-                  {editSelectedCustomer && editSelectedCustomer.addresses.map((addr) => (
-                    <div
-                      key={addr.id}
-                      className={`flex items-center gap-2 px-2 py-1.5 rounded-lg border transition-colors ${
-                        editInlineAddrId === addr.id
-                          ? 'border-teal-400 bg-teal-50'
-                          : editForm.customer_address === addr.address
-                          ? 'border-teal-300 bg-teal-50/40'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <button type="button" onClick={() => {
-                        if (editInlineAddrId !== addr.id)
-                          setEditForm(prev => ({ ...prev, customer_address: addr.address }))
-                      }} className="flex-shrink-0">
-                        <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${
-                          editForm.customer_address === addr.address && editInlineAddrId !== addr.id
-                            ? 'border-teal-500' : 'border-gray-300'
-                        }`}>
-                          {editForm.customer_address === addr.address && editInlineAddrId !== addr.id && (
-                            <div className="w-1.5 h-1.5 rounded-full bg-teal-500" />
-                          )}
-                        </div>
-                      </button>
-                      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded flex-shrink-0 ${
-                        addr.is_default ? 'bg-teal-100 text-teal-600' : 'bg-gray-100 text-gray-500'
-                      }`}>{addr.label}</span>
-
-                      {editInlineAddrId === addr.id ? (
-                        <>
-                          <input
-                            className="flex-1 text-sm border-0 bg-transparent outline-none min-w-0 text-gray-800"
-                            value={editInlineAddrValue}
-                            autoFocus
-                            onChange={e => setEditInlineAddrValue(e.target.value)}
-                            onKeyDown={async (e) => {
-                              if (e.key === 'Enter') {
-                                await updateAddress(editSelectedCustomer.id, addr.id, { address: editInlineAddrValue })
-                                const updated = { ...editSelectedCustomer, addresses: editSelectedCustomer.addresses.map(a => a.id === addr.id ? { ...a, address: editInlineAddrValue } : a) }
-                                setEditSelectedCustomer(updated)
-                                if (editForm.customer_address === addr.address) setEditForm(prev => ({ ...prev, customer_address: editInlineAddrValue }))
-                                setEditInlineAddrId(null)
-                              } else if (e.key === 'Escape') setEditInlineAddrId(null)
-                            }}
-                          />
-                          <button type="button" onClick={async () => {
-                            await updateAddress(editSelectedCustomer.id, addr.id, { address: editInlineAddrValue })
-                            const updated = { ...editSelectedCustomer, addresses: editSelectedCustomer.addresses.map(a => a.id === addr.id ? { ...a, address: editInlineAddrValue } : a) }
-                            setEditSelectedCustomer(updated)
-                            if (editForm.customer_address === addr.address) setEditForm(prev => ({ ...prev, customer_address: editInlineAddrValue }))
-                            setEditInlineAddrId(null)
-                          }} className="flex-shrink-0 text-green-600 hover:text-green-700"><Check className="w-3.5 h-3.5" /></button>
-                          <button type="button" onClick={() => setEditInlineAddrId(null)} className="flex-shrink-0 text-gray-400 hover:text-gray-600"><XCircle className="w-3.5 h-3.5" /></button>
-                        </>
-                      ) : (
-                        <>
-                          <span className="flex-1 text-sm text-gray-700 truncate">{addr.address}</span>
-                          <button type="button" onClick={() => { setEditInlineAddrId(addr.id); setEditInlineAddrValue(addr.address) }} className="flex-shrink-0 text-gray-400 hover:text-teal-600"><Pencil className="w-3 h-3" /></button>
-                          <button type="button" onClick={async () => {
-                            await deleteAddress(editSelectedCustomer.id, addr.id)
-                            const updated = { ...editSelectedCustomer, addresses: editSelectedCustomer.addresses.filter(a => a.id !== addr.id) }
-                            setEditSelectedCustomer(updated)
-                            if (editForm.customer_address === addr.address) {
-                              const next = updated.addresses[0]
-                              setEditForm(prev => ({ ...prev, customer_address: next ? next.address : '' }))
-                            }
-                          }} className="flex-shrink-0 text-gray-400 hover:text-red-500"><Trash2 className="w-3 h-3" /></button>
-                        </>
-                      )}
-                    </div>
-                  ))}
-
-                  {/* Tambah alamat baru inline */}
-                  {editSelectedCustomer && (
-                    editInlineAddingNew ? (
-                      <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg border border-dashed border-teal-400 bg-teal-50">
-                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-teal-100 text-teal-600 flex-shrink-0">Baru</span>
-                        <input
-                          className="flex-1 text-sm border-0 bg-transparent outline-none min-w-0 text-gray-800"
-                          id="edit_inline_new_addr"
-                          name="edit_inline_new_addr"
-                          placeholder="Ketik alamat baru..."
-                          autoFocus
-                          value={editInlineAddrValue}
-                          onChange={e => setEditInlineAddrValue(e.target.value)}
-                          onKeyDown={async (e) => {
-                            if (e.key === 'Enter' && editInlineAddrValue.trim()) {
-                              const newA = { label: `Alamat ${editSelectedCustomer.addresses.length + 1}`, address: editInlineAddrValue.trim(), is_default: editSelectedCustomer.addresses.length === 0, notes: '' }
-                              await addAddress(editSelectedCustomer.id, newA)
-                              setEditSelectedCustomer({ ...editSelectedCustomer, addresses: [...editSelectedCustomer.addresses, { ...newA, id: 'temp' }] })
-                              setEditForm(prev => ({ ...prev, customer_address: editInlineAddrValue.trim() }))
-                              setEditInlineAddrValue('')
-                              setEditInlineAddingNew(false)
-                            } else if (e.key === 'Escape') { setEditInlineAddrValue(''); setEditInlineAddingNew(false) }
-                          }}
-                        />
-                        <button type="button" onClick={async () => {
-                          if (!editInlineAddrValue.trim()) return
-                          const newA = { label: `Alamat ${editSelectedCustomer.addresses.length + 1}`, address: editInlineAddrValue.trim(), is_default: editSelectedCustomer.addresses.length === 0, notes: '' }
-                          await addAddress(editSelectedCustomer.id, newA)
-                          setEditSelectedCustomer({ ...editSelectedCustomer, addresses: [...editSelectedCustomer.addresses, { ...newA, id: 'temp' }] })
-                          setEditForm(prev => ({ ...prev, customer_address: editInlineAddrValue.trim() }))
-                          setEditInlineAddrValue('')
-                          setEditInlineAddingNew(false)
-                        }} className="flex-shrink-0 text-green-600 hover:text-green-700"><Check className="w-3.5 h-3.5" /></button>
-                        <button type="button" onClick={() => { setEditInlineAddrValue(''); setEditInlineAddingNew(false) }} className="flex-shrink-0 text-gray-400 hover:text-gray-600"><XCircle className="w-3.5 h-3.5" /></button>
-                      </div>
-                    ) : (
-                      <button type="button" onClick={() => { setEditInlineAddingNew(true); setEditInlineAddrValue('') }}
-                        className="text-xs text-teal-600 font-medium hover:text-teal-700 flex items-center gap-1">
-                        <Plus className="w-3 h-3" /> Tambah Alamat Baru
-                      </button>
-                    )
-                  )}
-
-                  {/* Fallback: konsumen belum di master → textarea bebas */}
-                  {!editSelectedCustomer && (
-                    <Textarea
-                      value={editForm.customer_address}
-                      onChange={e => setEditForm(prev => ({ ...prev, customer_address: e.target.value }))}
-                      rows={2}
-                    />
-                  )}
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <Input
-                    label="Fee"
-                    value={editForm.total_fee ? `Rp ${editForm.total_fee.toLocaleString('id-ID')}` : ''}
-                    onChange={e => {
-                      const val = Number(e.target.value.replace(/[^0-9]/g, ''));
-                      setEditForm(prev => ({ ...prev, total_fee: val }));
-                    }}
-                  />
-                  <Select
-                    label="Setoran"
-                    value={editForm.payment_status}
-                    onChange={e => setEditForm(prev => ({ ...prev, payment_status: e.target.value as any }))}
-                    options={[
-                      { value: 'unpaid', label: 'Belum Setor' },
-                      { value: 'paid', label: 'Sudah Setor' }
-                    ]}
-                  />
-                </div>
-
-                {/* Daftar Belanja */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Daftar Belanja (opsional)
-                  </label>
-
-                  {/* List items yang sudah ada */}
-                  {editItems.map((item, i) => (
-                    <div key={i} className="flex items-center justify-between text-sm bg-gray-50 px-3 py-2 rounded-lg">
-                      <span>{item.nama}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-500">
-                          Rp {item.harga.toLocaleString('id-ID')}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setEditItems(
-                            editItems.filter((_, idx) => idx !== i)
-                          )}
-                          className="text-red-400 hover:text-red-600 text-xs"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-
-                  {/* Input tambah item */}
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Nama barang"
-                      id="edit_item_nama"
-                      name="edit_item_nama"
-                      value={editItemNama}
-                      onChange={e => setEditItemNama(e.target.value)}
-                      className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-teal-500"
-                    />
-                    <label htmlFor="edit_item_nama" className="sr-only">Nama barang edit</label>
-                    <input
-                      type="number"
-                      placeholder="Harga"
-                      id="edit_item_harga"
-                      name="edit_item_harga"
-                      value={editItemHarga}
-                      onChange={e => setEditItemHarga(e.target.value)}
-                      className="w-28 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-teal-500"
-                    />
-                    <label htmlFor="edit_item_harga" className="sr-only">Harga barang edit</label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!editItemNama || !editItemHarga) return;
-                        setEditItems([...editItems, {
-                          nama: editItemNama,
-                          harga: Number(editItemHarga)
-                        }]);
-                        setEditItemNama('');
-                        setEditItemHarga('');
-                      }}
-                      className="px-3 py-2 bg-teal-600 text-white text-sm rounded-lg hover:bg-teal-700"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-                <div className="flex justify-end">
-                  <Button size="sm" variant="secondary" onClick={handleSaveChanges}>Save Changes</Button>
-                </div>
-              </div>
-            ) : (
-              <div className="text-sm space-y-1.5">
-                <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
-                  <span className="text-gray-400">Customer</span>
-                  <span className="font-medium text-gray-900">{selectedOrder.customer_name}</span>
-                  <span className="text-gray-400">Phone</span>
-                  <span>{selectedOrder.customer_phone}</span>
-                  <span className="text-gray-400">Address</span>
-                  <span className="whitespace-pre-wrap">{selectedOrder.customer_address}</span>
-                  <span className="text-gray-400">Fee</span>
-                  <span className="font-medium">{formatCurrency(selectedOrder.total_fee)}</span>
-                  {((selectedOrder.items && selectedOrder.items.length > 0) || selectedOrder.item_name) && (
-                    <>
-                      <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Daftar Barang</span>
-                      {(selectedOrder.items && selectedOrder.items.length > 0) ? (
-                        <div className="space-y-0.5">
-                          {selectedOrder.items.map((item, i) => (
-                            <div key={i} className="flex justify-between text-sm">
-                              <span className="text-gray-800">{item.nama}</span>
-                              <span className="text-gray-600 font-medium">Rp {item.harga.toLocaleString('id-ID')}</span>
-                            </div>
-                          ))}
-                          <div className="flex justify-between text-sm font-semibold border-t border-gray-100 pt-1 mt-1">
-                            <span className="text-gray-700">Total Belanja</span>
-                            <span className="text-gray-800">Rp {selectedOrder.items.reduce((s, i) => s + i.harga, 0).toLocaleString('id-ID')}</span>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-800">{selectedOrder.item_name || '-'}</span>
-                          <span className="text-gray-600 font-medium">{selectedOrder.item_price ? `Rp ${selectedOrder.item_price.toLocaleString('id-ID')}` : '-'}</span>
-                        </div>
-                      )}
-                    </>
-                  )}
-                  <span className="text-gray-400">Setoran</span>
-                  <span>
-                    <Badge variant={selectedOrder.payment_status === 'paid' ? 'success' : 'warning'} size="sm">
-                      {selectedOrder.payment_status === 'paid' ? 'Sudah Setor' : 'Belum Setor'}
-                    </Badge>
-                  </span>
-                  {selectedOrder.status === 'cancelled' && (
-                    <>
-                      <span className="text-gray-400">
-                        Alasan Cancel
-                      </span>
-                      <span className="text-red-600 font-medium">
-                        {selectedOrder.cancellation_reason || 'Tidak ada alasan'}
-                      </span>
-                      {selectedOrder.cancel_reason_type && (
-                        <>
-                          <span className="text-gray-400">
-                            Dibatalkan oleh
-                          </span>
-                          <span className="capitalize">
-                            {selectedOrder.cancel_reason_type === 'customer'
-                              ? 'Permintaan Customer'
-                              : selectedOrder.cancel_reason_type === 'item_unavailable'
-                                ? 'Barang Tidak Tersedia'
-                                : 'Lainnya'}
-                          </span>
-                        </>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
-
-            <div className="border-t pt-2">
-              {selectedOrder.status === 'pending' && isOpsAdmin ? (
-                <div className="bg-teal-50 px-3 py-2 rounded-lg border border-teal-100">
-                  <label className="block text-xs font-medium text-teal-900 mb-1.5">Assign Courier (FIFO)</label>
-                  <div className="flex gap-2">
-                    <Select
-                      className="flex-1"
-                      placeholder="Select Courier..."
-                      value={assignCourierId}
-                      onChange={e => setAssignCourierId(e.target.value)}
-                      options={availableCouriers.map(c => {
-                        const waiting = courierWaitingOrder(c.id);
-                        return {
-                          value: c.id,
-                          label: waiting
-                            ? `${c.name} 📝 PENDING — ${waiting.order_number}` 
-                            : `${c.name} (Online)` 
-                        };
-                      })}
-                    />
-                    <Button disabled={!assignCourierId} onClick={handleAssign}>Assign</Button>
-                  </div>
-                  {availableCouriers[0] && (
-                    <p className="text-xs text-teal-600 mt-1">
-                      Recommended: <strong>{availableCouriers[0].name}</strong>
-                      {courierWaitingOrder(availableCouriers[0].id) && (
-                        <span className="ml-1 text-yellow-600">📝 sedang PENDING di penjual</span>
-                      )}
-                    </p>
-                  )}
-                  <div className="mt-2 space-y-1">
-                    <Select
-                      label="Instruksi untuk Kurir"
-                      value={selectedOrder?.notes || ''}
-                      onChange={e => setSelectedOrder(selectedOrder ? { ...selectedOrder, notes: e.target.value } : null)}
-                      options={courier_instructions.map(i => ({
-                        value: i.label,
-                        label: `${i.icon} ${i.label}`
-                      }))}
-                      placeholder="— Tidak ada instruksi khusus —"
-                    />
-
-                    {/* Preview ikon instruksi yang dipilih */}
-                    {selectedOrder?.notes && (() => {
-                      const match = courier_instructions.find(i => i.label === selectedOrder.notes)
-                      if (!match) return null
-                      return (
-                        <div className="flex items-center gap-1.5 text-xs text-teal-600 mt-1">
-                          <span>{match.icon}</span>
-                          <span>{match.instruction}</span>
-                        </div>
-                      )
-                    })()}
-                  </div>
-                </div>
-              ) : (
-                <div className="text-sm grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
-                  <span className="text-gray-400">Courier</span>
-                  <span className="font-medium">{getCourierName(selectedOrder.courier_id)}</span>
-                  {selectedOrder.assigned_at && (
-                    <>
-                      <span className="text-gray-400">Assigned</span>
-                      <span>{format(new Date(selectedOrder.assigned_at), 'dd MMM yy, HH:mm')}</span>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Rincian Biaya Tambahan */}
-            {selectedOrder.status !== 'pending' && ((selectedOrder.titik ?? 0) > 0 || (selectedOrder.beban ?? []).length > 0) && (
-              <div className="border-t pt-2 text-sm space-y-1">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Rincian Biaya</p>
-                <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
-                  <span className="text-gray-400">Ongkir</span>
-                  <span>{formatCurrency(selectedOrder.total_fee)}</span>
-                  {(selectedOrder.titik ?? 0) > 0 && (
-                    <>
-                      <span className="text-gray-400">Titik ({selectedOrder.titik}x)</span>
-                      <span>{formatCurrency(selectedOrder.total_biaya_titik ?? 0)}</span>
-                    </>
-                  )}
-                  {(selectedOrder.beban ?? []).map((b, i) => (
-                    <>
-                      <span key={`beban-name-${i}`} className="text-gray-400 pl-2">• {b.nama}</span>
-                      <span key={`beban-val-${i}`}>{formatCurrency(b.biaya)}</span>
-                    </>
-                  ))}
-                  <span className="text-gray-700 font-semibold border-t pt-1 mt-0.5">Total Ongkir</span>
-                  <span className="font-semibold text-gray-900 border-t pt-1 mt-0.5">
-                    {formatCurrency(
-                      (selectedOrder.total_fee || 0) +
-                      (selectedOrder.total_biaya_titik ?? 0) +
-                      (selectedOrder.total_biaya_beban ?? 0)
-                    )}
-                  </span>
-                  {((selectedOrder.items && selectedOrder.items.length > 0) || (selectedOrder.item_price ?? 0) > 0) && (
-                    <>
-                      <span className="text-amber-800 font-bold border-t pt-1 mt-0.5">Total Dibayar Customer</span>
-                      <span className="font-bold text-amber-800 border-t pt-1 mt-0.5">
-                        {formatCurrency(
-                          (selectedOrder.total_fee || 0) +
-                          (selectedOrder.total_biaya_titik ?? 0) +
-                          (selectedOrder.total_biaya_beban ?? 0) +
-                          ((selectedOrder.items && selectedOrder.items.length > 0)
-                            ? selectedOrder.items.reduce((s, i) => s + i.harga, 0)
-                            : (selectedOrder.item_price ?? 0))
-                        )}
-                      </span>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
-
-            <div className="flex justify-between items-center pt-2 border-t">
-              <div className="flex gap-2">
-                {isOpsAdmin && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                    onClick={() => setIsCancelModalOpen(true)}
-                    disabled={['delivered', 'cancelled'].includes(selectedOrder.status)}
-                  >
-                    Cancel Order
-                  </Button>
-                )}
-                {user?.role === 'admin' && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-teal-600 hover:text-teal-800 hover:bg-teal-50 flex items-center gap-1"
-                    onClick={() => {
-                      const tgt = window.prompt(
-                        `[SUPER ADMIN] Force update status (pending/assigned/picked_up/in_transit/delivered/cancelled):`,
-                        selectedOrder.status
-                      );
-                      if (tgt && ['pending', 'assigned', 'picked_up', 'in_transit', 'delivered', 'cancelled'].includes(tgt)) {
-                        updateOrder(selectedOrder.id, { status: tgt as any });
-                      } else if (tgt) {
-                        alert('Status tidak valid');
-                      }
-                    }}
-                  >
-                    ⚡ Force Status
-                  </Button>
-                )}
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  leftIcon={<Printer className="h-3.5 w-3.5" />}
-                  onClick={() => handlePrintInvoice(selectedOrder)}
-                >
-                  Print Invoice
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => setIsDetailModalOpen(false)}>
-                  Close
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-      </Modal>
-
-      {/* Cancel Confirmation */}
-      <Modal isOpen={isCancelModalOpen} onClose={() => setIsCancelModalOpen(false)} title="Cancel Order">
-        <div className="space-y-4">
-          <p className="text-gray-600">Are you sure you want to cancel <strong>{selectedOrder?.order_number}</strong>?</p>
-          <Textarea placeholder="Reason for cancellation..." value={cancelReason} onChange={e => setCancelReason(e.target.value)} />
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setIsCancelModalOpen(false)}>Back</Button>
-            <Button variant="danger" disabled={!cancelReason} onClick={handleCancel}>Confirm Cancel</Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Bulk Settlement Modal */}
-      {showBulkSettle && (() => {
-        // GANTI: unpaidOrders dari state bulkUnpaidOrders
-        const unpaidOrders = bulkUnpaidOrders
-        const totalPlatformFee = unpaidOrders
-          .reduce((sum, o) =>
-            sum + calcPlatformFee(o), 0)
-
-        return (
-          <div className="fixed inset-0
-            bg-black/50 flex items-center
-            justify-center z-50 px-4">
-            <div className="bg-white rounded-xl
-              p-6 w-full max-w-md">
-
-              <h3 className="font-bold text-lg mb-1">
-                💰 Konfirmasi Setoran
-              </h3>
-              <p className="text-sm text-gray-500 mb-4">
-                Kurir: {bulkSettleCourierName}
-              </p>
-
-              {/* List order belum disetor */}
-              <div className="space-y-2 mb-4
-                max-h-64 overflow-y-auto">
-                {unpaidOrders.length === 0 ? (
-                  <p className="text-sm text-gray-500
-                    text-center py-4">
-                    Tidak ada order belum disetor
-                  </p>
-                ) : (
-                  unpaidOrders.map(o => (
-                    <div key={o.id}
-                      className="flex justify-between
-                      items-center text-sm bg-gray-50
-                      px-3 py-2 rounded-lg">
-                      <span className="font-medium">
-                        {o.order_number}
-                      </span>
-                      <div className="text-right">
-                        <p className="text-gray-500
-                          text-xs">
-                          Ongkir: {formatCurrency(
-                            o.total_fee)}
-                        </p>
-                        <p className="font-semibold
-                          text-orange-600">
-                          Setor: {formatCurrency(
-                            calcPlatformFee(o))}
-                        </p>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              {/* Total */}
-              {unpaidOrders.length > 0 && (
-                <div className="border-t pt-3 mb-4">
-                  <div className="flex justify-between
-                    font-bold">
-                    <span>Total Disetor</span>
-                    <span className="text-orange-600">
-                      {formatCurrency(totalPlatformFee)}
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-400
-                    mt-1">
-                    {unpaidOrders.length} order ·
-                    menggunakan rate saat pengiriman
-                  </p>
-                </div>
-              )}
-
-              {/* Buttons */}
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowBulkSettle(false)}
-                  className="flex-1 py-2.5 border
-                    border-gray-200 rounded-xl
-                    text-sm text-gray-600"
-                >
-                  Batal
-                </button>
-                <button
-                  disabled={unpaidOrders.length === 0}
-                  onClick={async () => {
-                    await Promise.all(
-                      unpaidOrders.map(async o => {
-                        await updateOrder(o.id,
-                          { payment_status: 'paid' })
-                        await markAsPaidInLocalDB(o.id)
-                      })
-                    )
-                    // Refresh local orders
-                    const weekOrders = await getOrdersForWeek()
-                    setLocalDBOrders(weekOrders)
-                    setShowBulkSettle(false)
-                  }}
-                  className="flex-1 py-2.5
-                    bg-orange-500 hover:bg-orange-600
-                    text-white rounded-xl text-sm
-                    font-semibold disabled:opacity-50
-                    transition"
-                >
-                  Konfirmasi Setor Semua
-                </button>
-              </div>
-
-            </div>
-          </div>
-        )
-      })()}
+      <BulkSettleModal
+        isOpen={showBulkSettle}
+        onClose={() => setShowBulkSettle(false)}
+        courierName={bulkSettleCourierName}
+        unpaidOrders={bulkUnpaidOrders}
+        updateOrder={updateOrder}
+        markAsPaidInLocalDB={markAsPaidInLocalDB}
+        getOrdersForWeek={getOrdersForWeek}
+        setLocalDBOrders={setLocalDBOrders}
+        calcPlatformFee={calcPlatformFee}
+      />
     </div>
   );
 }
