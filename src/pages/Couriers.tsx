@@ -141,6 +141,11 @@ export function Couriers() {
       updated_at: new Date().toISOString(),
     };
 
+    if (newCourier.password.length < 8) {
+      alert('Password must be at least 8 characters long');
+      return;
+    }
+
     addCourier(courierData, newCourier.password);
     setIsAddModalOpen(false);
     setShowCourierPassword(false);
@@ -281,7 +286,10 @@ export function Couriers() {
             </TableHead>
             <TableBody>
               {couriers.length === 0 ? (
-                <TableEmpty colSpan={6} message="No couriers found" />
+                <TableEmpty 
+                  colSpan={6} 
+                  message="No couriers registered yet. Please click 'Add Courier' to onboard a new team member." 
+                />
               ) : (
                 couriers.map((courier: Courier) => (
                   <TableRow
@@ -440,7 +448,7 @@ export function Couriers() {
             </Button>
             <Button
               onClick={handleAddCourier}
-              disabled={!newCourier.name || !newCourier.email || !newCourier.password}
+              disabled={!newCourier.name || !newCourier.email || newCourier.password.length < 8}
             >
               Add Courier
             </Button>

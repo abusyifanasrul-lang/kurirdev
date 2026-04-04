@@ -4,7 +4,6 @@ import {
   Truck, Eye, EyeOff, Loader2, Mail, Lock
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
-import { useUserStore } from '@/stores/useUserStore';
 import type { User as UserType, UserRole } from '@/types';
 import { useSessionStore } from '@/stores/useSessionStore';
 import { requestFCMPermission } from '@/lib/fcm';
@@ -20,7 +19,6 @@ export function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  useUserStore();
   const { login: sessionLogin } = useSessionStore();
 
   useEffect(() => {
@@ -48,8 +46,16 @@ export function Login() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    setIsLoading(true);
     setError('');
+    
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('Format email tidak valid.');
+      return;
+    }
+
+    setIsLoading(true);
 
     try {
       // 1. Sign in with Supabase Auth
