@@ -206,22 +206,37 @@ export function SystemDiagnostics() {
 
         {/* Quick Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {[
-            { label: 'Total Orders (Live)', value: orders.length, icon: Package, color: 'teal' },
-            { label: 'Total Users', value: users.length, icon: Users, color: 'blue' },
-            { label: 'IndexedDB Records', value: cacheMeta.total_records, icon: Database, color: 'emerald' },
-            { label: 'Pending Orders', value: orders.filter(o => o.status === 'pending').length, icon: Clock, color: 'amber' },
-          ].map(stat => (
-            <Card key={stat.label} className="flex items-center gap-4 p-4">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-${stat.color}-100`}>
-                <stat.icon className={`h-5 w-5 text-${stat.color}-600`} />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-                <p className="text-xs text-gray-500">{stat.label}</p>
-              </div>
-            </Card>
-          ))}
+          {(() => {
+            const bgMap: Record<string, string> = {
+              teal: 'bg-teal-100',
+              blue: 'bg-blue-100',
+              emerald: 'bg-emerald-100',
+              amber: 'bg-amber-100',
+            };
+            const textMap: Record<string, string> = {
+              teal: 'text-teal-600',
+              blue: 'text-blue-600',
+              emerald: 'text-emerald-600',
+              amber: 'text-amber-600',
+            };
+
+            return [
+              { label: 'Total Orders (Live)', value: orders.length, icon: Package, color: 'teal' },
+              { label: 'Total Users', value: users.length, icon: Users, color: 'blue' },
+              { label: 'IndexedDB Records', value: cacheMeta.total_records, icon: Database, color: 'emerald' },
+              { label: 'Pending Orders', value: orders.filter(o => o.status === 'pending').length, icon: Clock, color: 'amber' },
+            ].map(stat => (
+              <Card key={stat.label} className="flex items-center gap-4 p-4">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${bgMap[stat.color]}`}>
+                  <stat.icon className={`h-5 w-5 ${textMap[stat.color]}`} />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                  <p className="text-xs text-gray-500">{stat.label}</p>
+                </div>
+              </Card>
+            ));
+          })()}
         </div>
 
         {/* Tab Navigation */}

@@ -25,10 +25,15 @@ export function FinanceDashboard() {
 
   const couriers = users.filter(u => u.role === 'courier');
   const [weekOrders, setWeekOrders] = useState<Order[]>([]);
+  const [isDataReady, setIsDataReady] = useState(false);
 
   const loadWeekOrders = useCallback(async () => {
-    const dbOrders = await getOrdersForWeek();
-    setWeekOrders(dbOrders);
+    try {
+      const dbOrders = await getOrdersForWeek();
+      setWeekOrders(dbOrders);
+    } finally {
+      setIsDataReady(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -36,6 +41,15 @@ export function FinanceDashboard() {
     window.addEventListener('indexeddb-synced', loadWeekOrders);
     return () => window.removeEventListener('indexeddb-synced', loadWeekOrders);
   }, [loadWeekOrders]);
+
+  if (!isDataReady) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+        <div className="w-12 h-12 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin mb-4" />
+        <p className="text-gray-500 font-medium">Menyuapkan data keuangan...</p>
+      </div>
+    );
+  }
 
   // Merge orders
   const allOrders = useMemo(() => {

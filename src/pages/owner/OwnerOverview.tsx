@@ -45,6 +45,7 @@ export function OwnerOverview() {
   const [weekOrders, setWeekOrders] = useState<Order[]>([]);
   const [topCustomers, setTopCustomers] = useState<{ name: string; order_count: number; total_fee: number }[]>([]);
   const [topCouriersLocal, setTopCouriersLocal] = useState<{ id: string; name: string; delivery_count: number; total_fee: number }[]>([]);
+  const [isDataReady, setIsDataReady] = useState(false);
 
   // Build courier name map for local aggregation
   const courierNameMap = useMemo(() => {
@@ -54,14 +55,18 @@ export function OwnerOverview() {
   }, [users]);
 
   const loadLocalData = useCallback(async () => {
-    const dbOrders = await getOrdersForWeek();
-    setWeekOrders(dbOrders);
-    const [customers, localCouriers] = await Promise.all([
-      getTopCustomers(5),
-      getTopCouriers(5, courierNameMap),
-    ]);
-    setTopCustomers(customers);
-    setTopCouriersLocal(localCouriers);
+    try {
+      const dbOrders = await getOrdersForWeek();
+      setWeekOrders(dbOrders);
+      const [customers, localCouriers] = await Promise.all([
+        getTopCustomers(5),
+        getTopCouriers(5, courierNameMap),
+      ]);
+      setTopCustomers(customers);
+      setTopCouriersLocal(localCouriers);
+    } finally {
+      setIsDataReady(true);
+    }
   }, [courierNameMap]);
 
   useEffect(() => {
@@ -69,6 +74,15 @@ export function OwnerOverview() {
     window.addEventListener('indexeddb-synced', loadLocalData);
     return () => window.removeEventListener('indexeddb-synced', loadLocalData);
   }, [loadLocalData]);
+
+  if (!isDataReady) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+        <div className="w-12 h-12 border-4 border-amber-200 border-t-amber-600 rounded-full animate-spin mb-4" />
+        <p className="text-gray-500 font-medium">Memuat data performa...</p>
+      </div>
+    );
+  }
 
   const allOrders = useMemo(() => {
     const map = new Map<string, Order>();

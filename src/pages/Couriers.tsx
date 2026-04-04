@@ -170,22 +170,29 @@ export function Couriers() {
     }
   };
 
-  const getCourierStats = (courierId: number) => {
+  const getCourierStats = (courierId: string) => {
     // Safety check for getOrdersByCourier
     if (!getOrdersByCourier) return null;
 
-    const courierOrders = getOrdersByCourier(courierId as unknown as string) || [];
+    const courierOrders = getOrdersByCourier(courierId) || [];
     const completed = courierOrders.filter(o => o.status === 'delivered');
     const earnings = completed.reduce((sum, o) => sum + calcCourierEarning(o, earningSettings), 0);
 
     // Calculate avg delivery time based on actual timestamps
-    const avgTime = completed.length > 0 ? 25 : 0; // Placeholder until actual delivery timestamps are tracked
+    const completedWithTimes = completed.filter(o => o.actual_delivery_time && o.created_at);
+    const avgTime = completedWithTimes.length > 0
+      ? completedWithTimes.reduce((sum, o) => {
+          const start = new Date(o.created_at).getTime();
+          const end = new Date(o.actual_delivery_time!).getTime();
+          return sum + (end - start) / (1000 * 60); // minutes
+        }, 0) / completedWithTimes.length
+      : 0;
 
     return {
       total_orders: courierOrders.length,
       completed_orders: completed.length,
       total_earnings: earnings,
-      average_delivery_time: avgTime,
+      average_delivery_time: Math.round(avgTime),
       recent_orders: courierOrders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5)
     };
   };
@@ -193,7 +200,7 @@ export function Couriers() {
   const selectedCourierStats = useMemo(() => {
     if (!selectedCourier) return null;
     try {
-      return getCourierStats(selectedCourier.id as any);
+      return getCourierStats(selectedCourier.id);
     } catch (error) {
       console.error("Error calculating stats:", error);
       return {

@@ -7,15 +7,23 @@ import { useOrderStore } from '@/stores/useOrderStore';
 
 export function CourierOrders() {
   const navigate = useNavigate();
-  const { activeOrdersByCourier } = useOrderStore();
+  const { activeOrdersByCourier, isLoading } = useOrderStore();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<string>('all');
 
-  // activeOrdersByCourier sudah difilter per kurir dan hanya status aktif
   const myOrders = [...activeOrdersByCourier].sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
+
+  if (isLoading && myOrders.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <div className="w-10 h-10 border-4 border-green-200 border-t-green-600 rounded-full animate-spin mb-4" />
+        <p className="text-gray-500 font-medium">Memuat pesanan aktif...</p>
+      </div>
+    );
+  }
 
   // Active orders typically exclude delivered/cancelled for the "Orders" tab? 
   // Or maybe show all but filter by status tab?
