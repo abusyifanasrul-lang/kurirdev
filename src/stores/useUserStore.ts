@@ -118,15 +118,15 @@ export const useUserStore = create<UserState>()((set, get) => ({
     // If it's already SUBSCRIBED, we can skip re-creating, 
     // but if it's in a broken state, we should allow a new one.
     const existing = activeChannels.get(channelId)
-    if (existing && (existing.state === 'joined' || existing.state === 'joining')) {
-      console.log(`♻️ Reusing active realtime channel for ${channelId}`)
-      // Still fetch once to be safe when this is called
-      get().fetchUsers()
-      return () => {
-        // If multiple components use this, we might not want to close it immediately.
-        // But for simpler consistency, we follow the component's unmount.
-        // In this app, AppListeners is the primary caller.
+    if (existing) {
+      if (existing.state === 'joined' || existing.state === 'joining') {
+        console.log(`♻️ Reusing active realtime channel for ${channelId}`)
+        get().fetchUsers()
+        return () => {}
       }
+      // If channel exists but is in a bad state, clean it up before re-creating
+      supabase.removeChannel(existing)
+      activeChannels.delete(channelId)
     }
 
     const channel = supabase.channel(channelId)
@@ -165,7 +165,7 @@ export const useUserStore = create<UserState>()((set, get) => ({
         } else if (status === 'SUBSCRIBED') {
           console.log(`✅ Realtime connection active: ${channelId}. Syncing state...`)
           activeChannels.set(channelId, channel)
-          get().fetchUsers() // CRITICAL: Re-sync on every successful connection/reconnection
+          get().fetchUsers()
         } else if (status === 'CLOSED') {
           console.log(`🔌 Realtime connection closed: ${channelId}`)
           activeChannels.delete(channelId)
@@ -183,9 +183,13 @@ export const useUserStore = create<UserState>()((set, get) => ({
     const channelId = `profile:single:${id}`
     
     const existing = activeChannels.get(channelId)
-    if (existing && (existing.state === 'joined' || existing.state === 'joining')) {
-      get().fetchProfile(id)
-      return () => {}
+    if (existing) {
+      if (existing.state === 'joined' || existing.state === 'joining') {
+        get().fetchProfile(id)
+        return () => {}
+      }
+      supabase.removeChannel(existing)
+      activeChannels.delete(channelId)
     }
 
     const channel = supabase.channel(channelId)

@@ -29,41 +29,23 @@ export const AppListeners = () => {
     }
   }, [user?.id])
 
-  // 1.b Profile specific listener (Force logout if suspended + Real-time sync)
-  useEffect(() => {
-    if (user) {
-      // Use the hardened store listener which now handles re-sync on connect
-      const unsubProfile = useUserStore.getState().subscribeProfile(user.id)
-      
-      // Separate security listener for suspension check (if not already handled in subscribeProfile)
-      // Actually, subscribeProfile updates the store. We can just watch the store or use a custom listener.
-      // Let's keep a simple dedicated security channel for the 'active' check to be explicit.
-      const securityChannelId = `profile:security:${user.id}`
-      const securityChannel = supabase
-        .channel(securityChannelId)
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'profiles',
-            filter: `id=eq.${user.id}`
-          },
-          (payload: any) => {
-            if (payload.new && payload.new.is_active === false) {
-              console.warn('⚠️ Akun disuspend oleh admin. Melakukan logout otomatis...')
-              logout()
-            }
-          }
-        )
-        .subscribe()
-
-      return () => {
-        unsubProfile()
-        supabase.removeChannel(securityChannel)
+    // 1.b Profile specific listener (Force logout if suspended + Real-time sync)
+    useEffect(() => {
+      if (user) {
+        // subscribeProfile already handles the realtime 'on' listener for profiles
+        const unsubProfile = useUserStore.getState().subscribeProfile(user.id)
+        return () => unsubProfile()
       }
-    }
-  }, [user?.id])
+    }, [user?.id])
+
+    // 1.c Watch store for suspension status (Security Gate)
+    const liveUser = useUserStore((state) => state.users.find(u => u.id === user?.id));
+    useEffect(() => {
+      if (liveUser && liveUser.is_active === false) {
+        console.warn('⚠️ Akun disuspend oleh admin. Melakukan logout otomatis...')
+        logout()
+      }
+    }, [liveUser?.is_active, logout])
   // 2. Orders & FCM Sync (The "oneSnapshot" paradigm)
   useEffect(() => {
     if (!user) return
