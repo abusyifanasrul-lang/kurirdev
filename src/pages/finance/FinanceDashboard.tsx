@@ -18,7 +18,7 @@ import type { Order } from '@/types';
 export function FinanceDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { orders } = useOrderStore();
+  const { orders, activeOrdersByCourier } = useOrderStore();
   const { users } = useUserStore();
   const { commission_rate, commission_threshold } = useSettingsStore();
   const earningSettings = { commission_rate, commission_threshold };
@@ -48,8 +48,9 @@ export function FinanceDashboard() {
     const map = new Map<string, Order>();
     weekOrders.forEach(o => map.set(o.id, o));
     orders.forEach(o => map.set(o.id, o));
+    activeOrdersByCourier.forEach(o => map.set(o.id, o));
     return Array.from(map.values());
-  }, [weekOrders, orders]);
+  }, [weekOrders, orders, activeOrdersByCourier]);
 
   // Delivered orders
   const deliveredOrders = useMemo(() =>

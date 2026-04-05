@@ -4,7 +4,9 @@ import { User, UserRole, CreateUserInput } from '@/types'
 import { cacheProfiles, getCachedProfiles, saveProfileSyncTime, localDB } from '@/lib/orderCache'
 
 // Module-level tracker for active channels
+// Module-level tracker for active channels
 const activeChannels = new Map<string, any>()
+const channelStates = new Map<string, 'joining' | 'joined' | 'errored' | 'closed'>()
 
 interface UserState {
   users: User[]
@@ -15,6 +17,7 @@ interface UserState {
   syncFromServer: () => Promise<void>
   fetchUsers: () => Promise<void>
   fetchProfile: (id: string) => Promise<void>
+  resyncRealtime: (id?: string) => Promise<void>
   subscribeUsers: () => () => void
   subscribeProfile: (id: string) => () => void
   addUser: (data: CreateUserInput) => Promise<{ success: boolean; error?: string }>
@@ -111,13 +114,47 @@ export const useUserStore = create<UserState>()((set, get) => ({
     }))
   },
 
+  resyncRealtime: async (id) => {
+    // 1. Force fetch data
+    try {
+      if (id) {
+        await get().fetchProfile(id)
+      } else {
+        await get().fetchUsers()
+      }
+    } catch(err) {
+      console.error('[resyncRealtime_user] Failed to patch data', err)
+    }
+    
+    // 2. Check channel state and self-heal if necessary
+    const channelId = id ? `profile:single:${id}` : 'users:list'
+    const currentState = channelStates.get(channelId)
+    
+    if (!currentState || currentState === 'errored' || currentState === 'closed') {
+      console.warn(`[useUserStore] Channel ${channelId} dead (state: ${currentState}). Resyncing...`)
+      const existing = activeChannels.get(channelId)
+      if (existing) supabase.removeChannel(existing)
+      activeChannels.delete(channelId)
+      channelStates.delete(channelId)
+      
+      setTimeout(() => {
+        if (id) {
+          get().subscribeProfile(id)
+        } else {
+          get().subscribeUsers()
+        }
+      }, 500)
+    }
+  },
+
   subscribeUsers: () => {
     const channelId = 'users:list'
     
     // 1. Singleton pattern: return existing active channel if already established
+    const currentState = channelStates.get(channelId)
     const existing = activeChannels.get(channelId)
-    if (existing) {
-      if (existing.state === 'joined' || existing.state === 'joining') {
+    if (existing && currentState !== 'errored' && currentState !== 'closed') {
+      if (currentState === 'joined' || currentState === 'joining') {
         console.log(`♻️ Reusing active realtime channel for ${channelId}`)
         get().fetchUsers()
         return () => {
@@ -169,13 +206,27 @@ export const useUserStore = create<UserState>()((set, get) => ({
     channel.subscribe((status, err) => {
       if (status === 'CHANNEL_ERROR') {
         console.error(`❌ Realtime subscription failed for ${channelId}:`, err)
-        activeChannels.delete(channelId)
+        channelStates.set(channelId, 'errored')
+        
+        // Self-healing
+        setTimeout(() => {
+          if (channelStates.get(channelId) === 'errored') {
+            console.log(`♻️ Auto-reconnecting channel ${channelId}...`)
+            const existing = activeChannels.get(channelId)
+            if (existing) supabase.removeChannel(existing)
+            activeChannels.delete(channelId)
+            channelStates.delete(channelId)
+            get().subscribeUsers()
+          }
+        }, 5000)
       } else if (status === 'SUBSCRIBED') {
         console.log(`✅ Realtime connection active: ${channelId}. Syncing state...`)
+        activeChannels.set(channelId, channel)
+        channelStates.set(channelId, 'joined')
         get().fetchUsers()
       } else if (status === 'CLOSED') {
         console.log(`🔌 Realtime connection closed: ${channelId}`)
-        activeChannels.delete(channelId)
+        channelStates.set(channelId, 'closed')
       }
     })
       
@@ -190,9 +241,10 @@ export const useUserStore = create<UserState>()((set, get) => ({
     const channelId = `profile:single:${id}`
     
     // 1. Singleton pattern: return existing active channel if already established
+    const currentState = channelStates.get(channelId)
     const existing = activeChannels.get(channelId)
-    if (existing) {
-      if (existing.state === 'joined' || existing.state === 'joining') {
+    if (existing && currentState !== 'errored' && currentState !== 'closed') {
+      if (currentState === 'joined' || currentState === 'joining') {
         get().fetchProfile(id)
         return () => {
            // We keep it alive as long as at least one component needs it
@@ -236,12 +288,28 @@ export const useUserStore = create<UserState>()((set, get) => ({
     // Set map BEFORE subscribe to lock other callers
     activeChannels.set(channelId, channel)
 
-    channel.subscribe((status) => {
-      if (status === 'SUBSCRIBED') {
+    channel.subscribe((status, err) => {
+      if (status === 'CHANNEL_ERROR') {
+        console.error(`❌ Realtime profile subscription failed for ${channelId}:`, err)
+        channelStates.set(channelId, 'errored')
+        
+        setTimeout(() => {
+          if (channelStates.get(channelId) === 'errored') {
+             console.log(`♻️ Auto-reconnecting profile channel ${id}...`)
+             const existing = activeChannels.get(channelId)
+             if (existing) supabase.removeChannel(existing)
+             activeChannels.delete(channelId)
+             channelStates.delete(channelId)
+             get().subscribeProfile(id)
+          }
+        }, 5000)
+      } else if (status === 'SUBSCRIBED') {
         console.log(`✅ Realtime profile sync active: ${id}`)
+        activeChannels.set(channelId, channel)
+        channelStates.set(channelId, 'joined')
         get().fetchProfile(id)
       } else if (status === 'CLOSED') {
-        activeChannels.delete(channelId)
+        channelStates.set(channelId, 'closed')
       }
     })
       

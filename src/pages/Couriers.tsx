@@ -315,7 +315,7 @@ export function Couriers() {
                         </Badge>
                         {courier.is_active && (() => {
                           const status = (courier as any).courier_status ?? (courier.is_online ? 'on' : 'off')
-                          const waitingOrder = orders.find(o => o.courier_id === courier.id && o.is_waiting === true)
+                          const waitingOrder = allOrders.find(o => o.courier_id === courier.id && o.is_waiting === true)
                           return (
                             <>
                               {status === 'on' && <span className="text-xs text-green-600 font-semibold">{'\u{1F680}'} ON</span>}

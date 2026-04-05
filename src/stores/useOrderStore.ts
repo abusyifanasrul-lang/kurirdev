@@ -16,7 +16,7 @@ import { logger } from '@/lib/logger'
 
 // Module-level tracker for active channels to prevent redundant subscriptions
 const activeChannels = new Map<string, any>()
-const channelStates = new Map<string, 'joining' | 'joined'>()
+const channelStates = new Map<string, 'joining' | 'joined' | 'errored' | 'closed'>()
 
 export interface OrderState {
   orders: Order[]
@@ -33,6 +33,7 @@ export interface OrderState {
   isFetchingActiveOrders: boolean
   currentOrder: Order | null
   fetchActiveOrdersByCourier: (courierId: string) => Promise<void>
+  resyncRealtime: (filter?: { courierId?: string; activeOnly?: boolean }) => Promise<void>
   
   // Realtime "oneSnapshot" pattern
   fetchInitialOrders: (filter?: { courierId?: string; activeOnly?: boolean }) => Promise<void>
@@ -144,6 +145,45 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     } catch (error) {
       console.error('fetchActiveOrdersByCourier error:', error)
       set({ isFetchingActiveOrders: false })
+    }
+  },
+
+  resyncRealtime: async (filter) => {
+    const { courierId } = filter || {}
+    
+    // 1. Force fetch active orders to patch gap based on visibility/focus
+    try {
+      if (courierId) {
+        await get().fetchActiveOrdersByCourier(courierId)
+      } else {
+        const activeStatuses = ['pending', 'assigned', 'picked_up', 'in_transit']
+        const { data } = await supabase.from('orders')
+          .select('*')
+          .in('status', activeStatuses)
+          .order('created_at', { ascending: false })
+        if (data) {
+          set({ activeOrdersByCourier: data as Order[] })
+        }
+      }
+    } catch(err) {
+      console.error('[resyncRealtime] Failed to patch data', err)
+    }
+
+    // 2. Check channel state and self-heal if necessary
+    const channelId = courierId ? `orders:courier:${courierId}` : 'orders:global'
+    const currentState = channelStates.get(channelId)
+    
+    if (!currentState || currentState === 'errored' || currentState === 'closed') {
+      console.warn(`[useOrderStore] Channel ${channelId} dead (state: ${currentState}). Resyncing...`)
+      const existing = activeChannels.get(channelId)
+      if (existing) supabase.removeChannel(existing)
+      activeChannels.delete(channelId)
+      channelStates.delete(channelId)
+      
+      // Give it a brief delay before subscribing again to allow cleanup
+      setTimeout(() => {
+        get().subscribeOrders(filter)
+      }, 500)
     }
   },
 
@@ -310,12 +350,26 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
         if (status === 'CHANNEL_ERROR') {
           console.error(`❌ Realtime subscription failed for ${channelId}:`, err)
           logger.error(`Realtime subscription error for ${channelId}`, err)
-          activeChannels.delete(channelId)
-          channelStates.delete(channelId)
+          channelStates.set(channelId, 'errored')
+          
+          // Self-healing: Auto-reconnect after 5 seconds
+          setTimeout(() => {
+            if (channelStates.get(channelId) === 'errored') {
+              console.log(`♻️ Auto-reconnecting channel ${channelId}...`)
+              const existing = activeChannels.get(channelId)
+              if (existing) supabase.removeChannel(existing)
+              activeChannels.delete(channelId)
+              channelStates.delete(channelId)
+              get().subscribeOrders(filter)
+            }
+          }, 5000)
         } else if (status === 'SUBSCRIBED') {
           console.log(`✅ Realtime subscription active for ${channelId}`)
           activeChannels.set(channelId, channel)
           channelStates.set(channelId, 'joined')
+        } else if (status === 'CLOSED') {
+          console.log(`🔌 Realtime connection closed for ${channelId}`)
+          channelStates.set(channelId, 'closed')
         }
       })
 

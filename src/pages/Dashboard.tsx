@@ -131,9 +131,8 @@ export function Dashboard() {
       below_threshold_today: belowThresholdToday,
       active_couriers: activeCouriersCount,
       pending_orders: pendingOrders.length,
-      orders_by_status: pieData
     };
-  }, [orders, allOrders, users]);
+  }, [allOrders, users, activeOrdersByCourier]);
 
   const revenueChartData = useMemo(() => {
     // Last 7 days in WIB
@@ -184,7 +183,7 @@ export function Dashboard() {
 
         {/* Urgency Panel — pending orders older than 30 min */}
         {(() => {
-          const urgentPending = (orders || []).filter(o => {
+          const urgentPending = (allOrders || []).filter(o => {
             if (o.status !== 'pending') return false;
             const created = new Date(o.created_at).getTime();
             const ageMin = (Date.now() - created) / 60000;
@@ -352,7 +351,7 @@ export function Dashboard() {
                       )}
                       {onlineQueue.map((courier, index) => {
                         const status = (courier as any).courier_status ?? 'on'
-                        const waitingOrder = orders.find(o => o.courier_id === courier.id && o.is_waiting === true)
+                        const waitingOrder = activeOrdersByCourier.find(o => o.courier_id === courier.id && o.is_waiting === true)
                         return (
                           <div key={courier.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
                             <div className="flex items-center gap-3">

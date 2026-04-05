@@ -5,7 +5,7 @@ import { useOrderStore } from '@/stores/useOrderStore'
 import { useSettingsStore } from '@/stores/useSettingsStore'
 import { useNotificationStore } from '@/stores/useNotificationStore'
 import { useCustomerStore } from '@/stores/useCustomerStore'
-import { supabase } from '@/lib/supabaseClient'
+
 import {
   isInitialSyncCompleted,
   syncAllFinalOrders,
@@ -144,6 +144,50 @@ export const AppListeners = () => {
     if (user && user.role !== 'courier') {
       const unsubUsers = useUserStore.getState().subscribeUsers()
       return () => unsubUsers()
+    }
+  }, [user?.id, user?.role])
+
+  // 5. Visibility / Window Focus Sync (Self-Healing)
+  useEffect(() => {
+    if (!user) return
+
+    let timeoutId: any = null
+    const resyncAll = () => {
+      // Throttle by 2 seconds to avoid firing multiple times on consecutive visibility/focus events
+      if (timeoutId) return
+      timeoutId = setTimeout(() => { timeoutId = null }, 2000)
+
+      console.log('👀 Window became visible/focused. Triggering realtime resync...')
+      
+      const filter = {
+        courierId: user.role === 'courier' ? user.id : undefined,
+        activeOnly: user.role === 'courier'
+      }
+
+      useOrderStore.getState().resyncRealtime(filter)
+      
+      if (user.role === 'courier') {
+        useUserStore.getState().resyncRealtime(user.id)
+      } else {
+        useUserStore.getState().resyncRealtime()
+      }
+    }
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') resyncAll()
+    }
+    
+    const handleFocus = () => {
+      resyncAll() // focus happens when returning to the tab
+    }
+
+    window.addEventListener('visibilitychange', handleVisibility)
+    window.addEventListener('focus', handleFocus)
+
+    return () => {
+      window.removeEventListener('visibilitychange', handleVisibility)
+      window.removeEventListener('focus', handleFocus)
+      if (timeoutId) clearTimeout(timeoutId)
     }
   }, [user?.id, user?.role])
 
