@@ -5,16 +5,25 @@ import { App } from "./App";
 
 // Global error listener to handle dynamic import failures (e.g., stale service worker)
 window.addEventListener('error', (event) => {
-  if (event.message?.includes('Failed to fetch dynamically imported module')) {
-    console.error('Dynamic import failed, possibly due to stale service worker. Reloading...', event);
-    // Force a full reload to clear stale state
+  const isChunkError = 
+    event.message?.includes('Failed to fetch dynamically imported module') ||
+    event.message?.includes('Failed to load module script') ||
+    event.message?.includes('Expected a JavaScript-or-Wasm module script');
+    
+  if (isChunkError) {
+    console.error('Dynamic import failed (chunk error). Reloading...', event);
     window.location.reload();
   }
-}, true); // Capture phase to catch it before it crashes the React root
+}, true);
 
 // Also catch unhandled promise rejections for lazy load errors
 window.addEventListener('unhandledrejection', (event) => {
-  if (event.reason instanceof TypeError && event.reason.message.includes('Failed to fetch dynamically imported module')) {
+  const isChunkError = 
+    (event.reason instanceof TypeError && event.reason.message.includes('Failed to fetch dynamically imported module')) ||
+    (event.reason?.message?.includes('Failed to load module script')) ||
+    (event.reason?.message?.includes('Expected a JavaScript-or-Wasm module script'));
+
+  if (isChunkError) {
     console.error('Dynamic import failed (unhandled rejection). Reloading...', event);
     window.location.reload();
   }

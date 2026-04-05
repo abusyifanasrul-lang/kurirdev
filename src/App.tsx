@@ -23,38 +23,57 @@ function LoadingScreen() {
   );
 }
 
+// Helper for lazy loading with retry on chunk error
+function fetchWithRetry(componentImport: () => Promise<any>): Promise<any> {
+    return componentImport().catch((error) => {
+        // Only retry once per session to avoid infinite reload loops
+        const hasRetried = window.sessionStorage.getItem('chunk_load_retried');
+        const isChunkError = 
+            error.message?.includes('Failed to fetch dynamically imported module') ||
+            error.message?.includes('Failed to load module script') ||
+            error.message?.includes('Expected a JavaScript-or-Wasm module script');
+
+        if (isChunkError && !hasRetried) {
+            window.sessionStorage.setItem('chunk_load_retried', 'true');
+            window.location.reload();
+            return new Promise(() => {}); // Wait for reload
+        }
+        throw error;
+    });
+}
+
 // Lazy-loaded Pages
-const Login = lazy(() => import('@/pages/Login').then(m => ({ default: m.Login })));
+const Login = lazy(() => fetchWithRetry(() => import('@/pages/Login').then(m => ({ default: m.Login }))));
 
 // Admin Pages
-const AdminLayout = lazy(() => import('@/components/layout/Layout').then(m => ({ default: m.Layout })));
-const Dashboard = lazy(() => import('@/pages/Dashboard').then(m => ({ default: m.Dashboard })));
-const Orders = lazy(() => import('@/pages/Orders').then(m => ({ default: m.Orders })));
-const Couriers = lazy(() => import('@/pages/Couriers').then(m => ({ default: m.Couriers })));
-const Reports = lazy(() => import('@/pages/Reports').then(m => ({ default: m.Reports })));
-const Notifications = lazy(() => import('@/pages/Notifications').then(m => ({ default: m.Notifications })));
-const Settings = lazy(() => import('@/pages/Settings').then(m => ({ default: m.Settings })));
+const AdminLayout = lazy(() => fetchWithRetry(() => import('@/components/layout/Layout').then(m => ({ default: m.Layout }))));
+const Dashboard = lazy(() => fetchWithRetry(() => import('@/pages/Dashboard').then(m => ({ default: m.Dashboard }))));
+const Orders = lazy(() => fetchWithRetry(() => import('@/pages/Orders').then(m => ({ default: m.Orders }))));
+const Couriers = lazy(() => fetchWithRetry(() => import('@/pages/Couriers').then(m => ({ default: m.Couriers }))));
+const Reports = lazy(() => fetchWithRetry(() => import('@/pages/Reports').then(m => ({ default: m.Reports }))));
+const Notifications = lazy(() => fetchWithRetry(() => import('@/pages/Notifications').then(m => ({ default: m.Notifications }))));
+const Settings = lazy(() => fetchWithRetry(() => import('@/pages/Settings').then(m => ({ default: m.Settings }))));
 
 // Finance Pages
-const FinanceDashboard = lazy(() => import('@/pages/finance/FinanceDashboard').then(m => ({ default: m.FinanceDashboard })));
-const FinancePenagihan = lazy(() => import('@/pages/finance/FinancePenagihan').then(m => ({ default: m.FinancePenagihan })));
-const FinanceAnalisa = lazy(() => import('@/pages/finance/FinanceAnalisa').then(m => ({ default: m.FinanceAnalisa })));
+const FinanceDashboard = lazy(() => fetchWithRetry(() => import('@/pages/finance/FinanceDashboard').then(m => ({ default: m.FinanceDashboard }))));
+const FinancePenagihan = lazy(() => fetchWithRetry(() => import('@/pages/finance/FinancePenagihan').then(m => ({ default: m.FinancePenagihan }))));
+const FinanceAnalisa = lazy(() => fetchWithRetry(() => import('@/pages/finance/FinanceAnalisa').then(m => ({ default: m.FinanceAnalisa }))));
 
 // Owner Pages
-const OwnerOverview = lazy(() => import('@/pages/owner/OwnerOverview').then(m => ({ default: m.OwnerOverview })));
+const OwnerOverview = lazy(() => fetchWithRetry(() => import('@/pages/owner/OwnerOverview').then(m => ({ default: m.OwnerOverview }))));
 
 // Super Admin Only
-const SystemDiagnostics = lazy(() => import('@/pages/admin/SystemDiagnostics').then(m => ({ default: m.SystemDiagnostics })));
+const SystemDiagnostics = lazy(() => fetchWithRetry(() => import('@/pages/admin/SystemDiagnostics').then(m => ({ default: m.SystemDiagnostics }))));
 
 // Courier Pages
-const CourierLayout = lazy(() => import('@/pages/courier/CourierLayout').then(m => ({ default: m.CourierLayout })));
-const CourierDashboard = lazy(() => import('@/pages/courier/CourierDashboard').then(m => ({ default: m.CourierDashboard })));
-const CourierOrders = lazy(() => import('@/pages/courier/CourierOrders').then(m => ({ default: m.CourierOrders })));
-const CourierOrderDetail = lazy(() => import('@/pages/courier/CourierOrderDetail').then(m => ({ default: m.CourierOrderDetail })));
-const CourierHistory = lazy(() => import('@/pages/courier/CourierHistory').then(m => ({ default: m.CourierHistory })));
-const CourierEarnings = lazy(() => import('@/pages/courier/CourierEarnings').then(m => ({ default: m.CourierEarnings })));
-const CourierProfile = lazy(() => import('@/pages/courier/CourierProfile').then(m => ({ default: m.CourierProfile })));
-const CourierNotifications = lazy(() => import('@/pages/courier/CourierNotifications').then(m => ({ default: m.CourierNotifications })));
+const CourierLayout = lazy(() => fetchWithRetry(() => import('@/pages/courier/CourierLayout').then(m => ({ default: m.CourierLayout }))));
+const CourierDashboard = lazy(() => fetchWithRetry(() => import('@/pages/courier/CourierDashboard').then(m => ({ default: m.CourierDashboard }))));
+const CourierOrders = lazy(() => fetchWithRetry(() => import('@/pages/courier/CourierOrders').then(m => ({ default: m.CourierOrders }))));
+const CourierOrderDetail = lazy(() => fetchWithRetry(() => import('@/pages/courier/CourierOrderDetail').then(m => ({ default: m.CourierOrderDetail }))));
+const CourierHistory = lazy(() => fetchWithRetry(() => import('@/pages/courier/CourierHistory').then(m => ({ default: m.CourierHistory }))));
+const CourierEarnings = lazy(() => fetchWithRetry(() => import('@/pages/courier/CourierEarnings').then(m => ({ default: m.CourierEarnings }))));
+const CourierProfile = lazy(() => fetchWithRetry(() => import('@/pages/courier/CourierProfile').then(m => ({ default: m.CourierProfile }))));
+const CourierNotifications = lazy(() => fetchWithRetry(() => import('@/pages/courier/CourierNotifications').then(m => ({ default: m.CourierNotifications }))));
 
 // All admin sub-roles
 const ADMIN_ROLES: UserRole[] = ['admin', 'admin_kurir', 'owner', 'finance'];

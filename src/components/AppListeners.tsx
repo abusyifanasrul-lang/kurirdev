@@ -18,7 +18,6 @@ import { onForegroundMessage } from '@/lib/fcm'
 
 export const AppListeners = () => {
   const { user, logout } = useAuth()
-  const { fetchProfile } = useUserStore()
   const { fetchSettings } = useSettingsStore()
 
   // 1. Settings listeners (Global)
@@ -30,18 +29,22 @@ export const AppListeners = () => {
     }
   }, [user?.id])
 
-  // 1.b Profile specific listener (Force logout if suspended)
+  // 1.b Profile specific listener (Force logout if suspended + Real-time sync)
   useEffect(() => {
     if (user) {
-      fetchProfile(user.id)
-
-      const profileChannelId = `profile:active:${user.id}`
-      const profileChannel = supabase
-        .channel(profileChannelId)
+      // Use the hardened store listener which now handles re-sync on connect
+      const unsubProfile = useUserStore.getState().subscribeProfile(user.id)
+      
+      // Separate security listener for suspension check (if not already handled in subscribeProfile)
+      // Actually, subscribeProfile updates the store. We can just watch the store or use a custom listener.
+      // Let's keep a simple dedicated security channel for the 'active' check to be explicit.
+      const securityChannelId = `profile:security:${user.id}`
+      const securityChannel = supabase
+        .channel(securityChannelId)
         .on(
           'postgres_changes',
           {
-            event: '*',
+            event: 'UPDATE',
             schema: 'public',
             table: 'profiles',
             filter: `id=eq.${user.id}`
@@ -50,15 +53,14 @@ export const AppListeners = () => {
             if (payload.new && payload.new.is_active === false) {
               console.warn('⚠️ Akun disuspend oleh admin. Melakukan logout otomatis...')
               logout()
-            } else {
-              fetchProfile(user.id)
             }
           }
         )
         .subscribe()
 
       return () => {
-        supabase.removeChannel(profileChannel)
+        unsubProfile()
+        supabase.removeChannel(securityChannel)
       }
     }
   }, [user?.id])
