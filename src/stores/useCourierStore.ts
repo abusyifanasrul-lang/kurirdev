@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { supabase } from '@/lib/supabaseClient'
 import { Courier } from '@/types'
 import { useUserStore } from './useUserStore'
 
@@ -51,64 +52,36 @@ export const useCourierStore = create<CourierState>()((_set, get) => ({
   },
 
   rotateQueue: async (assignedCourierId) => {
-    const userStore = useUserStore.getState()
-    const allCouriers = userStore.users.filter(u => u.role === 'courier') as (Courier & { queue_position?: number })[]
-    if (allCouriers.length === 0) return
+    const { error } = await supabase.rpc('rotate_courier_queue', {
+      target_user_id: assignedCourierId
+    })
     
-    const sorted = [...allCouriers].sort((a, b) =>
-      (a.queue_position ?? 999) - (b.queue_position ?? 999)
-    )
-    
-    const maxPosition = sorted.reduce((max, c) => Math.max(max, c.queue_position ?? 0), 0)
-    const assignedCourier = sorted.find(c => c.id === assignedCourierId)
-    if (!assignedCourier) return
-    
-    const assignedCurrentPos = assignedCourier.queue_position ?? 1
-    
-    // Shift others up and move assigned to the end
-    const updatePromises = sorted
-      .filter(c => c.id !== assignedCourierId && (c.queue_position ?? 999) > assignedCurrentPos)
-      .map(c => userStore.updateUserQueuePosition(c.id, (c.queue_position ?? 999) - 1))
-    
-    updatePromises.push(userStore.updateUserQueuePosition(assignedCourierId, maxPosition))
-    await Promise.all(updatePromises)
+    if (error) {
+      console.error('Failed to rotate queue:', error)
+      // Fallback to fetch latest to stay in sync if RPC fails
+      await useUserStore.getState().fetchUsers()
+    }
   },
 
   setCourierOffline: async (courierId, reason) => {
     const userStore = useUserStore.getState()
-    const allCouriers = userStore.users.filter(u => u.role === 'courier') as (Courier & { queue_position?: number })[]
-    const thisCourier = allCouriers.find(c => c.id === courierId)
-    const currentPos = thisCourier?.queue_position ?? 0
-
+    
+    // Trigger in DB will handle queue_position = NULL and shifting others
     await userStore.updateUser(courierId, {
       is_online: false,
       courier_status: 'off',
       off_reason: reason,
-      queue_position: null as any,
     })
-
-    if (currentPos > 0) {
-      const shiftPromises = allCouriers
-        .filter(c => c.id !== courierId && (c.queue_position ?? 0) > currentPos)
-        .map(c => userStore.updateUserQueuePosition(c.id, (c.queue_position ?? 0) - 1))
-      await Promise.all(shiftPromises)
-    }
   },
 
   setCourierOnline: async (courierId, status) => {
     const userStore = useUserStore.getState()
-    const allCouriers = userStore.users.filter(u => u.role === 'courier') as (Courier & { queue_position?: number })[]
     
-    const maxPos = allCouriers
-      .filter(c => c.id !== courierId)
-      .reduce((max, c) => Math.max(max, c.queue_position ?? 0), 0)
-
+    // Trigger in DB will handle queue_position = max + 1
     await userStore.updateUser(courierId, {
       is_online: true,
       courier_status: status,
       off_reason: '',
     })
-
-    await userStore.updateUserQueuePosition(courierId, maxPos + 1)
   },
 }))

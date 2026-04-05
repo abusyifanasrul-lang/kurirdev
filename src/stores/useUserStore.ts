@@ -17,9 +17,6 @@ interface UserState {
   addUser: (data: CreateUserInput) => Promise<{ success: boolean; error?: string }>
   updateUser: (id: string, data: Partial<User>) => Promise<void>
   removeUser: (id: string) => Promise<void>
-  updateUserQueuePosition: (id: string, position: number) => Promise<void>
-  subscribeProfile: (id: string) => () => void
-  initQueuePositions: () => Promise<void>
   reset: () => void
 }
 
@@ -130,7 +127,10 @@ export const useUserStore = create<UserState>()((set, get) => ({
       )
       .subscribe((status, err) => {
         if (status === 'CHANNEL_ERROR') {
+          console.error(`❌ Realtime subscription failed for ${channelId}:`, err)
           logger.error(`Realtime subscription error for ${channelId}`, err)
+        } else if (status === 'SUBSCRIBED') {
+          console.log(`✅ Realtime subscription active for ${channelId}`)
         }
       })
       
@@ -283,50 +283,5 @@ export const useUserStore = create<UserState>()((set, get) => ({
     await (supabase.from('profiles') as any).update({ is_active: false }).eq('id', id)
   },
 
-  updateUserQueuePosition: async (id, position) => {
-    // Optimistic update
-    set(state => ({
-      users: state.users.map(u => u.id === id ? { ...u, queue_position: position } : u)
-    }))
-
-    const { error } = await (supabase.from('profiles') as any).update({
-      queue_position: position,
-      updated_at: new Date().toISOString()
-    }).eq('id', id)
-
-    if (error) {
-      get().fetchProfile(id)
-      throw error
-    }
-  },
-
-  initQueuePositions: async () => {
-    const { data: profiles, error } = await supabase.from('profiles')
-      .select('*')
-      .eq('role', 'courier')
-      
-    if (error || !profiles) return
-
-    const alreadyHasPosition = (profiles as any[]).filter(c => c.queue_position != null)
-    const needsPosition = (profiles as any[]).filter(c => c.queue_position == null)
-
-    if (needsPosition.length === 0) return
-
-    const maxExisting = alreadyHasPosition.reduce(
-      (max, c) => Math.max(max, (c.queue_position as number) ?? 0), 0
-    )
-
-    const sorted = [...needsPosition].sort(
-      (a, b) => new Date((a as any).created_at || 0).getTime() - new Date((b as any).created_at || 0).getTime()
-    )
-
-    for (let i = 0; i < sorted.length; i++) {
-        await (supabase.from('profiles') as any).update({
-            queue_position: maxExisting + i + 1,
-            updated_at: new Date().toISOString()
-        }).eq('id', (sorted[i] as any).id)
-    }
-  },
-
   reset: () => set({ users: [], isLoading: false, error: null }),
-}))
+})
