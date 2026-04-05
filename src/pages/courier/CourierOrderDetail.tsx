@@ -44,6 +44,13 @@ export function CourierOrderDetail() {
     return () => unsub();
   }, [id]);
 
+  // Auto-scroll to show success view when delivered
+  useEffect(() => {
+    if (order?.status === 'delivered') {
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    }
+  }, [order?.status]);
+
   const order = (currentOrder?.id === id ? currentOrder : null)
     || activeOrdersByCourier.find(o => o.id === id)
     || null;
@@ -124,9 +131,21 @@ export function CourierOrderDetail() {
     const nextStatus = getNextStatus();
     if (!nextStatus) return;
     setIsUpdating(true);
+    
+    const toast = useToastStore.getState().addToast;
+    if (nextStatus === 'delivered') {
+      toast('Menyelesaikan pesanan...', 'loading', 2000);
+    }
+
     await new Promise(r => setTimeout(r, 800));
-    updateOrderStatus(order.id, nextStatus, user?.id || '', user?.name || 'Kurir');
+    await updateOrderStatus(order.id, nextStatus, user?.id || '', user?.name || 'Kurir');
+    
     setIsUpdating(false);
+    
+    if (nextStatus === 'delivered') {
+      toast('Pesanan Berhasil Diselesaikan!', 'success', 3000);
+    }
+    
     if (nextStatus === 'picked_up') {
       setShowWaReminder(true);
       setTimeout(() => setShowWaReminder(false), 6000);
@@ -480,14 +499,14 @@ export function CourierOrderDetail() {
                   <button
                     onClick={handleBagikanInvoice}
                     disabled={isGeneratingInvoice}
-                    className="flex items-center justify-center gap-3 w-full p-4 bg-emerald-600 text-white rounded-2xl font-bold active:scale-95 transition-all shadow-lg shadow-emerald-200 disabled:opacity-50"
+                    className="flex items-center justify-center gap-3 w-full p-5 bg-emerald-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all shadow-xl shadow-emerald-200 disabled:opacity-50 border-b-4 border-emerald-800"
                   >
                     {isGeneratingInvoice ? (
                       <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     ) : (
-                      <span className="text-xl">🖨️</span>
+                      <span className="text-2xl">🖨️</span>
                     )}
-                    Unduh Invoice
+                    CETAK / UNDUH INVOICE
                   </button>
                   
                   <button

@@ -32,6 +32,15 @@ const STATUS_LABELS: Record<string, string> = {
   cancelled: 'Cancelled',
 };
 
+const formatCurrency = (val: number) =>
+  new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
+
+const formatShortCurrency = (val: number) => {
+  if (val >= 1000000) return `${(val / 1000000).toFixed(1)}jt`;
+  if (val >= 1000) return `${(val / 1000).toFixed(0)}rb`;
+  return val.toString();
+};
+
 export function OwnerOverview() {
   const { orders } = useOrderStore();
   const { users } = useUserStore();
@@ -47,7 +56,6 @@ export function OwnerOverview() {
   const [topCouriersLocal, setTopCouriersLocal] = useState<{ id: string; name: string; delivery_count: number; total_fee: number }[]>([]);
   const [isDataReady, setIsDataReady] = useState(false);
 
-  // Build courier name map for local aggregation
   const courierNameMap = useMemo(() => {
     const map: Record<string, string> = {};
     users.filter(u => u.role === 'courier').forEach(u => { map[u.id] = u.name; });
@@ -75,7 +83,6 @@ export function OwnerOverview() {
     return () => window.removeEventListener('indexeddb-synced', loadLocalData);
   }, [loadLocalData]);
 
-
   const allOrders = useMemo(() => {
     const map = new Map<string, Order>();
     weekOrders.forEach(o => map.set(o.id, o));
@@ -83,7 +90,6 @@ export function OwnerOverview() {
     return Array.from(map.values());
   }, [weekOrders, orders]);
 
-  // Period range
   const dateRange = useMemo(() => {
     const now = new Date();
     if (period === 'today') {
@@ -95,7 +101,6 @@ export function OwnerOverview() {
     return { start: startOfDay(subDays(now, 29)), end: endOfDay(now) };
   }, [period]);
 
-  // Filtered orders
   const filteredOrders = useMemo(() => {
     return allOrders.filter(o => {
       const dateStr = o.created_at;
@@ -110,7 +115,6 @@ export function OwnerOverview() {
     [filteredOrders]
   );
 
-  // KPIs
   const kpis = useMemo(() => {
     const grossRevenue = deliveredOrders.reduce((sum, o) => sum + (o.total_fee || 0), 0);
     const netRevenue = deliveredOrders.reduce((sum, o) =>
@@ -132,7 +136,6 @@ export function OwnerOverview() {
     };
   }, [filteredOrders, deliveredOrders, allOrders, activeCouriers, couriers]);
 
-  // Revenue trend (7 days)
   const revenueTrend = useMemo(() => {
     const now = new Date();
     const days = Array.from({ length: 7 }, (_, i) => {
@@ -153,7 +156,6 @@ export function OwnerOverview() {
     return days;
   }, [allOrders]);
 
-  // Order status distribution
   const statusDistribution = useMemo(() => {
     const counts: Record<string, number> = {};
     filteredOrders.forEach(o => {
@@ -165,34 +167,7 @@ export function OwnerOverview() {
     }));
   }, [filteredOrders]);
 
-  // Top performers — from local IndexedDB aggregation
   const topPerformers = topCouriersLocal;
-
-  const formatCurrency = (val: number) =>
-    new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
-
-  const formatShortCurrency = (val: number) => {
-    if (val >= 1000000) return `${(val / 1000000).toFixed(1)}jt`;
-    if (val >= 1000) return `${(val / 1000).toFixed(0)}rb`;
-    return val.toString();
-  };
-
-  if (!isDataReady) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-        <div className="w-12 h-12 border-4 border-amber-200 border-t-amber-600 rounded-full animate-spin mb-4" />
-        <p className="text-gray-500 font-medium">Memuat data performa...</p>
-      </div>
-    );
-  }
-
-  return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-        <div className="w-12 h-12 border-4 border-amber-200 border-t-amber-600 rounded-full animate-spin mb-4" />
-        <p className="text-gray-500 font-medium">Memuat data performa...</p>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -202,187 +177,196 @@ export function OwnerOverview() {
       />
 
       <div className="p-4 lg:p-8 space-y-6">
-        {/* Period Selector */}
-        <div className="flex items-center justify-between">
-          <div className="flex bg-white rounded-lg border border-gray-200 p-1">
-            {([
-              { key: 'today', label: 'Hari Ini' },
-              { key: '7days', label: '7 Hari' },
-              { key: '30days', label: '30 Hari' },
-            ] as const).map((p) => (
-              <button
-                key={p.key}
-                onClick={() => setPeriod(p.key)}
-                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                  period === p.key
-                    ? 'bg-emerald-600 text-white'
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                {p.label}
-              </button>
-            ))}
+        {!isDataReady ? (
+          <div className="flex flex-col items-center justify-center p-8 h-[60vh]">
+            <div className="w-12 h-12 border-4 border-amber-200 border-t-amber-600 rounded-full animate-spin mb-4" />
+            <p className="text-gray-500 font-medium">Memuat data performa...</p>
           </div>
-        </div>
-
-        {/* KPI Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <StatCard
-            title="Revenue Kotor"
-            value={formatCurrency(kpis.grossRevenue)}
-            icon={<DollarSign className="h-5 w-5" />}
-            subtitle={`${kpis.totalOrders} order`}
-          />
-          <StatCard
-            title="Net Revenue"
-            value={formatCurrency(kpis.netRevenue)}
-            icon={<TrendingUp className="h-5 w-5" />}
-            subtitle="Pendapatan bersih"
-          />
-          <StatCard
-            title="Success Rate"
-            value={`${kpis.successRate.toFixed(1)}%`}
-            icon={<BarChart3 className="h-5 w-5" />}
-            subtitle={`${deliveredOrders.length}/${kpis.totalOrders} delivered`}
-          />
-          <StatCard
-            title="Kurir Aktif"
-            value={`${kpis.activeCouriers}/${kpis.totalCouriers}`}
-            icon={<Users className="h-5 w-5" />}
-            subtitle={`${kpis.pendingOrders} order pending`}
-            to="/admin/dashboard"
-          />
-        </div>
-
-        {/* Revenue Trend */}
-        <Card>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Tren Revenue (7 Hari)</h3>
-            <div className="flex items-center gap-2 text-emerald-600">
-              <TrendingUp className="h-4 w-4" />
-              <span className="text-sm font-medium">Live</span>
+        ) : (
+          <>
+            {/* Period Selector */}
+            <div className="flex items-center justify-between">
+              <div className="flex bg-white rounded-lg border border-gray-200 p-1">
+                {([
+                  { key: 'today', label: 'Hari Ini' },
+                  { key: '7days', label: '7 Hari' },
+                  { key: '30days', label: '30 Hari' },
+                ] as const).map((p) => (
+                  <button
+                    key={p.key}
+                    onClick={() => setPeriod(p.key)}
+                    className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                      period === p.key
+                        ? 'bg-emerald-600 text-white'
+                        : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-          <ResponsiveContainer width="100%" height={280}>
-            <LineChart data={revenueTrend}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-              <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="#9CA3AF" />
-              <YAxis tickFormatter={formatShortCurrency} tick={{ fontSize: 11 }} stroke="#9CA3AF" width={50} />
-              <Tooltip
-                formatter={(value) => [formatCurrency(Number(value || 0))]}
-                labelFormatter={(label) => `Tanggal: ${label}`}
-              />
-              <Line
-                type="monotone"
-                dataKey="revenue"
-                stroke="#10B981"
-                strokeWidth={2}
-                dot={{ fill: '#10B981', strokeWidth: 2 }}
-                name="Revenue"
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </Card>
 
-        {/* Two Column */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Status Distribution */}
-          <Card>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Distribusi Status</h3>
-            {statusDistribution.length > 0 ? (
-              <div className="flex items-center gap-6">
-                <ResponsiveContainer width="50%" height={180}>
-                  <PieChart>
-                    <Pie
-                      data={statusDistribution}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={40}
-                      outerRadius={60}
-                      dataKey="value"
-                    >
-                      {statusDistribution.map((_, index) => (
-                        <Cell key={index} fill={COLORS[index % COLORS.length]} />
+            {/* KPI Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <StatCard
+                title="Revenue Kotor"
+                value={formatCurrency(kpis.grossRevenue)}
+                icon={<DollarSign className="h-5 w-5" />}
+                subtitle={`${kpis.totalOrders} order`}
+              />
+              <StatCard
+                title="Net Revenue"
+                value={formatCurrency(kpis.netRevenue)}
+                icon={<TrendingUp className="h-5 w-5" />}
+                subtitle="Pendapatan bersih"
+              />
+              <StatCard
+                title="Success Rate"
+                value={`${kpis.successRate.toFixed(1)}%`}
+                icon={<BarChart3 className="h-5 w-5" />}
+                subtitle={`${deliveredOrders.length}/${kpis.totalOrders} delivered`}
+              />
+              <StatCard
+                title="Kurir Aktif"
+                value={`${kpis.activeCouriers}/${kpis.totalCouriers}`}
+                icon={<Users className="h-5 w-5" />}
+                subtitle={`${kpis.pendingOrders} order pending`}
+                to="/admin/dashboard"
+              />
+            </div>
+
+            {/* Revenue Trend */}
+            <Card>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Tren Revenue (7 Hari)</h3>
+                <div className="flex items-center gap-2 text-emerald-600">
+                  <TrendingUp className="h-4 w-4" />
+                  <span className="text-sm font-medium">Live</span>
+                </div>
+              </div>
+              <ResponsiveContainer width="100%" height={280}>
+                <LineChart data={revenueTrend}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                  <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="#9CA3AF" />
+                  <YAxis tickFormatter={formatShortCurrency} tick={{ fontSize: 11 }} stroke="#9CA3AF" width={50} />
+                  <Tooltip
+                    formatter={(value) => [formatCurrency(Number(value || 0))]}
+                    labelFormatter={(label) => `Tanggal: ${label}`}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#10B981"
+                    strokeWidth={2}
+                    dot={{ fill: '#10B981', strokeWidth: 2 }}
+                    name="Revenue"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </Card>
+
+            {/* Two Column */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Status Distribution */}
+              <Card>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Distribusi Status</h3>
+                {statusDistribution.length > 0 ? (
+                  <div className="flex items-center gap-6">
+                    <ResponsiveContainer width="50%" height={180}>
+                      <PieChart>
+                        <Pie
+                          data={statusDistribution}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={40}
+                          outerRadius={60}
+                          dataKey="value"
+                        >
+                          {statusDistribution.map((_, index) => (
+                            <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="space-y-2">
+                      {statusDistribution.slice(0, 5).map((item, i) => (
+                        <div key={item.name} className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                          <span className="text-sm text-gray-600">{item.name}: {item.value}</span>
+                        </div>
                       ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="space-y-2">
-                  {statusDistribution.slice(0, 5).map((item, i) => (
-                    <div key={item.name} className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-                      <span className="text-sm text-gray-600">{item.name}: {item.value}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-400">Tidak ada data</div>
+                )}
+              </Card>
+
+              {/* Top Kurir (Local-First) */}
+              <Card>
+                <div className="flex items-center gap-2 mb-4">
+                  <Award className="h-5 w-5 text-emerald-600" />
+                  <h3 className="text-lg font-semibold text-gray-900">Top Kurir</h3>
+                </div>
+                {topPerformers.length > 0 ? (
+                  <div className="space-y-3">
+                    {topPerformers.map((c, i) => (
+                      <div key={c.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                            i === 0 ? 'bg-yellow-100 text-yellow-700' :
+                            i === 1 ? 'bg-gray-200 text-gray-600' :
+                            i === 2 ? 'bg-orange-100 text-orange-700' :
+                            'bg-gray-100 text-gray-500'
+                          }`}>
+                            {i + 1}
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900 text-sm">{c.name}</p>
+                            <p className="text-xs text-gray-500">{c.delivery_count} delivery</p>
+                          </div>
+                        </div>
+                        <p className="font-semibold text-gray-900 text-sm">{formatCurrency(c.total_fee)}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-400">Tidak ada data lokal</div>
+                )}
+              </Card>
+            </div>
+
+            {/* Top Customers (Local-First) */}
+            <Card>
+              <div className="flex items-center gap-2 mb-4">
+                <ShoppingBag className="h-5 w-5 text-blue-600" />
+                <h3 className="text-lg font-semibold text-gray-900">Top Pelanggan</h3>
+              </div>
+              {topCustomers.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {topCustomers.map((c, i) => (
+                    <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm">
+                          {i + 1}
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900 text-sm">{c.name}</p>
+                          <p className="text-xs text-gray-500">{c.order_count} order</p>
+                        </div>
+                      </div>
+                      <p className="font-semibold text-gray-900 text-sm">{formatCurrency(c.total_fee)}</p>
                     </div>
                   ))}
                 </div>
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-400">Tidak ada data</div>
-            )}
-          </Card>
-
-          {/* Top Kurir (Local-First) */}
-          <Card>
-            <div className="flex items-center gap-2 mb-4">
-              <Award className="h-5 w-5 text-emerald-600" />
-              <h3 className="text-lg font-semibold text-gray-900">Top Kurir</h3>
-            </div>
-            {topPerformers.length > 0 ? (
-              <div className="space-y-3">
-                {topPerformers.map((c, i) => (
-                  <div key={c.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                        i === 0 ? 'bg-yellow-100 text-yellow-700' :
-                        i === 1 ? 'bg-gray-200 text-gray-600' :
-                        i === 2 ? 'bg-orange-100 text-orange-700' :
-                        'bg-gray-100 text-gray-500'
-                      }`}>
-                        {i + 1}
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-900 text-sm">{c.name}</p>
-                        <p className="text-xs text-gray-500">{c.delivery_count} delivery</p>
-                      </div>
-                    </div>
-                    <p className="font-semibold text-gray-900 text-sm">{formatCurrency(c.total_fee)}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-400">Tidak ada data lokal</div>
-            )}
-          </Card>
-        </div>
-
-        {/* Top Customers (Local-First) */}
-        <Card>
-          <div className="flex items-center gap-2 mb-4">
-            <ShoppingBag className="h-5 w-5 text-blue-600" />
-            <h3 className="text-lg font-semibold text-gray-900">Top Pelanggan</h3>
-          </div>
-          {topCustomers.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {topCustomers.map((c, i) => (
-                <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm">
-                      {i + 1}
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900 text-sm">{c.name}</p>
-                      <p className="text-xs text-gray-500">{c.order_count} order</p>
-                    </div>
-                  </div>
-                  <p className="font-semibold text-gray-900 text-sm">{formatCurrency(c.total_fee)}</p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-6 text-gray-400 text-sm">Tidak ada data lokal</div>
-          )}
-        </Card>
+              ) : (
+                <div className="text-center py-6 text-gray-400 text-sm">Tidak ada data lokal</div>
+              )}
+            </Card>
+          </>
+        )}
       </div>
     </div>
   );

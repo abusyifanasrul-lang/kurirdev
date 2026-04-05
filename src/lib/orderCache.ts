@@ -282,32 +282,70 @@ export async function moveToLocalDB(
   order: import('@/types').Order,
   isPartial: boolean = false
 ): Promise<void> {
-  if (isPartial) {
-    const existing = await localDB.orders.get(order.id)
-    if (existing) {
-      const merged = { ...existing }
-      Object.keys(order).forEach(key => {
-        if ((order as any)[key] !== undefined) {
-          (merged as any)[key] = (order as any)[key]
-        }
-      })
-      // Ensure specific fields are updated if present in the partial
-      if (order.created_at) (merged as any)._date = getLocalDateStr(order.created_at)
-      
-      await localDB.orders.put(merged)
-      window.dispatchEvent(new CustomEvent('indexeddb-synced'))
+  const FINAL_STATUSES = ['delivered', 'cancelled']
+  const isFinal = FINAL_STATUSES.includes(order.status)
+
+  try {
+    if (!isFinal) {
+      // MANDATORY: Local DB only for finalized orders.
+      // If it exists, delete it.
+      await localDB.orders.delete(order.id)
+      console.info(`[MirrorDB] Removing non-finalized order: ${order.order_number || order.id} status=${order.status}`)
       return
     }
-  }
 
-  // Fallback to full put if not partial or not found
-  await localDB.orders.put({
-    ...order,
-    _date: getLocalDateStr(order.created_at || new Date().toISOString())
-  })
-  window.dispatchEvent(new CustomEvent('indexeddb-synced'))
-  const total = await localDB.orders.count()
-  saveMeta({ total_records: total })
+    if (isPartial) {
+      const existing = await localDB.orders.get(order.id)
+      if (existing) {
+        const merged = { ...existing }
+        Object.keys(order).forEach(key => {
+          if ((order as any)[key] !== undefined && (order as any)[key] !== null) {
+            (merged as any)[key] = (order as any)[key]
+          }
+        })
+        // Ensure _date is correct
+        if (order.created_at) (merged as any)._date = getLocalDateStr(order.created_at)
+        else if (existing.created_at) (merged as any)._date = getLocalDateStr(existing.created_at)
+        
+        await localDB.orders.put(merged)
+        console.groupCollapsed(`[MirrorDB] Partial Update (Final): ${order.order_number || order.id}`)
+        console.info('New Status:', order.status)
+        console.groupEnd()
+        window.dispatchEvent(new CustomEvent('indexeddb-synced'))
+        return
+      }
+    }
+
+    // Full Put for finalized order
+    const fullOrder = {
+      ...order,
+      _date: getLocalDateStr(order.created_at || new Date().toISOString())
+    }
+    await localDB.orders.put(fullOrder)
+    console.info(`[MirrorDB] Finalized Write: ${fullOrder.order_number || fullOrder.id} status=${fullOrder.status}`)
+    window.dispatchEvent(new CustomEvent('indexeddb-synced'))
+    
+    const total = await localDB.orders.count()
+    saveMeta({ total_records: total })
+  } catch (err) {
+    console.error('[MirrorDB] Write failed:', err, order)
+    throw err
+  }
+}
+
+/**
+ * Purge non-finalized orders from IndexedDB to comply with mandatory rule.
+ */
+export async function purgeNonFinalizedOrders() {
+  const FINAL_STATUSES = ['delivered', 'cancelled']
+  const all = await localDB.orders.toArray()
+  const toDelete = all.filter(o => !FINAL_STATUSES.includes(o.status))
+  
+  if (toDelete.length > 0) {
+    await localDB.orders.bulkDelete(toDelete.map(o => o.id))
+    console.info(`[MirrorDB] Purged ${toDelete.length} non-finalized orders.`)
+    window.dispatchEvent(new CustomEvent('indexeddb-synced'))
+  }
 }
 
 // Hapus order dari IndexedDB

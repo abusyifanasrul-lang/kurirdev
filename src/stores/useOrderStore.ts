@@ -151,6 +151,10 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     const { courierId } = filter || {}
     set({ isLoading: true })
     
+    // MANDATORY Cleanup: Ensure local DB doesn't have active orders
+    const { purgeNonFinalizedOrders } = await import('@/lib/orderCache')
+    await purgeNonFinalizedOrders()
+    
     // 1. LATEST MIRROR LOAD (Optimistic)
     // Prefer cache for history to avoid heavy initial reads
     if (courierId) {
@@ -208,7 +212,6 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     const currentState = channelStates.get(channelId)
     if (activeChannels.has(channelId) || currentState === 'joining' || currentState === 'joined') {
       console.log(`♻️ Realtime: ${channelId} already ${currentState || 'initialized'}. Skipping duplicate.`)
-      // If we are for some reason stuck in joining, we might want to allow a retry but keep it simple for now
       return () => { /* No-op cleanup for duplicate calls */ }
     }
 
@@ -226,9 +229,15 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
           const { eventType, new: newRec, old: oldRec } = payload
           console.log(`🔔 Realtime [${channelId}] ${eventType}:`, newRec || oldRec)
           
-          // MIRRORING ARCHITECTURE: Every change goes to localDB
+          // MIRRORING ARCHITECTURE: Only finalized orders to localDB
           if (eventType === 'UPDATE' || eventType === 'INSERT') {
-            await moveToLocalDB(newRec as Order, eventType === 'UPDATE')
+            const FINAL_STATUSES = ['delivered', 'cancelled']
+            const isFinal = FINAL_STATUSES.includes(newRec.status)
+            
+            if (isFinal) {
+              console.info(`[useOrderStore] Realtime ${eventType} mirroring to localDB: ${newRec.id}`)
+              await moveToLocalDB(newRec as Order, eventType === 'UPDATE')
+            }
           }
 
           set((state) => {
@@ -254,8 +263,6 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
               const existingHistory = updatedHistory.find(o => o.id === orderId)
               
               // MERGE logic: Use existing state or full row from newRec
-              // Since we set REPLICA IDENTITY FULL, newRec should be complete, 
-              // but we'll merge manually just to be safe if some fields are missing.
               let baseOrder: Order = (existingActive || existingHistory) as Order
 
               let mergedOrder: Order
@@ -265,7 +272,6 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
                   if (newRec[k] !== undefined && newRec[k] !== null) (mergedOrder as any)[k] = newRec[k] 
                 })
               } else {
-                // If not in memory but we got update, we trust newRec (which is FULL now)
                 mergedOrder = newRec as Order
               }
 
@@ -273,21 +279,17 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
               const isNowActive = !['delivered', 'cancelled'].includes(mergedOrder.status)
 
               if (wasActive && !isNowActive) {
-                // Move from Active to History
                 updatedActive = updatedActive.filter(o => o.id !== mergedOrder.id)
-                // Avoid duplicates in history
                 if (!updatedHistory.some(o => o.id === mergedOrder.id)) {
                   updatedHistory = [mergedOrder, ...updatedHistory]
                 } else {
                   updatedHistory = updatedHistory.map(o => o.id === mergedOrder.id ? mergedOrder : o)
                 }
               } else if (isNowActive) {
-                // Update in Active
                 const idx = updatedActive.findIndex(o => o.id === mergedOrder.id)
                 if (idx !== -1) updatedActive[idx] = mergedOrder
                 else updatedActive = [mergedOrder, ...updatedActive]
               } else {
-                // Update in History
                 const idx = updatedHistory.findIndex(o => o.id === mergedOrder.id)
                 if (idx !== -1) updatedHistory[idx] = mergedOrder
               }
@@ -375,27 +377,19 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
 
     try {
       await withRetry(async () => {
-        // 1. Generate Order Number via RPC (Atomic & Daily Reset)
         const { data: orderNumber, error: rpcError } = await supabase.rpc('generate_order_number')
-        
         if (rpcError) throw rpcError
-
-        // 2. Insert with the atomic number
         const finalOrderData = {
           ...orderData,
           order_number: orderNumber
         }
-
         const { data, error } = await (supabase.from('orders') as any)
           .insert(finalOrderData)
           .select()
           .single()
-        
         if (error) throw error
-        
         const newOrder = data as Order
         set(state => ({ orders: [newOrder, ...state.orders] }))
-
         sendMockNotification(
           'Order Baru Masuk!',
           `Order ${newOrder.order_number} sebesar Rp ${newOrder.total_fee.toLocaleString('id-ID')} menunggumu!`,
@@ -421,14 +415,14 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
 
   updateOrderStatus: async (orderId, status, userId, userName, notes) => {
     const isSyncing = get().isSyncingOrders.has(orderId)
-    if (isSyncing) return // Prevent duplicate syncs while one is in progress
+    if (isSyncing) return 
 
     const order = get().orders.find(o => o.id === orderId)
       || get().currentOrder
       || get().activeOrdersByCourier.find(o => o.id === orderId)
       
     if (!order) return
-    if (order.status === status) return // Already updated
+    if (order.status === status) return 
 
     const setSyncing = get().setSyncing
     const addToast = useToastStore.getState().addToast
@@ -441,7 +435,6 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
       await withRetry(async () => {
         if (status === 'delivered') {
           const { commission_rate, commission_threshold } = useSettingsStore.getState()
-          
           const { error } = await (supabase.rpc as any)('complete_order', {
              p_order_id: orderId,
              p_user_id: userId,
@@ -450,7 +443,6 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
              p_commission_rate: commission_rate,
              p_commission_threshold: commission_threshold
           })
-          
           if (error) throw error
           
           const updatedOrder = { 
@@ -461,18 +453,24 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
             applied_commission_threshold: commission_threshold, 
             actual_delivery_time: new Date().toISOString() 
           }
-          moveToLocalDB(updatedOrder as Order).catch(err => console.error('Mirror write error:', err))
+          
+          // Optimistic local state update for delivered case
+          set(state => ({
+            activeOrdersByCourier: state.activeOrdersByCourier.filter(o => o.id !== orderId),
+            orders: [updatedOrder as Order, ...state.orders.filter(o => o.id !== orderId)],
+            currentOrder: state.currentOrder?.id === orderId ? updatedOrder as Order : state.currentOrder
+          }))
 
+          console.info(`[useOrderStore] Manual delivered mirroring to localDB: ${orderId}`)
+          await moveToLocalDB(updatedOrder as Order).catch(err => console.error('Mirror write error:', err))
         } else {
           const updates: Partial<Order> = {
             status,
             updated_at: new Date().toISOString()
           }
-
           if (status === 'picked_up' && !order.actual_pickup_time) {
             updates.actual_pickup_time = new Date().toISOString()
           }
-
           if (status === 'cancelled') {
             updates.is_waiting = false
             updates.cancelled_at = new Date().toISOString()
@@ -490,15 +488,17 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
             notes: notes || ''
           })
 
+          const updatedOrder = { ...order, ...updates }
+
           if (status === 'cancelled') {
-            const updatedOrder = { ...order, ...updates }
-            moveToLocalDB(updatedOrder as Order).catch(err => console.error('Mirror write error:', err))
+            console.info(`[useOrderStore] Manual cancelled mirroring to localDB: ${orderId}`)
+            await moveToLocalDB(updatedOrder as Order).catch(err => console.error('Mirror write error:', err))
           }
 
-          // Optimistic local state update
           set(state => ({
-            orders: state.orders.map(o => o.id === orderId ? { ...o, ...updates } : o),
-            activeOrdersByCourier: state.activeOrdersByCourier.map(o => o.id === orderId ? { ...o, ...updates } : o)
+            orders: state.orders.map(o => o.id === orderId ? updatedOrder as Order : o),
+            activeOrdersByCourier: state.activeOrdersByCourier.map(o => o.id === orderId ? updatedOrder as Order : o),
+            currentOrder: state.currentOrder?.id === orderId ? updatedOrder as Order : state.currentOrder
           }))
         }
       }, {
@@ -524,7 +524,6 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     const addToast = useToastStore.getState().addToast
     const removeToast = useToastStore.getState().removeToast
     let retryToastId: string | undefined
-
     try {
       await withRetry(async () => {
         const { error } = await (supabase.from('orders') as any)
@@ -535,10 +534,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
             updated_at: new Date().toISOString()
           })
           .eq('id', orderId)
-
         if (error) throw error
- 
-        // 2. Insert Tracking Log
         await (supabase.from('tracking_logs') as any).insert({
           order_id: orderId,
           status: 'assigned',
@@ -546,8 +542,6 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
           changed_by_name: userName,
           notes: `Assigned to ${courierName}`
         })
- 
-        // 3. Optimistic local state update
         set(state => ({
           orders: state.orders.map(o => o.id === orderId ? { 
             ...o, 
@@ -556,8 +550,6 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
             assigned_at: new Date().toISOString()
           } : o)
         }))
- 
-        // Mirror write for offline consistency
         const order = get().orders.find(o => o.id === orderId)
         if (order) {
           moveToLocalDB({
@@ -593,9 +585,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
       cancelled_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     }).eq('id', orderId)
-
     if (error) throw error
-
     await get().updateOrderStatus(orderId, 'cancelled', userId, userName, reason)
   },
 
@@ -603,7 +593,6 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     if (updates.payment_status === 'paid') {
         const { error: rpcError } = await (supabase.rpc as any)('mark_order_paid', { p_order_id: orderId })
         if (rpcError) throw rpcError
-        
         const { payment_status, ...restUpdates } = updates as any
         if (Object.keys(restUpdates).length > 0) {
            await (supabase.from('orders') as any).update({ ...restUpdates, updated_at: new Date().toISOString() }).eq('id', orderId)
@@ -615,8 +604,6 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
          updated_at: new Date().toISOString()
        }).eq('id', orderId)
     }
-
-    // Common optimistic update for any updateOrder call
     set(state => ({
       orders: state.orders.map(o => o.id === orderId ? { ...o, ...updates } : o)
     }))
@@ -666,7 +653,6 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
       updated_at: new Date().toISOString()
     }).eq('id', orderId);
   },
-
 
   getOrdersByCourier: (courierId) => {
     return get().orders.filter(o => o.courier_id === courierId)

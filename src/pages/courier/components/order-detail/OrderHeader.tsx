@@ -46,9 +46,26 @@ export const OrderHeader: React.FC<OrderHeaderProps> = ({
             {order.order_number}
           </h1>
           <div className="flex items-center gap-2 mt-1">
-            <span className="text-sm font-black text-gray-900 leading-none">
-              {status.emoji} {status.label.toUpperCase()}
-            </span>
+            {order.status === 'delivered' ? (
+              <button 
+                onClick={onBagikanInvoice}
+                disabled={isGeneratingInvoice}
+                className={cn(
+                  "flex items-center gap-2 px-2 py-1 rounded-lg transition-all active:scale-95 bg-green-50 border border-green-200 shadow-sm",
+                  isGeneratingInvoice ? "opacity-50 animate-pulse" : "hover:bg-green-100"
+                )}
+                title="Klik untuk Unduh Invoice"
+              >
+                <span className="text-sm font-black text-green-700 leading-none flex items-center gap-1.5">
+                  {status.emoji} {status.label.toUpperCase()}
+                  <span className="text-[10px] bg-green-600 text-white px-1.5 py-0.5 rounded-md font-bold animate-bounce shadow-sm ml-1">PRINT 🖨️</span>
+                </span>
+              </button>
+            ) : (
+              <span className="text-sm font-black text-gray-900 leading-none">
+                {status.emoji} {status.label.toUpperCase()}
+              </span>
+            )}
           </div>
         </div>
       </div>

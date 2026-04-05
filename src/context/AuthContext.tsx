@@ -15,7 +15,10 @@ interface AuthContextType extends AuthState {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { user: cachedUser, login: storeLogin, logout: storeLogout, updateUser: storeUpdateUser } = useSessionStore();
+  const cachedUser = useSessionStore(state => state.user);
+  const storeLogin = useSessionStore(state => state.login);
+  const storeLogout = useSessionStore(state => state.logout);
+  const storeUpdateUser = useSessionStore(state => state.updateUser);
   
   const [state, setState] = useState<AuthState>({
     user: cachedUser,
