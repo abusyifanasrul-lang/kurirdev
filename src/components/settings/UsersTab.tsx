@@ -12,7 +12,7 @@ interface UsersTabProps {
   currentUser: UserType | null;
   users: UserType[];
   onAddUser: (data: any) => Promise<{ success: boolean; error?: string }>;
-  onUpdateUser: (id: string, updates: any) => void;
+  onUpdateUser: (id: string, updates: any) => Promise<{ success: boolean; error?: string }>;
   onToggleSuspend: (user: UserType) => void;
 }
 
@@ -127,22 +127,38 @@ export function UsersTab({
     }
   };
 
-  const handleEditSubmit = () => {
-    if (!selectedUser) return;
-    const updates: any = {
-      name: editForm.name,
-      email: editForm.email,
-      phone: editForm.phone,
-      role: editForm.role,
-      vehicle_type: editForm.role === 'courier' ? editForm.vehicle_type : undefined,
-      plate_number: editForm.role === 'courier' ? editForm.plate_number : undefined,
-    };
-    if (editForm.password) {
-        // Password update logic usually needs extra care
+  const handleEditSubmit = async () => {
+    if (!selectedUser || isSubmitting) return;
+    
+    setIsSubmitting(true);
+    try {
+      const updates: any = {
+        name: editForm.name,
+        email: editForm.email,
+        phone: editForm.phone,
+        role: editForm.role,
+        vehicle_type: editForm.role === 'courier' ? editForm.vehicle_type : undefined,
+        plate_number: editForm.role === 'courier' ? editForm.plate_number : undefined,
+      };
+      
+      if (editForm.password) {
+        updates.password = editForm.password;
+      }
+
+      const result = await onUpdateUser(selectedUser.id, updates);
+      
+      if (result.success) {
+        showLocalMessage('success', 'User berhasil diperbarui!');
+        setIsEditModalOpen(false);
+        setSelectedUser(null);
+      } else {
+        showLocalMessage('error', result.error || 'Gagal memperbarui user');
+      }
+    } catch (err: any) {
+      showLocalMessage('error', err.message || 'Terjadi kesalahan sistem');
+    } finally {
+      setIsSubmitting(false);
     }
-    onUpdateUser(selectedUser.id, updates);
-    setIsEditModalOpen(false);
-    setSelectedUser(null);
   };
 
   const openEditModal = (u: UserType) => {
@@ -326,7 +342,7 @@ export function UsersTab({
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>Batal</Button>
-            <Button onClick={handleEditSubmit}>Simpan</Button>
+            <Button onClick={handleEditSubmit} isLoading={isSubmitting}>Simpan Perubahan</Button>
           </div>
         </div>
       </Modal>
