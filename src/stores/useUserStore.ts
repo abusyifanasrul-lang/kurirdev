@@ -130,6 +130,9 @@ export const useUserStore = create<UserState>()((set, get) => ({
     }
 
     const channel = supabase.channel(channelId)
+    activeChannels.set(channelId, channel) // Add immediate sync lock
+
+    channel
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'profiles' },
@@ -164,7 +167,6 @@ export const useUserStore = create<UserState>()((set, get) => ({
           activeChannels.delete(channelId)
         } else if (status === 'SUBSCRIBED') {
           console.log(`✅ Realtime connection active: ${channelId}. Syncing state...`)
-          activeChannels.set(channelId, channel)
           get().fetchUsers()
         } else if (status === 'CLOSED') {
           console.log(`🔌 Realtime connection closed: ${channelId}`)
@@ -193,6 +195,9 @@ export const useUserStore = create<UserState>()((set, get) => ({
     }
 
     const channel = supabase.channel(channelId)
+    activeChannels.set(channelId, channel) // Add immediate sync lock
+
+    channel
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${id}` },
@@ -221,7 +226,6 @@ export const useUserStore = create<UserState>()((set, get) => ({
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
           console.log(`✅ Realtime profile sync active: ${id}`)
-          activeChannels.set(channelId, channel)
           get().fetchProfile(id)
         } else if (status === 'CLOSED') {
           activeChannels.delete(channelId)
