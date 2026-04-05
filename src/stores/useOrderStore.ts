@@ -271,7 +271,13 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
           })
         }
       )
-      .subscribe()
+      .subscribe((status, err) => {
+        if (status === 'CHANNEL_ERROR') {
+          console.error(`❌ Global Order Realtime error:`, err)
+        } else if (status === 'SUBSCRIBED') {
+          console.log(`✅ Global Order Realtime active`)
+        }
+      })
 
     return () => {
       supabase.removeChannel(channel)
