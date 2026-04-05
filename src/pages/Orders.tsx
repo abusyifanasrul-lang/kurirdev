@@ -115,7 +115,7 @@ export function Orders() {
     }
 
     return Array.from(map.values())
-  }, [orders, localDBOrders,
+  }, [orders, activeOrdersByCourier, localDBOrders,
       cachedOrders, cacheStatus])
 
   const calcPlatformFee = (order: Order) => {
@@ -218,13 +218,17 @@ export function Orders() {
     // 2. Initial Fetch to Zustand (Aktif)
     fetchInitialOrders()
 
+    // 3. Realtime Subscription
+    const unsubscribe = subscribeOrders()
+
     // Listen jika IndexedDB baru diisi
     window.addEventListener('indexeddb-synced', loadWeekOrders)
 
     return () => {
+      unsubscribe()
       window.removeEventListener('indexeddb-synced', loadWeekOrders)
     }
-  }, [fetchInitialOrders])
+  }, [fetchInitialOrders, subscribeOrders])
 
   // Modal States
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
