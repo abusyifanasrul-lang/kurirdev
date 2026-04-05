@@ -165,6 +165,9 @@ export function OwnerOverview() {
     }));
   }, [filteredOrders]);
 
+  // Top performers — from local IndexedDB aggregation
+  const topPerformers = topCouriersLocal;
+
   if (!isDataReady) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
@@ -174,8 +177,14 @@ export function OwnerOverview() {
     );
   }
 
-  // Top performers — from local IndexedDB aggregation
-  const topPerformers = topCouriersLocal;
+  if (!isDataReady) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+        <div className="w-12 h-12 border-4 border-amber-200 border-t-amber-600 rounded-full animate-spin mb-4" />
+        <p className="text-gray-500 font-medium">Memuat data performa...</p>
+      </div>
+    );
+  }
 
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
