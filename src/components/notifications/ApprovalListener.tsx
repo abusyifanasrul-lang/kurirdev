@@ -47,11 +47,11 @@ export function ApprovalListener() {
           if (!error && data) {
             const typedRequest = data as any;
             const notification: CustomerChangeRequest = {
-              ...data,
+              ...(data as any),
               customer_name: typedRequest.customers?.name,
               requester_name: typedRequest.profiles?.name,
               order_number: typedRequest.orders?.order_number
-            } as any;
+            };
 
             setNotifications(prev => [notification, ...prev]);
             
