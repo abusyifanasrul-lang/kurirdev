@@ -17,6 +17,7 @@ interface SettingsStore extends BusinessSettings {
   updateCourierInstruction: (id: string, instruction: Partial<CourierInstruction>) => void
   deleteCourierInstruction: (id: string) => void
   fetchSettings: () => Promise<void>
+  subscribeSettings: () => () => void
   reset: () => void
 }
 
@@ -56,6 +57,18 @@ export const useSettingsStore = create<SettingsStore>()(
           commission_threshold: data.commission_threshold,
           courier_instructions: data.courier_instructions || DEFAULT_INSTRUCTIONS
         }))
+      },
+      subscribeSettings: () => {
+        const channel = supabase.channel('public:settings')
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'settings' },
+            () => {
+              (useSettingsStore.getState() as any).fetchSettings()
+            }
+          )
+          .subscribe()
+        return () => supabase.removeChannel(channel)
       },
       reset: () => set((state: SettingsStore) => ({
         ...state,

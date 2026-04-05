@@ -4,6 +4,9 @@ import { User, UserRole, CreateUserInput } from '@/types'
 import { logger } from '@/lib/logger'
 import { cacheProfiles, getCachedProfiles, saveProfileSyncTime, localDB } from '@/lib/orderCache'
 
+// Module-level tracker for active channels
+const activeChannels = new Map<string, any>()
+
 interface UserState {
   users: User[]
   isLoading: boolean
@@ -100,7 +103,14 @@ export const useUserStore = create<UserState>()((set, get) => ({
   subscribeUsers: () => {
     get().fetchUsers()
 
-    const channelId = `users_list_${Math.random().toString(36).substring(7)}`
+    const channelId = 'users:list'
+    
+    // Deduplication check
+    if (activeChannels.has(channelId)) {
+      console.log(`♻️ Reusing existing realtime channel for ${channelId}`)
+      return () => {}
+    }
+
     const channel = supabase.channel(channelId)
       .on(
         'postgres_changes',
@@ -115,7 +125,6 @@ export const useUserStore = create<UserState>()((set, get) => ({
             set({ users: [...currentUsers, newUser] })
             profiles.put(newUser)
           } else if (eventType === 'UPDATE') {
-            // REPLICA IDENTITY FULL → payload always contains all columns
             const updatedUser = mapProfileToUser(newRec)
             set({ users: currentUsers.map(u => u.id === newRec.id ? updatedUser : u) })
             profiles.put(updatedUser)
@@ -129,13 +138,16 @@ export const useUserStore = create<UserState>()((set, get) => ({
         if (status === 'CHANNEL_ERROR') {
           console.error(`❌ Realtime subscription failed for ${channelId}:`, err)
           logger.error(`Realtime subscription error for ${channelId}`, err)
+          activeChannels.delete(channelId)
         } else if (status === 'SUBSCRIBED') {
           console.log(`✅ Realtime subscription active for ${channelId}`)
+          activeChannels.set(channelId, channel)
         }
       })
       
     return () => {
       supabase.removeChannel(channel)
+      activeChannels.delete(channelId)
     }
   },
 
@@ -143,7 +155,13 @@ export const useUserStore = create<UserState>()((set, get) => ({
     // Initial fetch for this specific profile
     get().fetchProfile(id)
 
-    const channelId = `profile_${id}_${Math.random().toString(36).substring(7)}`
+    const channelId = `profile:single:${id}`
+    
+    if (activeChannels.has(channelId)) {
+      console.log(`♻️ Reusing existing realtime channel for ${channelId}`)
+      return () => {}
+    }
+
     const channel = supabase.channel(channelId)
       .on(
         'postgres_changes',
@@ -154,8 +172,8 @@ export const useUserStore = create<UserState>()((set, get) => ({
           
           let updatedUser: User
           if (existingUser) {
-             // Merge partial update
-             updatedUser = { ...existingUser }
+             // Merge partial update and deep clone for safety
+             updatedUser = JSON.parse(JSON.stringify(existingUser))
              Object.keys(payload.new).forEach(key => {
                if (payload.new[key] !== undefined) {
                   (updatedUser as any)[key] = payload.new[key]
@@ -170,10 +188,15 @@ export const useUserStore = create<UserState>()((set, get) => ({
           }))
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          activeChannels.set(channelId, channel)
+        }
+      })
       
     return () => {
       supabase.removeChannel(channel)
+      activeChannels.delete(channelId)
     }
   },
 

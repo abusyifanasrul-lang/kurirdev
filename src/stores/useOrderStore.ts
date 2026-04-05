@@ -3,15 +3,19 @@ import { supabase } from '@/lib/supabaseClient'
 import { withRetry } from '@/utils/retry'
 import { useToastStore } from '@/stores/useToastStore'
 import { Order, OrderStatus, OrderStatusHistory } from '@/types'
-import {
-  moveToLocalDB,
-  removeFromLocalDB,
-  getOrdersForWeek,
-  getOrdersByCourierFromLocal,
-  markAsPaidInLocalDB
+import { 
+  moveToLocalDB, 
+  removeFromLocalDB, 
+  getOrdersForWeek, 
+  getOrdersByCourierFromLocal, 
+  markAsPaidInLocalDB 
 } from '@/lib/orderCache'
 import { sendMockNotification } from '@/utils/notification'
 import { useSettingsStore } from '@/stores/useSettingsStore'
+import { logger } from '@/lib/logger'
+
+// Module-level tracker for active channels to prevent redundant subscriptions
+const activeChannels = new Map<string, any>()
 
 interface OrderState {
   orders: Order[]
@@ -199,7 +203,16 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     const channelId = courierId ? `orders:courier:${courierId}` : 'orders:global'
     const filterStr = courierId ? `courier_id=eq.${courierId}` : undefined
 
-    const channel = supabase.channel(`${channelId}-${Date.now()}`)
+    // Deduplication check: if a channel for this ID already exists, don't create a new one
+    if (activeChannels.has(channelId)) {
+      console.log(`♻️ Reusing existing realtime channel for ${channelId}`)
+      return () => {
+        // We don't remove if it's shared to avoid breaking other listeners
+        // In a more complex app, we'd use reference counting
+      }
+    }
+
+    const channel = supabase.channel(channelId)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'orders', filter: filterStr },
@@ -273,14 +286,18 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
       )
       .subscribe((status, err) => {
         if (status === 'CHANNEL_ERROR') {
-          console.error(`❌ Global Order Realtime error:`, err)
+          console.error(`❌ Realtime subscription failed for ${channelId}:`, err)
+          logger.error(`Realtime subscription error for ${channelId}`, err)
+          activeChannels.delete(channelId)
         } else if (status === 'SUBSCRIBED') {
-          console.log(`✅ Global Order Realtime active`)
+          console.log(`✅ Realtime subscription active for ${channelId}`)
+          activeChannels.set(channelId, channel)
         }
       })
 
     return () => {
       supabase.removeChannel(channel)
+      activeChannels.delete(channelId)
     }
   },
 
@@ -291,16 +308,23 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     }
     fetchCurrent()
 
-    const channel = supabase.channel(`public:orders:${orderId}-${Date.now()}`)
+    const channelId = `order:single:${orderId}`
+
+    if (activeChannels.has(channelId)) {
+      console.log(`♻️ Reusing existing realtime channel for ${channelId}`)
+      return () => {}
+    }
+
+    const channel = supabase.channel(channelId)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `id=eq.${orderId}` }, (payload) => {
         if (payload.eventType === 'DELETE') {
            set({ currentOrder: null })
         } else if (payload.eventType === 'UPDATE') {
            const existing = get().currentOrder
            if (existing && existing.id === orderId) {
-             const merged = { ...existing }
+             const merged = JSON.parse(JSON.stringify(existing)) // deep clone for safety
              Object.keys(payload.new).forEach(k => { if (payload.new[k] !== undefined) (merged as any)[k] = payload.new[k] })
-             set({ currentOrder: merged })
+             set({ currentOrder: merged as Order })
            } else {
              set({ currentOrder: payload.new as Order })
            }
@@ -308,10 +332,15 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
            set({ currentOrder: payload.new as Order })
         }
       })
-      .subscribe()
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          activeChannels.set(channelId, channel)
+        }
+      })
 
     return () => {
       supabase.removeChannel(channel)
+      activeChannels.delete(channelId)
     }
   },
 

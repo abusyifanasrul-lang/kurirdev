@@ -2,6 +2,10 @@ import { create } from 'zustand'
 import { supabase } from '@/lib/supabaseClient'
 import { Notification } from '@/types'
 import { cacheNotifications, getCachedNotifications, markNotificationReadLocal } from '@/lib/orderCache'
+import { logger } from '@/lib/logger'
+
+// Module-level tracker for active channels
+const activeChannels = new Map<string, any>()
 
 interface NotificationState {
   notifications: Notification[]
@@ -43,9 +47,14 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
         }
       })
 
-    // Use a unique channel name for each subscription call to avoid "cannot add callbacks after subscribe" error
-    // when multiple components (Layout + Page) subscribe simultaneously.
-    const channelId = `notif_user_${userId}_${Math.random().toString(36).substring(7)}`
+    const channelId = `notifications:user:${userId}`
+    
+    // Deduplication check
+    if (activeChannels.has(channelId)) {
+      console.log(`♻️ Reusing existing realtime channel for ${channelId}`)
+      return () => {}
+    }
+
     const channel = supabase.channel(channelId)
       .on(
         'postgres_changes',
@@ -76,9 +85,21 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
           })
         }
       )
-      .subscribe()
+      .subscribe((status, err) => {
+        if (status === 'CHANNEL_ERROR') {
+          console.error(`❌ Realtime subscription failed for ${channelId}:`, err)
+          logger.error(`Realtime subscription error for ${channelId}`, err)
+          activeChannels.delete(channelId)
+        } else if (status === 'SUBSCRIBED') {
+          console.log(`✅ Realtime subscription active for ${channelId}`)
+          activeChannels.set(channelId, channel)
+        }
+      })
 
-    return () => { supabase.removeChannel(channel) }
+    return () => { 
+      supabase.removeChannel(channel)
+      activeChannels.delete(channelId)
+    }
   },
 
   subscribeAllNotifications: () => {
@@ -90,7 +111,14 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
         if (data) set({ notifications: data as Notification[], isLoading: false })
       })
 
-    const channelId = `notif_all_${Math.random().toString(36).substring(7)}`
+    const channelId = 'notifications:all'
+    
+    // Deduplication check
+    if (activeChannels.has(channelId)) {
+      console.log(`♻️ Reusing existing realtime channel for ${channelId}`)
+      return () => {}
+    }
+
     const channel = supabase.channel(channelId)
       .on(
         'postgres_changes',
@@ -121,9 +149,21 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
           })
         }
       )
-      .subscribe()
+      .subscribe((status, err) => {
+        if (status === 'CHANNEL_ERROR') {
+          console.error(`❌ Realtime subscription failed for ${channelId}:`, err)
+          logger.error(`Realtime subscription error for ${channelId}`, err)
+          activeChannels.delete(channelId)
+        } else if (status === 'SUBSCRIBED') {
+          console.log(`✅ Realtime subscription active for ${channelId}`)
+          activeChannels.set(channelId, channel)
+        }
+      })
 
-    return () => { supabase.removeChannel(channel) }
+    return () => { 
+      supabase.removeChannel(channel)
+      activeChannels.delete(channelId)
+    }
   },
 
   addNotification: async (data: Omit<Notification, 'id' | 'sent_at' | 'is_read'>) => {

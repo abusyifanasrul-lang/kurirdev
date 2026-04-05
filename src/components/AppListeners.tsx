@@ -21,14 +21,23 @@ export const AppListeners = () => {
   const { fetchProfile } = useUserStore()
   const { fetchSettings } = useSettingsStore()
 
-  // 1. Profile & Settings listeners
+  // 1. Settings listeners (Global)
+  useEffect(() => {
+    if (user) {
+      fetchSettings()
+      const unsub = (useSettingsStore.getState() as any).subscribeSettings()
+      return () => unsub()
+    }
+  }, [user?.id])
+
+  // 1.b Profile specific listener (Force logout if suspended)
   useEffect(() => {
     if (user) {
       fetchProfile(user.id)
-      fetchSettings()
 
+      const profileChannelId = `profile:active:${user.id}`
       const profileChannel = supabase
-        .channel(`public:profiles:id=eq.${user.id}`)
+        .channel(profileChannelId)
         .on(
           'postgres_changes',
           {
@@ -48,20 +57,8 @@ export const AppListeners = () => {
         )
         .subscribe()
 
-      const settingsChannel = supabase
-        .channel('public:settings')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'settings' },
-          () => {
-            fetchSettings()
-          }
-        )
-        .subscribe()
-
       return () => {
         supabase.removeChannel(profileChannel)
-        supabase.removeChannel(settingsChannel)
       }
     }
   }, [user?.id])

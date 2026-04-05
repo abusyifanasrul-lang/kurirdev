@@ -210,17 +210,13 @@ export function Orders() {
     // 2. Initial Fetch to Zustand (Aktif)
     fetchInitialOrders()
 
-    // 3. Subscribe Real-time
-    const unsubscribe = subscribeOrders()
-
     // Listen jika IndexedDB baru diisi
     window.addEventListener('indexeddb-synced', loadWeekOrders)
 
     return () => {
-      unsubscribe()
       window.removeEventListener('indexeddb-synced', loadWeekOrders)
     }
-  }, [fetchInitialOrders, subscribeOrders])
+  }, [fetchInitialOrders])
 
   // Modal States
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);

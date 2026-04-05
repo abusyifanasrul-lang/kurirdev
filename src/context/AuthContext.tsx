@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import type { User, AuthState, UserRole } from '@/types';
 import { useSessionStore } from '@/stores/useSessionStore';
 import { useUserStore } from '@/stores/useUserStore';
@@ -23,6 +23,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAuthenticated: !!cachedUser,
     isLoading: !cachedUser,
   });
+
+  const lastTokenRef = useRef<string | null>(null);
 
   const fetchProfile = useCallback(async (userId: string, email: string) => {
     try {
@@ -94,11 +96,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Supabase Auth Event:', event);
       
-      if (session?.access_token) {
+      if (session?.access_token && session.access_token !== lastTokenRef.current) {
         // CRITICAL: Synchronize Realtime engine with the current JWT
         // This ensures WebSocket connections are correctly authorized for RLS-protected tables
         try {
+          console.log('🔄 Syncing Realtime auth with new token');
           supabase.realtime.setAuth(session.access_token);
+          lastTokenRef.current = session.access_token;
         } catch (e) {
           console.error('Failed to sync Realtime auth:', e);
         }
