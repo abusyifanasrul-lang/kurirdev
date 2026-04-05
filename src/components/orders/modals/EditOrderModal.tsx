@@ -113,7 +113,7 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
                 {format(new Date(selectedOrder.created_at), 'dd MMM yy, HH:mm')}
               </span>
             </div>
-            {handlePrintInvoice && (
+            {handlePrintInvoice && selectedOrder.status === 'delivered' && (
               <button 
                 onClick={() => handlePrintInvoice(selectedOrder)}
                 className="p-1.5 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-md transition-colors"

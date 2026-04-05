@@ -54,15 +54,17 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
             <Badge variant={getStatusBadgeVariant(order.status)}>
               {getStatusLabel(order.status)}
             </Badge>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="flex items-center gap-2"
-              onClick={() => handlePrintInvoice(order)}
-            >
-              <Printer className="w-4 h-4" />
-              Print Invoice
-            </Button>
+            {order.status === 'delivered' && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex items-center gap-2"
+                onClick={() => handlePrintInvoice(order)}
+              >
+                <Printer className="w-4 h-4" />
+                Print Invoice
+              </Button>
+            )}
           </div>
         </div>
 
