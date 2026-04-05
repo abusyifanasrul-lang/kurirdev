@@ -79,7 +79,21 @@ export function CourierHistory() {
   const handleBagikanInvoice = async () => {
     if (!invoiceRef.current) return;
     const { default: html2canvas } = await import('html2canvas')
-    const canvas = await html2canvas(invoiceRef.current, { scale: 2, useCORS: true });
+    const canvas = await html2canvas(invoiceRef.current, { 
+      scale: 2, 
+      useCORS: true,
+      onclone: (clonedDoc) => {
+        clonedDoc.querySelectorAll('*').forEach((el) => {
+          const s = (el as HTMLElement).style;
+          ['color', 'backgroundColor', 'borderColor', 'borderTopColor', 'borderRightColor', 'borderBottomColor', 'borderLeftColor'].forEach((prop) => {
+            const val = (s as any)[prop];
+            if (typeof val === 'string' && val.includes('oklch')) {
+              (s as any)[prop] = prop === 'color' ? 'inherit' : 'transparent';
+            }
+          });
+        });
+      }
+    });
     const dataUrl = canvas.toDataURL('image/png');
     const link = document.createElement('a');
     link.download = `Invoice-${selectedOrder?.order_number}.png`;

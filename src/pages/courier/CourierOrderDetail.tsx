@@ -38,6 +38,10 @@ export function CourierOrderDetail() {
   const isSuspended = liveUser?.is_active === false;
   const { findByPhone, addAddress, updateAddress: updateCustomerAddress, deleteAddress: deleteCustomerAddress, upsertCustomer } = useCustomerStore();
 
+  const order = (currentOrder?.id === id ? currentOrder : null)
+    || activeOrdersByCourier.find(o => o.id === id)
+    || null;
+
   useEffect(() => {
     if (!id) return;
     const unsub = subscribeOrderById(id);
@@ -50,10 +54,6 @@ export function CourierOrderDetail() {
       window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
     }
   }, [order?.status]);
-
-  const order = (currentOrder?.id === id ? currentOrder : null)
-    || activeOrdersByCourier.find(o => o.id === id)
-    || null;
 
   const [isUpdating, setIsUpdating] = useState(false);
   const [showWaReminder, setShowWaReminder] = useState(false);
@@ -298,7 +298,21 @@ export function CourierOrderDetail() {
         logging: false,
         allowTaint: true,
         scrollX: 0,
-        scrollY: -window.scrollY // Fix position fixed issues
+        scrollY: -window.scrollY, // Fix position fixed issues
+        onclone: (clonedDoc) => {
+          clonedDoc.querySelectorAll('*').forEach((el) => {
+            const s = (el as HTMLElement).style;
+            ['color', 'backgroundColor', 'borderColor', 'borderTopColor', 'borderRightColor', 'borderBottomColor', 'borderLeftColor'].forEach((prop) => {
+              const val = (s as any)[prop];
+              if (typeof val === 'string' && val.includes('oklch')) {
+                (s as any)[prop] = prop === 'color' ? 'inherit' : 'transparent';
+              }
+            });
+          });
+        }
+      });
+          });
+        }
       });
       
       const dataUrl = canvas.toDataURL('image/png', 1.0);
