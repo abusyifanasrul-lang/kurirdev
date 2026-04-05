@@ -253,15 +253,35 @@ export function CourierOrderDetail() {
     navigate('/courier/orders');
   };
 
+  const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
+
   const handleBagikanInvoice = async () => {
-    if (!invoiceRef.current) return;
-    const { default: html2canvas } = await import('html2canvas');
-    const canvas = await html2canvas(invoiceRef.current, { scale: 2, useCORS: true });
-    const dataUrl = canvas.toDataURL('image/png');
-    const link = document.createElement('a');
-    link.download = `Invoice-${order.order_number}.png`;
-    link.href = dataUrl;
-    link.click();
+    if (!invoiceRef.current || isGeneratingInvoice) return;
+    
+    try {
+      setIsGeneratingInvoice(true);
+      const { default: html2canvas } = await import('html2canvas');
+      
+      // Tunggu sebentar untuk memastikan ref ter-render sempurna jika sebelumnya ada perubahan state
+      await new Promise(r => setTimeout(r, 100));
+      
+      const canvas = await html2canvas(invoiceRef.current, { 
+        scale: 2, 
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false
+      });
+      
+      const dataUrl = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.download = `Invoice-${order.order_number}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (error) {
+      console.error('Invoice generation failed:', error);
+    } finally {
+      setIsGeneratingInvoice(false);
+    }
   };
 
   return (
@@ -270,6 +290,7 @@ export function CourierOrderDetail() {
         <OrderHeader 
           order={order}
           onBagikanInvoice={handleBagikanInvoice}
+          isGeneratingInvoice={isGeneratingInvoice}
         />
       </div>
 
@@ -366,8 +387,8 @@ export function CourierOrderDetail() {
             formatRupiah={formatRupiah}
           />
 
-          {/* Hidden Invoice Template for Sharing */}
-          <div className="hidden">
+          {/* Hidden Invoice Template for Sharing - Use off-screen instead of hidden for html2canvas compatibility */}
+          <div className="fixed left-[-9999px] top-[-9999px] pointer-events-none appearance-none" aria-hidden="true">
             <div ref={invoiceRef} className="p-10 bg-white w-[500px] font-sans">
                <div className="border-b-4 border-emerald-600 pb-6 mb-6">
                  <h1 className="text-3xl font-black text-emerald-600 uppercase italic leading-none">KURIRDEV</h1>

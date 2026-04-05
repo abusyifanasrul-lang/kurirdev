@@ -297,6 +297,7 @@ export async function moveToLocalDB(
       if (order.created_at) (merged as any)._date = getLocalDateStr(order.created_at)
       
       await localDB.orders.put(merged)
+      window.dispatchEvent(new CustomEvent('indexeddb-synced'))
       return
     }
   }
@@ -306,6 +307,7 @@ export async function moveToLocalDB(
     ...order,
     _date: getLocalDateStr(order.created_at || new Date().toISOString())
   })
+  window.dispatchEvent(new CustomEvent('indexeddb-synced'))
   const total = await localDB.orders.count()
   saveMeta({ total_records: total })
 }
@@ -315,6 +317,7 @@ export async function removeFromLocalDB(
   orderId: string
 ): Promise<void> {
   await localDB.orders.delete(orderId)
+  window.dispatchEvent(new CustomEvent('indexeddb-synced'))
   const total = await localDB.orders.count()
   saveMeta({ total_records: total })
 }

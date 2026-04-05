@@ -40,7 +40,7 @@ function OrdersLoading() {
 }
 
 // Stores & Types
-import { useOrderStore } from '@/stores/useOrderStore';
+import { useOrderStore, type OrderState } from '@/stores/useOrderStore';
 import { useCourierStore } from '@/stores/useCourierStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
@@ -52,7 +52,15 @@ type SortField = 'order_number' | 'customer_name' | 'status' | 'courier_id' | 'p
 type SortOrder = 'asc' | 'desc';
 
 export function Orders() {
-  const { orders, fetchInitialOrders, subscribeOrders, fetchOrdersByDateRange, addOrder, assignCourier, cancelOrder, updateOrder } = useOrderStore();
+  const orders = useOrderStore((state: OrderState) => state.orders);
+  const activeOrdersByCourier = useOrderStore((state: OrderState) => state.activeOrdersByCourier);
+  const fetchInitialOrders = useOrderStore((state: OrderState) => state.fetchInitialOrders);
+  const subscribeOrders = useOrderStore((state: OrderState) => state.subscribeOrders);
+  const fetchOrdersByDateRange = useOrderStore(state => state.fetchOrdersByDateRange);
+  const addOrder = useOrderStore(state => state.addOrder);
+  const assignCourier = useOrderStore(state => state.assignCourier);
+  const cancelOrder = useOrderStore(state => state.cancelOrder);
+  const updateOrder = useOrderStore(state => state.updateOrder);
   const { rotateQueue } = useCourierStore();
   const { users } = useUserStore();
   const { user } = useAuth(); // Current admin user
@@ -92,9 +100,11 @@ export function Orders() {
       map.set(o.id, o)
     )
 
-    // Zustand data (aktif, realtime)
-    // Override IndexedDB jika ada update
+    // Zustand data (history, realtime updates)
     orders.forEach(o => map.set(o.id, o))
+    
+    // Zustand data (active, realtime updates)
+    activeOrdersByCourier.forEach(o => map.set(o.id, o))
 
     // Cache data (dari filter tanggal manual)
     if (cacheStatus === 'loaded' &&

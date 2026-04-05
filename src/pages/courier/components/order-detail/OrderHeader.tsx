@@ -1,16 +1,19 @@
 import React from 'react';
 import { ArrowLeft, Printer } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { cn } from '@/utils/cn';
 import { Order } from '@/types';
 
 interface OrderHeaderProps {
   order: Order;
   onBagikanInvoice: () => void;
+  isGeneratingInvoice?: boolean;
 }
 
 export const OrderHeader: React.FC<OrderHeaderProps> = ({
   order,
-  onBagikanInvoice
+  onBagikanInvoice,
+  isGeneratingInvoice = false
 }) => {
   const navigate = useNavigate();
 
@@ -53,10 +56,18 @@ export const OrderHeader: React.FC<OrderHeaderProps> = ({
       <div className="flex items-center gap-2">
         <button
           onClick={onBagikanInvoice}
-          className="p-3 rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition-all active:scale-90 flex items-center justify-center"
+          disabled={isGeneratingInvoice}
+          className={cn(
+            "p-3 rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition-all active:scale-90 flex items-center justify-center",
+            isGeneratingInvoice && "opacity-70 scale-95"
+          )}
           title="Download/Print Invoice"
         >
-          <Printer className="h-5 w-5" />
+          {isGeneratingInvoice ? (
+            <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          ) : (
+            <Printer className="h-5 w-5" />
+          )}
         </button>
       </div>
     </div>

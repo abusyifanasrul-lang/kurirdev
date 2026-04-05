@@ -16,8 +16,9 @@ import { logger } from '@/lib/logger'
 
 // Module-level tracker for active channels to prevent redundant subscriptions
 const activeChannels = new Map<string, any>()
+const channelStates = new Map<string, 'joining' | 'joined'>()
 
-interface OrderState {
+export interface OrderState {
   orders: Order[]
   statusHistory: Record<string, OrderStatusHistory[]>
   isLoading: boolean
@@ -203,14 +204,15 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     const channelId = courierId ? `orders:courier:${courierId}` : 'orders:global'
     const filterStr = courierId ? `courier_id=eq.${courierId}` : undefined
 
-    // Deduplication check: if a channel for this ID already exists, don't create a new one
-    if (activeChannels.has(channelId)) {
-      console.log(`♻️ Reusing existing realtime channel for ${channelId}`)
-      return () => {
-        // We don't remove if it's shared to avoid breaking other listeners
-        // In a more complex app, we'd use reference counting
-      }
+    // Implementation of Singleton/State-checking pattern (Mirroring useUserStore logic)
+    const currentState = channelStates.get(channelId)
+    if (activeChannels.has(channelId) || currentState === 'joining' || currentState === 'joined') {
+      console.log(`♻️ Realtime: ${channelId} already ${currentState || 'initialized'}. Skipping duplicate.`)
+      return () => { /* No-op cleanup for duplicate calls */ }
     }
+
+    channelStates.set(channelId, 'joining')
+    console.log(`📡 Initializing realtime for ${channelId}...`)
 
     const channel = supabase.channel(channelId)
       .on(
@@ -289,15 +291,19 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
           console.error(`❌ Realtime subscription failed for ${channelId}:`, err)
           logger.error(`Realtime subscription error for ${channelId}`, err)
           activeChannels.delete(channelId)
+          channelStates.delete(channelId)
         } else if (status === 'SUBSCRIBED') {
           console.log(`✅ Realtime subscription active for ${channelId}`)
           activeChannels.set(channelId, channel)
+          channelStates.set(channelId, 'joined')
         }
       })
 
     return () => {
+      console.log(`🔌 Removing realtime channel: ${channelId}`)
       supabase.removeChannel(channel)
       activeChannels.delete(channelId)
+      channelStates.delete(channelId)
     }
   },
 
@@ -680,3 +686,5 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     isLoading: false
   })
 }))
+   
+ 
