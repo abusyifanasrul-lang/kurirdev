@@ -94,16 +94,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Supabase Auth Event:', event);
       
+      if (session?.access_token) {
+        // CRITICAL: Synchronize Realtime engine with the current JWT
+        // This ensures WebSocket connections are correctly authorized for RLS-protected tables
+        try {
+          supabase.realtime.setAuth(session.access_token);
+        } catch (e) {
+          console.error('Failed to sync Realtime auth:', e);
+        }
+      }
+
       if (event === 'SIGNED_OUT') {
         storeLogout();
         setState({ user: null, token: null, isAuthenticated: false, isLoading: false });
+        // Force fully close any pending realtime channels
+        supabase.removeAllChannels();
         return;
       }
 
       if (session?.user) {
-        // Only fetch if session user ID is different from current state user ID
-        // Or if it's an initial sign in
-        if (state.user?.id === session.user.id && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
+        // Re-fetch profile if context is fresh or token was refreshed
+        if (state.user?.id === session.user.id && event === 'SIGNED_IN') {
           console.log('Session already active for user:', session.user.id);
           return;
         }
