@@ -42,16 +42,8 @@ export function FinanceDashboard() {
     return () => window.removeEventListener('indexeddb-synced', loadWeekOrders);
   }, [loadWeekOrders]);
 
-  if (!isDataReady) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-        <div className="w-12 h-12 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin mb-4" />
-        <p className="text-gray-500 font-medium">Menyuapkan data keuangan...</p>
-      </div>
-    );
-  }
-
-  // Merge orders
+  // All hooks MUST be called before any early return (Rules of Hooks)
+  // Merge orders — safe to compute even when weekOrders is empty
   const allOrders = useMemo(() => {
     const map = new Map<string, Order>();
     weekOrders.forEach(o => map.set(o.id, o));
@@ -111,9 +103,6 @@ export function FinanceDashboard() {
     return result.sort((a, b) => b.totalAmount - a.totalAmount);
   }, [deliveredOrders, couriers]);
 
-  const totalUnpaid = unpaidByCourier.reduce((sum, c) => sum + c.totalAmount, 0);
-  const totalUnpaidCount = unpaidByCourier.reduce((sum, c) => sum + c.orderCount, 0);
-
   // Paid today
   const paidToday = useMemo(() => {
     return deliveredOrders.filter(o =>
@@ -121,8 +110,21 @@ export function FinanceDashboard() {
     );
   }, [deliveredOrders]);
 
+  const totalUnpaid = unpaidByCourier.reduce((sum, c) => sum + c.totalAmount, 0);
+  const totalUnpaidCount = unpaidByCourier.reduce((sum, c) => sum + c.orderCount, 0);
+
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
+
+  // Early return AFTER all hooks — safe and correct
+  if (!isDataReady) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+        <div className="w-12 h-12 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin mb-4" />
+        <p className="text-gray-500 font-medium">Menyuapkan data keuangan...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
