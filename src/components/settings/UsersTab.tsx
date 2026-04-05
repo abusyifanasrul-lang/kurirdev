@@ -56,33 +56,49 @@ export function UsersTab({
   };
 
   const getAvailableRoles = () => {
-    if (currentUser?.role === 'owner') {
-      return [
-        { value: 'admin', label: 'Admin (Full Access)' },
-        { value: 'admin_kurir', label: 'Admin Kurir (Order Management)' },
-        { value: 'courier', label: 'Kurir' },
-      ];
-    }
+    // Super Admin (God View) - All Roles
     if (currentUser?.role === 'admin') {
       return [
-        { value: 'admin_kurir', label: 'Admin Kurir (Order Management)' },
+        { value: 'admin', label: 'Super Admin (God View)' },
+        { value: 'admin_kurir', label: 'Admin Kurir (Operations)' },
+        { value: 'owner', label: 'Owner (Business)' },
+        { value: 'finance', label: 'Keuangan (Finance)' },
+        { value: 'courier', label: 'Kurir (Field)' },
+      ];
+    }
+    
+    // Owner (Business Pilot)
+    if (currentUser?.role === 'owner') {
+      return [
+        { value: 'admin', label: 'Super Admin (System)' },
+        { value: 'admin_kurir', label: 'Admin Kurir' },
+        { value: 'finance', label: 'Keuangan' },
         { value: 'courier', label: 'Kurir' },
       ];
     }
+
+    // Admin Kurir (Operations Lead)
+    if (currentUser?.role === 'admin_kurir') {
+      return [
+        { value: 'courier', label: 'Kurir' },
+      ];
+    }
+    
     return [{ value: 'courier', label: 'Kurir' }];
   };
 
   const getVisibleUsers = () => {
-    if (currentUser?.role === 'owner') return users;
-    if (currentUser?.role === 'admin') return users.filter(u => u.role !== 'owner');
-    if (currentUser?.role === 'admin_kurir') return users.filter(u => u.role === 'courier' || u.id === currentUser.id);
-    return [];
+    if (currentUser?.role === 'admin') return users; // God View: See Everything
+    if (currentUser?.role === 'owner') return users; // Owner: See Everything
+    if (currentUser?.role === 'admin_kurir') return users.filter(u => u.role === 'courier' || u.role === 'admin_kurir' || u.id === currentUser.id);
+    return users.filter(u => u.id === currentUser?.id);
   };
 
   const canEdit = (u: UserType) => {
     if (u.id === currentUser?.id) return true;
-    if (currentUser?.role === 'owner') return true;
-    if (currentUser?.role === 'admin') return u.role !== 'owner' && u.role !== 'admin';
+    if (currentUser?.role === 'admin') return true; // God View: Can Edit All
+    if (currentUser?.role === 'owner') return u.role !== 'admin'; // Owner can edit all except Super Admin
+    if (currentUser?.role === 'admin_kurir') return u.role === 'courier';
     return false;
   };
 
