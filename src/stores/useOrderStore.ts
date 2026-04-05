@@ -521,8 +521,17 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
           .eq('id', orderId)
 
         if (error) throw error
-
-        // Optimistic local state update for assigned status
+ 
+        // 2. Insert Tracking Log
+        await (supabase.from('tracking_logs') as any).insert({
+          order_id: orderId,
+          status: 'assigned',
+          changed_by: userId,
+          changed_by_name: userName,
+          notes: `Assigned to ${courierName}`
+        })
+ 
+        // 3. Optimistic local state update
         set(state => ({
           orders: state.orders.map(o => o.id === orderId ? { 
             ...o, 
@@ -531,8 +540,18 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
             assigned_at: new Date().toISOString()
           } : o)
         }))
-
-        await get().updateOrderStatus(orderId, 'assigned', userId, userName, `Assigned to ${courierName}`)
+ 
+        // Mirror write for offline consistency
+        const order = get().orders.find(o => o.id === orderId)
+        if (order) {
+          moveToLocalDB({
+            ...order,
+            status: 'assigned',
+            courier_id: courierId,
+            assigned_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }).catch(err => console.error('Mirror write error:', err))
+        }
       }, {
         onRetry: (attempt) => {
           if (!retryToastId) {

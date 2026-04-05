@@ -43,7 +43,6 @@ function OrdersLoading() {
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useCourierStore } from '@/stores/useCourierStore';
 import { useUserStore } from '@/stores/useUserStore';
-import { useNotificationStore } from '@/stores/useNotificationStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { useCustomerStore } from '@/stores/useCustomerStore';
 import { useAuth } from '@/context/AuthContext';
@@ -56,7 +55,6 @@ export function Orders() {
   const { orders, fetchInitialOrders, subscribeOrders, fetchOrdersByDateRange, addOrder, assignCourier, cancelOrder, updateOrder } = useOrderStore();
   const { rotateQueue } = useCourierStore();
   const { users } = useUserStore();
-  const { addNotification } = useNotificationStore();
   const { user } = useAuth(); // Current admin user
   const { commission_rate, commission_threshold, courier_instructions } = useSettingsStore();
 
@@ -352,30 +350,6 @@ export function Orders() {
         // 2. Lakukan assignment
         await assignCourier(selectedOrder.id, courier.id, courier.name, user?.id || "1", user?.name || 'Admin');
         await rotateQueue(courier.id);
-
-        // 3. Persiapkan dan kirim notifikasi
-        const finalNotes = (instructions || selectedOrder.notes || '').toLowerCase().trim();
-        const selectedInstruction = courier_instructions.find(
-          instruction => instruction.label.toLowerCase() === finalNotes
-        );
-        const emoji = selectedInstruction ? (selectedInstruction.icon || '📋') : '';
-        const instruksi = selectedInstruction
-          ? `${emoji} ${selectedInstruction.instruction}`
-          : finalNotes
-          ? `📋 ${finalNotes}`
-          : 'Segera proses!';
-
-        const customerName = selectedOrder.customer_name || 'Customer';
-        const notifTitle = `🛵 Order Baru — ${selectedOrder.order_number}`;
-        const notifBody = `${customerName} • ${instruksi}`;
-
-        await addNotification({
-          user_id: courier.id,
-          user_name: courier.name,
-          title: notifTitle,
-          message: notifBody,
-          data: { orderId: selectedOrder.id, type: 'order_assigned' },
-        });
 
         setIsOrderModalOpen(false);
       } catch (error) {

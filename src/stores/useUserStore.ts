@@ -18,7 +18,7 @@ interface UserState {
   fetchProfile: (id: string) => Promise<void>
   subscribeUsers: () => () => void
   addUser: (data: CreateUserInput) => Promise<{ success: boolean; error?: string }>
-  updateUser: (id: string, data: Partial<User>) => Promise<void>
+  updateUser: (id: string, data: Partial<User>) => Promise<{ success: boolean; error?: string }>
   removeUser: (id: string) => Promise<void>
   reset: () => void
 }
@@ -280,26 +280,44 @@ export const useUserStore = create<UserState>()((set, get) => ({
 
   updateUser: async (id, data) => {
     // Hapus queue_position dari payload jika ada, agar database yang mengaturnya secara eksklusif
-    // Hapus juga email dan password karena diupdate via Auth
-    const { email, password, queue_position, ...dbData } = data as any
-    
-    // Optimistic update
-    const currentUser = get().users.find(u => u.id === id)
-    if (currentUser) {
-      const updatedUser = { ...currentUser, ...data }
-      set(state => ({
-        users: state.users.map(u => u.id === id ? updatedUser : u)
-      }))
-    }
+    const { queue_position, ...restData } = data as any
+    const { email, password, name, phone, role, vehicle_type, plate_number } = restData
 
-    const { error } = await (supabase.from('profiles') as any)
-      .update({ ...dbData, updated_at: new Date().toISOString() })
-      .eq('id', id)
+    try {
+      // Jika email atau password diubah, kita HARUS menggunakan Edge Function
+      // karena ini melibatkan Auth Admin API (Service Role)
+      if (email || password) {
+        const { data: response, error: fnError } = await supabase.functions.invoke('update-user-management', {
+          body: {
+            userId: id,
+            email,
+            password,
+            name,
+            phone,
+            role,
+            vehicle_type,
+            plate_number
+          }
+        })
 
-    if (error) {
-      // Rollback if needed or fetch latest
-      get().fetchProfile(id)
-      throw error
+        if (fnError || !response?.success) {
+          throw new Error(fnError?.message || response?.error || 'Gagal memperbarui data user (Auth)')
+        }
+      } else {
+        // Jika hanya data profil standar, gunakan update langsung (lebih cepat & hemat resource)
+        const { error } = await (supabase.from('profiles') as any)
+          .update({ ...restData, updated_at: new Date().toISOString() })
+          .eq('id', id)
+
+        if (error) throw error
+      }
+
+      // Sync local state optimistically or re-fetch
+      await get().fetchProfile(id)
+      return { success: true }
+    } catch (error: any) {
+      console.error('updateUser error:', error)
+      return { success: false, error: error.message || 'Gagal memperbarui data user' }
     }
   },
 
