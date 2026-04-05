@@ -24,7 +24,7 @@ export const OrderHeader: React.FC<OrderHeaderProps> = ({
       case 'assigned': return { label: 'Pesanan Diterima', emoji: '📋', color: 'bg-blue-100 text-blue-700' };
       case 'picked_up': return { label: 'Menuju Penjual', emoji: '🛵', color: 'bg-emerald-100 text-emerald-700' };
       case 'in_transit': return { label: 'Menuju Customer', emoji: '🚚', color: 'bg-emerald-100 text-emerald-700' };
-      case 'delivered': return { label: 'Pesanan Terkirim', emoji: '✅', color: 'bg-green-100 text-green-700' };
+      case 'delivered': return { label: 'Pesanan Terkirim', emoji: '✅🖨️', color: 'bg-green-100 text-green-700' };
       case 'cancelled': return { label: 'Dibatalkan', emoji: '❌', color: 'bg-red-100 text-red-700' };
       default: return { label: order.status.replace('_', ' '), emoji: '📦', color: 'bg-gray-100 text-gray-700' };
     }

@@ -8,6 +8,7 @@ import { useSessionStore } from '@/stores/useSessionStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { OrderStatus } from '@/types';
 import { useCustomerStore } from '@/stores/useCustomerStore';
+import { useToastStore } from '@/stores/useToastStore';
 import { removeFromLocalDB } from '@/lib/orderCache';
 
 // Sub-components
@@ -258,27 +259,43 @@ export function CourierOrderDetail() {
   const handleBagikanInvoice = async () => {
     if (!invoiceRef.current || isGeneratingInvoice) return;
     
+    const addToast = useToastStore.getState().addToast;
+    const removeToast = useToastStore.getState().removeToast;
+    let toastId: string | undefined;
+
     try {
       setIsGeneratingInvoice(true);
+      toastId = addToast('Menyiapkan Gambar Invoice...', 'loading', 0);
+      
       const { default: html2canvas } = await import('html2canvas');
       
-      // Tunggu sebentar untuk memastikan ref ter-render sempurna jika sebelumnya ada perubahan state
-      await new Promise(r => setTimeout(r, 100));
+      // Tunggu sebentar untuk memastikan ref ter-render sempurna
+      await new Promise(r => setTimeout(r, 300));
       
       const canvas = await html2canvas(invoiceRef.current, { 
-        scale: 2, 
+        scale: 3, // Lebih tajam untuk printer thermal
         useCORS: true,
         backgroundColor: '#ffffff',
-        logging: false
+        logging: false,
+        allowTaint: true,
+        scrollX: 0,
+        scrollY: -window.scrollY // Fix position fixed issues
       });
       
-      const dataUrl = canvas.toDataURL('image/png');
+      const dataUrl = canvas.toDataURL('image/png', 1.0);
       const link = document.createElement('a');
       link.download = `Invoice-${order.order_number}.png`;
       link.href = dataUrl;
+      document.body.appendChild(link);
       link.click();
-    } catch (error) {
+      document.body.removeChild(link);
+      
+      if (toastId) removeToast(toastId);
+      addToast('Invoice berhasil diunduh!', 'success', 3000);
+    } catch (error: any) {
       console.error('Invoice generation failed:', error);
+      if (toastId) removeToast(toastId);
+      addToast(`Gagal: ${error.message || 'Coba lagi'}`, 'error', 5000);
     } finally {
       setIsGeneratingInvoice(false);
     }
@@ -387,8 +404,8 @@ export function CourierOrderDetail() {
             formatRupiah={formatRupiah}
           />
 
-          {/* Hidden Invoice Template for Sharing - Use off-screen instead of hidden for html2canvas compatibility */}
-          <div className="fixed left-[-9999px] top-[-9999px] pointer-events-none appearance-none" aria-hidden="true">
+          {/* In-layout but invisible container for html2canvas consistency */}
+          <div className="absolute opacity-0 pointer-events-none appearance-none h-0 overflow-hidden" aria-hidden="true" style={{ top: '-4000px', width: '500px' }}>
             <div ref={invoiceRef} className="p-10 bg-white w-[500px] font-sans">
                <div className="border-b-4 border-emerald-600 pb-6 mb-6">
                  <h1 className="text-3xl font-black text-emerald-600 uppercase italic leading-none">KURIRDEV</h1>

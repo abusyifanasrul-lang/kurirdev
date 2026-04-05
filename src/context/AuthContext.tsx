@@ -25,6 +25,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
 
   const lastTokenRef = useRef<string | null>(null);
+  const currentUserIdRef = useRef<string | null>(cachedUser?.id || null);
+
+  useEffect(() => {
+    currentUserIdRef.current = state.user?.id || null;
+  }, [state.user?.id]);
 
   const fetchProfile = useCallback(async (userId: string, email: string) => {
     try {
@@ -118,7 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (session?.user) {
         // Re-fetch profile if context is fresh or token was refreshed
-        if (state.user?.id === session.user.id && event === 'SIGNED_IN') {
+        if (currentUserIdRef.current === session.user.id && event === 'SIGNED_IN') {
           console.log('Session already active for user:', session.user.id);
           return;
         }
@@ -131,7 +136,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         subscription.unsubscribe();
       }
     };
-  }, [fetchProfile, storeLogout, state.user?.id]);
+  }, [fetchProfile, storeLogout]);
 
   const logout = useCallback(async () => {
     console.log('Initiating logout...');
