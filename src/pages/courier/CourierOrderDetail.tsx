@@ -265,14 +265,14 @@ export function CourierOrderDetail() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 animate-in fade-in duration-500 overflow-hidden">
+    <div className="fixed inset-0 z-[60] bg-gray-50 flex flex-col animate-in fade-in duration-500">
       <OrderHeader 
         order={order}
         onBagikanInvoice={handleBagikanInvoice}
       />
 
-      <div className="flex-1 overflow-y-auto pb-48">
-        <div className="max-w-md mx-auto p-4 space-y-4 pt-6">
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-md mx-auto p-4 space-y-4 pt-6 pb-20">
           {isSuspended && (
             <div className="bg-red-50 border border-red-100 rounded-3xl p-5 mb-4 animate-bounce">
               <div className="flex items-start gap-4">
@@ -430,7 +430,7 @@ export function CourierOrderDetail() {
       </div>
 
       {/* FIXED FOOTER ACTIONS */}
-      <div className="bg-white border-t border-gray-100 p-4 pb-8 space-y-3 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] z-40">
+      <div className="bg-white border-t border-gray-100 p-4 pb-8 space-y-3 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] flex-shrink-0 z-50">
         <div className="flex gap-3">
           {!isLocked && (
             <button

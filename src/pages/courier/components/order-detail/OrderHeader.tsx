@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, FileText } from 'lucide-react';
+import { ArrowLeft, Printer } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Order } from '@/types';
 
@@ -39,11 +39,11 @@ export const OrderHeader: React.FC<OrderHeaderProps> = ({
           <ArrowLeft className="h-6 w-6 text-gray-700" />
         </button>
         <div>
-          <h1 className="text-sm font-bold text-gray-400 uppercase tracking-widest leading-none">
+          <h1 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none">
             {order.order_number}
           </h1>
           <div className="flex items-center gap-2 mt-1">
-            <span className="text-lg font-black text-gray-900 leading-none">
+            <span className="text-sm font-black text-gray-900 leading-none">
               {status.emoji} {status.label.toUpperCase()}
             </span>
           </div>
@@ -53,13 +53,14 @@ export const OrderHeader: React.FC<OrderHeaderProps> = ({
       <div className="flex items-center gap-2">
         <button
           onClick={onBagikanInvoice}
-          className="p-2.5 rounded-xl bg-gray-50 text-gray-600 border border-gray-100 hover:bg-gray-100 transition-all active:scale-95"
-          title="Download Invoice"
+          className="p-3 rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition-all active:scale-90 flex items-center justify-center"
+          title="Download/Print Invoice"
         >
-          <FileText className="h-5 w-5" />
+          <Printer className="h-5 w-5" />
         </button>
       </div>
     </div>
   );
 };
+
 
