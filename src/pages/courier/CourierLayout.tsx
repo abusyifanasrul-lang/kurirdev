@@ -68,11 +68,8 @@ export function CourierLayout() {
   const { notifications } = useNotificationStore();
   const unreadCount = notifications.filter(n => n.user_id === currentUser?.id && !n.is_read).length;
 
-  useEffect(() => {
-    if (!currentUser?.id) return
-    const unsub = useNotificationStore.getState().subscribeNotifications(currentUser.id)
-    return () => unsub()
-  }, [currentUser?.id])
+  // NOTE: Notification subscription is handled globally by AppListeners.tsx.
+  // Do NOT subscribe here again to avoid duplicate push notifications.
 
   const handleLogout = async () => {
     await logout();
