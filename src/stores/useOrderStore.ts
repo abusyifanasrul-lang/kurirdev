@@ -208,18 +208,23 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     const currentState = channelStates.get(channelId)
     if (activeChannels.has(channelId) || currentState === 'joining' || currentState === 'joined') {
       console.log(`♻️ Realtime: ${channelId} already ${currentState || 'initialized'}. Skipping duplicate.`)
+      // If we are for some reason stuck in joining, we might want to allow a retry but keep it simple for now
       return () => { /* No-op cleanup for duplicate calls */ }
     }
 
     channelStates.set(channelId, 'joining')
     console.log(`📡 Initializing realtime for ${channelId}...`)
 
+    const channelConfig: any = { event: '*', schema: 'public', table: 'orders' }
+    if (filterStr) channelConfig.filter = filterStr
+
     const channel = supabase.channel(channelId)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'orders', filter: filterStr },
+        channelConfig,
         async (payload) => {
           const { eventType, new: newRec, old: oldRec } = payload
+          console.log(`🔔 Realtime [${channelId}] ${eventType}:`, newRec || oldRec)
           
           // MIRRORING ARCHITECTURE: Every change goes to localDB
           if (eventType === 'UPDATE' || eventType === 'INSERT') {
@@ -234,44 +239,57 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
               const order = newRec as Order
               const isNowActive = !['delivered', 'cancelled'].includes(order.status)
               if (isNowActive) {
-                updatedActive = [order, ...updatedActive]
+                // Prevent duplicate inserts if already in state
+                if (!updatedActive.some(o => o.id === order.id)) {
+                  updatedActive = [order, ...updatedActive]
+                }
               } else {
-                updatedHistory = [order, ...updatedHistory]
+                if (!updatedHistory.some(o => o.id === order.id)) {
+                  updatedHistory = [order, ...updatedHistory]
+                }
               }
             } else if (eventType === 'UPDATE') {
               const orderId = (newRec as Order).id
               const existingActive = updatedActive.find(o => o.id === orderId)
               const existingHistory = updatedHistory.find(o => o.id === orderId)
               
-              // MERGE partial data
-              let order: Order
-              if (existingActive) {
-                order = { ...existingActive }
-                Object.keys(newRec).forEach(k => { if (newRec[k] !== undefined) (order as any)[k] = newRec[k] })
-              } else if (existingHistory) {
-                order = { ...existingHistory }
-                Object.keys(newRec).forEach(k => { if (newRec[k] !== undefined) (order as any)[k] = newRec[k] })
+              // MERGE logic: Use existing state or full row from newRec
+              // Since we set REPLICA IDENTITY FULL, newRec should be complete, 
+              // but we'll merge manually just to be safe if some fields are missing.
+              let baseOrder: Order = (existingActive || existingHistory) as Order
+
+              let mergedOrder: Order
+              if (baseOrder) {
+                mergedOrder = { ...baseOrder }
+                Object.keys(newRec).forEach(k => { 
+                  if (newRec[k] !== undefined && newRec[k] !== null) (mergedOrder as any)[k] = newRec[k] 
+                })
               } else {
-                // If not in state, treat as full new mapping (unlikely but safe)
-                order = newRec as Order
+                // If not in memory but we got update, we trust newRec (which is FULL now)
+                mergedOrder = newRec as Order
               }
 
-              const wasActive = updatedActive.some(o => o.id === order.id)
-              const isNowActive = !['delivered', 'cancelled'].includes(order.status)
+              const wasActive = updatedActive.some(o => o.id === mergedOrder.id)
+              const isNowActive = !['delivered', 'cancelled'].includes(mergedOrder.status)
 
               if (wasActive && !isNowActive) {
                 // Move from Active to History
-                updatedActive = updatedActive.filter(o => o.id !== order.id)
-                updatedHistory = [order, ...updatedHistory]
+                updatedActive = updatedActive.filter(o => o.id !== mergedOrder.id)
+                // Avoid duplicates in history
+                if (!updatedHistory.some(o => o.id === mergedOrder.id)) {
+                  updatedHistory = [mergedOrder, ...updatedHistory]
+                } else {
+                  updatedHistory = updatedHistory.map(o => o.id === mergedOrder.id ? mergedOrder : o)
+                }
               } else if (isNowActive) {
                 // Update in Active
-                const idx = updatedActive.findIndex(o => o.id === order.id)
-                if (idx !== -1) updatedActive[idx] = order
-                else updatedActive = [order, ...updatedActive]
+                const idx = updatedActive.findIndex(o => o.id === mergedOrder.id)
+                if (idx !== -1) updatedActive[idx] = mergedOrder
+                else updatedActive = [mergedOrder, ...updatedActive]
               } else {
                 // Update in History
-                const idx = updatedHistory.findIndex(o => o.id === order.id)
-                if (idx !== -1) updatedHistory[idx] = order
+                const idx = updatedHistory.findIndex(o => o.id === mergedOrder.id)
+                if (idx !== -1) updatedHistory[idx] = mergedOrder
               }
             } else if (eventType === 'DELETE') {
               updatedActive = updatedActive.filter(o => o.id !== oldRec.id)
@@ -423,14 +441,6 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
       await withRetry(async () => {
         if (status === 'delivered') {
           const { commission_rate, commission_threshold } = useSettingsStore.getState()
-          
-          await (supabase.from('tracking_logs') as any).insert({
-            order_id: orderId,
-            status,
-            changed_by: userId,
-            changed_by_name: userName,
-            notes: notes || ''
-          })
           
           const { error } = await (supabase.rpc as any)('complete_order', {
              p_order_id: orderId,
@@ -686,5 +696,3 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     isLoading: false
   })
 }))
-   
- 

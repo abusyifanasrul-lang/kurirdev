@@ -406,54 +406,54 @@ export function CourierOrderDetail() {
 
           {/* In-layout but invisible container for html2canvas consistency */}
           <div className="absolute opacity-0 pointer-events-none appearance-none h-0 overflow-hidden" aria-hidden="true" style={{ top: '-4000px', width: '500px' }}>
-            <div ref={invoiceRef} className="p-10 bg-white w-[500px] font-sans">
-               <div className="border-b-4 border-emerald-600 pb-6 mb-6">
-                 <h1 className="text-3xl font-black text-emerald-600 uppercase italic leading-none">KURIRDEV</h1>
+            <div ref={invoiceRef} className="p-10 bg-white w-[500px] font-sans" style={{ backgroundColor: '#ffffff' }}>
+               <div className="pb-6 mb-6" style={{ borderBottom: '4px solid #059669' }}>
+                 <h1 className="text-3xl font-black uppercase italic leading-none" style={{ color: '#059669' }}>KURIRDEV</h1>
                  <div className="flex justify-between items-end mt-4">
-                   <p className="text-xs font-bold text-gray-400">Order ID: <span className="text-gray-900">{order.order_number}</span></p>
-                   <p className="text-xs font-bold text-gray-400">Date: <span className="text-gray-900">{new Date().toLocaleDateString('id-ID')}</span></p>
+                   <p className="text-xs font-bold" style={{ color: '#9ca3af' }}>Order ID: <span style={{ color: '#111827' }}>{order.order_number}</span></p>
+                   <p className="text-xs font-bold" style={{ color: '#9ca3af' }}>Date: <span style={{ color: '#111827' }}>{new Date().toLocaleDateString('id-ID')}</span></p>
                  </div>
                </div>
 
                <div className="grid grid-cols-2 gap-8 mb-8">
                  <div>
-                   <p className="text-[10px] font-bold text-emerald-600 uppercase mb-2">Customer:</p>
-                   <p className="text-lg font-black text-gray-900">{order.customer_name}</p>
-                   <p className="text-xs text-gray-500 font-medium">{order.customer_phone}</p>
+                   <p className="text-[10px] font-bold uppercase mb-2" style={{ color: '#059669' }}>Customer:</p>
+                   <p className="text-lg font-black" style={{ color: '#111827' }}>{order.customer_name}</p>
+                   <p className="text-xs font-medium" style={{ color: '#6b7280' }}>{order.customer_phone}</p>
                  </div>
                </div>
 
                <div className="mb-8">
-                 <p className="text-[10px] font-bold text-emerald-600 uppercase mb-4 py-1 border-b border-gray-100">Order Items:</p>
+                 <p className="text-[10px] font-bold uppercase mb-4 py-1" style={{ color: '#059669', borderBottom: '1px solid #f3f4f6' }}>Order Items:</p>
                  <div className="space-y-3">
                    {order.items?.map((item, idx) => (
-                     <div key={idx} className="flex justify-between items-center bg-gray-50 p-3 rounded-xl">
-                       <span className="text-sm font-bold text-gray-800">{item.nama}</span>
-                       <span className="text-sm font-black text-emerald-600">Rp {item.harga.toLocaleString('id-ID')}</span>
+                     <div key={idx} className="flex justify-between items-center p-3 rounded-xl" style={{ backgroundColor: '#f9fafb' }}>
+                       <span className="text-sm font-bold" style={{ color: '#1f2937' }}>{item.nama}</span>
+                       <span className="text-sm font-black" style={{ color: '#059669' }}>Rp {item.harga.toLocaleString('id-ID')}</span>
                      </div>
                    ))}
                  </div>
                </div>
 
-               <div className="bg-emerald-600 text-white rounded-3xl p-8 shadow-xl shadow-emerald-100">
+               <div className="rounded-3xl p-8 shadow-xl" style={{ backgroundColor: '#059669', color: '#ffffff', boxShadow: '0 20px 25px -5px rgba(5, 150, 105, 0.1)' }}>
                  <div className="space-y-3">
-                   <div className="flex justify-between text-emerald-100 text-xs font-bold uppercase tracking-widest">
+                   <div className="flex justify-between text-xs font-bold uppercase tracking-widest" style={{ color: '#d1fae5' }}>
                      <span>Ongkir Layanan</span>
                      <span>Rp {(order.total_fee || 0).toLocaleString('id-ID')}</span>
                    </div>
                    {titik > 0 && (
-                     <div className="flex justify-between text-emerald-100 text-xs font-bold uppercase tracking-widest">
+                     <div className="flex justify-between text-xs font-bold uppercase tracking-widest" style={{ color: '#d1fae5' }}>
                        <span>Biaya {titik} Titik</span>
                        <span>+ Rp {totalBiayaTitik.toLocaleString('id-ID')}</span>
                      </div>
                    )}
                    {beban.length > 0 && (
-                     <div className="flex justify-between text-emerald-100 text-xs font-bold uppercase tracking-widest">
+                     <div className="flex justify-between text-xs font-bold uppercase tracking-widest" style={{ color: '#d1fae5' }}>
                        <span>Beban Ekstra</span>
                        <span>+ Rp {totalBiayaBeban.toLocaleString('id-ID')}</span>
                      </div>
                    )}
-                   <div className="pt-4 mt-4 border-t border-emerald-500/50 flex justify-between items-center">
+                   <div className="pt-4 mt-4 flex justify-between items-center" style={{ borderTop: '1px solid rgba(255,255,255,0.3)' }}>
                      <span className="text-sm font-black uppercase tracking-[0.2em]">Total Bayar</span>
                      <span className="text-3xl font-black italic">Rp {totalOngkir.toLocaleString('id-ID')}</span>
                    </div>
@@ -461,70 +461,106 @@ export function CourierOrderDetail() {
                </div>
 
                <div className="mt-10 text-center">
-                 <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.3em] mb-2 italic">Terima kasih telah menggunakan jasa KurirDev</p>
-                 <p className="text-[8px] font-bold text-gray-300 uppercase tracking-widest">Powered by Advanced Agentic Coding System</p>
+                 <p className="text-[10px] font-black uppercase tracking-[0.3em] mb-2 italic" style={{ color: '#059669' }}>Terima kasih telah menggunakan jasa KurirDev</p>
+                 <p className="text-[8px] font-bold uppercase tracking-widest" style={{ color: '#d1d5db' }}>Powered by Advanced Agentic Coding System</p>
                </div>
             </div>
           </div>
+          {/* Completion Success View */}
+          {order.status === 'delivered' && (
+            <div className="mt-8 mb-32 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="bg-emerald-50 border-2 border-emerald-100 rounded-[2.5rem] p-8 text-center shadow-xl shadow-emerald-900/5">
+                <div className="w-20 h-20 bg-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-200">
+                  <span className="text-4xl animate-bounce">✅</span>
+                </div>
+                <h2 className="text-24 font-black mb-2 text-gray-900">Pesanan Berhasil Terkirim!</h2>
+                <p className="text-14 text-gray-500 mb-8 max-w-[240px] mx-auto">Saldo Anda telah diperbarui sesuai komisi pesanan ini.</p>
+                
+                <div className="grid grid-cols-1 gap-3">
+                  <button
+                    onClick={handleBagikanInvoice}
+                    disabled={isGeneratingInvoice}
+                    className="flex items-center justify-center gap-3 w-full p-4 bg-emerald-600 text-white rounded-2xl font-bold active:scale-95 transition-all shadow-lg shadow-emerald-200 disabled:opacity-50"
+                  >
+                    {isGeneratingInvoice ? (
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <span className="text-xl">🖨️</span>
+                    )}
+                    Unduh Invoice
+                  </button>
+                  
+                  <button
+                    onClick={() => navigate('/courier')}
+                    className="w-full p-4 bg-white border-2 border-gray-100 text-gray-900 rounded-2xl font-bold active:scale-95 transition-all"
+                  >
+                    Kembali ke Beranda
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
       {/* FIXED FOOTER ACTIONS - Now positioned tightly above global navigation */}
-      <div className="fixed bottom-[64px] left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-100 p-2.5 pb-4 space-y-1.5 shadow-[0_-15px_40px_rgba(0,0,0,0.12)] z-30">
-        <div className="flex gap-1.5">
-          {!isLocked && (
+      {order.status !== 'delivered' && order.status !== 'cancelled' && (
+        <div className="fixed bottom-[64px] left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-100 p-2.5 pb-4 space-y-1.5 shadow-[0_-15px_40px_rgba(0,0,0,0.12)] z-30">
+          <div className="flex gap-1.5">
+            {!isLocked && (
+              <button
+                onClick={handleCancelTap}
+                className={cn(
+                  "flex-1 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95",
+                  cancelStep === 1 
+                    ? "bg-red-600 text-white shadow-lg shadow-red-200" 
+                    : "bg-gray-50 text-red-600 border border-red-100"
+                )}
+              >
+                {cancelStep === 1 ? 'TAP LAGI UNTUK BATAL' : 'BATALKAN'}
+              </button>
+            )}
+
             <button
-              onClick={handleCancelTap}
+              onClick={handleToggleWaiting}
+              disabled={isWaitingUpdating || isLocked}
               className={cn(
-                "flex-1 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95",
-                cancelStep === 1 
-                  ? "bg-red-600 text-white shadow-lg shadow-red-200" 
-                  : "bg-gray-50 text-red-600 border border-red-100"
+                "flex-1 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2",
+                order.is_waiting
+                  ? "bg-amber-100 text-amber-700 border border-amber-200"
+                  : "bg-gray-50 text-emerald-600 border border-emerald-100",
+                isLocked && "opacity-50 grayscale"
               )}
             >
-              {cancelStep === 1 ? 'TAP LAGI UNTUK BATAL' : 'BATALKAN'}
+              {isWaitingUpdating ? (
+                <div className="h-4 w-4 border-2 border-emerald-600/30 border-t-emerald-600 rounded-full animate-spin" />
+              ) : order.is_waiting ? (
+                'PENDING ACT'
+              ) : (
+                'PENDING'
+              )}
+            </button>
+          </div>
+
+          {getNextStatusButton() && !isLocked && (
+            <button
+              onClick={handleUpdateStatus}
+              disabled={isUpdating}
+              className={cn(
+                "w-full py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all active:scale-[0.98] shadow-2xl flex items-center justify-center gap-3 text-white",
+                getNextStatusButton()?.color,
+                isUpdating && "opacity-70 scale-95"
+              )}
+            >
+              {isUpdating ? (
+                <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                getNextStatusButton()?.label
+              )}
             </button>
           )}
-
-          <button
-            onClick={handleToggleWaiting}
-            disabled={isWaitingUpdating || isLocked}
-            className={cn(
-              "flex-1 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2",
-              order.is_waiting
-                ? "bg-amber-100 text-amber-700 border border-amber-200"
-                : "bg-gray-50 text-emerald-600 border border-emerald-100",
-              isLocked && "opacity-50 grayscale"
-            )}
-          >
-            {isWaitingUpdating ? (
-              <div className="h-4 w-4 border-2 border-emerald-600/30 border-t-emerald-600 rounded-full animate-spin" />
-            ) : order.is_waiting ? (
-              'PENDING ACT'
-            ) : (
-              'PENDING'
-            )}
-          </button>
         </div>
-
-        {getNextStatusButton() && !isLocked && (
-          <button
-            onClick={handleUpdateStatus}
-            disabled={isUpdating}
-            className={cn(
-              "w-full py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all active:scale-[0.98] shadow-2xl flex items-center justify-center gap-3 text-white",
-              getNextStatusButton()?.color,
-              isUpdating && "opacity-70 scale-95"
-            )}
-          >
-            {isUpdating ? (
-              <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            ) : (
-              getNextStatusButton()?.label
-            )}
-          </button>
-        )}
-      </div>
+      )}
 
       <OrderCancelModal 
         showCancelModal={showCancelModal}

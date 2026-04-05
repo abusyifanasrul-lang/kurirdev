@@ -282,8 +282,6 @@ export async function moveToLocalDB(
   order: import('@/types').Order,
   isPartial: boolean = false
 ): Promise<void> {
-  const { localDB } = await import('./orderCache')
-  
   if (isPartial) {
     const existing = await localDB.orders.get(order.id)
     if (existing) {

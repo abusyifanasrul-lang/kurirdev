@@ -208,20 +208,20 @@ export function Orders() {
     allOrders.find(o => o.courier_id === courierId && o.is_waiting === true);
 
   useEffect(() => {
-    // 1. Load from IndexedDB (Pekan ini)
+    // 1. Initial Load from IndexedDB
     const loadWeekOrders = async () => {
       const weekOrders = await getOrdersForWeek()
       setLocalDBOrders(weekOrders)
     }
     loadWeekOrders()
 
-    // 2. Initial Fetch to Zustand (Aktif)
+    // 2. Initial Fetch to Zustand
     fetchInitialOrders()
 
     // 3. Realtime Subscription
     const unsubscribe = subscribeOrders()
 
-    // Listen jika IndexedDB baru diisi
+    // Listen for manual syncs or background updates
     window.addEventListener('indexeddb-synced', loadWeekOrders)
 
     return () => {
