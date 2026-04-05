@@ -177,7 +177,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
           <Button variant="outline" onClick={onClose}>
             Tutup
           </Button>
-          {(isOpsAdmin || order.payment_status !== 'paid') && onEdit && (
+          {isOpsAdmin && order.status === 'pending' && onEdit && (
             <Button 
               className="bg-teal-600 hover:bg-teal-700 text-white"
               onClick={() => {
