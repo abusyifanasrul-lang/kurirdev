@@ -111,43 +111,17 @@ export const useUserStore = create<UserState>()((set, get) => ({
         (payload) => {
           const { eventType, new: newRec, old: oldRec } = payload
           const currentUsers = [...get().users]
-          const { profiles } = localDB // Reach into DB for atomic updates
+          const { profiles } = localDB
 
           if (eventType === 'INSERT') {
             const newUser = mapProfileToUser(newRec)
             set({ users: [...currentUsers, newUser] })
             profiles.put(newUser)
           } else if (eventType === 'UPDATE') {
-            const existingUser = currentUsers.find(u => u.id === newRec.id)
-            if (!existingUser) {
-              // If not in state, treat as full new mapping (likely a full record anyway if first time seen)
-              const newUser = mapProfileToUser(newRec)
-              set({ users: [...currentUsers, newUser] })
-              profiles.put(newUser)
-            } else {
-              // MERGE partial update
-              const updatedUser = { ...existingUser }
-              // Pick only non-undefined fields from payload
-              Object.keys(newRec).forEach(key => {
-                if (newRec[key] !== undefined) {
-                  // Map specific field names if they differ from DB
-                  if (key === 'is_online') (updatedUser as any).is_online = newRec[key]
-                  else if (key === 'courier_status') (updatedUser as any).courier_status = newRec[key]
-                  else if (key === 'off_reason') (updatedUser as any).off_reason = newRec[key]
-                  else if (key === 'queue_position') (updatedUser as any).queue_position = newRec[key]
-                  else if (key === 'is_active') (updatedUser as any).is_active = newRec[key]
-                  else if (key === 'fcm_token') (updatedUser as any).fcm_token = newRec[key]
-                  else if (key === 'total_deliveries_alltime') updatedUser.total_deliveries_alltime = newRec[key]
-                  else if (key === 'total_earnings_alltime') updatedUser.total_earnings_alltime = newRec[key]
-                  else if (key === 'unpaid_count') updatedUser.unpaid_count = newRec[key]
-                  else if (key === 'unpaid_amount') updatedUser.unpaid_amount = newRec[key]
-                  else (updatedUser as any)[key] = newRec[key]
-                }
-              })
-              
-              set({ users: currentUsers.map(u => u.id === newRec.id ? updatedUser : u) })
-              profiles.put(updatedUser)
-            }
+            // REPLICA IDENTITY FULL → payload always contains all columns
+            const updatedUser = mapProfileToUser(newRec)
+            set({ users: currentUsers.map(u => u.id === newRec.id ? updatedUser : u) })
+            profiles.put(updatedUser)
           } else if (eventType === 'DELETE') {
             set({ users: currentUsers.filter(u => u.id !== oldRec.id) })
             profiles.delete(oldRec.id)
