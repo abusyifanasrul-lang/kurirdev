@@ -78,6 +78,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [assignCourierId, setAssignCourierId] = useState('');
+  const [assignmentMode, setAssignmentMode] = useState<'fifo' | 'manual'>('fifo');
   
   // Edit States
   const [editForm, setEditForm] = useState<Partial<Order>>({});
@@ -102,7 +103,15 @@ export const OrderModal: React.FC<OrderModalProps> = ({
         notes: order.notes
       });
       setEditItems(order.items || (order.item_name ? [{ nama: order.item_name, harga: order.item_price || 0 }] : []));
-      setAssignCourierId(order.courier_id || '');
+      
+      // If order already has a courier, set to manual and select them
+      if (order.courier_id) {
+        setAssignmentMode('manual');
+        setAssignCourierId(order.courier_id);
+      } else {
+        setAssignmentMode('fifo');
+        setAssignCourierId('');
+      }
     }
   }, [order, isEditing]);
 
@@ -553,24 +562,68 @@ export const OrderModal: React.FC<OrderModalProps> = ({
         )}
 
         {/* Assignment Section (Standardized logic) */}
-        {order.status === 'pending' && isOpsAdmin && (
-          <div className="bg-amber-50 rounded-2xl p-5 border border-amber-100 space-y-4">
-            <div className="flex items-center justify-between">
-              <h4 className="text-sm font-bold text-amber-900 flex items-center gap-2">
-                <UserIcon className="w-4 h-4" /> Langkah 2: Tugaskan Kurir
+        {order.status === 'pending' && isOpsAdmin && !isEditing && (
+          <div className="bg-teal-50 rounded-2xl p-5 border border-teal-100 space-y-4">
+            <div className="flex items-center justify-between border-b border-teal-100/50 pb-3">
+              <h4 className="text-sm font-bold text-teal-900 flex items-center gap-2">
+                <UserIcon className="w-4 h-4" /> Tugaskan Kurir
               </h4>
-              <Badge variant="secondary" className="bg-white text-amber-600 border-amber-200">
-                Pilih dari Antrian
-              </Badge>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setAssignmentMode('fifo')}
+                className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
+                  assignmentMode === 'fifo'
+                    ? 'bg-white border-teal-500 ring-2 ring-teal-500/20 shadow-sm'
+                    : 'bg-white/50 border-gray-200 hover:border-teal-200'
+                }`}
+              >
+                <div className="flex flex-col items-start gap-1">
+                  <span className={`text-xs font-bold ${assignmentMode === 'fifo' ? 'text-teal-700' : 'text-gray-500'}`}>
+                    Pilih dari Antrian (FIFO)
+                  </span>
+                  {assignmentMode === 'fifo' && availableCouriers.length > 0 && (
+                    <span className="text-[10px] text-teal-600 font-medium">
+                      🎯 {availableCouriers[0].name}
+                    </span>
+                  )}
+                </div>
+                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                  assignmentMode === 'fifo' ? 'border-teal-500' : 'border-gray-300'
+                }`}>
+                  {assignmentMode === 'fifo' && <div className="w-2 h-2 rounded-full bg-teal-500" />}
+                </div>
+              </button>
+
+              <button
+                onClick={() => setAssignmentMode('manual')}
+                className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
+                  assignmentMode === 'manual'
+                    ? 'bg-white border-teal-500 ring-2 ring-teal-500/20 shadow-sm'
+                    : 'bg-white/50 border-gray-200 hover:border-teal-200'
+                }`}
+              >
+                <div className="flex flex-col items-start gap-1">
+                  <span className={`text-xs font-bold ${assignmentMode === 'manual' ? 'text-teal-700' : 'text-gray-500'}`}>
+                    Pilih Kurir Manual
+                  </span>
+                </div>
+                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                  assignmentMode === 'manual' ? 'border-teal-500' : 'border-gray-300'
+                }`}>
+                  {assignmentMode === 'manual' && <div className="w-2 h-2 rounded-full bg-teal-500" />}
+                </div>
+              </button>
             </div>
             
-            <div className="flex flex-col md:flex-row gap-3">
-              <div className="flex-1">
+            {assignmentMode === 'manual' && (
+              <div className="animate-in fade-in slide-in-from-top-1 duration-200">
                 <Select
                   placeholder="Pilih Kurir..."
                   value={assignCourierId}
                   onChange={e => setAssignCourierId(e.target.value)}
-                  className="bg-white"
+                  className="bg-white border-teal-200"
                   options={availableCouriers.map(c => {
                     const waiting = courierWaitingOrder(c.id);
                     return {
@@ -580,18 +633,11 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   })}
                 />
               </div>
-              <Button 
-                className="bg-amber-600 hover:bg-amber-700 text-white shadow-lg shadow-amber-200 disabled:bg-gray-300 disabled:shadow-none transition-all px-8 rounded-xl font-bold"
-                onClick={() => handleAssign(assignCourierId, isEditing ? editForm.notes : order.notes || undefined)}
-                disabled={!assignCourierId}
-              >
-                Konfirmasi Penugasan
-              </Button>
-            </div>
+            )}
 
-            <div className="space-y-1 mt-2">
+            <div className="space-y-1.5 pt-1">
               <Select
-                label="Instruksi Khusus untuk Kurir"
+                label="Instruksi untuk Kurir"
                 value={isEditing ? (editForm.notes || '') : (order.notes || '')}
                 onChange={e => {
                   if (isEditing) {
@@ -600,7 +646,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     updateOrder(order.id, { notes: e.target.value });
                   }
                 }}
-                className="bg-white"
+                className="bg-white border-teal-200"
                 options={DEFAULT_COURIER_INSTRUCTIONS.map(i => ({ value: i.label, label: `${i.icon} ${i.label}` }))}
                 placeholder="— Tidak ada instruksi —"
               />
@@ -609,17 +655,13 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 const match = DEFAULT_COURIER_INSTRUCTIONS.find(i => i.label === noteValue);
                 if (!match) return null;
                 return (
-                  <div className="flex items-center gap-1.5 text-[11px] text-amber-700 bg-white/50 p-2 rounded-lg border border-amber-100">
-                    <span className="text-sm">{match.icon}</span>
-                    <span className="font-medium italic leading-none">{match.instruction}</span>
+                  <div className="flex items-center gap-2 text-[11px] text-teal-700 bg-white/80 p-2.5 rounded-xl border border-teal-100 shadow-sm">
+                    <span className="text-base">{match.icon}</span>
+                    <span className="font-medium italic leading-relaxed">{match.instruction}</span>
                   </div>
                 );
               })()}
             </div>
-
-            <p className="text-[10px] text-amber-600 text-center font-medium">
-               🚀 Pastikan instruksi sudah sesuai sebelum menekan tombol konfirmasi.
-            </p>
           </div>
         )}
 
@@ -659,19 +701,45 @@ export const OrderModal: React.FC<OrderModalProps> = ({
             
             {isOpsAdmin && order.status === 'pending' && (
               isEditing ? (
-                <Button 
-                  className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl shadow-lg shadow-teal-100 px-8 font-bold"
-                  onClick={handleSave}
-                >
-                  Simpan Perubahan
-                </Button>
+                <>
+                  <Button 
+                    variant="ghost"
+                    className="text-gray-500 hover:bg-gray-50 font-bold px-6"
+                    onClick={() => setIsEditing(false)}
+                  >
+                    Batal
+                  </Button>
+                  <Button 
+                    className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl shadow-lg shadow-teal-100 px-8 font-bold"
+                    onClick={handleSave}
+                  >
+                    Simpan Perubahan
+                  </Button>
+                </>
               ) : (
-                <Button 
-                  className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl shadow-lg shadow-teal-100 px-8 font-bold"
-                  onClick={() => setIsEditing(true)}
-                >
-                  Edit Pesanan
-                </Button>
+                <>
+                  <Button 
+                    variant="ghost"
+                    className="text-teal-600 hover:bg-teal-50 font-bold px-6"
+                    onClick={() => setIsEditing(true)}
+                  >
+                    Edit Pesanan
+                  </Button>
+                  <Button 
+                    className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl shadow-lg shadow-teal-100 px-8 font-bold"
+                    onClick={() => {
+                      const finalCourierId = assignmentMode === 'fifo' ? availableCouriers[0]?.id : assignCourierId;
+                      if (!finalCourierId) {
+                        alert('Silakan pilih kurir terlebih dahulu.');
+                        return;
+                      }
+                      handleAssign(finalCourierId, order.notes || undefined);
+                    }}
+                    disabled={assignmentMode === 'manual' && !assignCourierId}
+                  >
+                    Tugaskan
+                  </Button>
+                </>
               )
             )}
           </div>
