@@ -23,27 +23,32 @@ interface UserState {
   reset: () => void
 }
 
-const mapProfileToUser = (profile: any): User => ({
-  id: profile.id,
-  name: profile.name,
-  email: profile.email || '', 
-  role: profile.role as UserRole,
-  phone: profile.phone || undefined,
-  is_active: profile.is_active ?? true,
-  is_online: profile.is_online,
-  fcm_token: profile.fcm_token || undefined,
-  courier_status: profile.courier_status,
-  off_reason: profile.off_reason,
-  vehicle_type: profile.vehicle_type,
-  plate_number: profile.plate_number,
-  queue_position: profile.queue_position,
-  created_at: profile.created_at || new Date().toISOString(),
-  updated_at: profile.updated_at || new Date().toISOString(),
-  total_deliveries_alltime: profile.total_deliveries_alltime,
-  total_earnings_alltime: profile.total_earnings_alltime,
-  unpaid_count: profile.unpaid_count,
-  unpaid_amount: profile.unpaid_amount,
-})
+const mapProfileToUser = (profile: any, existingUser?: User): User => {
+  const base = existingUser ? { ...existingUser } : {} as User;
+  
+  return {
+    ...base,
+    id: profile.id || base.id,
+    name: profile.name !== undefined ? profile.name : base.name,
+    email: profile.email !== undefined ? profile.email : (base.email || ''),
+    role: profile.role !== undefined ? profile.role as UserRole : base.role,
+    phone: profile.phone !== undefined ? profile.phone : base.phone,
+    is_active: profile.is_active !== undefined ? profile.is_active : (base.is_active ?? true),
+    is_online: profile.is_online !== undefined ? profile.is_online : base.is_online,
+    fcm_token: profile.fcm_token !== undefined ? profile.fcm_token : base.fcm_token,
+    courier_status: profile.courier_status !== undefined ? profile.courier_status : base.courier_status,
+    off_reason: profile.off_reason !== undefined ? profile.off_reason : base.off_reason,
+    vehicle_type: profile.vehicle_type !== undefined ? profile.vehicle_type : base.vehicle_type,
+    plate_number: profile.plate_number !== undefined ? profile.plate_number : base.plate_number,
+    queue_position: profile.queue_position !== undefined ? profile.queue_position : base.queue_position,
+    created_at: profile.created_at || base.created_at || new Date().toISOString(),
+    updated_at: profile.updated_at || base.updated_at || new Date().toISOString(),
+    total_deliveries_alltime: profile.total_deliveries_alltime !== undefined ? profile.total_deliveries_alltime : base.total_deliveries_alltime,
+    total_earnings_alltime: profile.total_earnings_alltime !== undefined ? profile.total_earnings_alltime : base.total_earnings_alltime,
+    unpaid_count: profile.unpaid_count !== undefined ? profile.unpaid_count : base.unpaid_count,
+    unpaid_amount: profile.unpaid_amount !== undefined ? profile.unpaid_amount : base.unpaid_amount,
+  };
+};
 
 export const useUserStore = create<UserState>()((set, get) => ({
   users: [],
@@ -69,7 +74,13 @@ export const useUserStore = create<UserState>()((set, get) => ({
       if (data) {
         const users = data.map(p => mapProfileToUser(p))
         await cacheProfiles(users)
-        set({ users, isLoaded: true })
+        
+        // Use a functional update to avoid stale closure issues during initial sync
+        set(() => ({ 
+          users: users, 
+          isLoaded: true,
+          error: null
+        }))
         saveProfileSyncTime()
       }
     } catch (err) {
@@ -125,9 +136,15 @@ export const useUserStore = create<UserState>()((set, get) => ({
             set({ users: [...currentUsers, newUser] })
             profiles.put(newUser)
           } else if (eventType === 'UPDATE') {
-            const updatedUser = mapProfileToUser(newRec)
+            const existingUser = currentUsers.find(u => u.id === newRec.id)
+            const updatedUser = mapProfileToUser(newRec, existingUser)
+            
             set({ users: currentUsers.map(u => u.id === newRec.id ? updatedUser : u) })
             profiles.put(updatedUser)
+            
+            if (newRec.courier_status || newRec.is_online !== undefined) {
+              console.log(`✅ Courier ${updatedUser.name} status updated: ${updatedUser.is_online ? 'Online' : 'Offline'} (${updatedUser.courier_status})`)
+            }
           } else if (eventType === 'DELETE') {
             set({ users: currentUsers.filter(u => u.id !== oldRec.id) })
             profiles.delete(oldRec.id)

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Truck, AlertTriangle, Navigation } from 'lucide-react';
+import { AlertTriangle, Navigation } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useAuth } from '@/context/AuthContext';
@@ -265,130 +265,184 @@ export function CourierOrderDetail() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-32 animate-in fade-in duration-500">
+    <div className="flex flex-col h-screen bg-gray-50 animate-in fade-in duration-500 overflow-hidden">
       <OrderHeader 
         order={order}
-        isUpdating={isUpdating}
-        onUpdateStatus={handleUpdateStatus}
         onBagikanInvoice={handleBagikanInvoice}
-        getNextStatusButton={getNextStatusButton}
-        isSuspended={isSuspended}
       />
 
-      <div className="max-w-md mx-auto p-4 space-y-4 pt-6">
-        {isSuspended && (
-          <div className="bg-red-50 border border-red-100 rounded-3xl p-5 mb-4 animate-bounce">
-            <div className="flex items-start gap-4">
-              <div className="bg-red-100 p-3 rounded-2xl">
-                <AlertTriangle className="h-6 w-6 text-red-600" />
-              </div>
-              <div>
-                <p className="text-red-900 font-black uppercase tracking-tight">Akun Ditangguhkan</p>
-                <p className="text-red-700 text-xs leading-relaxed mt-1">Selesaikan setoran administrasi untuk melanjutkan pengantaran.</p>
+      <div className="flex-1 overflow-y-auto pb-48">
+        <div className="max-w-md mx-auto p-4 space-y-4 pt-6">
+          {isSuspended && (
+            <div className="bg-red-50 border border-red-100 rounded-3xl p-5 mb-4 animate-bounce">
+              <div className="flex items-start gap-4">
+                <div className="bg-red-100 p-3 rounded-2xl">
+                  <AlertTriangle className="h-6 w-6 text-red-600" />
+                </div>
+                <div>
+                  <p className="text-red-900 font-black uppercase tracking-tight">Akun Ditangguhkan</p>
+                  <p className="text-red-700 text-xs leading-relaxed mt-1">Selesaikan setoran administrasi untuk melanjutkan pengantaran.</p>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        <OrderCustomerInfo 
-          order={order}
-          isLocked={isLocked}
-          editCustomer={editCustomer}
-          setEditCustomer={setEditCustomer}
-          editName={editName}
-          setEditName={setEditName}
-          editPhone={editPhone}
-          setEditPhone={setEditPhone}
-          editAddress={editAddress}
-          setEditAddress={setEditAddress}
-          handleSimpanCustomer={handleSimpanCustomer}
-          courierAddrCustomer={courierAddrCustomer}
-          courierInlineEditId={courierInlineEditId}
-          setCourierInlineEditId={setCourierInlineEditId}
-          courierInlineEditValue={courierInlineEditValue}
-          setCourierInlineEditValue={setCourierInlineEditValue}
-          courierInlineAddingNew={courierInlineAddingNew}
-          setCourierInlineAddingNew={setCourierInlineAddingNew}
-          courierInlineNewValue={courierInlineNewValue}
-          setCourierInlineNewValue={setCourierInlineNewValue}
-          onUpdateAddress={async (id, addr) => {
-             const cust = findByPhone(order.customer_phone || '');
-             if (cust) await updateCustomerAddress(cust.id, id, { address: addr });
-          }}
-          onDeleteAddress={async (id) => {
-             const cust = findByPhone(order.customer_phone || '');
-             if (cust) await deleteCustomerAddress(cust.id, id);
-          }}
-          onAddNewAddress={async (phone, addr) => {
-             const cust = findByPhone(phone);
-             if (cust) await addAddress(cust.id, { label: 'Ditambah Kurir', address: addr, is_default: false, notes: '' });
-          }}
-          onSetAppliedAddress={(addr) => setEditAddress(addr)}
-        />
+          <OrderCustomerInfo 
+            order={order}
+            isLocked={isLocked}
+            editCustomer={editCustomer}
+            setEditCustomer={setEditCustomer}
+            editName={editName}
+            setEditName={setEditName}
+            editPhone={editPhone}
+            setEditPhone={setEditPhone}
+            editAddress={editAddress}
+            setEditAddress={setEditAddress}
+            handleSimpanCustomer={handleSimpanCustomer}
+            courierAddrCustomer={courierAddrCustomer}
+            courierInlineEditId={courierInlineEditId}
+            setCourierInlineEditId={setCourierInlineEditId}
+            courierInlineEditValue={courierInlineEditValue}
+            setCourierInlineEditValue={setCourierInlineEditValue}
+            courierInlineAddingNew={courierInlineAddingNew}
+            setCourierInlineAddingNew={setCourierInlineAddingNew}
+            courierInlineNewValue={courierInlineNewValue}
+            setCourierInlineNewValue={setCourierInlineNewValue}
+            onUpdateAddress={async (id, addr) => {
+               const cust = findByPhone(order.customer_phone || '');
+               if (cust) await updateCustomerAddress(cust.id, id, { address: addr });
+            }}
+            onDeleteAddress={async (id) => {
+               const cust = findByPhone(order.customer_phone || '');
+               if (cust) await deleteCustomerAddress(cust.id, id);
+            }}
+            onAddNewAddress={async (phone, addr) => {
+               const cust = findByPhone(phone);
+               if (cust) await addAddress(cust.id, { label: 'Ditambah Kurir', address: addr, is_default: false, notes: '' });
+            }}
+            onSetAppliedAddress={(addr) => setEditAddress(addr)}
+          />
 
-        <div className="flex items-center gap-3 mb-6 px-1">
-          <div className="h-10 w-10 bg-emerald-50 rounded-xl flex items-center justify-center">
-            <Truck className="h-5 w-5 text-emerald-600" />
-          </div>
-          <div>
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest leading-none">Status Perjalanan</p>
-            <p className="text-sm font-black text-gray-900 mt-1 uppercase">{order.status.replace('_', ' ')}</p>
+          <OrderItemsList 
+            order={order}
+            isLocked={isLocked}
+            showItemForm={showItemForm}
+            setShowItemForm={setShowItemForm}
+            itemList={itemList}
+            namaItem={namaItem}
+            setNamaItem={setNamaItem}
+            hargaItem={hargaItem}
+            setHargaItem={setHargaItem}
+            handleTambahItem={handleTambahItem}
+            handleHapusItem={handleHapusItem}
+            handleSimpanItems={handleSimpanItems}
+          />
+
+          <OrderPricingSummary 
+            order={order}
+            isLocked={isLocked}
+            titik={titik}
+            beban={beban}
+            totalBiayaTitik={totalBiayaTitik}
+            totalBiayaBeban={totalBiayaBeban}
+            totalOngkir={totalOngkir}
+            editOngkir={editOngkir}
+            setEditOngkir={setEditOngkir}
+            ongkirValue={ongkirValue}
+            setOngkirValue={setOngkirValue}
+            showBebanForm={showBebanForm}
+            setShowBebanForm={setShowBebanForm}
+            namaBeban={namaBeban}
+            setNamaBeban={setNamaBeban}
+            biayaBeban={biayaBeban}
+            setBiayaBeban={setBiayaBeban}
+            handleTambahTitik={handleTambahTitik}
+            handleHapusTitik={handleHapusTitik}
+            handleTambahBeban={handleTambahBeban}
+            handleHapusBeban={handleHapusBeban}
+            handleSimpanOngkir={handleSimpanOngkir}
+            formatRupiah={formatRupiah}
+          />
+
+          {/* Hidden Invoice Template for Sharing */}
+          <div className="hidden">
+            <div ref={invoiceRef} className="p-10 bg-white w-[500px] font-sans">
+               <div className="border-b-4 border-emerald-600 pb-6 mb-6">
+                 <h1 className="text-3xl font-black text-emerald-600 uppercase italic leading-none">KURIRDEV</h1>
+                 <div className="flex justify-between items-end mt-4">
+                   <p className="text-xs font-bold text-gray-400">Order ID: <span className="text-gray-900">{order.order_number}</span></p>
+                   <p className="text-xs font-bold text-gray-400">Date: <span className="text-gray-900">{new Date().toLocaleDateString('id-ID')}</span></p>
+                 </div>
+               </div>
+
+               <div className="grid grid-cols-2 gap-8 mb-8">
+                 <div>
+                   <p className="text-[10px] font-bold text-emerald-600 uppercase mb-2">Customer:</p>
+                   <p className="text-lg font-black text-gray-900">{order.customer_name}</p>
+                   <p className="text-xs text-gray-500 font-medium">{order.customer_phone}</p>
+                 </div>
+               </div>
+
+               <div className="mb-8">
+                 <p className="text-[10px] font-bold text-emerald-600 uppercase mb-4 py-1 border-b border-gray-100">Order Items:</p>
+                 <div className="space-y-3">
+                   {order.items?.map((item, idx) => (
+                     <div key={idx} className="flex justify-between items-center bg-gray-50 p-3 rounded-xl">
+                       <span className="text-sm font-bold text-gray-800">{item.nama}</span>
+                       <span className="text-sm font-black text-emerald-600">Rp {item.harga.toLocaleString('id-ID')}</span>
+                     </div>
+                   ))}
+                 </div>
+               </div>
+
+               <div className="bg-emerald-600 text-white rounded-3xl p-8 shadow-xl shadow-emerald-100">
+                 <div className="space-y-3">
+                   <div className="flex justify-between text-emerald-100 text-xs font-bold uppercase tracking-widest">
+                     <span>Ongkir Layanan</span>
+                     <span>Rp {(order.total_fee || 0).toLocaleString('id-ID')}</span>
+                   </div>
+                   {titik > 0 && (
+                     <div className="flex justify-between text-emerald-100 text-xs font-bold uppercase tracking-widest">
+                       <span>Biaya {titik} Titik</span>
+                       <span>+ Rp {totalBiayaTitik.toLocaleString('id-ID')}</span>
+                     </div>
+                   )}
+                   {beban.length > 0 && (
+                     <div className="flex justify-between text-emerald-100 text-xs font-bold uppercase tracking-widest">
+                       <span>Beban Ekstra</span>
+                       <span>+ Rp {totalBiayaBeban.toLocaleString('id-ID')}</span>
+                     </div>
+                   )}
+                   <div className="pt-4 mt-4 border-t border-emerald-500/50 flex justify-between items-center">
+                     <span className="text-sm font-black uppercase tracking-[0.2em]">Total Bayar</span>
+                     <span className="text-3xl font-black italic">Rp {totalOngkir.toLocaleString('id-ID')}</span>
+                   </div>
+                 </div>
+               </div>
+
+               <div className="mt-10 text-center">
+                 <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.3em] mb-2 italic">Terima kasih telah menggunakan jasa KurirDev</p>
+                 <p className="text-[8px] font-bold text-gray-300 uppercase tracking-widest">Powered by Advanced Agentic Coding System</p>
+               </div>
+            </div>
           </div>
         </div>
+      </div>
 
-        <OrderItemsList 
-          order={order}
-          isLocked={isLocked}
-          showItemForm={showItemForm}
-          setShowItemForm={setShowItemForm}
-          itemList={itemList}
-          namaItem={namaItem}
-          setNamaItem={setNamaItem}
-          hargaItem={hargaItem}
-          setHargaItem={setHargaItem}
-          handleTambahItem={handleTambahItem}
-          handleHapusItem={handleHapusItem}
-          handleSimpanItems={handleSimpanItems}
-        />
-
-        <OrderPricingSummary 
-          order={order}
-          isLocked={isLocked}
-          titik={titik}
-          beban={beban}
-          totalBiayaTitik={totalBiayaTitik}
-          totalBiayaBeban={totalBiayaBeban}
-          totalOngkir={totalOngkir}
-          editOngkir={editOngkir}
-          setEditOngkir={setEditOngkir}
-          ongkirValue={ongkirValue}
-          setOngkirValue={setOngkirValue}
-          showBebanForm={showBebanForm}
-          setShowBebanForm={setShowBebanForm}
-          namaBeban={namaBeban}
-          setNamaBeban={setNamaBeban}
-          biayaBeban={biayaBeban}
-          setBiayaBeban={setBiayaBeban}
-          handleTambahTitik={handleTambahTitik}
-          handleHapusTitik={handleHapusTitik}
-          handleTambahBeban={handleTambahBeban}
-          handleHapusBeban={handleHapusBeban}
-          handleSimpanOngkir={handleSimpanOngkir}
-          formatRupiah={formatRupiah}
-        />
-
-        <div className="flex gap-3 mt-10 px-2 pb-10">
+      {/* FIXED FOOTER ACTIONS */}
+      <div className="bg-white border-t border-gray-100 p-4 pb-8 space-y-3 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] z-40">
+        <div className="flex gap-3">
           {!isLocked && (
             <button
               onClick={handleCancelTap}
               className={cn(
-                "flex-1 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg active:rotate-1",
+                "flex-1 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95",
                 cancelStep === 1 
-                  ? "bg-red-600 text-white shadow-red-200" 
-                  : "bg-white text-red-600 border-2 border-red-50"
+                  ? "bg-red-600 text-white shadow-lg shadow-red-200" 
+                  : "bg-gray-50 text-red-600 border border-red-100"
               )}
             >
-              {cancelStep === 1 ? 'KONFIRMASI BATAL (TAP LAGI)' : 'BATALKAN'}
+              {cancelStep === 1 ? 'TAP LAGI UNTUK BATAL' : 'BATALKAN'}
             </button>
           )}
 
@@ -396,85 +450,40 @@ export function CourierOrderDetail() {
             onClick={handleToggleWaiting}
             disabled={isWaitingUpdating || isLocked}
             className={cn(
-              "flex-1 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg flex items-center justify-center gap-2",
+              "flex-1 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2",
               order.is_waiting
-                ? "bg-amber-100 text-amber-700 shadow-amber-50"
-                : "bg-white text-emerald-600 border-2 border-emerald-50 shadow-emerald-50",
+                ? "bg-amber-100 text-amber-700 border border-amber-200"
+                : "bg-gray-50 text-emerald-600 border border-emerald-100",
               isLocked && "opacity-50 grayscale"
             )}
           >
             {isWaitingUpdating ? (
               <div className="h-4 w-4 border-2 border-emerald-600/30 border-t-emerald-600 rounded-full animate-spin" />
             ) : order.is_waiting ? (
-              'SEDANG MENUNGGU'
+              'PENDING ACT'
             ) : (
-              'SET MENUNGGU'
+              'PENDING'
             )}
           </button>
         </div>
 
-        {/* Hidden Invoice Template for Sharing */}
-        <div className="hidden">
-          <div ref={invoiceRef} className="p-10 bg-white w-[500px] font-sans">
-             <div className="border-b-4 border-emerald-600 pb-6 mb-6">
-               <h1 className="text-3xl font-black text-emerald-600 uppercase italic leading-none">KURIRDEV</h1>
-               <div className="flex justify-between items-end mt-4">
-                 <p className="text-xs font-bold text-gray-400">Order ID: <span className="text-gray-900">{order.order_number}</span></p>
-                 <p className="text-xs font-bold text-gray-400">Date: <span className="text-gray-900">{new Date().toLocaleDateString('id-ID')}</span></p>
-               </div>
-             </div>
-
-             <div className="grid grid-cols-2 gap-8 mb-8">
-               <div>
-                 <p className="text-[10px] font-bold text-emerald-600 uppercase mb-2">Customer:</p>
-                 <p className="text-lg font-black text-gray-900">{order.customer_name}</p>
-                 <p className="text-xs text-gray-500 font-medium">{order.customer_phone}</p>
-               </div>
-             </div>
-
-             <div className="mb-8">
-               <p className="text-[10px] font-bold text-emerald-600 uppercase mb-4 py-1 border-b border-gray-100">Order Items:</p>
-               <div className="space-y-3">
-                 {order.items?.map((item, idx) => (
-                   <div key={idx} className="flex justify-between items-center bg-gray-50 p-3 rounded-xl">
-                     <span className="text-sm font-bold text-gray-800">{item.nama}</span>
-                     <span className="text-sm font-black text-emerald-600">Rp {item.harga.toLocaleString('id-ID')}</span>
-                   </div>
-                 ))}
-               </div>
-             </div>
-
-             <div className="bg-emerald-600 text-white rounded-3xl p-8 shadow-xl shadow-emerald-100">
-               <div className="space-y-3">
-                 <div className="flex justify-between text-emerald-100 text-xs font-bold uppercase tracking-widest">
-                   <span>Ongkir Layanan</span>
-                   <span>Rp {(order.total_fee || 0).toLocaleString('id-ID')}</span>
-                 </div>
-                 {titik > 0 && (
-                   <div className="flex justify-between text-emerald-100 text-xs font-bold uppercase tracking-widest">
-                     <span>Biaya {titik} Titik</span>
-                     <span>+ Rp {totalBiayaTitik.toLocaleString('id-ID')}</span>
-                   </div>
-                 )}
-                 {beban.length > 0 && (
-                   <div className="flex justify-between text-emerald-100 text-xs font-bold uppercase tracking-widest">
-                     <span>Beban Ekstra</span>
-                     <span>+ Rp {totalBiayaBeban.toLocaleString('id-ID')}</span>
-                   </div>
-                 )}
-                 <div className="pt-4 mt-4 border-t border-emerald-500/50 flex justify-between items-center">
-                   <span className="text-sm font-black uppercase tracking-[0.2em]">Total Bayar</span>
-                   <span className="text-3xl font-black italic">Rp {totalOngkir.toLocaleString('id-ID')}</span>
-                 </div>
-               </div>
-             </div>
-
-             <div className="mt-10 text-center">
-               <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.3em] mb-2 italic">Terima kasih telah menggunakan jasa KurirDev</p>
-               <p className="text-[8px] font-bold text-gray-300 uppercase tracking-widest">Powered by Advanced Agentic Coding System</p>
-             </div>
-          </div>
-        </div>
+        {getNextStatusButton() && !isLocked && (
+          <button
+            onClick={handleUpdateStatus}
+            disabled={isUpdating}
+            className={cn(
+              "w-full py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all active:scale-[0.98] shadow-2xl flex items-center justify-center gap-3 text-white",
+              getNextStatusButton()?.color,
+              isUpdating && "opacity-70 scale-95"
+            )}
+          >
+            {isUpdating ? (
+              <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              getNextStatusButton()?.label
+            )}
+          </button>
+        )}
       </div>
 
       <OrderCancelModal 
@@ -488,7 +497,7 @@ export function CourierOrderDetail() {
       />
 
       {showWaReminder && (
-        <div className="fixed bottom-6 left-4 right-4 z-50 animate-in slide-in-from-bottom-10 fade-in duration-500">
+        <div className="fixed bottom-40 left-4 right-4 z-50 animate-in slide-in-from-bottom-10 fade-in duration-500">
           <div className="bg-emerald-600 text-white p-5 rounded-3xl shadow-2xl flex items-center justify-between gap-4 border-4 border-emerald-500">
              <div className="flex items-center gap-4">
                 <div className="bg-white/20 p-2 rounded-2xl flex items-center justify-center">
@@ -503,7 +512,7 @@ export function CourierOrderDetail() {
                href={waLink}
                target="_blank"
                rel="noopener noreferrer"
-               className="bg-white text-emerald-600 h-12 w-12 rounded-2xl flex items-center justify-center shadow-lg active:scale-90 transition-all font-black text-xs shrink-0"
+               className="bg-white text-emerald-600 h-10 w-10 rounded-xl flex items-center justify-center shadow-lg active:scale-90 transition-all font-black text-xs shrink-0"
              >
                 WA
              </a>

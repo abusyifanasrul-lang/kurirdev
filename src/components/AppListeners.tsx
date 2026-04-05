@@ -108,11 +108,17 @@ export const AppListeners = () => {
   // 2.e Support Stores Loading (Customers & Profiles)
   useEffect(() => {
     if (user) {
-       useUserStore.getState().loadFromLocal().then(() => {
-         useUserStore.getState().syncFromServer()
-       })
-       useCustomerStore.getState().loadFromLocal().then(() => {
-         useCustomerStore.getState().syncFromServer()
+       // Only perform initial load/sync once
+       const userStore = useUserStore.getState()
+       if (!userStore.isLoaded) {
+         userStore.loadFromLocal().then(() => {
+           userStore.syncFromServer()
+         })
+       }
+
+       const customerStore = useCustomerStore.getState()
+       customerStore.loadFromLocal().then(() => {
+         customerStore.syncFromServer()
        })
     }
   }, [user?.id])

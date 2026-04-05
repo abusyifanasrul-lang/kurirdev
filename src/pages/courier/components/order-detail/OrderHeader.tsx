@@ -2,31 +2,35 @@ import React from 'react';
 import { ArrowLeft, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Order } from '@/types';
-import { cn } from '@/utils/cn';
 
 interface OrderHeaderProps {
   order: Order;
-  isUpdating: boolean;
-  onUpdateStatus: () => void;
   onBagikanInvoice: () => void;
-  getNextStatusButton: () => { label: string; color: string } | null;
-  isSuspended: boolean;
 }
 
 export const OrderHeader: React.FC<OrderHeaderProps> = ({
   order,
-  isUpdating,
-  onUpdateStatus,
-  onBagikanInvoice,
-  getNextStatusButton,
-  isSuspended
+  onBagikanInvoice
 }) => {
   const navigate = useNavigate();
-  const nextBtn = getNextStatusButton();
-  const isLocked = order.status === 'delivered' || isSuspended;
+
+  const getStatusDisplay = () => {
+    if (order.is_waiting) return { label: 'Sedang Menunggu', emoji: '🕒', color: 'bg-amber-100 text-amber-700' };
+    
+    switch (order.status) {
+      case 'assigned': return { label: 'Pesanan Diterima', emoji: '📋', color: 'bg-blue-100 text-blue-700' };
+      case 'picked_up': return { label: 'Menuju Penjual', emoji: '🛵', color: 'bg-emerald-100 text-emerald-700' };
+      case 'in_transit': return { label: 'Menuju Customer', emoji: '🚚', color: 'bg-emerald-100 text-emerald-700' };
+      case 'delivered': return { label: 'Pesanan Terkirim', emoji: '✅', color: 'bg-green-100 text-green-700' };
+      case 'cancelled': return { label: 'Dibatalkan', emoji: '❌', color: 'bg-red-100 text-red-700' };
+      default: return { label: order.status.replace('_', ' '), emoji: '📦', color: 'bg-gray-100 text-gray-700' };
+    }
+  };
+
+  const status = getStatusDisplay();
 
   return (
-    <div className="sticky top-0 z-30 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between shadow-sm">
+    <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between shadow-sm flex-shrink-0 z-50">
       <div className="flex items-center gap-3">
         <button 
           onClick={() => navigate('/courier/orders')}
@@ -35,15 +39,12 @@ export const OrderHeader: React.FC<OrderHeaderProps> = ({
           <ArrowLeft className="h-6 w-6 text-gray-700" />
         </button>
         <div>
-          <h1 className="text-lg font-bold text-gray-900 leading-tight">
+          <h1 className="text-sm font-bold text-gray-400 uppercase tracking-widest leading-none">
             {order.order_number}
           </h1>
-          <div className="flex items-center gap-2 mt-0.5">
-            <span className={cn(
-              "text-[10px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded-md",
-              order.status === 'delivered' ? "bg-green-100 text-green-700" : "bg-emerald-100 text-emerald-700"
-            )}>
-              {order.status.replace('_', ' ')}
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-lg font-black text-gray-900 leading-none">
+              {status.emoji} {status.label.toUpperCase()}
             </span>
           </div>
         </div>
@@ -52,30 +53,13 @@ export const OrderHeader: React.FC<OrderHeaderProps> = ({
       <div className="flex items-center gap-2">
         <button
           onClick={onBagikanInvoice}
-          className="p-2 rounded-xl bg-gray-50 text-gray-600 border border-gray-100 hover:bg-gray-100 transition-all active:scale-95"
+          className="p-2.5 rounded-xl bg-gray-50 text-gray-600 border border-gray-100 hover:bg-gray-100 transition-all active:scale-95"
           title="Download Invoice"
         >
           <FileText className="h-5 w-5" />
         </button>
-
-        {nextBtn && !isLocked && (
-          <button
-            onClick={onUpdateStatus}
-            disabled={isUpdating}
-            className={cn(
-              "px-4 py-2 rounded-xl text-white font-bold text-sm shadow-lg shadow-emerald-200/50 transition-all active:scale-95 flex items-center gap-2",
-              nextBtn.color,
-              isUpdating && "opacity-70 cursor-not-allowed scale-95"
-            )}
-          >
-            {isUpdating ? (
-              <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            ) : (
-              nextBtn.label.split(' ')[1] // Get text after emoji
-            )}
-          </button>
-        )}
       </div>
     </div>
   );
 };
+
