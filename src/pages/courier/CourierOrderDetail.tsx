@@ -273,7 +273,7 @@ export function CourierOrderDetail() {
         />
       </div>
 
-      <div className="pb-80">
+      <div className="pb-56">
         <div className="max-w-md mx-auto p-4 space-y-4 pt-6">
           {isSuspended && (
             <div className="bg-red-50 border border-red-100 rounded-3xl p-5 mb-4 animate-bounce">
@@ -431,14 +431,14 @@ export function CourierOrderDetail() {
         </div>
       </div>
 
-      {/* FIXED FOOTER ACTIONS - Now positioned above global navigation */}
-      <div className="fixed bottom-20 left-0 right-0 bg-white border-t border-gray-100 p-4 pb-8 space-y-3 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] z-30">
-        <div className="flex gap-3">
+      {/* FIXED FOOTER ACTIONS - Now positioned tightly above global navigation */}
+      <div className="fixed bottom-[64px] left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-100 p-2.5 pb-4 space-y-1.5 shadow-[0_-15px_40px_rgba(0,0,0,0.12)] z-30">
+        <div className="flex gap-1.5">
           {!isLocked && (
             <button
               onClick={handleCancelTap}
               className={cn(
-                "flex-1 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95",
+                "flex-1 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95",
                 cancelStep === 1 
                   ? "bg-red-600 text-white shadow-lg shadow-red-200" 
                   : "bg-gray-50 text-red-600 border border-red-100"
@@ -452,7 +452,7 @@ export function CourierOrderDetail() {
             onClick={handleToggleWaiting}
             disabled={isWaitingUpdating || isLocked}
             className={cn(
-              "flex-1 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2",
+              "flex-1 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2",
               order.is_waiting
                 ? "bg-amber-100 text-amber-700 border border-amber-200"
                 : "bg-gray-50 text-emerald-600 border border-emerald-100",
@@ -474,7 +474,7 @@ export function CourierOrderDetail() {
             onClick={handleUpdateStatus}
             disabled={isUpdating}
             className={cn(
-              "w-full py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all active:scale-[0.98] shadow-2xl flex items-center justify-center gap-3 text-white",
+              "w-full py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all active:scale-[0.98] shadow-2xl flex items-center justify-center gap-3 text-white",
               getNextStatusButton()?.color,
               isUpdating && "opacity-70 scale-95"
             )}

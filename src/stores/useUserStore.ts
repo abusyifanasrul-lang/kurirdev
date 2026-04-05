@@ -114,24 +114,25 @@ export const useUserStore = create<UserState>()((set, get) => ({
   subscribeUsers: () => {
     const channelId = 'users:list'
     
-    // Check if we already have an active channel.
-    // If it's already SUBSCRIBED, we can skip re-creating, 
-    // but if it's in a broken state, we should allow a new one.
+    // 1. Singleton pattern: return existing active channel if already established
     const existing = activeChannels.get(channelId)
     if (existing) {
       if (existing.state === 'joined' || existing.state === 'joining') {
         console.log(`♻️ Reusing active realtime channel for ${channelId}`)
         get().fetchUsers()
-        return () => {}
+        return () => {
+          // No-op if someone else is still using it? 
+          // Actually, for simplicity, we don't handle reference counting yet, 
+          // but we avoid the 'postgres_changes after subscribe' crash.
+        }
       }
-      // If channel exists but is in a bad state, clean it up before re-creating
+      // If it exists but is broken/closed, clean it up before recreating
       supabase.removeChannel(existing)
       activeChannels.delete(channelId)
     }
 
     const channel = supabase.channel(channelId)
-    activeChannels.set(channelId, channel) // Add immediate sync lock
-
+    // IMPORTANT: Register before subscribe
     channel
       .on(
         'postgres_changes',
@@ -161,18 +162,22 @@ export const useUserStore = create<UserState>()((set, get) => ({
           }
         }
       )
-      .subscribe((status, err) => {
-        if (status === 'CHANNEL_ERROR') {
-          console.error(`❌ Realtime subscription failed for ${channelId}:`, err)
-          activeChannels.delete(channelId)
-        } else if (status === 'SUBSCRIBED') {
-          console.log(`✅ Realtime connection active: ${channelId}. Syncing state...`)
-          get().fetchUsers()
-        } else if (status === 'CLOSED') {
-          console.log(`🔌 Realtime connection closed: ${channelId}`)
-          activeChannels.delete(channelId)
-        }
-      })
+
+    // Set map BEFORE subscribe to lock other callers
+    activeChannels.set(channelId, channel)
+
+    channel.subscribe((status, err) => {
+      if (status === 'CHANNEL_ERROR') {
+        console.error(`❌ Realtime subscription failed for ${channelId}:`, err)
+        activeChannels.delete(channelId)
+      } else if (status === 'SUBSCRIBED') {
+        console.log(`✅ Realtime connection active: ${channelId}. Syncing state...`)
+        get().fetchUsers()
+      } else if (status === 'CLOSED') {
+        console.log(`🔌 Realtime connection closed: ${channelId}`)
+        activeChannels.delete(channelId)
+      }
+    })
       
     return () => {
       console.log(`🧼 Cleaning up channel: ${channelId}`)
@@ -184,19 +189,23 @@ export const useUserStore = create<UserState>()((set, get) => ({
   subscribeProfile: (id: string) => {
     const channelId = `profile:single:${id}`
     
+    // 1. Singleton pattern: return existing active channel if already established
     const existing = activeChannels.get(channelId)
     if (existing) {
       if (existing.state === 'joined' || existing.state === 'joining') {
         get().fetchProfile(id)
-        return () => {}
+        return () => {
+           // We keep it alive as long as at least one component needs it
+           // In this simplified version, we just let it be reused.
+        }
       }
       supabase.removeChannel(existing)
       activeChannels.delete(channelId)
     }
 
     const channel = supabase.channel(channelId)
-    activeChannels.set(channelId, channel) // Add immediate sync lock
-
+    
+    // IMPORTANT: Setup listeners BEFORE subscribe
     channel
       .on(
         'postgres_changes',
@@ -223,14 +232,18 @@ export const useUserStore = create<UserState>()((set, get) => ({
           }))
         }
       )
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log(`✅ Realtime profile sync active: ${id}`)
-          get().fetchProfile(id)
-        } else if (status === 'CLOSED') {
-          activeChannels.delete(channelId)
-        }
-      })
+
+    // Set map BEFORE subscribe to lock other callers
+    activeChannels.set(channelId, channel)
+
+    channel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        console.log(`✅ Realtime profile sync active: ${id}`)
+        get().fetchProfile(id)
+      } else if (status === 'CLOSED') {
+        activeChannels.delete(channelId)
+      }
+    })
       
     return () => {
       supabase.removeChannel(channel)
