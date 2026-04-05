@@ -342,7 +342,6 @@ export function CourierOrderDetail() {
           showItemForm={showItemForm}
           setShowItemForm={setShowItemForm}
           itemList={itemList}
-          setItemList={setItemList}
           namaItem={namaItem}
           setNamaItem={setNamaItem}
           hargaItem={hargaItem}

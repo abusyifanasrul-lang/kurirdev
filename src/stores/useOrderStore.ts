@@ -199,7 +199,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     const channelId = courierId ? `orders:courier:${courierId}` : 'orders:global'
     const filterStr = courierId ? `courier_id=eq.${courierId}` : undefined
 
-    const channel = supabase.channel(channelId)
+    const channel = supabase.channel(`${channelId}-${Date.now()}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'orders', filter: filterStr },
@@ -285,7 +285,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     }
     fetchCurrent()
 
-    const channel = supabase.channel(`public:orders:${orderId}`)
+    const channel = supabase.channel(`public:orders:${orderId}-${Date.now()}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `id=eq.${orderId}` }, (payload) => {
         if (payload.eventType === 'DELETE') {
            set({ currentOrder: null })
@@ -443,6 +443,12 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
             const updatedOrder = { ...order, ...updates }
             moveToLocalDB(updatedOrder as Order).catch(err => console.error('Mirror write error:', err))
           }
+
+          // Optimistic local state update
+          set(state => ({
+            orders: state.orders.map(o => o.id === orderId ? { ...o, ...updates } : o),
+            activeOrdersByCourier: state.activeOrdersByCourier.map(o => o.id === orderId ? { ...o, ...updates } : o)
+          }))
         }
       }, {
         onRetry: (attempt) => {
@@ -480,6 +486,16 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
           .eq('id', orderId)
 
         if (error) throw error
+
+        // Optimistic local state update for assigned status
+        set(state => ({
+          orders: state.orders.map(o => o.id === orderId ? { 
+            ...o, 
+            status: 'assigned', 
+            courier_id: courierId,
+            assigned_at: new Date().toISOString()
+          } : o)
+        }))
 
         await get().updateOrderStatus(orderId, 'assigned', userId, userName, `Assigned to ${courierName}`)
       }, {
@@ -529,6 +545,11 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
          updated_at: new Date().toISOString()
        }).eq('id', orderId)
     }
+
+    // Common optimistic update for any updateOrder call
+    set(state => ({
+      orders: state.orders.map(o => o.id === orderId ? { ...o, ...updates } : o)
+    }))
   },
   
   updateBiayaTambahan: async (orderId, titik, beban) => {

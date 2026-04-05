@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabaseClient'
-import { Customer, CustomerAddress } from '@/types'
+import { Customer, CustomerAddress, CustomerChangeRequest } from '@/types'
 import { getAllCustomersLocal, upsertCustomerLocal, saveCustomerSyncTime, getCustomerSyncTime } from '@/lib/orderCache'
 
 interface CustomerState {
@@ -16,6 +16,11 @@ interface CustomerState {
 
   findByPhone: (phone: string) => Customer | undefined
   search: (searchQuery: string) => Customer[]
+  
+  // Admin Methods
+  fetchPendingRequests: () => Promise<CustomerChangeRequest[]>
+  approveRequest: (requestId: string, adminId: string) => Promise<void>
+  rejectRequest: (requestId: string, adminId: string, notes: string) => Promise<void>
 }
 
 export const useCustomerStore = create<CustomerState>()((set, get) => ({
@@ -153,5 +158,69 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
       c.name.toLowerCase().includes(q) || 
       c.phone.includes(q)
     ).sort((a,b) => (b.order_count || 0) - (a.order_count || 0))
+  },
+
+  fetchPendingRequests: async () => {
+    const { data, error } = await supabase
+      .from('customer_change_requests')
+      .select('*')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+    
+    if (error) throw error
+    return data as CustomerChangeRequest[]
+  },
+
+  approveRequest: async (requestId, adminId) => {
+    // 1. Get the request
+    const { data: request, error: fetchErr } = await supabase
+      .from('customer_change_requests')
+      .select('*')
+      .eq('id', requestId)
+      .single() as { data: CustomerChangeRequest | null, error: any };
+    
+    if (fetchErr) throw fetchErr
+    if (!request) throw new Error('Request not found');
+    
+    // 2. Update customer data in DB
+    const { error: updateCustErr } = await supabase
+      .from('customers' as any)
+      .upsert({
+        ...(request.requested_data as any),
+        id: request.customer_id,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'id' })
+    
+    if (updateCustErr) throw updateCustErr
+
+    // 3. Update request status
+    const { error: updateReqErr } = await (supabase
+      .from('customer_change_requests' as any) as any)
+      .update({
+        status: 'approved',
+        admin_id: adminId,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', requestId as any)
+    
+    if (updateReqErr) throw updateReqErr
+
+    // 4. Sync local state
+    const { syncFromServer } = get()
+    await syncFromServer()
+  },
+
+  rejectRequest: async (requestId, adminId, notes) => {
+    const { error } = await (supabase
+      .from('customer_change_requests' as any) as any)
+      .update({
+        status: 'rejected',
+        admin_id: adminId,
+        admin_notes: notes,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', requestId as any)
+    
+    if (error) throw error
   }
 }))

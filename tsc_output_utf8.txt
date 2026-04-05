@@ -1,0 +1,14 @@
+﻿src/components/notifications/ApprovalListener.tsx(4,10): error TS2305: Module '"@/types"' has no exported member 'CustomerChangeRequest'.
+src/components/notifications/ApprovalListener.tsx(50,15): error TS2698: Spread types may only be created from object types.
+src/components/orders/modals/OrderModal.tsx(57,3): error TS6133: 'user' is declared but its value is never read.
+src/components/orders/modals/OrderModal.tsx(59,3): error TS6133: 'isFinance' is declared but its value is never read.
+src/components/orders/modals/OrderModal.tsx(63,3): error TS6133: 'updateOrder' is declared but its value is never read.
+src/components/orders/modals/OrderModal.tsx(64,3): error TS6133: 'updateOrderStatus' is declared but its value is never read.
+src/components/settings/CustomerApprovalTab.tsx(5,10): error TS2305: Module '"@/types"' has no exported member 'CustomerChangeRequest'.
+src/components/settings/CustomerApprovalTab.tsx(10,11): error TS2339: Property 'fetchPendingRequests' does not exist on type 'CustomerState'.
+src/components/settings/CustomerApprovalTab.tsx(10,33): error TS2339: Property 'approveRequest' does not exist on type 'CustomerState'.
+src/components/settings/CustomerApprovalTab.tsx(10,49): error TS2339: Property 'rejectRequest' does not exist on type 'CustomerState'.
+src/components/settings/InstructionsTab.tsx(7,10): error TS2459: Module '"@/stores/useSettingsStore"' declares 'CourierInstruction' locally, but it is not exported.
+src/pages/courier/CourierOrderDetail.tsx(345,11): error TS2322: Type '{ order: Order; isLocked: boolean; showItemForm: boolean; setShowItemForm: Dispatch<SetStateAction<boolean>>; itemList: { nama: string; harga: number; }[]; ... 7 more ...; handleSimpanItems: () => Promise<...>; }' is not assignable to type 'IntrinsicAttributes & OrderItemsListProps'.
+  Property 'setItemList' does not exist on type 'IntrinsicAttributes & OrderItemsListProps'. Did you mean 'itemList'?
+src/pages/Orders.tsx(247,10): error TS6133: 'assignCourierId' is declared but its value is never read.

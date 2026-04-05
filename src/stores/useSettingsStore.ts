@@ -1,13 +1,9 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { supabase } from '@/lib/supabaseClient'
+import { CourierInstruction } from '@/types'
 
-export interface CourierInstruction {
-  id: string;
-  label: string;        
-  instruction: string;  
-  icon: string;         
-}
+export type { CourierInstruction }
 
 interface BusinessSettings {
   commission_rate: number
@@ -29,7 +25,8 @@ const DEFAULT_INSTRUCTIONS: CourierInstruction[] = [
   { id: '2', label: 'Cek dulu ke penjual sebelum ambil', instruction: 'Cek dulu ke penjual sebelum ambil', icon: '🔍' },
   { id: '3', label: 'Kurir yang pesan di tempat', instruction: 'Kamu yang pesan di tempat', icon: '🛒' },
   { id: '4', label: 'Minta kurir update posisi', instruction: 'Admin minta update posisimu', icon: '📍' },
-  { id: '5', label: 'Cek kondisi barang saat diterima', instruction: 'Cek kondisi barang saat diterima', icon: '🔍' },
+  { id: '5', label: 'Hubungi admin', instruction: 'Hubungi Admin untuk data detail konsumen', icon: '📞' },
+  { id: '6', label: 'Periksa kondisi barang', instruction: 'Periksa kondisi barang saat serah terima', icon: '📦' },
 ]
 
 export const useSettingsStore = create<SettingsStore>()(
@@ -56,7 +53,8 @@ export const useSettingsStore = create<SettingsStore>()(
         set((state: SettingsStore) => ({
           ...state,
           commission_rate: data.commission_rate,
-          commission_threshold: data.commission_threshold
+          commission_threshold: data.commission_threshold,
+          courier_instructions: data.courier_instructions || DEFAULT_INSTRUCTIONS
         }))
       },
       reset: () => set((state: SettingsStore) => ({

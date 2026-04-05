@@ -39,7 +39,7 @@ export function CourierLayout() {
       })
 
     // Subscribe to changes for this courier
-    const channel = supabase.channel(`public:orders:courier_${user.id}`)
+    const channel = supabase.channel(`public:orders:courier_${user.id}_${Date.now()}`)
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 

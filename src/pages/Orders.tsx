@@ -53,7 +53,7 @@ type SortField = 'order_number' | 'customer_name' | 'status' | 'courier_id' | 'p
 type SortOrder = 'asc' | 'desc';
 
 export function Orders() {
-  const { orders, fetchOrdersByDateRange, addOrder, assignCourier, cancelOrder, updateOrder, updateOrderStatus } = useOrderStore();
+  const { orders, fetchInitialOrders, subscribeOrders, fetchOrdersByDateRange, addOrder, assignCourier, cancelOrder, updateOrder } = useOrderStore();
   const { rotateQueue } = useCourierStore();
   const { users } = useUserStore();
   const { addNotification } = useNotificationStore();
@@ -200,26 +200,27 @@ export function Orders() {
     allOrders.find(o => o.courier_id === courierId && o.is_waiting === true);
 
   useEffect(() => {
+    // 1. Load from IndexedDB (Pekan ini)
     const loadWeekOrders = async () => {
       const weekOrders = await getOrdersForWeek()
       setLocalDBOrders(weekOrders)
     }
-
-    // Load pertama kali
     loadWeekOrders()
 
+    // 2. Initial Fetch to Zustand (Aktif)
+    fetchInitialOrders()
+
+    // 3. Subscribe Real-time
+    const unsubscribe = subscribeOrders()
+
     // Listen jika IndexedDB baru diisi
-    // oleh initial/delta sync
-    window.addEventListener(
-      'indexeddb-synced', loadWeekOrders
-    )
+    window.addEventListener('indexeddb-synced', loadWeekOrders)
 
     return () => {
-      window.removeEventListener(
-        'indexeddb-synced', loadWeekOrders
-      )
+      unsubscribe()
+      window.removeEventListener('indexeddb-synced', loadWeekOrders)
     }
-  }, [])
+  }, [fetchInitialOrders, subscribeOrders])
 
   // Modal States
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -244,7 +245,11 @@ export function Orders() {
   const { customers, upsertCustomer, addAddress, updateAddress, deleteAddress, findByPhone } = useCustomerStore();
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
-  const [assignCourierId, setAssignCourierId] = useState('');
+  // Inline Address Editing State (for AddOrderModal)
+  const [inlineEditAddrId, setInlineEditAddrId] = useState<string | null>(null);
+  const [inlineEditValue, setInlineEditValue] = useState('');
+  const [inlineAddingNew, setInlineAddingNew] = useState(false);
+  const [inlineNewAddr, setInlineNewAddr] = useState('');
 
   // Handlers
   const handleCreateOrder = async () => {
@@ -336,8 +341,6 @@ export function Orders() {
 
   const [isAssigning, setIsAssigning] = useState(false);
 
-  const [isAssigning, setIsAssigning] = useState(false);
-
   const handleAssign = async (courierId: string, instructions?: string) => {
     if (!selectedOrder || !courierId || isAssigning) return;
 
@@ -379,7 +382,6 @@ export function Orders() {
         });
 
         setIsOrderModalOpen(false);
-        setAssignCourierId('');
       } catch (error) {
         console.error("Assignment failed:", error);
       } finally {
@@ -841,14 +843,10 @@ export function Orders() {
         isOpen={isOrderModalOpen}
         onClose={() => setIsOrderModalOpen(false)}
         order={selectedOrder}
-        user={user}
         isOpsAdmin={isOpsAdmin}
-        isFinance={isFinance}
         handleSaveChanges={handleSaveChanges}
         handleAssign={handleAssign}
         handlePrintInvoice={handlePrintInvoice}
-        updateOrder={updateOrder}
-        updateOrderStatus={updateOrderStatus}
         handleCancel={() => setIsCancelModalOpen(true)}
         availableCouriers={availableCouriers as any}
         courierWaitingOrder={courierWaitingOrder}
@@ -857,6 +855,7 @@ export function Orders() {
         updateAddress={updateAddress}
         deleteAddress={deleteAddress}
         addAddress={addAddress}
+        courierInstructions={courier_instructions}
       />
       <CancelOrderModal
         isOpen={isCancelModalOpen}

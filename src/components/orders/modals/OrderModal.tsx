@@ -20,29 +20,19 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatter';
 import { formatWIB } from '@/utils/date';
-import { Order, User, Customer } from '@/types';
+import { Order, User, Customer, CourierInstruction } from '@/types';
 
-const DEFAULT_COURIER_INSTRUCTIONS = [
-  { label: 'Ketemu Penjual, Titip Bayar', icon: '💰', instruction: 'Bertemu penjual, bayarkan pesanan sesuai total belanja.' },
-  { label: 'Ketemu Penjual, Ambil Saja', icon: '📦', instruction: 'Ambil barang yang sudah dibayar/siap.' },
-  { label: 'Belanja Dulu (Talangi)', icon: '🛒', instruction: 'Beli barang sesuai daftar, talangi uangnya.' },
-  { label: 'Ambil & Kirim Dokumen', icon: '📄', instruction: 'Pastikan dokumen aman dan tidak tertekuk.' }
-];
 
 interface OrderModalProps {
   isOpen: boolean;
   onClose: () => void;
   order: Order | null;
-  user: User | null;
   // Permissions
   isOpsAdmin: boolean;
-  isFinance: boolean;
   // Actions
   handleSaveChanges: (updatedOrder: Partial<Order>, items: any[]) => Promise<void>;
   handleAssign: (courierId: string, notes?: string) => Promise<void>;
   handlePrintInvoice: (order: Order) => void;
-  updateOrder?: (id: string, data: any) => Promise<void>;
-  updateOrderStatus?: (orderId: string, status: any, userId: string, userName: string) => Promise<void>;
   handleCancel?: () => void;
   // Helpers/Data
   availableCouriers: User[];
@@ -53,20 +43,17 @@ interface OrderModalProps {
   updateAddress: (customerId: string, addressId: string, data: any) => Promise<void>;
   deleteAddress: (customerId: string, addressId: string) => Promise<void>;
   addAddress: (customerId: string, data: any) => Promise<void>;
+  courierInstructions: CourierInstruction[];
 }
 
 export const OrderModal: React.FC<OrderModalProps> = ({
   isOpen,
   onClose,
   order,
-  user,
   isOpsAdmin,
-  isFinance,
   handleSaveChanges,
   handleAssign,
   handlePrintInvoice,
-  updateOrder,
-  updateOrderStatus,
   handleCancel,
   availableCouriers,
   courierWaitingOrder,
@@ -74,17 +61,20 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   customers,
   updateAddress,
   deleteAddress,
-  addAddress
+  addAddress,
+  courierInstructions
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [assignCourierId, setAssignCourierId] = useState('');
   const [assignmentMode, setAssignmentMode] = useState<'fifo' | 'manual'>('fifo');
+  const [instructions, setInstructions] = useState<string>('');
   
   // Edit States
   const [editForm, setEditForm] = useState<Partial<Order>>({});
   const [editItems, setEditItems] = useState<any[]>([]);
   const [editItemNama, setEditItemNama] = useState('');
   const [editItemHarga, setEditItemHarga] = useState('');
+  const [inlineAddingItem, setInlineAddingItem] = useState(false);
   
   // Address Edit States
   const [inlineAddrId, setInlineAddrId] = useState<string | null>(null);
@@ -103,6 +93,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
         notes: order.notes
       });
       setEditItems(order.items || (order.item_name ? [{ nama: order.item_name, harga: order.item_price || 0 }] : []));
+      setInstructions(order.notes || '');
       
       // If order already has a courier, set to manual and select them
       if (order.courier_id) {
@@ -354,7 +345,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <Input
                 label="Ongkos Kirim"
                 value={editForm.total_fee ? `Rp ${editForm.total_fee.toLocaleString('id-ID')}` : ''}
@@ -362,15 +353,6 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   const val = Number(e.target.value.replace(/[^0-9]/g, ''));
                   setEditForm(prev => ({ ...prev, total_fee: val }));
                 }}
-              />
-              <Select
-                label="Status Setoran"
-                value={editForm.payment_status}
-                onChange={e => setEditForm(prev => ({ ...prev, payment_status: e.target.value as any }))}
-                options={[
-                  { value: 'unpaid', label: 'Belum Setor' },
-                  { value: 'paid', label: 'Sudah Setor' }
-                ]}
               />
             </div>
 
@@ -385,58 +367,109 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 </Badge>
               </div>
 
-              {editItems.length > 0 && (
-                <div className="space-y-2">
-                  {editItems.map((item, i) => (
-                    <div key={i} className="flex items-center justify-between text-sm bg-white px-3 py-2.5 rounded-lg border border-gray-100 shadow-sm">
-                      <span className="font-medium text-gray-700">{item.nama}</span>
-                      <div className="flex items-center gap-3">
-                        <span className="text-teal-600 font-bold">{formatCurrency(item.harga)}</span>
-                        <button 
-                          type="button" 
-                          onClick={() => setEditItems(editItems.filter((_, idx) => idx !== i))} 
-                          className="p-1 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+              <div className="space-y-1.5 overflow-y-auto px-1">
+                {editItems.map((item, i) => (
+                  <div key={i} className="flex items-center justify-between px-3 py-1.5 rounded-lg border border-gray-200 hover:border-teal-300 transition-colors bg-white group">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-teal-400" />
+                      <span className="text-xs font-medium text-gray-700">{item.nama}</span>
                     </div>
-                  ))}
-                  <div className="flex justify-between p-2 font-bold text-gray-900 bg-teal-50 rounded-lg">
-                    <span>Total Belanja</span>
-                    <span>{formatCurrency(editItems.reduce((sum, item) => sum + item.harga, 0))}</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-bold text-gray-900">{formatCurrency(item.harga)}</span>
+                      <button 
+                        type="button"
+                        onClick={() => setEditItems(editItems.filter((_, idx) => idx !== i))} 
+                        className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
+                ))}
+
+                {/* Inline Tambah Item */}
+                {inlineAddingItem ? (
+                  <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg border border-dashed border-teal-400 bg-teal-50 animate-in fade-in zoom-in-95 duration-150">
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-teal-100 text-teal-600 flex-shrink-0 uppercase">Baru</span>
+                    <input
+                      className="flex-1 text-xs border-0 bg-transparent outline-none focus:outline-none text-gray-800 min-w-0"
+                      placeholder="Nama barang..."
+                      value={editItemNama}
+                      autoFocus
+                      onChange={e => setEditItemNama(e.target.value)}
+                    />
+                    <input
+                      type="number"
+                      className="w-16 text-xs border-0 bg-transparent outline-none focus:outline-none text-gray-800 border-l border-teal-200 pl-2"
+                      placeholder="Harga"
+                      value={editItemHarga}
+                      onChange={e => setEditItemHarga(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          if (!editItemNama || !editItemHarga) return;
+                          setEditItems([...editItems, { nama: editItemNama, harga: Number(editItemHarga) }]);
+                          setEditItemNama('');
+                          setEditItemHarga('');
+                          setInlineAddingItem(false);
+                        } else if (e.key === 'Escape') setInlineAddingItem(false);
+                      }}
+                    />
+                    <div className="flex items-center gap-1.5 flex-shrink-0 pl-1 border-l border-teal-200">
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          if (!editItemNama || !editItemHarga) return;
+                          setEditItems([...editItems, { nama: editItemNama, harga: Number(editItemHarga) }]);
+                          setEditItemNama('');
+                          setEditItemHarga('');
+                          setInlineAddingItem(false);
+                        }}
+                        className="text-green-600 hover:text-green-700"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                      </button>
+                      <button type="button" onClick={() => { setInlineAddingItem(false); setEditItemNama(''); setEditItemHarga(''); }} className="text-gray-400 hover:text-gray-600">
+                        <XCircle className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setInlineAddingItem(true)}
+                    className="text-xs text-teal-600 font-medium hover:text-teal-700 flex items-center gap-1.5 mt-1 px-1 transition-all"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Tambah Item Baru
+                  </button>
+                )}
+              </div>
+
+              {editItems.length > 0 && (
+                <div className="flex justify-between px-3 py-2 font-bold text-gray-900 bg-teal-50 rounded-lg mt-2 border border-teal-100/50">
+                  <span className="text-xs uppercase tracking-tighter text-teal-600">Total Belanja</span>
+                  <span className="text-sm">{formatCurrency(editItems.reduce((sum, item) => sum + item.harga, 0))}</span>
                 </div>
               )}
 
-              <div className="flex gap-2 bg-white p-2 rounded-lg border border-gray-200">
-                <input
-                  type="text"
-                  placeholder="Nama barang..."
-                  value={editItemNama}
-                  onChange={e => setEditItemNama(e.target.value)}
-                  className="flex-1 text-sm border-0 focus:ring-0 px-2"
-                />
-                <input
-                  type="number"
-                  placeholder="Harga"
-                  value={editItemHarga}
-                  onChange={e => setEditItemHarga(e.target.value)}
-                  className="w-24 text-sm border-0 border-l border-gray-100 focus:ring-0 px-2"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!editItemNama || !editItemHarga) return;
-                    setEditItems([...editItems, { nama: editItemNama, harga: Number(editItemHarga) }]);
-                    setEditItemNama(''); 
-                    setEditItemHarga('');
-                  }}
-                  className="p-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors shadow-sm"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
               </div>
+
+            {/* Inline Edit Controls */}
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <Button 
+                variant="ghost"
+                className="text-gray-500 hover:bg-gray-50 font-bold px-6 border border-gray-200"
+                onClick={() => setIsEditing(false)}
+              >
+                Batal
+              </Button>
+              <Button 
+                variant="secondary"
+                className="bg-teal-50 text-teal-600 hover:bg-teal-100 font-bold px-6 border border-teal-200"
+                onClick={handleSave}
+              >
+                Simpan Perubahan
+              </Button>
             </div>
           </div>
         ) : (
@@ -477,27 +510,9 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 </h4>
                 <div className="space-y-4">
                   <div className="bg-teal-50 p-4 rounded-2xl border border-teal-100/50">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-xs text-teal-600 font-medium">Ongkos Kirim</span>
-                      <span className="text-lg font-black text-teal-700">{formatCurrency(order.total_fee)}</span>
-                    </div>
                     <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-teal-600 font-medium">Status Setoran</span>
-                        <Badge variant={order.payment_status === 'paid' ? 'success' : 'warning'}>
-                          {order.payment_status === 'paid' ? 'Selesai' : 'Tertunda'}
-                        </Badge>
-                      </div>
-                      {isFinance && order.payment_status !== 'paid' && updateOrder && (
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="h-7 py-0 text-teal-600 font-bold hover:bg-teal-100"
-                          onClick={() => updateOrder(order.id, { payment_status: 'paid' })}
-                        >
-                          Mark as Paid
-                        </Button>
-                      )}
+                      <span className="text-xs text-teal-600 font-medium">Ongkos Kirim</span>
+                      <span className="text-lg font-black text-teal-700">{formatCurrency(order.total_fee || 0)}</span>
                     </div>
                   </div>
 
@@ -505,7 +520,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     <p className="text-xs text-gray-400">Petugas Pengiriman</p>
                     <div className="flex items-center gap-2 bg-white border border-gray-100 p-2.5 rounded-xl shadow-sm">
                       <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center text-teal-600 font-bold text-xs">
-                        {getCourierName(order.courier_id || null).charAt(0)}
+                        {(getCourierName(order.courier_id || null) || '?').charAt(0)}
                       </div>
                       <div className="flex-1">
                         <p className="text-sm font-bold text-gray-900">{getCourierName(order.courier_id || null) || 'Belum Ditentukan'}</p>
@@ -556,6 +571,19 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* Inline Action Controls */}
+            {isOpsAdmin && order.status === 'pending' && (
+              <div className="flex items-center justify-end gap-3 px-2 pt-2 pb-2">
+                <Button 
+                  variant="ghost"
+                  className="bg-teal-50 text-teal-600 hover:bg-teal-100 font-bold px-6 border border-teal-200 shadow-sm"
+                  onClick={() => setIsEditing(true)}
+                >
+                  Edit Pesanan
+                </Button>
               </div>
             )}
           </div>
@@ -638,21 +666,21 @@ export const OrderModal: React.FC<OrderModalProps> = ({
             <div className="space-y-1.5 pt-1">
               <Select
                 label="Instruksi untuk Kurir"
-                value={isEditing ? (editForm.notes || '') : (order.notes || '')}
+                value={isEditing ? (editForm.notes || '') : (instructions || '')}
                 onChange={e => {
                   if (isEditing) {
                     setEditForm(prev => ({ ...prev, notes: e.target.value }));
-                  } else if (updateOrder) {
-                    updateOrder(order.id, { notes: e.target.value });
+                  } else {
+                    setInstructions(e.target.value);
                   }
                 }}
                 className="bg-white border-teal-200"
-                options={DEFAULT_COURIER_INSTRUCTIONS.map(i => ({ value: i.label, label: `${i.icon} ${i.label}` }))}
+                options={courierInstructions.map(i => ({ value: i.label, label: `${i.icon} ${i.label}` }))}
                 placeholder="— Tidak ada instruksi —"
               />
-              {(isEditing ? editForm.notes : order.notes) && (() => {
-                const noteValue = isEditing ? editForm.notes : order.notes;
-                const match = DEFAULT_COURIER_INSTRUCTIONS.find(i => i.label === noteValue);
+              {(isEditing ? editForm.notes : instructions) && (() => {
+                const noteValue = isEditing ? editForm.notes : instructions;
+                const match = courierInstructions.find(i => i.label === noteValue);
                 if (!match) return null;
                 return (
                   <div className="flex items-center gap-2 text-[11px] text-teal-700 bg-white/80 p-2.5 rounded-xl border border-teal-100 shadow-sm">
@@ -677,70 +705,28 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 Batalkan Pesanan
               </Button>
             )}
-            
-            {user?.role === 'admin' && updateOrderStatus && (
-              <Button
-                variant="ghost"
-                className="text-teal-600 hover:bg-teal-50 font-bold"
-                onClick={async () => {
-                  const tgt = window.prompt(`Force Update Status Code:`, order.status);
-                  if (tgt && user) {
-                    await updateOrderStatus(order.id, tgt, user.id, user.name || 'Admin');
-                  }
-                }}
-              >
-                Force Update
-              </Button>
-            )}
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 ml-auto">
             <Button variant="outline" onClick={onModalClose} className="rounded-xl px-6">
               Tutup
             </Button>
             
-            {isOpsAdmin && order.status === 'pending' && (
-              isEditing ? (
-                <>
-                  <Button 
-                    variant="ghost"
-                    className="text-gray-500 hover:bg-gray-50 font-bold px-6"
-                    onClick={() => setIsEditing(false)}
-                  >
-                    Batal
-                  </Button>
-                  <Button 
-                    className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl shadow-lg shadow-teal-100 px-8 font-bold"
-                    onClick={handleSave}
-                  >
-                    Simpan Perubahan
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button 
-                    variant="ghost"
-                    className="text-teal-600 hover:bg-teal-50 font-bold px-6"
-                    onClick={() => setIsEditing(true)}
-                  >
-                    Edit Pesanan
-                  </Button>
-                  <Button 
-                    className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl shadow-lg shadow-teal-100 px-8 font-bold"
-                    onClick={() => {
-                      const finalCourierId = assignmentMode === 'fifo' ? availableCouriers[0]?.id : assignCourierId;
-                      if (!finalCourierId) {
-                        alert('Silakan pilih kurir terlebih dahulu.');
-                        return;
-                      }
-                      handleAssign(finalCourierId, order.notes || undefined);
-                    }}
-                    disabled={assignmentMode === 'manual' && !assignCourierId}
-                  >
-                    Tugaskan
-                  </Button>
-                </>
-              )
+            {isOpsAdmin && order.status === 'pending' && !isEditing && (
+              <Button 
+                className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl shadow-lg shadow-teal-100 px-10 font-bold"
+                onClick={() => {
+                  const finalCourierId = assignmentMode === 'fifo' ? availableCouriers[0]?.id : assignCourierId;
+                  if (!finalCourierId) {
+                    alert('Silakan pilih kurir terlebih dahulu.');
+                    return;
+                  }
+                  handleAssign(finalCourierId, instructions || undefined);
+                }}
+                disabled={assignmentMode === 'manual' && !assignCourierId}
+              >
+                Tugaskan
+              </Button>
             )}
           </div>
         </div>

@@ -249,3 +249,27 @@ export interface ReportSummary {
     count: number;
   }[];
 }
+
+export interface CourierInstruction {
+  id: string;
+  label: string;
+  instruction: string;
+  icon: string;
+}
+
+export interface CustomerChangeRequest {
+  id: string;
+  customer_id: string;
+  customer_name: string;
+  requester_id: string;
+  requester_name: string;
+  old_data: Partial<Customer>;
+  requested_data: Partial<Customer>;
+  order_id?: string;
+  order_number?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  admin_id?: string;
+  admin_notes?: string;
+  created_at: string;
+  updated_at: string;
+}
