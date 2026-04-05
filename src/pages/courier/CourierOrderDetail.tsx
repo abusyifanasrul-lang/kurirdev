@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AlertTriangle, Navigation } from 'lucide-react';
 import { cn } from '@/utils/cn';
@@ -32,26 +32,31 @@ export function CourierOrderDetail() {
   const { user } = useAuth();
   const { users } = useUserStore();
   const { user: currentUser } = useSessionStore();
+  const { findByPhone, addAddress, updateAddress: updateCustomerAddress, deleteAddress: deleteCustomerAddress, upsertCustomer } = useCustomerStore();
   const invoiceRef = useRef<HTMLDivElement>(null);
+
+  // Stabilize order reference with useMemo to prevent TDZ issues in minified builds
+  const order = useMemo(() => {
+     return (currentOrder?.id === id ? currentOrder : null)
+       || activeOrdersByCourier.find(o => o.id === id)
+       || null;
+  }, [currentOrder, activeOrdersByCourier, id]);
 
   const liveUser = users.find(u => u.id === currentUser?.id);
   const isSuspended = liveUser?.is_active === false;
-  const { findByPhone, addAddress, updateAddress: updateCustomerAddress, deleteAddress: deleteCustomerAddress, upsertCustomer } = useCustomerStore();
-
-  const order = (currentOrder?.id === id ? currentOrder : null)
-    || activeOrdersByCourier.find(o => o.id === id)
-    || null;
 
   useEffect(() => {
     if (!id) return;
     const unsub = subscribeOrderById(id);
     return () => unsub();
-  }, [id]);
+  }, [id, subscribeOrderById]);
 
-  // Auto-scroll to show success view when delivered
+  // Auto-scroll to show success view when delivered - use separate ref to avoid repetitive scrolls
+  const hasScrolled = useRef(false);
   useEffect(() => {
-    if (order?.status === 'delivered') {
+    if (order?.status === 'delivered' && !hasScrolled.current) {
       window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      hasScrolled.current = true;
     }
   }, [order?.status]);
 
@@ -284,6 +289,12 @@ export function CourierOrderDetail() {
 
     try {
       setIsGeneratingInvoice(true);
+      console.log('📄 Bagikan Invoice triggered', { 
+        orderId: order?.id, 
+        hasRef: !!invoiceRef.current,
+        status: order?.status 
+      });
+      
       toastId = addToast('Menyiapkan Gambar Invoice...', 'loading', 0);
       
       const { default: html2canvas } = await import('html2canvas');
@@ -308,9 +319,6 @@ export function CourierOrderDetail() {
                 (s as any)[prop] = prop === 'color' ? 'inherit' : 'transparent';
               }
             });
-          });
-        }
-      });
           });
         }
       });

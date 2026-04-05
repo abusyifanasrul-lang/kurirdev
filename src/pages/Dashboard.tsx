@@ -39,7 +39,7 @@ function ChartSkeleton({ height = 300 }: { height?: number }) {
 }
 
 export function Dashboard() {
-  const { orders } = useOrderStore();
+  const { orders, activeOrdersByCourier, isLoading } = useOrderStore();
   const { users } = useUserStore();
   const { user } = useAuth();
   const { commission_rate, commission_threshold } = useSettingsStore();
@@ -74,11 +74,13 @@ export function Dashboard() {
     cachedHistorical.forEach(o =>
       map.set(o.id, o)
     )
-    // Data realtime dari store
+    // Data realtime dari store (Active & History)
     // (override IndexedDB jika lebih baru)
     orders.forEach(o => map.set(o.id, o))
+    activeOrdersByCourier.forEach(o => map.set(o.id, o))
+    
     return Array.from(map.values())
-  }, [orders, cachedHistorical])
+  }, [orders, activeOrdersByCourier, cachedHistorical])
 
   const handleRefresh = () => {
     setLastUpdated(new Date());
@@ -95,7 +97,7 @@ export function Dashboard() {
   // --- Derived Analytics ---
   const analytics = useMemo(() => {
     const todayOrders = (allOrders || []).filter(o => isWIBToday(o.created_at));
-    const pendingOrders = (orders || []).filter(o => o.status === 'pending');
+    const pendingOrders = activeOrdersByCourier.filter(o => o.status === 'pending');
 
     // Revenue: Sum of total_fee for 'delivered' orders today
     const revenueToday = todayOrders
