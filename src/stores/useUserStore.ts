@@ -279,7 +279,9 @@ export const useUserStore = create<UserState>()((set, get) => ({
   },
 
   updateUser: async (id, data) => {
-    const { email, password, ...dbData } = data as any
+    // Hapus queue_position dari payload jika ada, agar database yang mengaturnya secara eksklusif
+    // Hapus juga email dan password karena diupdate via Auth
+    const { email, password, queue_position, ...dbData } = data as any
     
     // Optimistic update
     const currentUser = get().users.find(u => u.id === id)
@@ -307,4 +309,4 @@ export const useUserStore = create<UserState>()((set, get) => ({
   },
 
   reset: () => set({ users: [], isLoading: false, error: null }),
-})
+}))
