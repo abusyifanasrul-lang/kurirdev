@@ -102,7 +102,7 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
   if (!selectedOrder) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Order Details" size="md">
+    <Modal isOpen={isOpen} onClose={onClose} title="📦 Detail Pesanan" size="md">
       <div className="space-y-3">
         {/* Header - compact */}
         <div className="flex justify-between items-center bg-gray-50 px-3 py-2 rounded-lg">
@@ -146,7 +146,7 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
             
             {/* Address Selection */}
             <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-gray-700">Address</label>
+              <label className="block text-sm font-medium text-gray-700">Alamat</label>
               {editSelectedCustomer && editSelectedCustomer.addresses.map((addr) => (
                 <div
                   key={addr.id}
@@ -267,7 +267,7 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
 
             <div className="grid grid-cols-2 gap-2">
               <Input
-                label="Fee"
+                label="Ongkir"
                 value={editForm.total_fee ? `Rp ${editForm.total_fee.toLocaleString('id-ID')}` : ''}
                 onChange={e => {
                   const val = Number(e.target.value.replace(/[^0-9]/g, ''));
@@ -324,7 +324,7 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
               </div>
             </div>
             <div className="flex justify-end">
-              <Button size="sm" variant="secondary" onClick={handleSaveChanges}>Save Changes</Button>
+              <Button size="sm" variant="secondary" onClick={handleSaveChanges}>Simpan Perubahan</Button>
             </div>
           </div>
         ) : (
@@ -386,12 +386,12 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
         {/* Courier Assignment */}
         <div className="border-t pt-2">
           {selectedOrder.status === 'pending' && isOpsAdmin ? (
-            <div className="bg-teal-50 px-3 py-2 rounded-lg border border-teal-100">
-              <label className="block text-xs font-medium text-teal-900 mb-1.5">Assign Courier (FIFO)</label>
+            <div className="bg-teal-50 rounded-lg p-4 border border-teal-100 space-y-3">
+              <h4 className="text-sm font-bold text-teal-900">Tugaskan Kurir</h4>
               <div className="flex gap-2">
                 <Select
                   className="flex-1"
-                  placeholder="Select Courier..."
+                  placeholder="Pilih Kurir..."
                   value={assignCourierId}
                   onChange={e => setAssignCourierId(e.target.value)}
                   options={availableCouriers.map(c => {
@@ -402,7 +402,13 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
                     };
                   })}
                 />
-                <Button disabled={!assignCourierId} onClick={handleAssign}>Assign</Button>
+                <Button 
+                  className="bg-teal-600 hover:bg-teal-700 text-white px-8"
+                  onClick={handleAssign}
+                  disabled={!assignCourierId}
+                >
+                  Tugaskan
+                </Button>
               </div>
               
               <div className="mt-2 space-y-1">
@@ -424,14 +430,17 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
                   )
                 })()}
               </div>
+              <p className="text-[10px] text-teal-600">
+                * Kurir diurutkan berdasarkan antrian FIFO. Antrian akan berputar otomatis setelah tugas diberikan.
+              </p>
             </div>
           ) : (
             <div className="text-sm grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
-              <span className="text-gray-400">Courier</span>
-              <span className="font-medium">{getCourierName(selectedOrder.courier_id || null)}</span>
+              <span className="text-gray-400">Kurir</span>
+              <span className="font-medium">{getCourierName(selectedOrder.courier_id || null) || 'Belum Ditugaskan'}</span>
               {selectedOrder.assigned_at && (
                 <>
-                  <span className="text-gray-400">Assigned</span>
+                  <span className="text-gray-400">Ditugaskan</span>
                   <span>{format(new Date(selectedOrder.assigned_at), 'dd MMM yy, HH:mm')}</span>
                 </>
               )}
@@ -450,7 +459,7 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
                 onClick={() => setIsCancelModalOpen(true)}
                 disabled={['delivered', 'cancelled'].includes(selectedOrder.status)}
               >
-                Cancel Order
+                Batalkan Pesanan
               </Button>
             )}
             {user?.role === 'admin' && (
@@ -469,7 +478,7 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
               </Button>
             )}
           </div>
-          <Button variant="outline" size="sm" onClick={onClose}>Close</Button>
+          <Button variant="outline" size="sm" onClick={onClose}>Tutup</Button>
         </div>
       </div>
     </Modal>

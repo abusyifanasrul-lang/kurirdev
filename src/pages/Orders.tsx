@@ -896,7 +896,7 @@ export function Orders() {
         isOpsAdmin={isOpsAdmin}
         assignCourierId={assignCourierId}
         setAssignCourierId={setAssignCourierId}
-        availableCouriers={users as any}
+        availableCouriers={availableCouriers as any}
         handleAssign={handleAssign}
         courierWaitingOrder={courierWaitingOrder}
         handlePrintInvoice={handlePrintInvoice}
