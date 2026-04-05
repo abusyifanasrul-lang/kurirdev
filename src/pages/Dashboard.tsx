@@ -131,6 +131,7 @@ export function Dashboard() {
       below_threshold_today: belowThresholdToday,
       active_couriers: activeCouriersCount,
       pending_orders: pendingOrders.length,
+      orders_by_status: pieData,
     };
   }, [allOrders, users, activeOrdersByCourier]);
 
