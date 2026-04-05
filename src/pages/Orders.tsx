@@ -21,8 +21,7 @@ const OrderTable = lazy(() => import('@/components/orders/OrderTable').then(m =>
 const OrderListMobile = lazy(() => import('@/components/orders/OrderListMobile').then(m => ({ default: m.OrderListMobile })));
 
 import { AddOrderModal } from '@/components/orders/modals/AddOrderModal';
-import { OrderDetailsModal } from '@/components/orders/modals/OrderDetailsModal';
-import { EditOrderModal } from '@/components/orders/modals/EditOrderModal';
+import { OrderModal } from '@/components/orders/modals/OrderModal';
 import { BulkSettleModal } from '@/components/orders/modals/BulkSettleModal';
 import { CancelOrderModal } from '@/components/orders/modals/CancelOrderModal';
 
@@ -122,67 +121,15 @@ export function Orders() {
   const [searchCategory, setSearchCategory] = useState('all');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [dateFilter, setDateFilter] = useState({ start: '', end: '' });
+
   const [sortConfig, setSortConfig] = useState<{ field: SortField; order: SortOrder }>({
     field: 'created_at',
     order: 'desc',
   });
 
-  // Modals
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
-
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [assignCourierId, setAssignCourierId] = useState<string>('');
-  const [formError, setFormError] = useState('');
-  const [editItems, setEditItems] = useState<{ nama: string; harga: number }[]>([]);
-  const [editItemNama, setEditItemNama] = useState('');
-  const [editItemHarga, setEditItemHarga] = useState('');
-  const [isCreating, setIsCreating] = useState(false);
-
-  // Form State
-  const [newOrder, setNewOrder] = useState<Partial<Order>>({
-    customer_name: '',
-    customer_phone: '',
-    customer_address: '',
-    total_fee: 0,
-    payment_status: 'unpaid',
-    estimated_delivery_time: '',
-    items: [] as { nama: string; harga: number }[],
-    notes: '',
-  });
-
-  // Edit Form State
-  const [editForm, setEditForm] = useState<Partial<Order>>({
-    customer_name: '',
-    customer_phone: '',
-    customer_address: '',
-    total_fee: 0,
-    payment_status: 'unpaid',
-  });
-
-  const [cancelReason, setCancelReason] = useState('');
-
-  const { upsertCustomer, addAddress, updateAddress, deleteAddress, findByPhone, customers } = useCustomerStore()
-  // customerSuggestions, showSuggestions removed - handled by AddOrderModal internally
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
-  // showNewAddressInput reserved - unused after inline-edit refactor
-  const [inlineEditAddrId, setInlineEditAddrId] = useState<string | null>(null)
-  const [inlineEditValue, setInlineEditValue] = useState('')
-  const [inlineNewAddr, setInlineNewAddr] = useState('')
-  const [inlineAddingNew, setInlineAddingNew] = useState(false)
-
-  // Edit modal inline address state (for Order Details edit)
-  const [editSelectedCustomer, setEditSelectedCustomer] = useState<Customer | null>(null)
-  const [editInlineAddrId, setEditInlineAddrId] = useState<string | null>(null)
-  const [editInlineAddrValue, setEditInlineAddrValue] = useState('')
-  const [editInlineAddingNew, setEditInlineAddingNew] = useState(false)
-
-  // Derived State
   const filteredOrders = useMemo(() => {
     return allOrders
-      .filter((order) => {
+      .filter(order => {
         const matchesStatus = !statusFilter || order.status === statusFilter;
 
         // Gunakan date string WIB untuk perbandingan
@@ -274,29 +221,30 @@ export function Orders() {
     }
   }, [])
 
-  // Sync edit form when order selected
-  useEffect(() => {
-    if (selectedOrder) {
-      setEditForm({
-        customer_name: selectedOrder.customer_name,
-        customer_phone: selectedOrder.customer_phone,
-        customer_address: selectedOrder.customer_address,
-        total_fee: selectedOrder.total_fee,
-        payment_status: selectedOrder.payment_status,
-      });
-      // Seed inline customer for address picker
-      const cust = findByPhone(selectedOrder.customer_phone)
-      setEditSelectedCustomer(cust || null)
-      setEditInlineAddrId(null)
-      setEditInlineAddingNew(false)
-    }
-  }, [selectedOrder?.id]);
+  // Modal States
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
 
-  useEffect(() => {
-    if (selectedOrder) {
-      setEditItems(selectedOrder.items || []);
-    }
-  }, [selectedOrder?.id]);
+  // Create Order Form State
+  const [isCreating, setIsCreating] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [newOrder, setNewOrder] = useState<Partial<Order>>({
+    customer_name: '',
+    customer_phone: '',
+    customer_address: '',
+    total_fee: 0,
+    estimated_delivery_time: '',
+    items: [],
+    notes: '',
+  });
+
+  const { customers, upsertCustomer, addAddress, updateAddress, deleteAddress, findByPhone } = useCustomerStore();
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+
+  const [assignCourierId, setAssignCourierId] = useState('');
 
   // Handlers
   const handleCreateOrder = async () => {
@@ -388,17 +336,18 @@ export function Orders() {
 
   const [isAssigning, setIsAssigning] = useState(false);
 
-  const handleAssign = async () => {
-    if (!selectedOrder || !assignCourierId || isAssigning) return;
+  const [isAssigning, setIsAssigning] = useState(false);
 
-    const courier = availableCouriers.find(c => c.id === assignCourierId);
+  const handleAssign = async (courierId: string, instructions?: string) => {
+    if (!selectedOrder || !courierId || isAssigning) return;
+
+    const courier = availableCouriers.find(c => c.id === courierId);
     if (courier) {
       setIsAssigning(true);
       try {
         // 1. Simpan instruksi (notes) ke order jika ada perubahan
-        // Await ini krusial agar data sinkron sebelum assignment
-        if (selectedOrder.notes !== undefined) {
-          await updateOrder(selectedOrder.id, { notes: selectedOrder.notes });
+        if (instructions !== undefined && instructions !== selectedOrder.notes) {
+          await updateOrder(selectedOrder.id, { notes: instructions });
         }
 
         // 2. Lakukan assignment
@@ -406,15 +355,15 @@ export function Orders() {
         await rotateQueue(courier.id);
 
         // 3. Persiapkan dan kirim notifikasi
-        const notes = (selectedOrder.notes || '').toLowerCase().trim();
+        const finalNotes = (instructions || selectedOrder.notes || '').toLowerCase().trim();
         const selectedInstruction = courier_instructions.find(
-          instruction => instruction.label.toLowerCase() === notes
+          instruction => instruction.label.toLowerCase() === finalNotes
         );
         const emoji = selectedInstruction ? (selectedInstruction.icon || '📋') : '';
         const instruksi = selectedInstruction
           ? `${emoji} ${selectedInstruction.instruction}`
-          : notes
-          ? `📋 ${selectedOrder.notes}`
+          : finalNotes
+          ? `📋 ${finalNotes}`
           : 'Segera proses!';
 
         const customerName = selectedOrder.customer_name || 'Customer';
@@ -429,11 +378,10 @@ export function Orders() {
           data: { orderId: selectedOrder.id, type: 'order_assigned' },
         });
 
-        setIsDetailModalOpen(false);
+        setIsOrderModalOpen(false);
         setAssignCourierId('');
       } catch (error) {
         console.error("Assignment failed:", error);
-        // Tampilkan error ke UI jika perlu (menggunakan toast atau state lain)
       } finally {
         setIsAssigning(false);
       }
@@ -444,20 +392,20 @@ export function Orders() {
     if (!selectedOrder) return;
     await cancelOrder(selectedOrder.id, cancelReason, user?.id || '', user?.name || 'Admin', 'admin');
     setIsCancelModalOpen(false);
-    setIsDetailModalOpen(false);
+    setIsOrderModalOpen(false);
     setCancelReason('');
   };
 
-  const handleSaveChanges = async () => {
+  const handleSaveChanges = async (updatedOrder: Partial<Order>, items: any[]) => {
     if (!selectedOrder) return;
-    updateOrder(selectedOrder.id, {
-      ...editForm,
-      items: editItems
+    await updateOrder(selectedOrder.id, {
+      ...updatedOrder,
+      items: items
     });
     setSelectedOrder({
       ...selectedOrder,
-      ...editForm,
-      items: editItems
+      ...updatedOrder,
+      items: items
     });
   };
 
@@ -841,7 +789,7 @@ export function Orders() {
         <Suspense fallback={<OrdersLoading />}>
           <OrderTable 
             orders={filteredOrders}
-            onSelect={(order) => { setSelectedOrder(order); setIsDetailModalOpen(true); }}
+            onSelect={(order) => { setSelectedOrder(order); setIsOrderModalOpen(true); }}
             onSort={handleSort}
             sortField={sortConfig.field}
             sortOrder={sortConfig.order}
@@ -858,7 +806,7 @@ export function Orders() {
 
           <OrderListMobile 
             orders={filteredOrders}
-            onSelect={(order) => { setSelectedOrder(order); setIsDetailModalOpen(true); }}
+            onSelect={(order) => { setSelectedOrder(order); setIsOrderModalOpen(true); }}
           />
         </Suspense>
       </div>
@@ -889,60 +837,23 @@ export function Orders() {
         deleteAddress={deleteAddress}
       />
 
-      <OrderDetailsModal
-        isOpen={isDetailModalOpen}
-        onClose={() => setIsDetailModalOpen(false)}
+      <OrderModal
+        isOpen={isOrderModalOpen}
+        onClose={() => setIsOrderModalOpen(false)}
         order={selectedOrder}
-        isOpsAdmin={isOpsAdmin}
-        assignCourierId={assignCourierId}
-        setAssignCourierId={setAssignCourierId}
-        availableCouriers={availableCouriers as any}
-        handleAssign={handleAssign}
-        courierWaitingOrder={courierWaitingOrder}
-        handlePrintInvoice={handlePrintInvoice}
-        getCourierName={getCourierName as any}
-        onEdit={() => {
-          setIsDetailModalOpen(false);
-          setIsEditModalOpen(true);
-        }}
-      />
-
-      <EditOrderModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        order={selectedOrder}
-        setSelectedOrder={setSelectedOrder}
+        user={user}
         isOpsAdmin={isOpsAdmin}
         isFinance={isFinance}
-        editForm={editForm}
-        setEditForm={setEditForm}
-        editItems={editItems}
-        setEditItems={setEditItems}
-        editItemNama={editItemNama}
-        setEditItemNama={setEditItemNama}
-        editItemHarga={editItemHarga}
-        setEditItemHarga={setEditItemHarga}
         handleSaveChanges={handleSaveChanges}
         handleAssign={handleAssign}
-        assignCourierId={assignCourierId}
-        setAssignCourierId={setAssignCourierId}
-        availableCouriers={availableCouriers as any}
-        courierWaitingOrder={courierWaitingOrder}
-        courier_instructions={courier_instructions}
-        setIsCancelModalOpen={setIsCancelModalOpen}
+        handlePrintInvoice={handlePrintInvoice}
         updateOrder={updateOrder}
         updateOrderStatus={updateOrderStatus}
-        handlePrintInvoice={handlePrintInvoice}
+        handleCancel={() => setIsCancelModalOpen(true)}
+        availableCouriers={availableCouriers as any}
+        courierWaitingOrder={courierWaitingOrder}
         getCourierName={getCourierName as any}
-        user={user}
-        editSelectedCustomer={editSelectedCustomer}
-        setEditSelectedCustomer={setEditSelectedCustomer}
-        editInlineAddrId={editInlineAddrId}
-        setEditInlineAddrId={setEditInlineAddrId}
-        editInlineAddrValue={editInlineAddrValue}
-        setEditInlineAddrValue={setEditInlineAddrValue}
-        editInlineAddingNew={editInlineAddingNew}
-        setEditInlineAddingNew={setEditInlineAddingNew}
+        customers={customers}
         updateAddress={updateAddress}
         deleteAddress={deleteAddress}
         addAddress={addAddress}
