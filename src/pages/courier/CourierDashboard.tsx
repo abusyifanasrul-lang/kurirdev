@@ -192,7 +192,7 @@ export function CourierDashboard() {
         <div className="h-[52px] rounded-xl bg-gray-100 animate-pulse" />
       ) : unpaidDeliveredOrdersCount > 0 ? (
         <div
-          onClick={() => navigate('/courier/history')}
+          onClick={() => navigate('/courier/earnings', { state: { activeTab: 'history' } })}
           className="flex items-center justify-between gap-3 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 cursor-pointer active:scale-[0.98] transition-all"
         >
           <div className="flex items-center gap-2 min-w-0">

@@ -70,7 +70,6 @@ const CourierLayout = lazy(() => fetchWithRetry(() => import('@/pages/courier/Co
 const CourierDashboard = lazy(() => fetchWithRetry(() => import('@/pages/courier/CourierDashboard').then(m => ({ default: m.CourierDashboard }))));
 const CourierOrders = lazy(() => fetchWithRetry(() => import('@/pages/courier/CourierOrders').then(m => ({ default: m.CourierOrders }))));
 const CourierOrderDetail = lazy(() => fetchWithRetry(() => import('@/pages/courier/CourierOrderDetail').then(m => ({ default: m.CourierOrderDetail }))));
-const CourierHistory = lazy(() => fetchWithRetry(() => import('@/pages/courier/CourierHistory').then(m => ({ default: m.CourierHistory }))));
 const CourierEarnings = lazy(() => fetchWithRetry(() => import('@/pages/courier/CourierEarnings').then(m => ({ default: m.CourierEarnings }))));
 const CourierProfile = lazy(() => fetchWithRetry(() => import('@/pages/courier/CourierProfile').then(m => ({ default: m.CourierProfile }))));
 const CourierNotifications = lazy(() => fetchWithRetry(() => import('@/pages/courier/CourierNotifications').then(m => ({ default: m.CourierNotifications }))));
@@ -360,7 +359,6 @@ export function App() {
                   <Route path="orders" element={<CourierOrders />} />
                   <Route path="orders/:id" element={<CourierOrderDetail />} />
                   <Route path="notifications" element={<CourierNotifications />} />
-                  <Route path="history" element={<CourierHistory />} />
                   <Route path="earnings" element={<CourierEarnings />} />
                   <Route path="profile" element={<CourierProfile />} />
                 </Route>
