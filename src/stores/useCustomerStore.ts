@@ -51,7 +51,7 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
 
       if (fetched && fetched.length > 0) {
         for (const customer of fetched) {
-          await upsertCustomerLocal(customer as Customer)
+          await upsertCustomerLocal(customer as unknown as Customer)
         }
 
         const localCustomers = await getAllCustomersLocal()
@@ -85,7 +85,7 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
 
     if (error) throw error
 
-    const customer = upserted as Customer
+    const customer = upserted as unknown as Customer
     await upsertCustomerLocal(customer)
     
     const existingIndex = customers.findIndex(c => c.id === customer.id)
@@ -168,7 +168,7 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
       .order('created_at', { ascending: false })
     
     if (error) throw error
-    return data as CustomerChangeRequest[]
+    return data as unknown as CustomerChangeRequest[]
   },
 
   approveRequest: async (requestId, adminId) => {

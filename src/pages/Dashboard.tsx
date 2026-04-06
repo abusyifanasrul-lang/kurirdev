@@ -39,7 +39,7 @@ function ChartSkeleton({ height = 300 }: { height?: number }) {
 }
 
 export function Dashboard() {
-  const { orders, activeOrdersByCourier, isLoading } = useOrderStore();
+  const { orders, activeOrdersByCourier } = useOrderStore();
   const { users } = useUserStore();
   const { user } = useAuth();
   const { commission_rate, commission_threshold } = useSettingsStore();
