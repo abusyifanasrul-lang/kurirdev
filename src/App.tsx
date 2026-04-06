@@ -221,56 +221,8 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ToastContainer } from '@/components/ui/ToastContainer';
 export function App() {
   useEffect(() => {
-    // Note: Customer and Profile sync is now handled by AppListeners
-    
-    const currentUserStr = localStorage.getItem('session-storage');
-    let fcmRefreshInterval: ReturnType<typeof setInterval> | null = null;
-    let unsubFCM: any;
-
-    if (currentUserStr) {
-      try {
-        const sessionData = JSON.parse(currentUserStr);
-        const currentUser = sessionData.state?.user;
-        if (currentUser?.role === 'courier') {
-          // Dynamic import — only loads firebase/messaging for courier role
-          import('@/lib/fcm').then(({ refreshFCMToken, onForegroundMessage }) => {
-            refreshFCMToken(currentUser.id).catch(console.error);
-            const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-            fcmRefreshInterval = setInterval(() => {
-              refreshFCMToken(currentUser.id).catch(console.error);
-            }, SEVEN_DAYS_MS);
-            unsubFCM = onForegroundMessage((payload: any) => {
-              console.log('🔔 Foreground message received:', payload);
-              const notifData = payload.notification || payload.data || {};
-              const title = notifData.title;
-              const body = notifData.body;
-              if (title && Notification.permission === 'granted') {
-                const notif = new Notification(title, {
-                  body: body || '',
-                  icon: '/icons/android/android-launchericon-192-192.png',
-                  tag: payload.data?.orderId || 'kurirdev-foreground',
-                });
-                notif.onclick = () => window.focus();
-              }
-            });
-          }).catch(err => console.error('FCM dynamic import failed:', err));
-        }
-      } catch (e) {
-        // ignore parse error
-      }
-    }
-
-    return () => {
-      // clearTimeout(syncTimer); // Removed: sync logic moved to AppListeners
-      if (unsubFCM) {
-        if (typeof unsubFCM === 'function') {
-          unsubFCM();
-        } else if (unsubFCM.then) {
-          unsubFCM.then((h: any) => h.remove?.());
-        }
-      }
-      if (fcmRefreshInterval) clearInterval(fcmRefreshInterval);
-    };
+    // Note: All initial syncs and listeners are now centralized in AppListeners.tsx
+    // to ensure they only run once the Auth session is confirmed by the AuthProvider.
   }, [])
 
   return (

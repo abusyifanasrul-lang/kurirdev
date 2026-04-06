@@ -27,6 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isLoading: !cachedUser,
   });
 
+  const fetchInProgress = useRef(false);
   const lastTokenRef = useRef<string | null>(null);
   const currentUserIdRef = useRef<string | null>(cachedUser?.id || null);
 
@@ -35,6 +36,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [state.user?.id]);
 
   const fetchProfile = useCallback(async (userId: string, email: string, isSilent: boolean = false) => {
+    if (fetchInProgress.current) return;
+    fetchInProgress.current = true;
+
     if (!isSilent) {
       setState(prev => ({ ...prev, isLoading: true }));
     }

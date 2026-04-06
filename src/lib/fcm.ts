@@ -118,11 +118,28 @@ const registerWebPush = async (userId: string): Promise<string | null> => {
   })
 
   if (token) {
-    await (supabase.from('profiles') as any).update({
-      fcm_token: token,
-      fcm_token_updated_at: new Date().toISOString(),
-      platform: 'web'
-    }).eq('id', userId)
+    // Optimization: only update database if the token actually changed 
+    // or if the existing token was updated more than 24h ago
+    const { data: currentProfile } = await supabase
+      .from('profiles')
+      .select('fcm_token, fcm_token_updated_at')
+      .eq('id', userId)
+      .single();
+
+    const isTokenChanged = currentProfile?.fcm_token !== token;
+    const isOld = !currentProfile?.fcm_token_updated_at || 
+                  (Date.now() - new Date(currentProfile.fcm_token_updated_at).getTime()) > 24 * 60 * 60 * 1000;
+
+    if (isTokenChanged || isOld) {
+      console.log(`[FCM] 🔄 Updating token in DB (Changed: ${isTokenChanged}, Old: ${isOld})`);
+      await (supabase.from('profiles') as any).update({
+        fcm_token: token,
+        fcm_token_updated_at: new Date().toISOString(),
+        platform: 'web'
+      }).eq('id', userId)
+    } else {
+      console.log('[FCM] ✅ Token still fresh, skipping DB update');
+    }
     return token
   }
   return null
@@ -152,10 +169,24 @@ export const refreshFCMToken = async (userId: string): Promise<void> => {
         serviceWorkerRegistration: registration
       })
       if (token) {
-        await (supabase.from('profiles') as any).update({
-          fcm_token: token,
-          fcm_token_updated_at: new Date().toISOString()
-        }).eq('id', userId)
+        // Reuse logic: only update if changed or > 24h old
+        const { data: currentProfile } = await supabase
+          .from('profiles')
+          .select('fcm_token, fcm_token_updated_at')
+          .eq('id', userId)
+          .single();
+
+        const isTokenChanged = currentProfile?.fcm_token !== token;
+        const isOld = !currentProfile?.fcm_token_updated_at || 
+                      (Date.now() - new Date(currentProfile.fcm_token_updated_at).getTime()) > 24 * 60 * 60 * 1000;
+
+        if (isTokenChanged || isOld) {
+          console.log(`[FCM] 🔄 Refreshing token in DB (${isTokenChanged ? 'CHANGED' : 'STALE'})`);
+          await (supabase.from('profiles') as any).update({
+            fcm_token: token,
+            fcm_token_updated_at: new Date().toISOString()
+          }).eq('id', userId)
+        }
       }
     }
   } catch (error) {

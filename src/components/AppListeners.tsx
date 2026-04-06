@@ -14,7 +14,7 @@ import {
   checkIntegrity,
   pruneOldCache
 } from '@/lib/orderCache'
-import { onForegroundMessage } from '@/lib/fcm'
+
 
 export const AppListeners = () => {
   const { user, logout } = useAuth()
@@ -69,23 +69,56 @@ export const AppListeners = () => {
       ? notifStore.subscribeNotifications(user.id)
       : notifStore.subscribeAllNotifications()
 
-    // 2.d Integration with FCM for Foreground Refresh
-    let unsubFCM = () => {}
+    // 2.d Integration with FCM for Token Refresh & Foreground Refresh
+    let fcmCleanup: { unsubscribe?: any } = {}
+    let fcmRefreshInterval: any = null
+
     if (user.role === 'courier') {
-      const cleanup = onForegroundMessage((payload) => {
-        console.log('🔔 Foreground FCM caught, refreshing active orders...', payload)
-        orderStore.fetchActiveOrdersByCourier(user.id)
-      })
-      
-      if (typeof cleanup === 'function') {
-        unsubFCM = cleanup as () => void
-      }
+       // Only load and initialize FCM for courier role
+       import('@/lib/fcm').then(({ refreshFCMToken, onForegroundMessage }) => {
+         // Initial check
+         refreshFCMToken(user.id).catch(console.error)
+
+         // Periodic check (every 7 days)
+         const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
+         fcmRefreshInterval = setInterval(() => {
+           refreshFCMToken(user.id).catch(console.error)
+         }, SEVEN_DAYS_MS)
+
+         fcmCleanup.unsubscribe = onForegroundMessage((payload) => {
+           console.log('🔔 Foreground FCM caught:', payload)
+           
+           // A. Refresh Order Store
+           orderStore.fetchActiveOrdersByCourier(user.id)
+
+           // B. Show Browser Notification (if permission granted)
+           const notifData = payload.notification || payload.data || {}
+           const title = notifData.title
+           const body = notifData.body
+           if (title && Notification.permission === 'granted') {
+             const notif = new Notification(title, {
+               body: body || '',
+               icon: '/icons/android/android-launchericon-192-192.png',
+               tag: payload.data?.orderId || 'kurirdev-foreground',
+             })
+             notif.onclick = () => window.focus()
+           }
+         })
+       }).catch(err => console.error('[FCM] Dynamic import failed:', err))
     }
 
     return () => {
-      unsubOrders()
-      unsubNotifs()
-      unsubFCM()
+      if (typeof unsubOrders === 'function') unsubOrders()
+      if (typeof unsubNotifs === 'function') unsubNotifs()
+      if (fcmRefreshInterval) clearInterval(fcmRefreshInterval)
+      if (fcmCleanup.unsubscribe) {
+        const u = fcmCleanup.unsubscribe
+        if (typeof u === 'function') {
+          u()
+        } else if (u && typeof (u as any).then === 'function') {
+          (u as any).then((h: any) => h.remove?.())
+        }
+      }
     }
   }, [user?.id, user?.role])
 
