@@ -55,7 +55,9 @@ export function CourierOrderDetail() {
   const hasScrolled = useRef(false);
   useEffect(() => {
     if (order?.status === 'delivered' && !hasScrolled.current) {
-      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      setTimeout(() => {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      }, 300);
       hasScrolled.current = true;
     }
   }, [order?.status]);
@@ -137,23 +139,30 @@ export function CourierOrderDetail() {
     if (!nextStatus) return;
     setIsUpdating(true);
     
-    const toast = useToastStore.getState().addToast;
+    const toastStore = useToastStore.getState();
+    let loadingToastId: string | undefined;
+    
     if (nextStatus === 'delivered') {
-      toast('Menyelesaikan pesanan...', 'loading', 2000);
+      loadingToastId = toastStore.addToast('Menyelesaikan pesanan...', 'loading', 0);
     }
 
-    await new Promise(r => setTimeout(r, 800));
-    await updateOrderStatus(order.id, nextStatus, user?.id || '', user?.name || 'Kurir');
-    
-    setIsUpdating(false);
-    
-    if (nextStatus === 'delivered') {
-      toast('Pesanan Berhasil Diselesaikan!', 'success', 3000);
-    }
-    
-    if (nextStatus === 'picked_up') {
-      setShowWaReminder(true);
-      setTimeout(() => setShowWaReminder(false), 6000);
+    try {
+      await new Promise(r => setTimeout(r, 800));
+      await updateOrderStatus(order.id, nextStatus, user?.id || '', user?.name || 'Kurir');
+      
+      if (nextStatus === 'delivered') {
+        toastStore.addToast('Pesanan Berhasil Diselesaikan!', 'success', 3000);
+      }
+      
+      if (nextStatus === 'picked_up') {
+        setShowWaReminder(true);
+        setTimeout(() => setShowWaReminder(false), 6000);
+      }
+    } finally {
+      setIsUpdating(false);
+      if (loadingToastId) {
+        toastStore.removeToast(loadingToastId);
+      }
     }
   };
 
@@ -447,64 +456,102 @@ export function CourierOrderDetail() {
 
           {/* In-layout but invisible container for html2canvas consistency */}
           <div className="absolute opacity-0 pointer-events-none appearance-none h-0 overflow-hidden" aria-hidden="true" style={{ top: '-4000px', width: '500px' }}>
-            <div ref={invoiceRef} className="p-10 bg-white w-[500px] font-sans" style={{ backgroundColor: '#ffffff' }}>
-               <div className="pb-6 mb-6" style={{ borderBottom: '4px solid #059669' }}>
-                 <h1 className="text-3xl font-black uppercase italic leading-none" style={{ color: '#059669' }}>KURIRDEV</h1>
-                 <div className="flex justify-between items-end mt-4">
-                   <p className="text-xs font-bold" style={{ color: '#9ca3af' }}>Order ID: <span style={{ color: '#111827' }}>{order.order_number}</span></p>
-                   <p className="text-xs font-bold" style={{ color: '#9ca3af' }}>Date: <span style={{ color: '#111827' }}>{new Date().toLocaleDateString('id-ID')}</span></p>
-                 </div>
-               </div>
+            <div ref={invoiceRef} style={{ background: '#ffffff', padding: '24px', width: '320px', fontFamily: 'Arial, sans-serif', fontSize: '12px', color: '#111827' }}>
+              {/* Header */}
+              <div style={{ textAlign: 'center', paddingBottom: '12px', borderBottom: '2px solid #111827', marginBottom: '14px' }}>
+                <div style={{ fontSize: '20px', fontWeight: '800', color: '#0f766e' }}>🛵 KurirDev</div>
+                <div style={{ fontSize: '10px', color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '2px' }}>Invoice Pengiriman</div>
+                <div style={{ fontSize: '14px', fontWeight: '700', color: '#111827', marginTop: '10px' }}>{order.order_number}</div>
+                <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>{order.created_at ? new Date(order.created_at).toLocaleString('id-ID', {day:'2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit'}) : new Date().toLocaleString('id-ID')}</div>
+                <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '1px' }}>Kurir: {user?.name}</div>
+              </div>
 
-               <div className="grid grid-cols-2 gap-8 mb-8">
-                 <div>
-                   <p className="text-[10px] font-bold uppercase mb-2" style={{ color: '#059669' }}>Customer:</p>
-                   <p className="text-lg font-black" style={{ color: '#111827' }}>{order.customer_name}</p>
-                   <p className="text-xs font-medium" style={{ color: '#6b7280' }}>{order.customer_phone}</p>
-                 </div>
-               </div>
+              {/* Kepada */}
+              <div style={{ paddingBottom: '12px', borderBottom: '1px dashed #d1d5db', marginBottom: '14px' }}>
+                <div style={{ fontSize: '9px', fontWeight: '700', letterSpacing: '0.1em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '6px' }}>Kepada</div>
+                <div style={{ fontWeight: '700', fontSize: '13px', color: '#111827' }}>{order.customer_name}</div>
+                <div style={{ color: '#4b5563', marginTop: '2px', lineHeight: '1.5' }}>{order.customer_address}</div>
+                <div style={{ color: '#4b5563', marginTop: '2px' }}>{order.customer_phone}</div>
+              </div>
 
-               <div className="mb-8">
-                 <p className="text-[10px] font-bold uppercase mb-4 py-1" style={{ color: '#059669', borderBottom: '1px solid #f3f4f6' }}>Order Items:</p>
-                 <div className="space-y-3">
-                   {order.items?.map((item, idx) => (
-                     <div key={idx} className="flex justify-between items-center p-3 rounded-xl" style={{ backgroundColor: '#f9fafb' }}>
-                       <span className="text-sm font-bold" style={{ color: '#1f2937' }}>{item.nama}</span>
-                       <span className="text-sm font-black" style={{ color: '#059669' }}>Rp {item.harga.toLocaleString('id-ID')}</span>
-                     </div>
-                   ))}
-                 </div>
-               </div>
+              {/* Daftar Belanja */}
+              {(order.items && order.items.length > 0) && (
+                <div style={{ paddingBottom: '12px', borderBottom: '1px dashed #d1d5db', marginBottom: '14px' }}>
+                  <div style={{ fontSize: '9px', fontWeight: '700', letterSpacing: '0.1em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '8px' }}>Daftar Belanja</div>
+                  {order.items.map((item, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                      <span style={{ color: '#374151', flex: 1, paddingRight: '8px' }}>{item.nama}</span>
+                      <span style={{ color: '#111827', fontWeight: '600', whiteSpace: 'nowrap' }}>Rp {item.harga.toLocaleString('id-ID')}</span>
+                    </div>
+                  ))}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '6px', marginTop: '6px', borderTop: '1px solid #e5e7eb', fontWeight: '700' }}>
+                    <span style={{ color: '#374151' }}>Total Belanja</span>
+                    <span style={{ color: '#111827' }}>Rp {order.items.reduce((s, i) => s + i.harga, 0).toLocaleString('id-ID')}</span>
+                  </div>
+                </div>
+              )}
 
-               <div className="rounded-3xl p-8 shadow-xl" style={{ backgroundColor: '#059669', color: '#ffffff', boxShadow: '0 20px 25px -5px rgba(5, 150, 105, 0.1)' }}>
-                 <div className="space-y-3">
-                   <div className="flex justify-between text-xs font-bold uppercase tracking-widest" style={{ color: '#d1fae5' }}>
-                     <span>Ongkir Layanan</span>
-                     <span>Rp {(order.total_fee || 0).toLocaleString('id-ID')}</span>
-                   </div>
-                   {titik > 0 && (
-                     <div className="flex justify-between text-xs font-bold uppercase tracking-widest" style={{ color: '#d1fae5' }}>
-                       <span>Biaya {titik} Titik</span>
-                       <span>+ Rp {totalBiayaTitik.toLocaleString('id-ID')}</span>
-                     </div>
-                   )}
-                   {beban.length > 0 && (
-                     <div className="flex justify-between text-xs font-bold uppercase tracking-widest" style={{ color: '#d1fae5' }}>
-                       <span>Beban Ekstra</span>
-                       <span>+ Rp {totalBiayaBeban.toLocaleString('id-ID')}</span>
-                     </div>
-                   )}
-                   <div className="pt-4 mt-4 flex justify-between items-center" style={{ borderTop: '1px solid rgba(255,255,255,0.3)' }}>
-                     <span className="text-sm font-black uppercase tracking-[0.2em]">Total Bayar</span>
-                     <span className="text-3xl font-black italic">Rp {totalOngkir.toLocaleString('id-ID')}</span>
-                   </div>
-                 </div>
-               </div>
+              {/* Barang (Fallback) */}
+              {(!order.items || order.items.length === 0) && (order as any).item_name && (
+                <div style={{ paddingBottom: '12px', borderBottom: '1px dashed #d1d5db', marginBottom: '14px' }}>
+                  <div style={{ fontSize: '9px', fontWeight: '700', letterSpacing: '0.1em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '6px' }}>Barang</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#374151' }}>{(order as any).item_name}</span>
+                    {((order as any).item_price ?? 0) > 0 && (
+                      <span style={{ fontWeight: '600', color: '#111827' }}>Rp {((order as any).item_price ?? 0).toLocaleString('id-ID')}</span>
+                    )}
+                  </div>
+                </div>
+              )}
 
-               <div className="mt-10 text-center">
-                 <p className="text-[10px] font-black uppercase tracking-[0.3em] mb-2 italic" style={{ color: '#059669' }}>Terima kasih telah menggunakan jasa KurirDev</p>
-                 <p className="text-[8px] font-bold uppercase tracking-widest" style={{ color: '#d1d5db' }}>Powered by Advanced Agentic Coding System</p>
-               </div>
+              {/* Biaya Pengiriman */}
+              <div style={{ marginBottom: '14px' }}>
+                <div style={{ fontSize: '9px', fontWeight: '700', letterSpacing: '0.1em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '8px' }}>Biaya Pengiriman</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                  <span style={{ color: '#374151' }}>Ongkir</span>
+                  <span>Rp {(order.total_fee || 0).toLocaleString('id-ID')}</span>
+                </div>
+                {(order.titik ?? 0) > 0 && Array.from({ length: order.titik! }).map((_, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', paddingLeft: '8px' }}>
+                    <span style={{ color: '#9ca3af' }}>• Titik {i + 1}</span>
+                    <span>Rp 3.000</span>
+                  </div>
+                ))}
+                {(order.beban ?? []).map((b, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', paddingLeft: '8px' }}>
+                    <span style={{ color: '#9ca3af' }}>• {b.nama}</span>
+                    <span>Rp {b.biaya.toLocaleString('id-ID')}</span>
+                  </div>
+                ))}
+                <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '6px', marginTop: '6px', borderTop: '1px solid #e5e7eb', fontWeight: '700', fontSize: '13px' }}>
+                  <span>Total Ongkir</span>
+                  <span>Rp {totalOngkir.toLocaleString('id-ID')}</span>
+                </div>
+              </div>
+
+              {/* Total Dibayar */}
+              {(order.items && order.items.length > 0) && (
+                <div style={{ background: '#fef3c7', borderRadius: '8px', padding: '10px 12px', marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '800', fontSize: '14px', color: '#92400e' }}>
+                    <span>TOTAL DIBAYAR</span>
+                    <span>Rp {(totalOngkir + order.items.reduce((s, i) => s + i.harga, 0)).toLocaleString('id-ID')}</span>
+                  </div>
+                  <div style={{ fontSize: '9px', color: '#b45309', margin: '3px 0 0 0' }}>Ongkir + Total Belanja</div>
+                </div>
+              )}
+              {(!order.items || order.items.length === 0) && ((order as any).item_price ?? 0) > 0 && (
+                <div style={{ background: '#fef3c7', borderRadius: '8px', padding: '10px 12px', marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '800', fontSize: '14px', color: '#92400e' }}>
+                    <span>TOTAL DIBAYAR</span>
+                    <span>Rp {(totalOngkir + ((order as any).item_price ?? 0)).toLocaleString('id-ID')}</span>
+                  </div>
+                  <div style={{ fontSize: '9px', color: '#b45309', margin: '3px 0 0 0' }}>Ongkir + Harga Barang</div>
+                </div>
+              )}
+              
+              <div style={{ textAlign: 'center', color: '#9ca3af', fontSize: '10px', paddingTop: '12px', marginTop: '8px', borderTop: '1px dashed #e5e7eb' }}>
+                Terima kasih telah menggunakan layanan KurirDev 🙏
+              </div>
             </div>
           </div>
           {/* Completion Success View */}
