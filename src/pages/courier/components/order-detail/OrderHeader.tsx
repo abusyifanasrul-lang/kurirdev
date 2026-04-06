@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ArrowLeft, Printer } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/utils/cn';
 import { Order } from '@/types';
+import { useSettingsStore } from '@/stores/useSettingsStore';
 
 interface OrderHeaderProps {
   order: Order;
@@ -16,6 +17,12 @@ export const OrderHeader: React.FC<OrderHeaderProps> = ({
   isGeneratingInvoice = false
 }) => {
   const navigate = useNavigate();
+  const { courier_instructions } = useSettingsStore();
+
+  const instruction = useMemo(() => {
+    if (!order.notes) return null;
+    return courier_instructions.find(i => i.label === order.notes) || null;
+  }, [order.notes, courier_instructions]);
 
   const getStatusDisplay = () => {
     if (order.is_waiting) return { label: 'Sedang Menunggu', emoji: '🕒', color: 'bg-amber-100 text-amber-700' };
@@ -67,6 +74,14 @@ export const OrderHeader: React.FC<OrderHeaderProps> = ({
               </span>
             )}
           </div>
+          {instruction && (
+            <div className="flex items-center gap-1.5 mt-2 px-2 py-1 bg-teal-50 border border-teal-100 rounded-lg animate-in fade-in slide-in-from-top-1 duration-300">
+              <span className="text-sm leading-none">{instruction.icon}</span>
+              <span className="text-[10px] font-bold text-teal-700 leading-none italic">
+                {instruction.instruction}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 

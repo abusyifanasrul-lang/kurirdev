@@ -2,7 +2,6 @@ import React from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
-import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
 import { Search, Plus, Pencil, Trash2, Check, XCircle } from 'lucide-react';
 import { Customer, Order } from '@/types/index';
@@ -362,16 +361,6 @@ export const AddOrderModal: React.FC<AddOrderModalProps> = ({
             onChange={e => setNewOrder({ ...newOrder, estimated_delivery_time: e.target.value })}
           />
         </div>
-
-        <Select
-          label="Payment Status"
-          value={newOrder.payment_status}
-          onChange={e => setNewOrder({ ...newOrder, payment_status: e.target.value as any })}
-          options={[
-            { value: 'unpaid', label: 'Belum Setor' },
-            { value: 'paid', label: 'Sudah Setor' }
-          ]}
-        />
 
         {formError && <p className="text-sm text-red-500 mb-2">{formError}</p>}
 

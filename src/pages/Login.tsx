@@ -1,16 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   Truck, Eye, EyeOff, Loader2, Mail, Lock
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
-import type { User as UserType, UserRole } from '@/types';
-import { useSessionStore } from '@/stores/useSessionStore';
-import { requestFCMPermission } from '@/lib/fcm';
 import { supabase } from '@/lib/supabaseClient';
 
 export function Login() {
-  const navigate = useNavigate();
+  // const navigate = useNavigate(); // Remove if not used, but actually we might need it later? No, App.tsx handles it.
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -19,7 +15,7 @@ export function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const { login: sessionLogin } = useSessionStore();
+  // const { login: sessionLogin } = useSessionStore(); // No longer needed here
 
   useEffect(() => {
     // Clean up old role-aware keys
@@ -35,13 +31,7 @@ export function Login() {
     }
   }, []);
 
-  const getRedirectPath = (role: UserRole): string => {
-    if (role === 'courier') return '/courier';
-    if (role === 'finance') return '/admin/finance';
-    if (role === 'owner') return '/admin/overview';
-    if (role === 'admin') return '/admin/diagnostics';
-    return '/admin/dashboard'; // admin_kurir
-  };
+  // Removed redundant helper functions
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,57 +58,16 @@ export function Login() {
         throw new Error(authError?.message || 'Login failed.');
       }
 
-      const supabaseUser = data.user;
-
-      // 2. Fetch user data from Supabase profiles
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', supabaseUser.id)
-        .single() as { data: any, error: any };
-
-      if (profileError || !profile) {
-        throw new Error('Data pengguna tidak ditemukan di database.');
-      }
-
-      if (profile.is_active === false) {
-        throw new Error('Akun Anda telah dinonaktifkan. Silakan hubungi admin.');
-      }
-
-      const userData: UserType = {
-          id: profile.id,
-          name: profile.name,
-          email: supabaseUser.email || '',
-          role: profile.role as UserRole,
-          phone: profile.phone || undefined,
-          is_active: profile.is_active ?? true,
-          fcm_token: profile.fcm_token || undefined,
-          is_online: profile.is_online,
-          created_at: profile.created_at || new Date().toISOString(),
-          updated_at: profile.updated_at || new Date().toISOString(),
-          total_deliveries_alltime: profile.total_deliveries_alltime,
-          total_earnings_alltime: profile.total_earnings_alltime,
-          unpaid_count: profile.unpaid_count,
-          unpaid_amount: profile.unpaid_amount,
-      };
-
-      // 3. Establish Session (Zustand)
-      sessionLogin(userData);
-
-      // 4. Remember Me logic
+      // 2. Remember Me logic
       if (rememberMe) {
         localStorage.setItem('lastLoginEmail', email);
       } else {
         localStorage.removeItem('lastLoginEmail');
       }
 
-      // 5. Request FCM permission for couriers
-      if (userData.role === 'courier') {
-        requestFCMPermission(userData.id);
-      }
-
-      // 6. Navigate based on role automatically
-      navigate(getRedirectPath(userData.role));
+      // Note: We don't fetch profile or navigate manually here.
+      // AuthContext.tsx listens for SIGNED_IN, fetches the profile, 
+      // and App.tsx redirects the user based on the new session state.
 
     } catch (err: any) {
       console.error('Login error:', err);

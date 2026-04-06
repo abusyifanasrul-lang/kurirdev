@@ -35,6 +35,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [state.user?.id]);
 
   const fetchProfile = useCallback(async (userId: string, email: string) => {
+    setState(prev => ({ ...prev, isLoading: true }));
     try {
       const { data: profile, error } = (await supabase
         .from('profiles')
@@ -45,6 +46,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) throw error;
       
       if (profile) {
+        if (profile.is_active === false) {
+          console.warn('Account is inactive:', userId);
+          await supabase.auth.signOut();
+          storeLogout();
+          setState({ user: null, token: null, isAuthenticated: false, isLoading: false });
+          return;
+        }
+
         const userData: User = {
           id: profile.id,
           name: profile.name,
@@ -75,7 +84,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
       } else {
         console.error('Profile not found for:', userId);
-        setState(prev => ({ ...prev, isLoading: false }));
+        // If auth exists but profile doesn't, we should sign out
+        await supabase.auth.signOut();
+        storeLogout();
+        setState({ user: null, token: null, isAuthenticated: false, isLoading: false });
       }
     } catch (error) {
       console.error('Error fetching profile from Supabase:', error);
