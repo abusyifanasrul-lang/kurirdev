@@ -34,14 +34,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     currentUserIdRef.current = state.user?.id || null;
   }, [state.user?.id]);
 
-  const fetchProfile = useCallback(async (userId: string, email: string) => {
-    setState(prev => ({ ...prev, isLoading: true }));
+  const fetchProfile = useCallback(async (userId: string, email: string, isSilent: boolean = false) => {
+    if (!isSilent) {
+      setState(prev => ({ ...prev, isLoading: true }));
+    }
+    
+    // Add a timeout to prevent infinite loading on shaky networks
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+
     try {
-      const { data: profile, error } = (await supabase
+      const profilePromise = supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single()) as any;
+        .single();
+        
+      const { data: profile, error } = (await profilePromise) as any;
+      clearTimeout(timeoutId);
         
       if (error) throw error;
       
@@ -84,30 +94,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
       } else {
         console.error('Profile not found for:', userId);
-        // If auth exists but profile doesn't, we should sign out
         await supabase.auth.signOut();
         storeLogout();
         setState({ user: null, token: null, isAuthenticated: false, isLoading: false });
       }
-    } catch (error) {
+    } catch (error: any) {
+      clearTimeout(timeoutId);
       console.error('Error fetching profile from Supabase:', error);
+      
+      // If it's a silent refresh and it fails, we don't necessarily want to 
+      // kick the user out immediately, but we must stop the loading state.
       setState(prev => ({ ...prev, isLoading: false }));
+      
+      // If NOT silent and it fails, it's a critical boot failure
+      if (!isSilent && error.name !== 'AbortError') {
+        // Option: we could allow offline access here if we have cachedUser
+        if (cachedUser) {
+           console.log('Falling back to cached user due to network error');
+           setState({ user: cachedUser, token: null, isAuthenticated: true, isLoading: false });
+        }
+      }
     }
-  }, [storeLogin]);
+  }, [storeLogin, cachedUser]);
 
   useEffect(() => {
     const checkSession = async () => {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      if (error) {
-         console.error('Supabase session error:', error);
-         storeLogout();
-         setState({ user: null, token: null, isAuthenticated: false, isLoading: false });
-         return;
-      }
-      if (session?.user) {
-        await fetchProfile(session.user.id, session.user.email || '');
-      } else {
-        setState(prev => ({ ...prev, isLoading: false }));
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        
+        if (session?.user) {
+          // If we already have a cached user, we can do a silent refresh
+          await fetchProfile(session.user.id, session.user.email || '', !!cachedUser);
+        } else {
+          setState(prev => ({ ...prev, isLoading: false }));
+        }
+      } catch (error) {
+        console.error('Supabase session error:', error);
+        // If we have a cached user, don't kill the session immediately on network error
+        if (!cachedUser) {
+          storeLogout();
+          setState({ user: null, token: null, isAuthenticated: false, isLoading: false });
+        } else {
+          setState(prev => ({ ...prev, isLoading: false }));
+        }
       }
     };
 
@@ -142,7 +172,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.log('Session already active for user:', session.user.id);
           return;
         }
-        await fetchProfile(session.user.id, session.user.email || '');
+        
+        // TOKEN_REFRESHED should always be silent
+        const isSilent = event === 'TOKEN_REFRESHED' || !!currentUserIdRef.current;
+        await fetchProfile(session.user.id, session.user.email || '', isSilent);
       }
     });
 

@@ -27,14 +27,14 @@ function LoadingScreen() {
 function fetchWithRetry(componentImport: () => Promise<any>): Promise<any> {
     return componentImport().catch((error) => {
         // Only retry once per session to avoid infinite reload loops
-        const hasRetried = window.sessionStorage.getItem('chunk_load_retried');
+        const hasRetried = window.localStorage.getItem('chunk_load_retried');
         const isChunkError = 
             error.message?.includes('Failed to fetch dynamically imported module') ||
             error.message?.includes('Failed to load module script') ||
             error.message?.includes('Expected a JavaScript-or-Wasm module script');
 
         if (isChunkError && !hasRetried) {
-            window.sessionStorage.setItem('chunk_load_retried', 'true');
+            window.localStorage.setItem('chunk_load_retried', 'true');
             window.location.reload();
             return new Promise(() => {}); // Wait for reload
         }
@@ -223,7 +223,7 @@ export function App() {
   useEffect(() => {
     // Note: Customer and Profile sync is now handled by AppListeners
     
-    const currentUserStr = sessionStorage.getItem('user-session');
+    const currentUserStr = localStorage.getItem('session-storage');
     let fcmRefreshInterval: ReturnType<typeof setInterval> | null = null;
     let unsubFCM: any;
 

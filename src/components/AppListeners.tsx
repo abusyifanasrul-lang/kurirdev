@@ -152,12 +152,22 @@ export const AppListeners = () => {
     if (!user) return
 
     let timeoutId: any = null
-    const resyncAll = () => {
-      // Throttle by 2 seconds to avoid firing multiple times on consecutive visibility/focus events
-      if (timeoutId) return
-      timeoutId = setTimeout(() => { timeoutId = null }, 2000)
+    let lastSyncTime = 0
 
-      console.log('👀 Window became visible/focused. Triggering realtime resync...')
+    const resyncAll = () => {
+      // Throttle by 5 seconds to avoid firing multiple times
+      // and to avoid clashing with AuthContext background refreshes
+      const now = Date.now();
+      if (now - lastSyncTime < 5000) {
+        console.log('⏳ Skipping resyncAll (cooldown active)');
+        return;
+      }
+      
+      if (timeoutId) return;
+      timeoutId = setTimeout(() => { timeoutId = null }, 2000);
+      lastSyncTime = now;
+
+      console.log('👀 Window became visible/focused. Triggering realtime resync...');
       
       const filter = {
         courierId: user.role === 'courier' ? user.id : undefined,
