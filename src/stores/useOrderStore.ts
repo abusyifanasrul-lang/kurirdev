@@ -10,7 +10,6 @@ import {
   getOrdersByCourierFromLocal, 
   markAsPaidInLocalDB 
 } from '@/lib/orderCache'
-import { sendMockNotification } from '@/utils/notification'
 import { useSettingsStore } from '@/stores/useSettingsStore'
 import { logger } from '@/lib/logger'
 
@@ -455,11 +454,6 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
         if (error) throw error
         const newOrder = data as Order
         set(state => ({ orders: [newOrder, ...state.orders] }))
-        sendMockNotification(
-          'Order Baru Masuk!',
-          `Order ${newOrder.order_number} sebesar Rp ${newOrder.total_fee.toLocaleString('id-ID')} menunggumu!`,
-          { orderId: newOrder.id }
-        )
       }, {
         onRetry: (attempt) => {
           if (!retryToastId) {
