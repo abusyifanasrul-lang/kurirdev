@@ -115,6 +115,12 @@ export const useUserStore = create<UserState>()((set, get) => ({
   },
 
   resyncRealtime: async (id) => {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      console.warn('[useUserStore] Aborting resyncRealtime: No active session')
+      return
+    }
+
     // 1. Force fetch data
     try {
       if (id) {

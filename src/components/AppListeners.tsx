@@ -5,6 +5,7 @@ import { useOrderStore } from '@/stores/useOrderStore'
 import { useSettingsStore } from '@/stores/useSettingsStore'
 import { useNotificationStore } from '@/stores/useNotificationStore'
 import { useCustomerStore } from '@/stores/useCustomerStore'
+import { supabase } from '@/lib/supabaseClient'
 
 import {
   isInitialSyncCompleted,
@@ -180,12 +181,31 @@ export const AppListeners = () => {
     }
   }, [user?.id, user?.role])
 
-  // 5. Visibility / Window Focus Sync (Self-Healing)
+  // 5. Visibility / Online / Window Focus Sync (Self-Healing with Auth Check)
   useEffect(() => {
     if (!user) return
 
     let timeoutId: any = null
     let lastSyncTime = 0
+
+    const ensureValidSession = async (): Promise<boolean> => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+        if (error || !session) {
+          console.warn('⚠️ No valid session, attempting refresh...')
+          const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession()
+          if (refreshError || !refreshed.session) {
+            console.error('❌ Session refresh failed:', refreshError)
+            return false
+          }
+        }
+        console.log('✅ Session is valid')
+        return true
+      } catch (err) {
+        console.error('❌ ensureValidSession error:', err)
+        return false
+      }
+    }
 
     const resyncAll = () => {
       // Throttle by 5 seconds to avoid firing multiple times
@@ -200,7 +220,7 @@ export const AppListeners = () => {
       timeoutId = setTimeout(() => { timeoutId = null }, 2000);
       lastSyncTime = now;
 
-      console.log('👀 Window became visible/focused. Triggering realtime resync...');
+      console.log('🔄 Triggering realtime resync...');
       
       const filter = {
         courierId: user.role === 'courier' ? user.id : undefined,
@@ -216,20 +236,36 @@ export const AppListeners = () => {
       }
     }
 
+    const handleSyncTrigger = async (source: string) => {
+      console.log(`📡 [${source}] Event detected. Pre-flight auth check...`)
+      const isValid = await ensureValidSession()
+      if (isValid) {
+        resyncAll()
+      } else {
+        console.warn(`⚠️ [${source}] Session invalid after check. Resync aborted.`)
+      }
+    }
+
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible') resyncAll()
+      if (document.visibilityState === 'visible') handleSyncTrigger('Visibility')
     }
     
     const handleFocus = () => {
-      resyncAll() // focus happens when returning to the tab
+      handleSyncTrigger('Focus')
+    }
+
+    const handleOnline = () => {
+      handleSyncTrigger('Online')
     }
 
     window.addEventListener('visibilitychange', handleVisibility)
     window.addEventListener('focus', handleFocus)
+    window.addEventListener('online', handleOnline)
 
     return () => {
       window.removeEventListener('visibilitychange', handleVisibility)
       window.removeEventListener('focus', handleFocus)
+      window.removeEventListener('online', handleOnline)
       if (timeoutId) clearTimeout(timeoutId)
     }
   }, [user?.id, user?.role])

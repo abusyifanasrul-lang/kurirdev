@@ -148,6 +148,12 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   },
 
   resyncRealtime: async (filter) => {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      console.warn('[useOrderStore] Aborting resyncRealtime: No active session')
+      return
+    }
+
     const { courierId } = filter || {}
     
     // 1. Force fetch active orders to patch gap based on visibility/focus
