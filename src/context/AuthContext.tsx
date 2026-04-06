@@ -28,6 +28,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
 
   const fetchInProgress = useRef(false);
+  const lastFetchTime = useRef(0);
   const lastTokenRef = useRef<string | null>(null);
   const currentUserIdRef = useRef<string | null>(cachedUser?.id || null);
 
@@ -37,31 +38,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchProfile = useCallback(async (userId: string, email: string, isSilent: boolean = false) => {
     if (fetchInProgress.current) return;
+    if (Date.now() - lastFetchTime.current < 2000) return;
+
     fetchInProgress.current = true;
+    lastFetchTime.current = Date.now();
 
     if (!isSilent) {
       setState(prev => ({ ...prev, isLoading: true }));
     }
     
-    // Add a timeout to prevent infinite loading on shaky networks
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
 
     try {
-      const profilePromise = supabase
+      const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
         
-      const { data: profile, error } = (await profilePromise) as any;
-      clearTimeout(timeoutId);
-        
       if (error) throw error;
       
       if (profile) {
         if (profile.is_active === false) {
-          console.warn('Account is inactive:', userId);
           await supabase.auth.signOut();
           storeLogout();
           setState({ user: null, token: null, isAuthenticated: false, isLoading: false });
@@ -70,54 +69,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const userData: User = {
           id: profile.id,
-          name: profile.name,
           email: email,
+          name: profile.name,
           role: profile.role as UserRole,
           phone: profile.phone || undefined,
           is_active: profile.is_active ?? true,
           fcm_token: profile.fcm_token || undefined,
-          is_online: profile.is_online,
-          courier_status: profile.courier_status,
-          off_reason: profile.off_reason,
-          vehicle_type: profile.vehicle_type,
-          plate_number: profile.plate_number,
-          queue_position: profile.queue_position,
+          is_online: profile.is_online ?? false,
+          courier_status: (profile.courier_status as any) || undefined,
+          off_reason: profile.off_reason || undefined,
+          vehicle_type: (profile.vehicle_type as any) || undefined,
+          plate_number: profile.plate_number || undefined,
+          queue_position: profile.queue_position || undefined,
+          total_deliveries_alltime: profile.total_deliveries_alltime || 0,
+          total_earnings_alltime: profile.total_earnings_alltime || 0,
+          unpaid_count: profile.unpaid_count || 0,
+          unpaid_amount: profile.unpaid_amount || 0,
           created_at: profile.created_at || new Date().toISOString(),
           updated_at: profile.updated_at || new Date().toISOString(),
-          total_deliveries_alltime: profile.total_deliveries_alltime,
-          total_earnings_alltime: profile.total_earnings_alltime,
-          unpaid_count: profile.unpaid_count,
-          unpaid_amount: profile.unpaid_amount,
         };
-        storeLogin(userData); // Sync to Zustand
-        setState({
-          user: userData,
-          token: null,
-          isAuthenticated: true,
-          isLoading: false, // Turn off loader once auth is verified
-        });
-      } else {
-        console.error('Profile not found for:', userId);
-        await supabase.auth.signOut();
-        storeLogout();
-        setState({ user: null, token: null, isAuthenticated: false, isLoading: false });
+        storeLogin(userData);
+        setState({ user: userData, token: null, isAuthenticated: true, isLoading: false });
       }
     } catch (error: any) {
-      clearTimeout(timeoutId);
-      console.error('Error fetching profile from Supabase:', error);
-      
-      // If it's a silent refresh and it fails, we don't necessarily want to 
-      // kick the user out immediately, but we must stop the loading state.
+      console.error('[Auth] Profile fetch failed:', error);
       setState(prev => ({ ...prev, isLoading: false }));
-      
-      // If NOT silent and it fails, it's a critical boot failure
-      if (!isSilent && error.name !== 'AbortError') {
-        // Option: we could allow offline access here if we have cachedUser
-        if (cachedUser) {
-           console.log('Falling back to cached user due to network error');
-           setState({ user: cachedUser, token: null, isAuthenticated: true, isLoading: false });
-        }
-      }
+    } finally {
+      clearTimeout(timeoutId);
+      fetchInProgress.current = false;
+      setState(prev => ({ ...prev, isLoading: false }));
     }
   }, [storeLogin, cachedUser]);
 

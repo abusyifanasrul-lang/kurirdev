@@ -170,8 +170,9 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
 
     // 2. Check channel state and self-heal if necessary
     const channelId = courierId ? `orders:courier:${courierId}` : 'orders:global'
-    const currentState = channelStates.get(channelId)
+
     
+    const currentState = channelStates.get(channelId)
     if (!currentState || currentState === 'errored' || currentState === 'closed') {
       console.warn(`[useOrderStore] Channel ${channelId} dead (state: ${currentState}). Resyncing...`)
       const existing = activeChannels.get(channelId)
@@ -248,17 +249,14 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     const filterStr = courierId ? `courier_id=eq.${courierId}` : undefined
 
     // Implementation of Singleton/State-checking pattern (Mirroring useUserStore logic)
-    const currentState = channelStates.get(channelId)
+
     const existing = activeChannels.get(channelId)
     
-    if (existing && currentState !== 'errored' && currentState !== 'closed') {
-      if (currentState === 'joining' || currentState === 'joined') {
-        console.log(`♻️ Realtime: ${channelId} already ${currentState || 'initialized'}. Skipping duplicate.`)
-        return () => { /* No-op cleanup for duplicate calls */ }
-      }
-      // If it exists but is broken/closed, clean it up before recreating
+    if (existing) {
+      console.log(`📡 Cleaning up existing channel ${channelId} before resubscribing...`)
       supabase.removeChannel(existing)
       activeChannels.delete(channelId)
+      channelStates.delete(channelId)
     }
 
     channelStates.set(channelId, 'joining')
