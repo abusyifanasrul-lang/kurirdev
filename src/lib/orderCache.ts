@@ -1,5 +1,7 @@
 import Dexie, { Table } from 'dexie'
 import { Order, Customer } from '@/types'
+import { calcCourierEarning } from './calcEarning'
+import { useSettingsStore } from '@/stores/useSettingsStore'
 
 // Helper function untuk konversi UTC ke local timezone
 function getLocalDateStr(
@@ -626,12 +628,12 @@ export async function getTopCustomers(
     const existing = map.get(key)
     if (existing) {
       existing.order_count++
-      existing.total_fee += o.total_fee || 0
+      existing.total_fee += (o.total_fee || 0) + (o.total_biaya_titik || 0) + (o.total_biaya_beban || 0)
     } else {
       map.set(key, {
         name: o.customer_name,
         order_count: 1,
-        total_fee: o.total_fee || 0,
+        total_fee: (o.total_fee || 0) + (o.total_biaya_titik || 0) + (o.total_biaya_beban || 0),
       })
     }
   }
@@ -651,18 +653,25 @@ export async function getTopCouriers(
     .toArray()
 
   const map = new Map<string, { id: string; name: string; delivery_count: number; total_fee: number }>()
+  const { commission_rate, commission_threshold } = useSettingsStore.getState()
+  const earningSettings = { commission_rate, commission_threshold }
+
   for (const o of all) {
     const cid = o.courier_id!
     const existing = map.get(cid)
+    
+    // Calculate net earning for this courier
+    const earning = calcCourierEarning(o, earningSettings)
+
     if (existing) {
       existing.delivery_count++
-      existing.total_fee += o.total_fee || 0
+      existing.total_fee += earning
     } else {
       map.set(cid, {
         id: cid,
         name: courierNames[cid] || `Kurir ${cid.slice(0, 6)}`,
         delivery_count: 1,
-        total_fee: o.total_fee || 0,
+        total_fee: earning,
       })
     }
   }

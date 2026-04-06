@@ -19,6 +19,7 @@ import { Card, StatCard } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { Input } from '@/components/ui/Input';
+import { calcAdminEarning, calcCourierEarning } from '@/lib/calcEarning';
 
 // Stores
 import { useOrderStore } from '@/stores/useOrderStore';
@@ -37,7 +38,7 @@ export function Reports() {
   const { fetchOrdersByDateRange } = useOrderStore();
   const { couriers } = useCourierStore();
   const { users } = useUserStore();
-  const { commission_rate } = useSettingsStore();
+  const { commission_rate, commission_threshold } = useSettingsStore();
 
   const [reportOrders, setReportOrders] = useState<Order[]>([]);
   const [cacheStatus, setCacheStatus] = useState<'idle' | 'checking' | 'missing' | 'loading' | 'loaded'>('idle');
@@ -120,7 +121,12 @@ export function Reports() {
     // 2. Summary Stats
     const totalOrders = filteredOrders.length;
     const deliveredOrders = filteredOrders.filter(o => o.status === 'delivered');
-    const totalRevenue = deliveredOrders.reduce((acc, o) => acc + (o.total_fee || 0), 0);
+    const earningSettings = { commission_rate, commission_threshold };
+
+    // Total Revenue (Gross)
+    const totalRevenue = deliveredOrders.reduce((acc, o) =>
+      acc + (o.total_fee || 0) + (o.total_biaya_titik || 0) + (o.total_biaya_beban || 0), 0
+    );
 
     const daysDiff = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
     const avgOrdersPerDay = totalOrders / daysDiff;
@@ -131,10 +137,15 @@ export function Reports() {
     deliveredOrders.forEach(o => {
       if (o.courier_id) {
         if (!courierStats[o.courier_id]) {
-          courierStats[o.courier_id] = { name: courierMap[o.courier_id] || couriers.find(c => c.id === o.courier_id)?.name || 'Unknown', count: 0, earnings: 0 };
+          courierStats[o.courier_id] = { 
+            name: courierMap[o.courier_id] || couriers.find(c => c.id === o.courier_id)?.name || 'Unknown', 
+            count: 0, 
+            earnings: 0 
+          };
         }
         courierStats[o.courier_id].count += 1;
-        courierStats[o.courier_id].earnings += (o.total_fee || 0);
+        // Correctly calculate courier actual earnings
+        courierStats[o.courier_id].earnings += calcCourierEarning(o, earningSettings);
       }
     });
 
@@ -155,7 +166,7 @@ export function Reports() {
       });
       const dayRevenue = dayOrders
         .filter(o => o.status === 'delivered')
-        .reduce((acc, o) => acc + (o.total_fee || 0), 0);
+        .reduce((acc, o) => acc + (o.total_fee || 0) + (o.total_biaya_titik || 0) + (o.total_biaya_beban || 0), 0);
 
       return {
         date: dayStr,
@@ -181,12 +192,9 @@ export function Reports() {
       .slice(0, 5);
 
     // Calculate Net Revenue (Gross - Courier Payouts)
-    let totalCourierPayout = 0;
-    deliveredOrders.forEach(o => {
-      const rate = commission_rate / 100;
-      totalCourierPayout += (o.total_fee || 0) * rate;
-    });
-    const netRevenue = totalRevenue - totalCourierPayout;
+    const netRevenue = deliveredOrders.reduce((sum, o) =>
+      sum + calcAdminEarning(o, earningSettings), 0
+    );
 
     // Calculate Success Rate
     const successRate = totalOrders > 0 ? (deliveredOrders.length / totalOrders) * 100 : 0;

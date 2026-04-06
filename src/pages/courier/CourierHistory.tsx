@@ -230,7 +230,7 @@ export function CourierHistory() {
                         <p className="text-xs text-gray-500 line-clamp-1">{order.customer_address}</p>
                       </div>
                       <div className="flex justify-between items-center mt-3 pt-2 border-t border-gray-50">
-                        <span className="text-xs text-gray-500">Total Fee: {formatCurrency(order.total_fee)}</span>
+                        <span className="text-xs text-gray-500">Ongkir: {formatCurrency(order.total_fee)}</span>
                         {courierEarning > 0 && (
                           <span className="text-sm font-semibold text-teal-600">+{formatCurrency(courierEarning)}</span>
                         )}

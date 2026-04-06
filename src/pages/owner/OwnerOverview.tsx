@@ -117,7 +117,9 @@ export function OwnerOverview() {
   );
 
   const kpis = useMemo(() => {
-    const grossRevenue = deliveredOrders.reduce((sum, o) => sum + (o.total_fee || 0), 0);
+    const grossRevenue = deliveredOrders.reduce((sum, o) => 
+      sum + (o.total_fee || 0) + (o.total_biaya_titik || 0) + (o.total_biaya_beban || 0), 0
+    );
     const netRevenue = deliveredOrders.reduce((sum, o) =>
       sum + calcAdminEarning(o, earningSettings), 0
     );
@@ -147,7 +149,9 @@ export function OwnerOverview() {
         if (o.status !== 'delivered') return false;
         return isWithinInterval(parseISO(o.created_at), { start: dayStart, end: dayEnd });
       });
-      const revenue = dayDelivered.reduce((sum, o) => sum + (o.total_fee || 0), 0);
+      const revenue = dayDelivered.reduce((sum, o) => 
+        sum + (o.total_fee || 0) + (o.total_biaya_titik || 0) + (o.total_biaya_beban || 0), 0
+      );
       return {
         date: format(date, 'dd/MM'),
         revenue,

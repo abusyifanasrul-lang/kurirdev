@@ -88,12 +88,12 @@ export function CourierDashboard() {
     [courierOrders]
   );
 
-  const todayEarnings = useMemo(() =>
-    courierOrders
+  const todayEarnings = useMemo(() => {
+    const earningSettings = { commission_rate, commission_threshold };
+    return courierOrders
       .filter((o: Order) => o.status === 'delivered' && isToday(new Date(o.created_at)))
-      .reduce((sum: number, o: Order) => sum + (o.total_fee || 0), 0),
-    [courierOrders]
-  );
+      .reduce((sum: number, o: Order) => sum + calcCourierEarning(o, earningSettings), 0);
+  }, [courierOrders, commission_rate, commission_threshold]);
 
   const [unpaidDeliveredOrdersCount, setUnpaidDeliveredOrdersCount] = useState(0)
   const [unpaidTotalEarnings, setUnpaidTotalEarnings] = useState(0)
