@@ -250,9 +250,16 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
 
     // Implementation of Singleton/State-checking pattern (Mirroring useUserStore logic)
     const currentState = channelStates.get(channelId)
-    if (activeChannels.has(channelId) || currentState === 'joining' || currentState === 'joined') {
-      console.log(`♻️ Realtime: ${channelId} already ${currentState || 'initialized'}. Skipping duplicate.`)
-      return () => { /* No-op cleanup for duplicate calls */ }
+    const existing = activeChannels.get(channelId)
+    
+    if (existing && currentState !== 'errored' && currentState !== 'closed') {
+      if (currentState === 'joining' || currentState === 'joined') {
+        console.log(`♻️ Realtime: ${channelId} already ${currentState || 'initialized'}. Skipping duplicate.`)
+        return () => { /* No-op cleanup for duplicate calls */ }
+      }
+      // If it exists but is broken/closed, clean it up before recreating
+      supabase.removeChannel(existing)
+      activeChannels.delete(channelId)
     }
 
     channelStates.set(channelId, 'joining')
@@ -346,7 +353,11 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
           })
         }
       )
-      .subscribe((status, err) => {
+
+    // Set map BEFORE subscribe to lock other callers
+    activeChannels.set(channelId, channel)
+
+    channel.subscribe((status, err) => {
         if (status === 'CHANNEL_ERROR') {
           console.error(`❌ Realtime subscription failed for ${channelId}:`, err)
           logger.error(`Realtime subscription error for ${channelId}`, err)

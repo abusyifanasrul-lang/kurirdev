@@ -55,7 +55,6 @@ export function Orders() {
   const orders = useOrderStore((state: OrderState) => state.orders);
   const activeOrdersByCourier = useOrderStore((state: OrderState) => state.activeOrdersByCourier);
   const fetchInitialOrders = useOrderStore((state: OrderState) => state.fetchInitialOrders);
-  const subscribeOrders = useOrderStore((state: OrderState) => state.subscribeOrders);
   const fetchOrdersByDateRange = useOrderStore(state => state.fetchOrdersByDateRange);
   const addOrder = useOrderStore(state => state.addOrder);
   const assignCourier = useOrderStore(state => state.assignCourier);
@@ -218,17 +217,13 @@ export function Orders() {
     // 2. Initial Fetch to Zustand
     fetchInitialOrders()
 
-    // 3. Realtime Subscription
-    const unsubscribe = subscribeOrders()
-
     // Listen for manual syncs or background updates
     window.addEventListener('indexeddb-synced', loadWeekOrders)
 
     return () => {
-      unsubscribe()
       window.removeEventListener('indexeddb-synced', loadWeekOrders)
     }
-  }, [fetchInitialOrders, subscribeOrders])
+  }, [fetchInitialOrders])
 
   // Modal States
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
