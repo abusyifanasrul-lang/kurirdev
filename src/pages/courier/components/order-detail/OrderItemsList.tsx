@@ -15,6 +15,7 @@ interface OrderItemsListProps {
   handleTambahItem: () => void;
   handleHapusItem: (i: number) => void;
   handleSimpanItems: () => void;
+  formatRupiah: (v: string) => string;
 }
 
 export const OrderItemsList: React.FC<OrderItemsListProps> = ({
@@ -29,7 +30,8 @@ export const OrderItemsList: React.FC<OrderItemsListProps> = ({
   setHargaItem,
   handleTambahItem,
   handleHapusItem,
-  handleSimpanItems
+  handleSimpanItems,
+  formatRupiah
 }) => {
   return (
     <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 mb-6">
@@ -74,7 +76,7 @@ export const OrderItemsList: React.FC<OrderItemsListProps> = ({
               inputMode="numeric"
               placeholder="Harga..."
               value={hargaItem}
-              onChange={(e) => setHargaItem(e.target.value)}
+              onChange={(e) => setHargaItem(formatRupiah(e.target.value))}
               className="bg-white border-none rounded-lg px-3 py-2 text-xs focus:ring-1 focus:ring-emerald-500"
             />
             <button

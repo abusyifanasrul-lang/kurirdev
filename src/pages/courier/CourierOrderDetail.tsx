@@ -95,8 +95,8 @@ export function CourierOrderDetail() {
 
   useEffect(() => {
     if (order && !showItemForm) {
-      setItemList(order.items || []);
-      setOngkirValue(String(order.total_fee || 0));
+      if (order.items) setItemList(order.items);
+      if (order.total_fee) setOngkirValue(formatRupiah(String(order.total_fee)));
     }
     if (order && !editCustomer) {
       setEditName(order.customer_name || '');
@@ -191,7 +191,7 @@ export function CourierOrderDetail() {
   };
 
   const handleSimpanOngkir = async () => {
-    const val = Number(ongkirValue);
+    const val = Number(ongkirValue.replace(/\D/g, ''));
     if (isNaN(val) || val < 0) return;
     await updateOngkir(order.id, val);
     setEditOngkir(false);
@@ -199,7 +199,7 @@ export function CourierOrderDetail() {
 
   const handleTambahItem = () => {
     if (!namaItem || !hargaItem) return;
-    setItemList([...itemList, { nama: namaItem, harga: Number(hargaItem) }]);
+    setItemList([...itemList, { nama: namaItem, harga: Number(hargaItem.replace(/\D/g, '')) }]);
     setNamaItem('');
     setHargaItem('');
   };
@@ -426,6 +426,7 @@ export function CourierOrderDetail() {
             handleTambahItem={handleTambahItem}
             handleHapusItem={handleHapusItem}
             handleSimpanItems={handleSimpanItems}
+            formatRupiah={formatRupiah}
           />
 
           <OrderPricingSummary 

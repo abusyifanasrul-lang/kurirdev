@@ -73,7 +73,7 @@ export const OrderPricingSummary: React.FC<OrderPricingSummaryProps> = ({
                 type="text"
                 className="w-24 text-right text-sm font-bold border rounded px-2 py-1"
                 value={ongkirValue}
-                onChange={(e) => setOngkirValue(e.target.value)}
+                onChange={(e) => setOngkirValue(formatRupiah(e.target.value))}
               />
               <button onClick={handleSimpanOngkir} className="text-emerald-600"><Check className="h-4 w-4" /></button>
             </div>
