@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Download, Calendar, TrendingUp, DollarSign, Package, Award, Filter } from 'lucide-react';
-import { format, subDays, isWithinInterval, parseISO, startOfDay, endOfDay, eachDayOfInterval } from 'date-fns';
+import { format, isWithinInterval, parseISO, startOfDay, endOfDay, eachDayOfInterval } from 'date-fns';
 import {
   BarChart,
   Bar,
@@ -49,7 +49,7 @@ export function Reports() {
   );
 
   const [dateRange, setDateRange] = useState({
-    start: format(subDays(new Date(), 7), 'yyyy-MM-dd'),
+    start: format(new Date(), 'yyyy-MM-dd'),
     end: format(new Date(), 'yyyy-MM-dd'),
   });
 

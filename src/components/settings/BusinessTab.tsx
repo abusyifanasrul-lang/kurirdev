@@ -62,10 +62,12 @@ export function BusinessTab({
             <Input
               label="Ambang Batas Potongan (Rp)"
               helperText="Ongkir di bawah atau sama dengan nilai ini TIDAK akan dipotong admin (Kurir 100%)."
-              type="number"
-              value={form.commission_threshold}
-              onChange={e => setForm(prev => ({ ...prev, commission_threshold: Number(e.target.value) }))}
-              min={0}
+              type="text"
+              value={form.commission_threshold !== undefined ? `Rp ${form.commission_threshold.toLocaleString('id-ID')}` : ''}
+              onChange={e => {
+                const val = Number(e.target.value.replace(/[^0-9]/g, ''));
+                setForm(prev => ({ ...prev, commission_threshold: val }));
+              }}
               className="text-lg font-semibold"
             />
 

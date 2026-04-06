@@ -127,7 +127,10 @@ export function Orders() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchCategory, setSearchCategory] = useState('all');
   const [statusFilter, setStatusFilter] = useState<string>('');
-  const [dateFilter, setDateFilter] = useState({ start: '', end: '' });
+  const [dateFilter, setDateFilter] = useState({ 
+    start: formatWIB(getWIBNow(), 'yyyy-MM-dd'), 
+    end: formatWIB(getWIBNow(), 'yyyy-MM-dd') 
+  });
 
   const [sortConfig, setSortConfig] = useState<{ field: SortField; order: SortOrder }>({
     field: 'created_at',

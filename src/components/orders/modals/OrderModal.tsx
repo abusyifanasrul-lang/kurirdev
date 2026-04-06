@@ -399,11 +399,14 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                       onChange={e => setEditItemNama(e.target.value)}
                     />
                     <input
-                      type="number"
+                      type="text"
                       className="w-16 text-xs border-0 bg-transparent outline-none focus:outline-none text-gray-800 border-l border-teal-200 pl-2"
                       placeholder="Harga"
-                      value={editItemHarga}
-                      onChange={e => setEditItemHarga(e.target.value)}
+                      value={editItemHarga ? `Rp ${Number(editItemHarga.toString().replace(/[^0-9]/g, '')).toLocaleString('id-ID')}` : ''}
+                      onChange={e => {
+                        const raw = e.target.value.replace(/[^0-9]/g, '');
+                        setEditItemHarga(raw);
+                      }}
                       onKeyDown={e => {
                         if (e.key === 'Enter') {
                           if (!editItemNama || !editItemHarga) return;
