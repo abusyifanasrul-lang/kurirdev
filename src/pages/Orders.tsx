@@ -66,7 +66,7 @@ export function Orders() {
   const { commission_rate, commission_threshold, courier_instructions } = useSettingsStore();
 
   const isOpsAdmin = user?.role === 'admin_kurir' || user?.role === 'admin';
-  const isFinance = user?.role === 'finance' || user?.role === 'admin' || user?.role === 'owner';
+  const isFinance = user?.role === 'finance' || user?.role === 'admin';
 
   // Cache State
   const [cacheStatus, setCacheStatus] = useState<'idle' | 'checking' | 'missing' | 'loading' | 'loaded'>('idle')

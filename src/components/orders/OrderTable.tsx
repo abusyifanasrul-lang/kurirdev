@@ -58,7 +58,7 @@ export function OrderTable({
               { id: 'customer_name', label: 'Customer' },
               { id: 'status', label: 'Status' },
               { id: 'courier_id', label: 'Courier' },
-              { id: 'payment_status', label: 'Setoran' },
+              ...(isFinance ? [{ id: 'payment_status', label: 'Setoran' }] : []),
               { id: 'total_fee', label: 'Fee' },
               { id: 'created_at', label: 'Created' },
             ].map((col) => (
@@ -76,7 +76,7 @@ export function OrderTable({
         </TableHead>
         <TableBody>
           {orders.length === 0 ? (
-            <TableEmpty colSpan={7} message="No orders found" />
+            <TableEmpty colSpan={isFinance ? 7 : 6} message="No orders found" />
           ) : (
             orders.map((order) => (
               <TableRow
@@ -101,12 +101,12 @@ export function OrderTable({
                     <span className="text-gray-400 italic">Unassigned</span>
                   )}
                 </TableCell>
-                <TableCell>
-                  {order.status === 'delivered' ? (
-                    order.payment_status === 'paid' ? (
-                      <Badge variant="success">Sudah Setor</Badge>
-                    ) : (
-                      isFinance && (
+                {isFinance && (
+                  <TableCell>
+                    {order.status === 'delivered' ? (
+                      order.payment_status === 'paid' ? (
+                        <Badge variant="success">Sudah Setor</Badge>
+                      ) : (
                         <Button
                           size="sm"
                           className="bg-orange-500 hover:bg-orange-600 text-white h-7 px-2 text-[10px]"
@@ -118,11 +118,11 @@ export function OrderTable({
                           Konfirmasi Setoran
                         </Button>
                       )
-                    )
-                  ) : (
-                    <span className="text-gray-400">─</span>
-                  )}
-                </TableCell>
+                    ) : (
+                      <span className="text-gray-400">─</span>
+                    )}
+                  </TableCell>
+                )}
                 <TableCell>{formatCurrency(order.total_fee || 0)}</TableCell>
                 <TableCell className="text-gray-500 text-xs">
                   {new Date(order.created_at).toLocaleString('id-ID', {
