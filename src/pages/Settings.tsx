@@ -316,6 +316,7 @@ export function Settings() {
                       onResync={handleResync}
                       isSyncing={isSyncing}
                       syncMessage={syncMessage}
+                      cacheMeta={cacheMeta}
                       user={user}
                       users={users}
                       getOrphanedOrdersLocal={getOrphanedOrdersLocal}

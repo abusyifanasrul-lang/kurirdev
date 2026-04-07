@@ -244,10 +244,27 @@ export function Orders() {
     customer_address: '',
     total_fee: 0,
     titik: 0,
-    estimated_delivery_time: '',
+    estimated_delivery_time: formatWIB(getWIBNow(), "yyyy-MM-dd'T'HH:mm"),
     items: [],
     notes: '',
   });
+
+  const resetCreateOrderForm = () => {
+    setNewOrder({
+      customer_name: '',
+      customer_phone: '',
+      customer_address: '',
+      total_fee: 0,
+      titik: 0,
+      estimated_delivery_time: formatWIB(getWIBNow(), "yyyy-MM-dd'T'HH:mm"),
+      items: [],
+      notes: '',
+    });
+    setSelectedCustomer(null);
+    setFormError('');
+    setInlineEditAddrId(null);
+    setInlineAddingNew(false);
+  };
 
   const { customers, upsertCustomer, addAddress, updateAddress, deleteAddress, findByPhone } = useCustomerStore();
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -330,17 +347,7 @@ export function Orders() {
 
       await addOrder(orderData);
       setIsCreateModalOpen(false);
-      setFormError('');
-      setNewOrder({
-        customer_name: '',
-        customer_phone: '',
-        customer_address: '',
-        total_fee: 0,
-        titik: 0,
-        estimated_delivery_time: '',
-        items: [],
-        notes: '',
-      });
+      resetCreateOrderForm();
     } catch (error) {
       setFormError('Gagal membuat order. Cek koneksi internet.');
     } finally {
@@ -677,7 +684,7 @@ export function Orders() {
               </Button>
             )}
             {isOpsAdmin && (
-              <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => setIsCreateModalOpen(true)}>
+              <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => { resetCreateOrderForm(); setIsCreateModalOpen(true); }}>
                 New Order
               </Button>
             )}

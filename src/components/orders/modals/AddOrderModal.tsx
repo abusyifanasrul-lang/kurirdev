@@ -85,34 +85,51 @@ export const AddOrderModal: React.FC<AddOrderModalProps> = ({
           </div>
 
           {!selectedCustomer && newOrder.customer_name && (
-            <div className="border border-gray-100 rounded-lg max-h-40 overflow-y-auto shadow-sm bg-white divide-y divide-gray-50">
-              {customers
-                .filter(c => 
-                  c.name.toLowerCase().includes(newOrder.customer_name?.toLowerCase() || '') ||
-                  c.phone.includes(newOrder.customer_name || '')
-                )
-                .slice(0, 5)
-                .map(c => (
-                  <button
-                    key={c.id}
-                    className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors flex justify-between items-center group"
-                    onClick={() => {
-                      setSelectedCustomer(c)
-                      setNewOrder({ 
-                        ...newOrder, 
-                        customer_name: c.name, 
-                        customer_phone: c.phone,
-                        customer_address: c.addresses.find(a => a.is_default)?.address || c.addresses[0]?.address || ''
-                      })
-                    }}
-                  >
-                    <div>
-                      <span className="font-medium text-gray-900 group-hover:text-teal-700">{c.name}</span>
-                      <span className="text-gray-400 ml-2 text-xs">{c.phone}</span>
-                    </div>
-                    <Plus className="w-3.5 h-3.5 text-gray-300 group-hover:text-teal-500" />
-                  </button>
-                ))}
+            <div className="absolute z-[20] w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="px-4 py-2 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Saran Customer</p>
+                <span className="text-[10px] text-teal-600 font-medium bg-teal-50 px-2 py-0.5 rounded-full">Ditemukan {
+                  customers.filter(c => 
+                    c.name.toLowerCase().includes(newOrder.customer_name?.toLowerCase() || '') ||
+                    c.phone.includes(newOrder.customer_name || '')
+                  ).length
+                }</span>
+              </div>
+              <div className="max-h-56 overflow-y-auto divide-y divide-gray-50">
+                {customers
+                  .filter(c => 
+                    c.name.toLowerCase().includes(newOrder.customer_name?.toLowerCase() || '') ||
+                    c.phone.includes(newOrder.customer_name || '')
+                  )
+                  .slice(0, 8)
+                  .map(c => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      className="w-full text-left px-4 py-3 text-sm hover:bg-teal-50/50 transition-colors flex justify-between items-center group"
+                      onClick={() => {
+                        setSelectedCustomer(c)
+                        setNewOrder({ 
+                          ...newOrder, 
+                          customer_name: c.name, 
+                          customer_phone: c.phone,
+                          customer_address: c.addresses.find(a => a.is_default)?.address || c.addresses[0]?.address || ''
+                        })
+                      }}
+                    >
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-gray-900 group-hover:text-teal-700">{c.name}</span>
+                        <span className="text-gray-500 text-xs mt-0.5">{c.phone}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] text-gray-400 group-hover:text-teal-500 font-medium">Pilih</span>
+                        <div className="w-6 h-6 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-teal-100 transition-colors">
+                          <Plus className="w-3.5 h-3.5 text-gray-400 group-hover:text-teal-600" />
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+              </div>
             </div>
           )}
         </div>
@@ -308,24 +325,43 @@ export const AddOrderModal: React.FC<AddOrderModalProps> = ({
             </div>
           )}
           <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="Nama barang"
-              id="new_item_nama"
-              className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-teal-400"
-            />
-            <input
-              type="text"
-              inputMode="numeric"
-              placeholder="Harga (Rp)"
-              id="new_item_harga"
-              className="w-32 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-teal-400"
-              onChange={e => {
-                const val = e.target.value.replace(/[^0-9]/g, '');
-                if (val) e.target.value = Number(val).toLocaleString('id-ID');
-              }}
-            />
+            <div className="relative flex-1">
+              <input
+                type="text"
+                placeholder="Nama barang"
+                id="new_item_nama"
+                autoComplete="off"
+                className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-teal-400"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    document.getElementById('new_item_harga')?.focus();
+                  }
+                }}
+              />
+            </div>
+            <div className="relative w-36">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-semibold">Rp</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="Harga"
+                id="new_item_harga"
+                className="w-full pl-8 pr-3 py-1.5 border border-gray-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-1 focus:ring-teal-400"
+                onChange={e => {
+                  const val = e.target.value.replace(/[^0-9]/g, '');
+                  e.target.value = val ? Number(val).toLocaleString('id-ID') : '';
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    document.getElementById('add_item_btn')?.click();
+                  }
+                }}
+              />
+            </div>
             <button
+              id="add_item_btn"
               type="button"
               onClick={() => {
                 const namaEl = document.getElementById('new_item_nama') as HTMLInputElement;
@@ -334,10 +370,13 @@ export const AddOrderModal: React.FC<AddOrderModalProps> = ({
                 const harga = Number((hargaEl?.value || '').replace(/[^0-9]/g, ''));
                 if (!nama) return;
                 setNewOrder({ ...newOrder, items: [...(newOrder.items || []), { nama, harga }] });
-                if (namaEl) namaEl.value = '';
+                if (namaEl) {
+                  namaEl.value = '';
+                  namaEl.focus();
+                }
                 if (hargaEl) hargaEl.value = '';
               }}
-              className="px-3 py-1.5 text-sm bg-teal-600 text-white rounded-lg font-medium"
+              className="px-4 py-1.5 text-sm bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-bold shadow-sm transition-all active:scale-95"
             >+ Tambah</button>
           </div>
         </div>
@@ -347,12 +386,13 @@ export const AddOrderModal: React.FC<AddOrderModalProps> = ({
           <Input
             label="Fee Ongkir"
             type="text"
-            value={newOrder.total_fee !== undefined ? `Rp ${newOrder.total_fee.toLocaleString('id-ID')}` : ''}
+            leftIcon={<span className="text-xs font-semibold">Rp</span>}
+            value={newOrder.total_fee !== undefined && newOrder.total_fee !== 0 ? newOrder.total_fee.toLocaleString('id-ID') : ''}
             onChange={e => {
               const numericValue = Number(e.target.value.replace(/[^0-9]/g, ''));
               setNewOrder({ ...newOrder, total_fee: numericValue });
             }}
-            placeholder="Rp 0"
+            placeholder="0"
           />
           <Input
             label="Estimated Delivery Time"

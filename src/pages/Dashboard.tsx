@@ -47,7 +47,6 @@ export function Dashboard() {
 
   const isFinance = user?.role === 'finance' || user?.role === 'owner';
 
-  const [isConnected] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [cachedHistorical, setCachedHistorical] = useState<Order[]>([]);
 
@@ -176,7 +175,6 @@ export function Dashboard() {
       <Header
         title="Dashboard"
         subtitle={`Last updated: ${formatWIB(lastUpdated, 'HH:mm:ss')}`}
-        isConnected={isConnected}
         onRefresh={handleRefresh}
       />
 

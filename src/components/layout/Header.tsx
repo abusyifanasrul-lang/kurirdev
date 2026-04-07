@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/context/AuthContext';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import { useNavigate } from 'react-router-dom';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 
 interface HeaderProps {
   title: string;
@@ -21,7 +22,7 @@ interface HeaderProps {
 export function Header({
   title,
   subtitle,
-  isConnected = true,
+  isConnected: propIsConnected,
   onRefresh,
   showSearch = false,
   searchValue = '',
@@ -34,6 +35,8 @@ export function Header({
   const { user } = useAuth();
   const { notifications } = useNotificationStore();
   const navigate = useNavigate();
+  const isOnline = useNetworkStatus();
+  const isConnected = propIsConnected ?? isOnline;
 
   // Calculate unread for THIS user
   const userUnreadCount = notifications.filter(n => n.user_id === user?.id && !n.is_read).length;

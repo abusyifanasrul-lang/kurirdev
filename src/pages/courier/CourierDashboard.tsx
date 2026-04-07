@@ -13,6 +13,7 @@ import { useSettingsStore } from '@/stores/useSettingsStore';
 import { calcCourierEarning } from '@/lib/calcEarning';
 import { getUnpaidOrdersByCourier, getOrdersByCourierFromLocal } from '@/lib/orderCache';
 import { Order } from '@/types';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 
 // Removed unused CourierOrder interface as we use global Order type
 
@@ -32,8 +33,8 @@ export function CourierDashboard() {
 
   // Find this courier's data for online status
   const isOnline = liveUser?.is_online ?? false;
+  const isNetworkOnline = useNetworkStatus();
 
-  const [isConnected, setIsConnected] = useState(true);
   const [showOffModal, setShowOffModal] = useState(false);
   const [selectedOffReason, setSelectedOffReason] = useState('');
   const [customOffReason, setCustomOffReason] = useState('');
@@ -125,10 +126,6 @@ export function CourierDashboard() {
     })
   }, [user?.id, courierOrders, commission_rate, commission_threshold])
 
-  useEffect(() => {
-    setIsConnected(true);
-  }, []);
-
   const handleSetOn = async () => {
     if (!user?.id || isSuspended || isUpdatingStatus) return;
     setIsUpdatingStatus(true);
@@ -181,10 +178,10 @@ export function CourierDashboard() {
       {/* Connection Status */}
       <div className={cn(
         "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium",
-        isConnected ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
+        isNetworkOnline ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
       )}>
-        {isConnected ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
-        {isConnected ? "Connected" : "Connection lost - Showing cached data"}
+        {isNetworkOnline ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
+        {isNetworkOnline ? "Connected" : "Connection lost - Showing cached data"}
       </div>
 
       {/* Unpaid Warning Card */}

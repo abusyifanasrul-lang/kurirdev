@@ -10,6 +10,7 @@ interface StorageTabProps {
   onResync: () => void;
   isSyncing: boolean;
   syncMessage: string;
+  cacheMeta?: any;
   user: UserType | null;
   users: UserType[];
   getOrphanedOrdersLocal: (activeIds: string[]) => Promise<Order[]>;
@@ -19,6 +20,7 @@ export function StorageTab({
   onResync, 
   isSyncing, 
   syncMessage,
+  cacheMeta,
   user,
   users,
   getOrphanedOrdersLocal
@@ -180,31 +182,59 @@ export function StorageTab({
             </button>
           </div>
 
-          {/* Reset All */}
-          <div className="p-4 bg-red-50 rounded-xl border border-red-100 flex flex-col justify-between">
-            <div>
-              <span className="text-sm font-bold text-red-700 block mb-1">Reset All Cache</span>
-              <p className="text-[10px] text-red-600 mb-3 leading-relaxed">
-                Clears all local data and refreshes from server. Use this if you see data inconsistencies.
-              </p>
-            </div>
-            <button
-              onClick={onResync}
-              disabled={isSyncing}
-              className="w-full py-2 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700 transition flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              {isSyncing ? (
-                <>
-                  <RefreshCw className="h-3 w-3 animate-spin" />
-                  {syncMessage || 'Resetting...'}
-                </>
-              ) : (
-                <>
-                  <Trash2 className="h-3 w-3" />
-                  Reset & Sync All
-                </>
+          {/* Data & Sinkronisasi (Maintenance) */}
+          <div className="md:col-span-2 p-6 bg-rose-50/50 rounded-2xl border border-rose-100/50">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="space-y-4 flex-1">
+                <div className="flex items-center gap-2 text-rose-700">
+                  <RefreshCw className={`h-5 w-5 ${isSyncing ? 'animate-spin' : ''}`} />
+                  <h4 className="font-bold text-lg">Data & Sinkronisasi</h4>
+                </div>
+                <p className="text-sm text-gray-500 leading-relaxed max-w-xl">
+                  Gunakan fitur ini jika Anda menemukan ketidaksesuaian data atau foto. App akan menghapus cache lokal dan mengunduh ulang informasi terbaru secara menyeluruh.
+                </p>
+                
+                <div className="flex flex-wrap gap-2 pt-2">
+                  <button
+                    onClick={onResync}
+                    disabled={isSyncing}
+                    className="px-6 py-2.5 bg-rose-600 text-white rounded-xl text-sm font-bold hover:bg-rose-700 transition-all shadow-sm shadow-rose-200 disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {isSyncing ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        {syncMessage || 'Menyinkronkan...'}
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="h-4 w-4" />
+                        Reset & Sinkronisasi Ulang
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {cacheMeta && (
+                <div className="grid grid-cols-2 gap-3 w-full md:w-auto shrink-0">
+                  <div className="bg-white p-4 rounded-xl border border-rose-100 shadow-sm min-w-[140px]">
+                    <p className="text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-1">Total Record</p>
+                    <p className="text-xl font-bold text-gray-900">{cacheMeta.total_records}</p>
+                    <p className="text-[10px] text-teal-600 font-medium mt-1">Orders Ter-cache</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-xl border border-rose-100 shadow-sm min-w-[140px]">
+                    <p className="text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-1">Status Sync</p>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <div className={`w-2 h-2 rounded-full ${cacheMeta.sync_completed ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                      <p className="text-sm font-bold text-gray-900">
+                        {cacheMeta.sync_completed ? 'Aktif' : 'Parsial'}
+                      </p>
+                    </div>
+                    <p className="text-[10px] text-gray-500 mt-0.5">Real-time Ready</p>
+                  </div>
+                </div>
               )}
-            </button>
+            </div>
           </div>
         </div>
       </div>

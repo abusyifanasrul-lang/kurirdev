@@ -1,32 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { WifiOff, Wifi, AlertTriangle } from 'lucide-react';
 
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+
 export const OfflineBanner: React.FC = () => {
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const isOnline = useNetworkStatus();
   const [isVisible, setIsVisible] = useState(!navigator.onLine);
 
   useEffect(() => {
-    const handleOnline = () => {
-      setIsOnline(true);
+    if (isOnline) {
       // Keep showing the "reconnecting" state briefly for UX before hiding
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         setIsVisible(false);
       }, 3000);
-    };
-
-    const handleOffline = () => {
-      setIsOnline(false);
+      return () => clearTimeout(timer);
+    } else {
       setIsVisible(true);
-    };
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
+    }
+  }, [isOnline]);
 
   if (!isVisible) return null;
 
