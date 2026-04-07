@@ -363,7 +363,7 @@ export function CourierOrderDetail() {
 
       <div className={cn(
         "transition-all duration-300",
-        order.status === 'delivered' ? "pb-10" : "pb-40"
+        order.status === 'delivered' ? "pb-0" : "pb-10"
       )}>
         <div className="max-w-md mx-auto p-4 space-y-4 pt-6">
           {isSuspended && (

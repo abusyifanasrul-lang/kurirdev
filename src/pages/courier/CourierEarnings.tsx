@@ -215,7 +215,7 @@ export function CourierEarnings() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="bg-gray-50">
       <div className="bg-white border-b border-gray-100 sticky top-0 z-20 shadow-sm transition-all duration-300">
         <div className="flex items-center gap-3 p-4">
           <button onClick={() => navigate('/courier')} className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors">
