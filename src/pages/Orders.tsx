@@ -47,6 +47,7 @@ import { useSettingsStore } from '@/stores/useSettingsStore';
 import { useCustomerStore } from '@/stores/useCustomerStore';
 import { useAuth } from '@/context/AuthContext';
 import type { Order, Customer } from '@/types';
+import { calcAdminEarning } from '@/lib/calcEarning';
 
 type SortField = 'order_number' | 'customer_name' | 'status' | 'courier_id' | 'payment_status' | 'total_fee' | 'created_at';
 type SortOrder = 'asc' | 'desc';
@@ -118,10 +119,7 @@ export function Orders() {
       cachedOrders, cacheStatus])
 
   const calcPlatformFee = (order: Order) => {
-    const rate = order.applied_commission_rate ?? commission_rate
-    const threshold = order.applied_commission_threshold ?? commission_threshold
-    if (order.total_fee <= threshold) return 0
-    return order.total_fee * (1 - rate / 100)
+    return calcAdminEarning(order, { commission_rate, commission_threshold })
   }
 
   const [searchQuery, setSearchQuery] = useState('');

@@ -10,7 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
-import { calcCourierEarning } from '@/lib/calcEarning';
+import { calcAdminEarning } from '@/lib/calcEarning';
 import { getOrdersForWeek } from '@/lib/orderCache';
 import { useNavigate } from 'react-router-dom';
 import type { Order } from '@/types';
@@ -64,14 +64,14 @@ export function FinanceDashboard() {
       isWIBToday(o.created_at)
     );
     const totalFee = todayDelivered.reduce((sum, o) => sum + (o.total_fee || 0), 0);
-    const courierPayout = todayDelivered.reduce((sum, o) =>
-      sum + calcCourierEarning(o, earningSettings), 0
+    const adminEarning = todayDelivered.reduce((sum, o) =>
+      sum + calcAdminEarning(o, earningSettings), 0
     );
     return {
       orderCount: todayDelivered.length,
       grossRevenue: totalFee,
-      netRevenue: totalFee - courierPayout,
-      courierPayout,
+      netRevenue: adminEarning,
+      courierPayout: totalFee - adminEarning,
     };
   }, [deliveredOrders]);
 
@@ -90,7 +90,7 @@ export function FinanceDashboard() {
       );
       if (unpaidOrders.length > 0) {
         const totalAmount = unpaidOrders.reduce((sum, o) =>
-          sum + calcCourierEarning(o, earningSettings), 0
+          sum + calcAdminEarning(o, earningSettings), 0
         );
         result.push({
           courierId: courier.id,
@@ -147,7 +147,7 @@ export function FinanceDashboard() {
           />
           <StatCard
             title="Setoran Hari Ini"
-            value={formatCurrency(paidToday.reduce((s, o) => s + calcCourierEarning(o, earningSettings), 0))}
+            value={formatCurrency(paidToday.reduce((s, o) => s + calcAdminEarning(o, earningSettings), 0))}
             icon={<CheckCircle className="h-5 w-5" />}
             subtitle={`${paidToday.length} order lunas`}
           />

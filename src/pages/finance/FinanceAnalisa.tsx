@@ -108,10 +108,10 @@ export function FinanceAnalisa() {
     const unpaidOrders = filteredDelivered.filter(o => o.payment_status === 'unpaid');
 
     const collectedAmount = paidOrders.reduce((sum, o) =>
-      sum + calcCourierEarning(o, earningSettings), 0
+      sum + calcAdminEarning(o, earningSettings), 0
     );
     const uncollectedAmount = unpaidOrders.reduce((sum, o) =>
-      sum + calcCourierEarning(o, earningSettings), 0
+      sum + calcAdminEarning(o, earningSettings), 0
     );
 
     return {
@@ -143,14 +143,11 @@ export function FinanceAnalisa() {
       });
 
       const gross = dayDelivered.reduce((sum, o) => sum + (o.total_fee || 0), 0);
-      const courier = dayDelivered.reduce((sum, o) =>
-        sum + calcCourierEarning(o, earningSettings), 0
-      );
 
       return {
         date: format(day, 'dd/MM'),
         gross,
-        net: gross - courier,
+        net: dayDelivered.reduce((sum, o) => sum + calcAdminEarning(o, earningSettings), 0),
         orders: dayDelivered.length,
       };
     });
@@ -359,7 +356,7 @@ export function FinanceAnalisa() {
                   return days >= bucket.min && days <= bucket.max;
                 });
                 const total = bucketOrders.reduce((sum, o) =>
-                  sum + calcCourierEarning(o, earningSettings), 0
+                  sum + calcAdminEarning(o, earningSettings), 0
                 );
                 const colorMap: Record<string, string> = {
                   green: 'bg-green-50 border-green-200 text-green-800',

@@ -124,7 +124,7 @@ export function Couriers() {
   const totalDeliveries = allOrders.filter(o => o.status === 'delivered').length;
   const totalEarnings = allOrders
     .filter(o => o.status === 'delivered')
-    .reduce((sum, o) => sum + calcCourierEarning(o, earningSettings), 0);
+    .reduce((sum, o) => sum + calcAdminEarning(o, earningSettings), 0);
 
   const handleAddCourier = () => {
     const courierData: Courier = {
@@ -260,7 +260,7 @@ export function Couriers() {
           />
           {isFinance && (
             <StatCard
-              title="Kurir Earnings (7 Hari)"
+              title="Potensi Setoran (7 Hari)"
               value={formatCurrency(totalEarnings)}
               icon={<DollarSign className="h-6 w-6" />}
             />
@@ -277,8 +277,8 @@ export function Couriers() {
                 <TableHeader>Completed (7H)</TableHeader>
                 {isFinance && (
                   <>
-                    <TableHeader>Free Admin (7H)</TableHeader>
-                    <TableHeader>Earnings (7H)</TableHeader>
+                    <TableHeader>Setoran Admin (20%)</TableHeader>
+                    <TableHeader>Hak Kurir (80%)</TableHeader>
                   </>
                 )}
                 <TableHeader>Action</TableHeader>
@@ -346,8 +346,8 @@ export function Couriers() {
                         <TableCell>
                           {formatCurrency(
                             allOrders
-                              .filter(o => o.courier_id === courier.id && o.status === 'delivered' && o.total_fee <= commission_threshold)
-                              .reduce((sum, o) => sum + (o.total_fee || 0), 0)
+                              .filter(o => o.courier_id === courier.id && o.status === 'delivered')
+                              .reduce((sum, o) => sum + calcAdminEarning(o, earningSettings), 0)
                           )}
                         </TableCell>
                         <TableCell>

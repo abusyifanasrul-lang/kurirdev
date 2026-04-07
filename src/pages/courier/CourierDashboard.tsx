@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Package, DollarSign, CheckCircle, Clock, Wifi, WifiOff, ChevronRight, AlertTriangle } from 'lucide-react';
-import { format, isToday, parseISO, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
+import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { cn } from '@/utils/cn';
 import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
 import { useOrderStore } from '@/stores/useOrderStore';
@@ -10,7 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useSessionStore } from '@/stores/useSessionStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
-import { calcCourierEarning } from '@/lib/calcEarning';
+import { calcCourierEarning, calcAdminEarning } from '@/lib/calcEarning';
 import { getUnpaidOrdersByCourier, getOrdersByCourierFromLocal } from '@/lib/orderCache';
 import { Order } from '@/types';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
@@ -129,7 +129,7 @@ export function CourierDashboard() {
       const total = unpaidOrders.reduce((sum, o) => {
         const rate = o.applied_commission_rate ?? commission_rate
         const threshold = o.applied_commission_threshold ?? commission_threshold
-        return sum + calcCourierEarning(
+        return sum + calcAdminEarning(
           o, { commission_rate: rate, commission_threshold: threshold }
         )
       }, 0)

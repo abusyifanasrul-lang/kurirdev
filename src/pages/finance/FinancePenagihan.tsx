@@ -15,7 +15,7 @@ import {
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
-import { calcCourierEarning } from '@/lib/calcEarning';
+import { calcAdminEarning } from '@/lib/calcEarning';
 import { getOrdersForWeek, getAllUnpaidOrdersLocal, markAsPaidInLocalDB } from '@/lib/orderCache';
 import { cn } from '@/utils/cn';
 import type { Order } from '@/types';
@@ -88,7 +88,7 @@ export function FinancePenagihan() {
       const paid = courierDelivered.filter(o => o.payment_status === 'paid');
 
       const totalEarning = unpaid.reduce((sum, o) =>
-        sum + calcCourierEarning(o, earningSettings), 0
+        sum + calcAdminEarning(o, earningSettings), 0
       );
 
       // Filter based on search
@@ -123,7 +123,7 @@ export function FinancePenagihan() {
       const paid = orphans.filter(o => o.payment_status === 'paid');
       
       const totalEarning = unpaid.reduce((sum, o) =>
-        sum + calcCourierEarning(o, earningSettings), 0
+        sum + calcAdminEarning(o, earningSettings), 0
       );
 
       // Only show orphans if they match the filter or search (search matches 'Terhapus')
@@ -327,7 +327,7 @@ export function FinancePenagihan() {
                         <div className="text-right">
                           <p className="text-lg font-bold text-amber-700">
                             {formatCurrency(courier.unpaidOrders.some(o => selectedOrders.has(o.id)) 
-                              ? courier.unpaidOrders.filter(o => selectedOrders.has(o.id)).reduce((sum, o) => sum + calcCourierEarning(o, earningSettings), 0)
+                              ? courier.unpaidOrders.filter(o => selectedOrders.has(o.id)).reduce((sum, o) => sum + calcAdminEarning(o, earningSettings), 0)
                               : courier.totalEarning)}
                           </p>
                         </div>
@@ -388,7 +388,7 @@ export function FinancePenagihan() {
                                   <TableHeader>Order</TableHeader>
                                   <TableHeader>Tanggal</TableHeader>
                                   <TableHeader>Fee</TableHeader>
-                                  <TableHeader>Earning</TableHeader>
+                                  <TableHeader>Setoran</TableHeader>
                                   <TableHeader>Umur</TableHeader>
                                 </TableRow>
                               </TableHead>
@@ -414,7 +414,7 @@ export function FinancePenagihan() {
                                       <TableCell>{formatWIB(order.created_at, 'dd MMM yyyy')}</TableCell>
                                       <TableCell>{formatCurrency(order.total_fee)}</TableCell>
                                       <TableCell className="font-medium text-amber-700">
-                                        {formatCurrency(calcCourierEarning(order, earningSettings))}
+                                        {formatCurrency(calcAdminEarning(order, earningSettings))}
                                       </TableCell>
                                       <TableCell>
                                         <Badge className={aging.className}>{aging.label}</Badge>
@@ -442,7 +442,7 @@ export function FinancePenagihan() {
                                 </div>
                                 <div className="text-right">
                                   <p className="text-sm font-medium text-green-700">
-                                    {formatCurrency(calcCourierEarning(order, earningSettings))}
+                                    {formatCurrency(calcAdminEarning(order, earningSettings))}
                                   </p>
                                   <CheckCircle className="h-4 w-4 text-green-500 ml-auto" />
                                 </div>
@@ -488,7 +488,7 @@ export function FinancePenagihan() {
                 <p className="font-medium text-amber-900">{confirmCourier.name}</p>
                 <p className="text-2xl font-bold text-amber-700 mt-1">
                   {formatCurrency(confirmCourier.orders.reduce((sum, o) =>
-                    sum + calcCourierEarning(o, earningSettings), 0
+                    sum + calcAdminEarning(o, earningSettings), 0
                   ))}
                 </p>
                 <p className="text-sm text-amber-600">{confirmCourier.orders.length} order</p>
@@ -502,7 +502,7 @@ export function FinancePenagihan() {
                       <p className="text-xs text-gray-500">{formatWIB(order.created_at, 'dd MMM')}</p>
                     </div>
                     <p className="text-sm font-medium text-amber-700">
-                      {formatCurrency(calcCourierEarning(order, earningSettings))}
+                      {formatCurrency(calcAdminEarning(order, earningSettings))}
                     </p>
                   </div>
                 ))}
