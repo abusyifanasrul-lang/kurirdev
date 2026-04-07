@@ -7,6 +7,7 @@ import { useSettingsStore } from '@/stores/useSettingsStore';
 import { calcCourierEarning } from '@/lib/calcEarning';
 import { getOrdersByCourierFromLocal } from '@/lib/orderCache';
 import { Order } from '@/types';
+import { Badge } from '@/components/ui/Badge';
 import { useOrderStore } from '@/stores/useOrderStore';
 
 type Period = 'daily' | 'weekly';
@@ -215,36 +216,43 @@ export function CourierEarnings() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      <div className="bg-indigo-600 text-white sticky top-0 z-20 shadow-md">
-        <div className="flex items-center gap-4 p-4 pb-2">
-          <button onClick={() => navigate('/courier')} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-            <ArrowLeft className="w-6 h-6" />
+      <div className="bg-white border-b border-gray-100 sticky top-0 z-20 shadow-sm transition-all duration-300">
+        <div className="flex items-center gap-3 p-4">
+          <button onClick={() => navigate('/courier')} className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors">
+            <ArrowLeft className="w-6 h-6 text-gray-700" />
           </button>
-          <div>
-            <h1 className="text-xl font-bold">Pendapatan & Riwayat</h1>
+          <div className="flex-1">
+            <h1 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none">
+              Pendapatan & Riwayat
+            </h1>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-sm font-black text-gray-900 leading-none">
+                PERFORMA KURIR
+              </span>
+            </div>
             {isSyncing && (
-              <div className="flex items-center gap-1.5 text-[10px] text-indigo-100 animate-pulse mt-0.5 font-medium">
+              <div className="flex items-center gap-1.5 text-[9px] text-teal-600 font-bold animate-pulse mt-1.5">
                 <Clock className="w-3 h-3" />
-                <span>Mensinkronkan data 7-hari...</span>
+                <span>SYNCING DATA...</span>
               </div>
             )}
           </div>
         </div>
 
-        <div className="flex px-4 gap-4">
+        <div className="flex px-4 pb-0 gap-6">
           <button 
             onClick={() => setActiveTab('summary')}
-            className={`pb-3 text-sm font-bold transition-all relative ${activeTab === 'summary' ? 'text-white' : 'text-indigo-100/60'}`}
+            className={`pb-3 text-xs font-black uppercase tracking-wider transition-all relative ${activeTab === 'summary' ? 'text-teal-700' : 'text-gray-400'}`}
           >
             Ringkasan
-            {activeTab === 'summary' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-white rounded-full" />}
+            {activeTab === 'summary' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-teal-500 rounded-full animate-in slide-in-from-left-2" />}
           </button>
           <button 
             onClick={() => setActiveTab('history')}
-            className={`pb-3 text-sm font-bold transition-all relative ${activeTab === 'history' ? 'text-white' : 'text-indigo-100/60'}`}
+            className={`pb-3 text-xs font-black uppercase tracking-wider transition-all relative ${activeTab === 'history' ? 'text-teal-700' : 'text-gray-400'}`}
           >
             Riwayat
-            {activeTab === 'history' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-white rounded-full" />}
+            {activeTab === 'history' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-teal-500 rounded-full animate-in slide-in-from-right-2" />}
           </button>
         </div>
       </div>
@@ -252,35 +260,41 @@ export function CourierEarnings() {
       {activeTab === 'summary' ? (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="grid grid-cols-2 gap-4 p-4">
-            <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-              <div className="flex items-center gap-2 mb-1 text-gray-500">
-                <DollarSign className="w-4 h-4" />
-                <span className="text-[10px] uppercase font-bold tracking-wider">Hari Ini</span>
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 relative overflow-hidden active:scale-[0.98] transition-all">
+              <div className="absolute top-0 right-0 p-4 opacity-5">
+                <DollarSign className="w-12 h-12" />
               </div>
-              <p className="text-xl font-bold text-gray-900">{formatCurrency(todayStats.earnings)}</p>
-              <div className="mt-1">
-                <span className="text-[11px] text-indigo-600 font-semibold">{todayStats.orders} Pesanan</span>
+              <div className="flex items-center gap-2 mb-2 text-gray-400">
+                <span className="text-[9px] uppercase font-black tracking-widest">Hari Ini</span>
+              </div>
+              <p className="text-xl font-black text-gray-900 tracking-tight">{formatCurrency(todayStats.earnings)}</p>
+              <div className="mt-2 flex items-center gap-1">
+                <div className="w-1.5 h-1.5 bg-teal-500 rounded-full" />
+                <span className="text-[10px] text-teal-600 font-bold">{todayStats.orders} Pesanan</span>
               </div>
             </div>
-            <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-              <div className="flex items-center gap-2 mb-1 text-gray-500">
-                <TrendingUp className="w-4 h-4" />
-                <span className="text-[10px] uppercase font-bold tracking-wider">7 Hari</span>
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 relative overflow-hidden active:scale-[0.98] transition-all">
+              <div className="absolute top-0 right-0 p-4 opacity-5">
+                <TrendingUp className="w-12 h-12" />
               </div>
-              <p className="text-xl font-bold text-gray-900">{formatCurrency(last7DaysStats.earnings)}</p>
-              <div className="mt-1">
-                <span className="text-[11px] text-emerald-600 font-semibold">{last7DaysStats.orders} Pesanan</span>
+              <div className="flex items-center gap-2 mb-2 text-gray-400">
+                <span className="text-[9px] uppercase font-black tracking-widest">7 Hari</span>
+              </div>
+              <p className="text-xl font-black text-gray-900 tracking-tight">{formatCurrency(last7DaysStats.earnings)}</p>
+              <div className="mt-2 flex items-center gap-1">
+                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+                <span className="text-[10px] text-emerald-600 font-bold">{last7DaysStats.orders} Pesanan</span>
               </div>
             </div>
           </div>
 
           <div className="px-4 mb-6">
-            <div className="flex bg-gray-200 rounded-xl p-1 gap-1">
+            <div className="flex bg-gray-200/50 backdrop-blur rounded-2xl p-1.5 gap-1.5">
               {(['daily', 'weekly'] as Period[]).map((p) => (
                 <button
                   key={p}
                   onClick={() => setPeriod(p)}
-                  className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${period === p ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500'}`}
+                  className={`flex-1 py-2 text-[10px] uppercase font-black tracking-widest rounded-xl transition-all ${period === p ? 'bg-white text-teal-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                 >
                   {p === 'daily' ? 'Harian' : 'Mingguan'}
                 </button>
@@ -289,13 +303,13 @@ export function CourierEarnings() {
           </div>
 
           <div className="px-4">
-            <div className="bg-white rounded-[2rem] border border-gray-100 p-6 shadow-xl shadow-gray-200/50">
+            <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
               <div className="flex items-center justify-between mb-8">
-                <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-indigo-600" />
+                <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-teal-600" />
                   Grafik Performa
                 </h3>
-                <div className="px-3 py-1 bg-indigo-50 rounded-full text-[9px] font-bold text-indigo-600 uppercase tracking-widest">
+                <div className="px-3 py-1 bg-teal-50 rounded-full text-[9px] font-black text-teal-600 uppercase tracking-widest">
                   Auto-Update
                 </div>
               </div>
@@ -317,39 +331,33 @@ export function CourierEarnings() {
                       labelStyle={{ fontSize: '9px', fontWeight: 'bold', color: '#94a3b8', marginBottom: '4px' }}
                       formatter={(value: number | undefined) => [formatCurrency(value ?? 0), 'Ringkasan']}
                     />
-                    <RechartsLib.Bar dataKey="earnings" fill="url(#colorEarning)" radius={[6, 6, 0, 0]} />
-                    <defs>
-                      <linearGradient id="colorEarning" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#4f46e5" stopOpacity={1}/>
-                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0.8}/>
-                      </linearGradient>
-                    </defs>
+                    <RechartsLib.Bar dataKey="earnings" fill="#0d9488" radius={[4, 4, 0, 0]} />
                   </RechartsLib.BarChart>
                 </RechartsLib.ResponsiveContainer>
               ) : (
-                <div className="h-[240px] bg-gray-50 rounded-3xl animate-pulse" />
+                <div className="h-[240px] bg-gray-50 rounded-2xl animate-pulse" />
               )}
             </div>
           </div>
         </div>
       ) : (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="bg-white/80 backdrop-blur-md border-b p-4 space-y-4 sticky top-[110px] z-10 shadow-sm border-gray-100">
+          <div className="bg-white/80 backdrop-blur-md border-b p-4 space-y-4 sticky top-[100px] z-10 shadow-sm border-gray-100">
             <div className="flex gap-2">
               <div className="flex-1 relative group">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-indigo-600 transition-colors" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-teal-600 transition-colors" />
                 <input
                   type="text"
                   placeholder="Order # atau Customer..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 text-xs bg-gray-100 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-medium placeholder:text-gray-400"
+                  className="w-full pl-11 pr-4 py-3 text-xs bg-gray-100 border-none rounded-2xl focus:ring-2 focus:ring-teal-500 font-bold placeholder:text-gray-400 placeholder:font-normal"
                 />
               </div>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-                className="px-4 py-3 text-xs bg-gray-100 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold uppercase"
+                className="px-4 py-3 text-[10px] bg-gray-100 border-none rounded-2xl focus:ring-2 focus:ring-teal-500 font-black uppercase tracking-widest"
               >
                 <option value="all">SEMUA</option>
                 <option value="delivered">TERKIRIM</option>
@@ -357,15 +365,15 @@ export function CourierEarnings() {
               </select>
             </div>
             <div className="flex items-center justify-between px-1">
-              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Data 7 Hari Terakhir</p>
-              <div className="bg-indigo-50 px-2 py-0.5 rounded text-[9px] font-bold text-indigo-600 uppercase">Live</div>
+              <p className="text-[9px] text-gray-400 font-black uppercase tracking-[0.2em]">Data 7 Hari Terakhir</p>
+              <div className="bg-teal-50 px-2 py-0.5 rounded text-[9px] font-black text-teal-600 uppercase">Live</div>
             </div>
           </div>
 
           <div className="p-4 space-y-6">
             {Object.keys(groupedOrders).length === 0 ? (
               <div className="text-center py-24">
-                <div className="w-20 h-20 bg-gray-100 rounded-[2.5rem] flex items-center justify-center mx-auto mb-4 border-4 border-dashed border-gray-200">
+                <div className="w-20 h-20 bg-gray-100 rounded-3xl flex items-center justify-center mx-auto mb-4 border-4 border-dashed border-gray-200">
                   <Package className="w-8 h-8 text-gray-300" />
                 </div>
                 <p className="text-sm font-black text-gray-800 uppercase tracking-widest">Data Kosong</p>
@@ -374,8 +382,9 @@ export function CourierEarnings() {
             ) : (
               Object.entries(groupedOrders).map(([date, dateOrders]) => (
                 <div key={date}>
-                  <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-teal-600 mb-4 ml-1 flex items-center gap-3">
                     {getDateLabel(date)}
+                    <div className="flex-1 h-[1px] bg-teal-100/50" />
                   </h3>
                   <div className="space-y-3">
                     {dateOrders.map((order) => {
@@ -387,33 +396,42 @@ export function CourierEarnings() {
                           key={order.id}
                           id={`order-${order.id}`}
                           onClick={() => order.status === 'delivered' ? setSelectedOrder(order) : navigate(`/courier/orders/${order.id}`)}
-                          className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 cursor-pointer active:scale-[0.98] transition-all"
+                          className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer active:scale-[0.98] transition-all"
                         >
-                          <div className="flex items-start justify-between mb-2">
-                            <div>
-                              <p className="font-bold text-gray-900 text-sm">{order.order_number}</p>
-                              <p className="text-[10px] text-gray-500 flex items-center gap-1 mt-0.5">
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="min-w-0">
+                              <p className="font-black text-gray-900 text-sm tracking-tight truncate">{order.order_number}</p>
+                              <div className="flex items-center gap-1.5 mt-0.5 text-gray-400">
                                 <Clock className="w-3 h-3" />
-                                {format(parseISO(order.created_at), 'HH:mm')}
-                              </p>
+                                <p className="text-[10px] font-bold uppercase tracking-widest">{format(parseISO(order.created_at), 'HH:mm')}</p>
+                              </div>
                             </div>
-                            <div className={`px-2 py-0.5 rounded text-[10px] font-bold ${config.bg} ${config.color}`}>
-                              {config.label.split(' — ')[1] || config.label}
+                            <div className="flex flex-col items-end gap-2">
+                              <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-tighter ${config.bg} ${config.color} border shadow-sm`}>
+                                {config.label.split(' — ')[1] || config.label}
+                              </div>
+                              {order.status === 'delivered' && (
+                                <div className={order.payment_status === 'paid' ? 'text-teal-600' : 'text-orange-500'}>
+                                  <Badge variant={order.payment_status === 'paid' ? 'success' : 'warning'} size="sm">
+                                    {order.payment_status === 'paid' ? 'Paid — Checked' : 'Unpaid — Action Req.'}
+                                  </Badge>
+                                </div>
+                              )}
                             </div>
                           </div>
-                          
-                          <div className="mb-3">
-                            <p className="text-xs font-medium text-gray-800 truncate">{order.customer_name}</p>
-                            <p className="text-[10px] text-gray-500 line-clamp-1">{order.customer_address}</p>
+                          <div className="space-y-1 bg-gray-50/50 p-3 rounded-2xl border border-gray-100/50">
+                            <p className="text-xs font-black text-gray-800 uppercase tracking-tight line-clamp-1">{order.customer_name}</p>
+                            <p className="text-[10px] text-gray-500 leading-relaxed line-clamp-2">{order.customer_address}</p>
                           </div>
-
-                          <div className="flex justify-between items-center pt-3 border-t border-gray-50">
-                            <div className="text-[10px] text-gray-500">
-                              Fee: <span className="font-bold text-gray-900">{formatCurrency(order.total_fee)}</span>
+                          <div className="flex justify-between items-end mt-4 pt-4 border-t border-gray-50">
+                            <div className="flex flex-col">
+                              <span className="text-[8px] text-gray-400 font-black uppercase tracking-[0.2em] mb-1">Standard Fee</span>
+                              <span className="text-xs font-bold text-gray-900 font-mono italic">{formatCurrency(order.total_fee)}</span>
                             </div>
                             {courierEarning > 0 && (
-                              <div className="text-sm font-bold text-indigo-600">
-                                +{formatCurrency(courierEarning)}
+                              <div className="text-right flex flex-col items-end">
+                                <span className="text-[8px] text-teal-500 font-black uppercase tracking-[0.2em] mb-1">Earning Net</span>
+                                <span className="text-lg font-black text-teal-600 tracking-tighter">{formatCurrency(courierEarning)}</span>
                               </div>
                             )}
                           </div>
@@ -428,99 +446,186 @@ export function CourierEarnings() {
         </div>
       )}
 
+      {/* Standard Modal Invoice */}
       {selectedOrder && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-4 border-b">
-              <h2 className="font-bold text-gray-900">Invoice Digital</h2>
-              <button onClick={() => setSelectedOrder(null)} className="p-1 hover:bg-gray-100 rounded-lg transition-colors">
+        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 px-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <h3 className="font-bold text-gray-900">Detail Invoice</h3>
+              <button onClick={() => setSelectedOrder(null)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                 <X className="w-5 h-5 text-gray-400" />
               </button>
             </div>
-
-            <div className="p-6 bg-gray-50 max-h-[70vh] overflow-y-auto">
-              <div 
-                ref={invoiceRef}
-                className="bg-white p-6 shadow-sm border border-gray-100 relative"
-                style={{ fontFamily: "'Courier New', Courier, monospace" }}
-              >
-                <div className="absolute top-0 left-0 right-0 h-1 flex justify-center gap-1 -translate-y-1/2">
-                   {[...Array(20)].map((_, i) => <div key={i} className="w-2 h-1 bg-gray-50 rounded-full" />)}
+            <div className="p-6 max-h-[60vh] overflow-y-auto">
+              <div className="bg-white p-4 border border-gray-200 rounded-xl">
+                {/* Header */}
+                <div style={{ textAlign: 'center', paddingBottom: '12px', borderBottom: '2px solid #111827', marginBottom: '14px' }}>
+                  <div style={{ fontSize: '18px', fontWeight: '800', color: '#0f766e' }}>🛵 KurirDev</div>
+                  <div style={{ fontSize: '9px', color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '2px' }}>Invoice Pengiriman</div>
+                  <div style={{ fontSize: '13px', fontWeight: '700', color: '#111827', marginTop: '10px' }}>{selectedOrder.order_number}</div>
+                  <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '2px' }}>{selectedOrder.created_at ? new Date(selectedOrder.created_at).toLocaleString('id-ID', {day:'2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit'}) : new Date().toLocaleString('id-ID')}</div>
                 </div>
 
-                <div className="text-center mb-6">
-                  <h3 className="font-bold text-lg text-gray-900 leading-none">KURIRDEV</h3>
-                  <p className="text-[10px] text-gray-500 mt-1 uppercase tracking-widest font-sans">Official Logistik Receipt</p>
-                  <div className="w-12 h-0.5 bg-gray-900 mx-auto mt-2" />
+                {/* Kepada */}
+                <div style={{ paddingBottom: '12px', borderBottom: '1px dashed #d1d5db', marginBottom: '14px' }}>
+                  <div style={{ fontSize: '8px', fontWeight: '700', letterSpacing: '0.1em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '6px' }}>Kepada</div>
+                  <div style={{ fontWeight: '700', fontSize: '12px', color: '#111827' }}>{selectedOrder.customer_name}</div>
+                  <div style={{ color: '#4b5563', marginTop: '2px', fontSize: '11px', lineHeight: '1.4' }}>{selectedOrder.customer_address}</div>
+                  <div style={{ color: '#4b5563', marginTop: '2px', fontSize: '11px' }}>{selectedOrder.customer_phone}</div>
                 </div>
 
-                <div className="space-y-3 text-xs">
-                  <div className="flex justify-between border-b border-dashed pb-2">
-                    <span className="text-gray-500 uppercase">No. Order</span>
-                    <span className="font-bold">{selectedOrder.order_number}</span>
-                  </div>
-                  <div className="flex justify-between border-b border-dashed pb-2">
-                    <span className="text-gray-500 uppercase">Waktu</span>
-                    <span className="font-bold">{format(parseISO(selectedOrder.created_at), 'dd MMM, HH:mm')}</span>
-                  </div>
-                  <div className="flex justify-between border-b border-dashed pb-2">
-                    <span className="text-gray-500 uppercase">Status</span>
-                    <span className="font-bold text-green-600">DELIVERED</span>
-                  </div>
-
-                  <div className="pt-2">
-                    <span className="text-gray-500 uppercase text-[9px] block mb-1">Customer Details</span>
-                    <p className="font-bold text-[11px] leading-tight break-words">{selectedOrder.customer_name}</p>
-                    <p className="text-gray-600 text-[10px] leading-tight mt-1">{selectedOrder.customer_address}</p>
-                  </div>
-
-                  <div className="pt-4 space-y-1 mt-4 border-t-2 border-gray-900">
-                    <div className="flex justify-between text-[11px]">
-                      <span>Ongkir Kurir</span>
-                      <span>{formatCurrency(selectedOrder.total_fee)}</span>
-                    </div>
-                    {((selectedOrder.total_biaya_titik || 0) + (selectedOrder.total_biaya_beban || 0)) > 0 && (
-                      <div className="flex justify-between text-[11px]">
-                        <span>Tambahan Logistik</span>
-                        <span>{formatCurrency((selectedOrder.total_biaya_titik || 0) + (selectedOrder.total_biaya_beban || 0))}</span>
+                {/* Daftar Belanja */}
+                {(selectedOrder.items && selectedOrder.items.length > 0) && (
+                  <div style={{ paddingBottom: '12px', borderBottom: '1px dashed #d1d5db', marginBottom: '14px' }}>
+                    <div style={{ fontSize: '8px', fontWeight: '700', letterSpacing: '0.1em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '8px' }}>Daftar Belanja</div>
+                    {selectedOrder.items.map((item, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '11px' }}>
+                        <span style={{ color: '#374151', flex: 1, paddingRight: '8px' }}>{item.nama}</span>
+                        <span style={{ color: '#111827', fontWeight: '600' }}>Rp {item.harga.toLocaleString('id-ID')}</span>
                       </div>
-                    )}
-                    {(selectedOrder.item_price ?? 0) > 0 && (
-                      <div className="flex justify-between text-[11px]">
-                        <span>Harga Barang</span>
-                        <span>{formatCurrency(selectedOrder.item_price ?? 0)}</span>
-                      </div>
-                    )}
-
-                    <div className="bg-amber-50 rounded-lg p-3 mt-4 border border-amber-100">
-                      <div className="flex justify-between font-bold text-sm text-amber-900">
-                        <span>TOTAL DITERIMA</span>
-                        <span>{formatCurrency(
-                          (selectedOrder.total_fee || 0) + 
-                          (selectedOrder.total_biaya_titik ?? 0) + 
-                          (selectedOrder.total_biaya_beban ?? 0) + 
-                          (selectedOrder.item_price ?? 0)
-                        )}</span>
-                      </div>
-                      <p className="text-[9px] text-amber-700 mt-1 uppercase font-sans tracking-wider">Tunai Ke Kurir</p>
+                    ))}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '6px', marginTop: '6px', borderTop: '1px solid #e5e7eb', fontWeight: '700', fontSize: '11px' }}>
+                      <span style={{ color: '#374151' }}>Total Belanja</span>
+                      <span style={{ color: '#111827' }}>Rp {selectedOrder.items.reduce((s, i) => s + i.harga, 0).toLocaleString('id-ID')}</span>
                     </div>
                   </div>
+                )}
+
+                {/* Biaya Pengiriman */}
+                <div style={{ marginBottom: '14px' }}>
+                  <div style={{ fontSize: '8px', fontWeight: '700', letterSpacing: '0.1em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '8px' }}>Biaya Pengiriman</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '11px' }}>
+                    <span style={{ color: '#374151' }}>Ongkir</span>
+                    <span>Rp {(selectedOrder.total_fee || 0).toLocaleString('id-ID')}</span>
+                  </div>
+                  {(selectedOrder.titik ?? 0) > 0 && Array.from({ length: selectedOrder.titik! }).map((_, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', paddingLeft: '8px', fontSize: '10px' }}>
+                      <span style={{ color: '#9ca3af' }}>• Titik {i + 1}</span>
+                      <span>Rp 3.000</span>
+                    </div>
+                  ))}
+                  {(selectedOrder.beban ?? []).map((b, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', paddingLeft: '8px', fontSize: '10px' }}>
+                      <span style={{ color: '#9ca3af' }}>• {b.nama}</span>
+                      <span>Rp {b.biaya.toLocaleString('id-ID')}</span>
+                    </div>
+                  ))}
                 </div>
 
-                <div className="mt-8 pt-4 border-t border-dashed text-center">
-                  <p className="text-[10px] text-gray-400 font-sans italic">Terima kasih telah mempercayai KurirDev 🙏</p>
+                {/* Total Dibayar */}
+                <div style={{ background: '#fef3c7', borderRadius: '8px', padding: '10px 12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '800', fontSize: '13px', color: '#92400e' }}>
+                    <span>TOTAL DIBAYAR</span>
+                    <span>Rp {(
+                      (selectedOrder.total_fee || 0) + 
+                      (selectedOrder.total_biaya_titik ?? 0) + 
+                      (selectedOrder.total_biaya_beban ?? 0) + 
+                      (selectedOrder.items?.reduce((s, i) => s + i.harga, 0) || (selectedOrder.item_price ?? 0))
+                    ).toLocaleString('id-ID')}</span>
+                  </div>
                 </div>
               </div>
             </div>
-
-            <div className="p-4 bg-white border-t flex flex-col gap-2">
+            <div className="p-6 pt-0">
               <button
                 onClick={handleBagikanInvoice}
-                className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 active:scale-95 transition-all"
+                className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest active:scale-[0.98] transition-all shadow-lg shadow-emerald-100"
               >
-                Simpan Invoice (PNG)
+                CETAK / UNDUH INVOICE PNG
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Hidden container for html2canvas consistency */}
+      {selectedOrder && (
+        <div className="absolute opacity-0 pointer-events-none appearance-none h-0 overflow-hidden" aria-hidden="true" style={{ top: '-4000px', width: '500px' }}>
+          <div ref={invoiceRef} style={{ background: '#ffffff', padding: '24px', width: '320px', fontFamily: 'Arial, sans-serif', fontSize: '12px', color: '#111827' }}>
+            {/* Header */}
+            <div style={{ textAlign: 'center', paddingBottom: '12px', borderBottom: '2px solid #111827', marginBottom: '14px' }}>
+              <div style={{ fontSize: '20px', fontWeight: '800', color: '#0f766e' }}>🛵 KurirDev</div>
+              <div style={{ fontSize: '10px', color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '2px' }}>Invoice Pengiriman</div>
+              <div style={{ fontSize: '14px', fontWeight: '700', color: '#111827', marginTop: '10px' }}>{selectedOrder.order_number}</div>
+              <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>{selectedOrder.created_at ? new Date(selectedOrder.created_at).toLocaleString('id-ID', {day:'2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit'}) : new Date().toLocaleString('id-ID')}</div>
+              <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '1px' }}>Kurir: {user?.name}</div>
+            </div>
+
+            {/* Kepada */}
+            <div style={{ paddingBottom: '12px', borderBottom: '1px dashed #d1d5db', marginBottom: '14px' }}>
+              <div style={{ fontSize: '9px', fontWeight: '700', letterSpacing: '0.1em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '6px' }}>Kepada</div>
+              <div style={{ fontWeight: '700', fontSize: '13px', color: '#111827' }}>{selectedOrder.customer_name}</div>
+              <div style={{ color: '#4b5563', marginTop: '2px', lineHeight: '1.5' }}>{selectedOrder.customer_address}</div>
+              <div style={{ color: '#4b5563', marginTop: '2px' }}>{selectedOrder.customer_phone}</div>
+            </div>
+
+            {/* Daftar Belanja */}
+            {(selectedOrder.items && selectedOrder.items.length > 0) && (
+              <div style={{ paddingBottom: '12px', borderBottom: '1px dashed #d1d5db', marginBottom: '14px' }}>
+                <div style={{ fontSize: '9px', fontWeight: '700', letterSpacing: '0.1em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '8px' }}>Daftar Belanja</div>
+                {selectedOrder.items.map((item, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <span style={{ color: '#374151', flex: 1, paddingRight: '8px' }}>{item.nama}</span>
+                    <span style={{ color: '#111827', fontWeight: '600', whiteSpace: 'nowrap' }}>Rp {item.harga.toLocaleString('id-ID')}</span>
+                  </div>
+                ))}
+                <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '6px', marginTop: '6px', borderTop: '1px solid #e5e7eb', fontWeight: '700' }}>
+                  <span style={{ color: '#374151' }}>Total Belanja</span>
+                  <span style={{ color: '#111827' }}>Rp {selectedOrder.items.reduce((s, i) => s + i.harga, 0).toLocaleString('id-ID')}</span>
+                </div>
+              </div>
+            )}
+
+            {/* fallback barang */}
+            {(!selectedOrder.items || selectedOrder.items.length === 0) && selectedOrder.item_name && (
+              <div style={{ paddingBottom: '12px', borderBottom: '1px dashed #d1d5db', marginBottom: '14px' }}>
+                <div style={{ fontSize: '9px', fontWeight: '700', letterSpacing: '0.1em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '6px' }}>Barang</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#374151' }}>{selectedOrder.item_name}</span>
+                  {((selectedOrder.item_price ?? 0) > 0) && (
+                    <span style={{ fontWeight: '600', color: '#111827' }}>Rp {(selectedOrder.item_price ?? 0).toLocaleString('id-ID')}</span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Biaya Pengiriman */}
+            <div style={{ marginBottom: '14px' }}>
+              <div style={{ fontSize: '9px', fontWeight: '700', letterSpacing: '0.1em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '8px' }}>Biaya Pengiriman</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <span style={{ color: '#374151' }}>Ongkir</span>
+                <span>Rp {(selectedOrder.total_fee || 0).toLocaleString('id-ID')}</span>
+              </div>
+              {(selectedOrder.titik ?? 0) > 0 && Array.from({ length: selectedOrder.titik! }).map((_, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', paddingLeft: '8px' }}>
+                  <span style={{ color: '#9ca3af' }}>• Titik {i + 1}</span>
+                  <span>Rp 3.000</span>
+                </div>
+              ))}
+              {(selectedOrder.beban ?? []).map((b, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', paddingLeft: '8px' }}>
+                  <span style={{ color: '#9ca3af' }}>• {b.nama}</span>
+                  <span>Rp {b.biaya.toLocaleString('id-ID')}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Total Dibayar */}
+            <div style={{ background: '#fef3c7', borderRadius: '8px', padding: '10px 12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '800', fontSize: '14px', color: '#92400e' }}>
+                <span>TOTAL DIBAYAR</span>
+                <span>Rp {(
+                  (selectedOrder.total_fee || 0) + 
+                  (selectedOrder.total_biaya_titik ?? 0) + 
+                  (selectedOrder.total_biaya_beban ?? 0) + 
+                  (selectedOrder.items?.reduce((s, i) => s + i.harga, 0) || (selectedOrder.item_price ?? 0))
+                ).toLocaleString('id-ID')}</span>
+              </div>
+              <div style={{ fontSize: '9px', color: '#b45309', margin: '3px 0 0 0' }}>Ongkir + Total Belanja/Barang</div>
+            </div>
+            
+            <div style={{ textAlign: 'center', color: '#9ca3af', fontSize: '10px', paddingTop: '12px', marginTop: '8px', borderTop: '1px dashed #e5e7eb' }}>
+              Terima kasih telah menggunakan layanan KurirDev 🙏
             </div>
           </div>
         </div>
