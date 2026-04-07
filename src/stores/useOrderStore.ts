@@ -8,7 +8,9 @@ import {
   removeFromLocalDB, 
   getOrdersForWeek, 
   getOrdersByCourierFromLocal, 
-  markAsPaidInLocalDB 
+  markAsPaidInLocalDB,
+  needsWeeklySync,
+  saveWeeklySyncTime
 } from '@/lib/orderCache'
 import { useSettingsStore } from '@/stores/useSettingsStore'
 import { logger } from '@/lib/logger'
@@ -201,47 +203,79 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     const { purgeNonFinalizedOrders } = await import('@/lib/orderCache')
     await purgeNonFinalizedOrders()
     
-    // 1. LATEST MIRROR LOAD (Optimistic)
-    // Prefer cache for history to avoid heavy initial reads
+    // 1. LATEST MIRROR LOAD (Optimistic - Instant UI)
     if (courierId) {
       const cached = await getOrdersByCourierFromLocal(courierId)
-      if (cached.length > 0) {
-        set({ orders: cached })
-      }
+      if (cached.length > 0) set({ orders: cached })
     } else {
       const cached = await getOrdersForWeek()
-      if (cached.length > 0) {
-        set({ orders: cached })
-      }
+      if (cached.length > 0) set({ orders: cached })
     }
 
     // 2. Clear/Fetch Active Stores (Strictly Real-time)
     set({ activeOrdersByCourier: [], isFetchingActiveOrders: true })
 
     try {
-      let query = supabase.from('orders').select('*')
-      if (courierId) query = query.eq('courier_id', courierId)
-      
-      // Fetch active statuses from server to save reads
+      // 2.a ACTIVE ORDERS FETCH
       const activeStatuses = ['pending', 'assigned', 'picked_up', 'in_transit']
-      query = query.in('status', activeStatuses)
+      let activeQuery = supabase.from('orders').select('*').in('status', activeStatuses)
+      if (courierId) activeQuery = activeQuery.eq('courier_id', courierId)
 
-      const { data: activeData, error } = await query.order('created_at', { ascending: false })
-      
-      if (error) throw error
-
+      const { data: activeData, error: activeError } = await activeQuery.order('created_at', { ascending: false })
+      if (activeError) throw activeError
       const fetchedActive = (activeData as Order[]) || []
+
+      // 2.b INTELLIGENT GAP-FILL (Finalized Orders: Delivered/Cancelled)
+      const isWeeklyNeeded = courierId ? needsWeeklySync(courierId) : true;
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       
-      // Mirror active orders to local DB for offline access
-      for (const order of fetchedActive) {
+      const fetchStart = isWeeklyNeeded ? sevenDaysAgo : startOfToday;
+      
+      console.log(`[Sync] Fetching finalized orders since ${fetchStart.toISOString()} (Weekly: ${isWeeklyNeeded})`)
+
+      let finalQuery = supabase.from('orders')
+        .select('*')
+        .in('status', ['delivered', 'cancelled'])
+        .gte('created_at', fetchStart.toISOString())
+
+      if (courierId) finalQuery = finalQuery.eq('courier_id', courierId)
+
+      const { data: finalData, error: finalError } = await finalQuery.order('created_at', { ascending: false })
+      if (finalError) throw finalError
+      const fetchedFinal = (finalData as Order[]) || []
+
+      // 3. Mirror finalized orders to local DB
+      for (const order of fetchedFinal) {
         await moveToLocalDB(order)
       }
 
-      set({ 
-        activeOrdersByCourier: fetchedActive, 
-        isFetchingActiveOrders: false,
-        isLoading: false 
+      // 4. Update Weekly Sync Metadata
+      if (isWeeklyNeeded && courierId) {
+        saveWeeklySyncTime(courierId)
+      }
+
+      // 5. Final state update
+      set(state => {
+         const newOrders = [...state.orders];
+         fetchedFinal.forEach(o => {
+           if (!newOrders.some(existing => existing.id === o.id)) {
+             newOrders.push(o as Order);
+           }
+         });
+         return {
+           activeOrdersByCourier: fetchedActive,
+           orders: newOrders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
+           isFetchingActiveOrders: false,
+           isLoading: false
+         }
       })
+      
+      window.dispatchEvent(new CustomEvent('indexeddb-synced'))
+
     } catch (error) {
       console.error('fetchInitialOrders error:', error)
       set({ isFetchingActiveOrders: false, isLoading: false })

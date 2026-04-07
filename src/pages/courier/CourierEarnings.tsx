@@ -8,6 +8,7 @@ import { calcCourierEarning } from '@/lib/calcEarning';
 import { getOrdersByCourierFromLocal } from '@/lib/orderCache';
 import { Order } from '@/types';
 import { Badge } from '@/components/ui/Badge';
+import { useOrderStore } from '@/stores/useOrderStore';
 
 type Period = 'daily' | 'weekly';
 type Tab = 'summary' | 'history';
@@ -28,6 +29,7 @@ export function CourierEarnings() {
   const { user } = useAuth();
   const { commission_rate, commission_threshold } = useSettingsStore();
   const earningSettings = { commission_rate, commission_threshold };
+  const { isFetchingActiveOrders: isSyncing } = useOrderStore();
 
   const [activeTab, setActiveTab] = useState<Tab>((location.state as any)?.activeTab || 'summary');
   const [period, setPeriod] = useState<Period>('daily');
@@ -222,6 +224,12 @@ export function CourierEarnings() {
           <div className="flex-1">
             <h1 className="text-xl font-black tracking-tight">Pendapatan & Riwayat</h1>
             <p className="text-[10px] text-teal-100 uppercase tracking-widest font-bold">Courier Performance Hub</p>
+            {isSyncing && (
+              <div className="flex items-center gap-1.5 text-[9px] text-white/80 animate-pulse mt-1">
+                <Clock className="w-3 h-3" />
+                <span>Syncing data...</span>
+              </div>
+            )}
           </div>
         </div>
 

@@ -25,6 +25,7 @@ export interface UserSyncStatus {
   sync_completed: boolean
   last_delta_sync: string  // ISO timestamp
   last_sync: string        // ISO timestamp
+  last_weekly_sync?: string // ISO timestamp for full 7-day sync
 }
 
 export interface DBMeta {
@@ -68,7 +69,8 @@ function getUserSyncStatus(
   return meta.users[userId] || {
     sync_completed: false,
     last_delta_sync: '',
-    last_sync: ''
+    last_sync: '',
+    last_weekly_sync: ''
   }
 }
 
@@ -80,7 +82,8 @@ function saveUserSyncStatus(
   const current = meta.users[userId] || {
     sync_completed: false,
     last_delta_sync: '',
-    last_sync: ''
+    last_sync: '',
+    last_weekly_sync: ''
   }
   meta.users[userId] = { ...current, ...status }
   saveMeta({ users: meta.users })
@@ -201,6 +204,31 @@ export function needsDeltaSync(
   const today = new Date()
   return lastSync.toDateString()
     !== today.toDateString()
+}
+
+/**
+ * Cek apakah perlu sync 7-hari penuh (Weekly Sync) hari ini.
+ * Gunakan ini untuk memastikan data Earning 7 hari akurat tanpa membebani Supabase.
+ */
+export function needsWeeklySync(
+  userId: string
+): boolean {
+  const userStatus = getUserSyncStatus(userId)
+  if (!userStatus.last_weekly_sync) return true
+  const lastSync = new Date(userStatus.last_weekly_sync)
+  const today = new Date()
+  return lastSync.toDateString() !== today.toDateString()
+}
+
+/**
+ * Catat waktu sinkronisasi mingguan sukses.
+ */
+export function saveWeeklySyncTime(
+  userId: string
+) {
+  saveUserSyncStatus(userId, {
+    last_weekly_sync: new Date().toISOString()
+  })
 }
 
 // Sync semua order final (delivered/cancelled)
