@@ -1,24 +1,43 @@
 import { supabase } from '@/lib/supabaseClient'
 
-export async function cleanupDummyOrders() {
+export interface CleanupResult {
+  count: number
+  delivered: number
+  cancelled: number
+  error?: any
+}
+
+export async function cleanupDummyOrders(options: { dryRun?: boolean; safetyBufferMinutes?: number } = {}): Promise<CleanupResult> {
+  const { dryRun = false, safetyBufferMinutes = 60 } = options
+  
+  // Hitung batas waktu (buffer) untuk menghindari menghapus order yang masih sangat baru
+  const bufferTime = new Date(Date.now() - safetyBufferMinutes * 60 * 1000).toISOString()
+
   const { data: snapshot, error } = await (supabase.from('orders') as any)
     .select('*')
-    .not('status', 'in', '("delivered","cancelled")') as { data: any[] | null, error: any }
+    .not('status', 'in', '("delivered","cancelled")')
+    .lt('created_at', bufferTime) as { data: any[] | null, error: any }
 
-  if (error || !snapshot || snapshot.length === 0) {
-    console.log('No orders to cleanup')
-    return
+  if (error) {
+    console.error('Error fetching orders for cleanup:', error)
+    return { count: 0, delivered: 0, cancelled: 0, error }
   }
 
-  console.log(`Found ${snapshot.length} orders to process`)
+  if (!snapshot || snapshot.length === 0) {
+    return { count: 0, delivered: 0, cancelled: 0 }
+  }
 
-  let deliveredCount = 0
-  let cancelledCount = 0
+  let toDeliver = 0
+  let toCancel = 0
 
-  // Promise.all for updates instead of Supabase bulk/RPC if needed
-  const promises = snapshot.map((order: any) => {
-    if (order.total_fee && order.total_fee > 0) {
-      deliveredCount++
+  const updates = snapshot.map((order: any) => {
+    const isDeliverable = (order.total_fee && parseFloat(order.total_fee) > 0)
+    if (isDeliverable) toDeliver++
+    else toCancel++
+
+    if (dryRun) return Promise.resolve()
+
+    if (isDeliverable) {
       return (supabase.from('orders') as any)
         .update({
           status: 'delivered',
@@ -27,11 +46,10 @@ export async function cleanupDummyOrders() {
         })
         .eq('id', order.id)
     } else {
-      cancelledCount++
       return (supabase.from('orders') as any)
         .update({
           status: 'cancelled',
-          cancellation_reason: 'Data cleanup - no fee',
+          cancellation_reason: 'Maintenance cleanup - stale dummy order',
           cancelled_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
@@ -39,6 +57,20 @@ export async function cleanupDummyOrders() {
     }
   })
 
-  await Promise.all(promises)
-  console.log(`✅ Done: ${deliveredCount} delivered, ${cancelledCount} cancelled`)
+  if (!dryRun) {
+    await Promise.all(updates)
+  }
+
+  return {
+    count: snapshot.length,
+    delivered: toDeliver,
+    cancelled: toCancel
+  }
+}
+
+/**
+ * Helper to just get stats without performing updates
+ */
+export async function getCleanupStats(safetyBufferMinutes = 60): Promise<CleanupResult> {
+  return cleanupDummyOrders({ dryRun: true, safetyBufferMinutes })
 }

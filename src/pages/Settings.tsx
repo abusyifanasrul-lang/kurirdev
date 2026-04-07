@@ -153,7 +153,17 @@ export function Settings() {
 
   const handleResync = async () => {
     if (isSyncing) return;
-    if (!window.confirm('Reset dan sinkronisasi ulang semua data lokal? Anda akan logout otomatis.')) return;
+
+    const confirmMessage = 
+      "⚠️ PERINGATAN KRITIS: Reset & Sinkronisasi Ulang\n\n" +
+      "Tindakan ini akan:\n" +
+      "1. Menghapus SELURUH database lokal (IndexedDB) di perangkat ini.\n" +
+      "2. Mengakhiri sesi login Anda saat ini (Logout otomatis).\n" +
+      "3. Mengunduh ulang semua data dari server Supabase pada login berikutnya.\n\n" +
+      "Gunakan ini HANYA jika Anda mengalami masalah sinkronisasi data yang parah.\n\n" +
+      "Apakah Anda yakin ingin melanjutkan?";
+
+    if (!window.confirm(confirmMessage)) return;
 
     setIsSyncing(true);
     setSyncMessage('Menghapus cache lokal...');

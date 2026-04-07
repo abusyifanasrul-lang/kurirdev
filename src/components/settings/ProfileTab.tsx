@@ -11,6 +11,10 @@ interface ProfileTabProps {
   onRefreshPush: () => Promise<void>;
   isLoading: boolean;
   isRefreshingPush: boolean;
+  onResync?: () => void;
+  cacheMeta?: any;
+  isSyncing?: boolean;
+  syncMessage?: string;
 }
 
 export function ProfileTab({
@@ -19,6 +23,10 @@ export function ProfileTab({
   onRefreshPush,
   isLoading,
   isRefreshingPush,
+  onResync,
+  cacheMeta,
+  isSyncing,
+  syncMessage
 }: ProfileTabProps) {
   const [form, setForm] = useState({
     name: user?.name || '',

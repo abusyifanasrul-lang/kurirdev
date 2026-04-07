@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Package, DollarSign, CheckCircle, Clock, Wifi, WifiOff, ChevronRight, AlertTriangle } from 'lucide-react';
-import { format, isToday } from 'date-fns';
+import { format, isToday, parseISO, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { cn } from '@/utils/cn';
 import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
 import { useOrderStore } from '@/stores/useOrderStore';
@@ -84,15 +84,27 @@ export function CourierDashboard() {
 
   const activeOrders = myOrders;
 
-  const completedToday = useMemo(() =>
-    courierOrders.filter((o: Order) => o.status === 'delivered' && isToday(new Date(o.created_at))).length,
-    [courierOrders]
-  );
+  const completedToday = useMemo(() => {
+    const today = startOfDay(new Date());
+    const todayEnd = endOfDay(new Date());
+    return courierOrders.filter((o: Order) => {
+      if (o.status !== 'delivered') return false;
+      const deliveryDate = o.actual_delivery_time ? parseISO(o.actual_delivery_time) : parseISO(o.created_at);
+      return isWithinInterval(deliveryDate, { start: today, end: todayEnd });
+    }).length;
+  }, [courierOrders]);
 
   const todayEarnings = useMemo(() => {
+    const today = startOfDay(new Date());
+    const todayEnd = endOfDay(new Date());
     const earningSettings = { commission_rate, commission_threshold };
+    
     return courierOrders
-      .filter((o: Order) => o.status === 'delivered' && isToday(new Date(o.created_at)))
+      .filter((o: Order) => {
+        if (o.status !== 'delivered') return false;
+        const deliveryDate = o.actual_delivery_time ? parseISO(o.actual_delivery_time) : parseISO(o.created_at);
+        return isWithinInterval(deliveryDate, { start: today, end: todayEnd });
+      })
       .reduce((sum: number, o: Order) => sum + calcCourierEarning(o, earningSettings), 0);
   }, [courierOrders, commission_rate, commission_threshold]);
 
