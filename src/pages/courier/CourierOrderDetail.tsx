@@ -361,7 +361,10 @@ export function CourierOrderDetail() {
         />
       </div>
 
-      <div className="pb-56">
+      <div className={cn(
+        "transition-all duration-300",
+        order.status === 'delivered' ? "pb-10" : "pb-40"
+      )}>
         <div className="max-w-md mx-auto p-4 space-y-4 pt-6">
           {isSuspended && (
             <div className="bg-red-50 border border-red-100 rounded-3xl p-5 mb-4 animate-bounce">
@@ -557,7 +560,7 @@ export function CourierOrderDetail() {
           </div>
           {/* Completion Success View */}
           {order.status === 'delivered' && (
-            <div className="mt-8 mb-32 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="mt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="bg-emerald-50 border-2 border-emerald-100 rounded-[2.5rem] p-8 text-center shadow-xl shadow-emerald-900/5">
                 <div className="w-20 h-20 bg-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-200">
                   <span className="text-4xl animate-bounce">✅</span>

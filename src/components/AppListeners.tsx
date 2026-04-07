@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { useUserStore } from '@/stores/useUserStore'
 import { useOrderStore } from '@/stores/useOrderStore'
@@ -20,6 +20,7 @@ import {
 export const AppListeners = () => {
   const { user, logout } = useAuth()
   const { fetchSettings } = useSettingsStore()
+  const sessionCheckPromise = useRef<Promise<boolean> | null>(null);
 
   // 1. Settings listeners (Global)
   useEffect(() => {
@@ -189,22 +190,40 @@ export const AppListeners = () => {
     let lastSyncTime = 0
 
     const ensureValidSession = async (): Promise<boolean> => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession()
-        if (error || !session) {
-          console.warn('⚠️ No valid session, attempting refresh...')
-          const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession()
-          if (refreshError || !refreshed.session) {
-            console.error('❌ Session refresh failed:', refreshError)
-            return false
-          }
-        }
-        console.log('✅ Session is valid')
-        return true
-      } catch (err) {
-        console.error('❌ ensureValidSession error:', err)
-        return false
+      // 1. If a check is already in flight, reuse its promise
+      if (sessionCheckPromise.current) {
+        console.log('⏳ Session check already in progress, awaiting...');
+        return sessionCheckPromise.current;
       }
+
+      // 2. Wrap the session check in a persistent promise
+      sessionCheckPromise.current = (async () => {
+        try {
+          const { data: { session }, error } = await supabase.auth.getSession()
+          if (error || !session) {
+            console.warn('⚠️ No valid session, attempting refresh...')
+            const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession()
+            if (refreshError || !refreshed.session) {
+              console.error('❌ Session refresh failed:', refreshError)
+              return false
+            }
+          }
+          console.log('✅ Session validated')
+          return true
+        } catch (err: any) {
+          if (err?.name === 'AbortError') {
+             console.warn('⚠️ Lock broken by another tab/process. Recovering gracefully.');
+             return true; // Assume valid or allow retry later
+          }
+          console.error('❌ ensureValidSession error:', err)
+          return false
+        } finally {
+          // Clear reference after completion (success or fail)
+          sessionCheckPromise.current = null;
+        }
+      })();
+
+      return sessionCheckPromise.current;
     }
 
     const resyncAll = () => {
@@ -237,12 +256,21 @@ export const AppListeners = () => {
     }
 
     const handleSyncTrigger = async (source: string) => {
-      console.log(`📡 [${source}] Event detected. Pre-flight auth check...`)
+      // Delay slightly to bundle rapid visibility/focus events
+      await new Promise(r => setTimeout(r, 100));
+
+      const now = Date.now();
+      if (now - lastSyncTime < 5000) {
+        console.log(`📡 [${source}] Sync skipped (cooldown active)`);
+        return;
+      }
+
+      console.log(`📡 [${source}] Triggered. Pre-flight auth check...`)
       const isValid = await ensureValidSession()
       if (isValid) {
         resyncAll()
       } else {
-        console.warn(`⚠️ [${source}] Session invalid after check. Resync aborted.`)
+        console.warn(`⚠️ [${source}] Session invalid. Resync aborted.`)
       }
     }
 
