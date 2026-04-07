@@ -31,7 +31,7 @@ export interface OrderState {
   isFetchingHistory: boolean
   fetchOrdersByDateRange: (start: Date, end: Date, courierId?: string) => Promise<Order[]>
   activeOrdersByCourier: Order[]
-  isFetchingActiveOrders: boolean
+  isSyncing: boolean
   currentOrder: Order | null
   fetchActiveOrdersByCourier: (courierId: string) => Promise<void>
   resyncRealtime: (filter?: { courierId?: string; activeOnly?: boolean }) => Promise<void>
@@ -133,7 +133,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   },
 
   fetchActiveOrdersByCourier: async (courierId: string) => {
-    set({ isFetchingActiveOrders: true })
+    set({ isSyncing: true })
     try {
       const { data: activeOrdersByCourier, error } = await supabase
         .from('orders')
@@ -142,10 +142,11 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
         .in('status', ['assigned', 'picked_up', 'in_transit'])
         
       if (error) throw error
-      set({ activeOrdersByCourier: activeOrdersByCourier as Order[], isFetchingActiveOrders: false })
+      set({ activeOrdersByCourier: activeOrdersByCourier as Order[] })
     } catch (error) {
       console.error('fetchActiveOrdersByCourier error:', error)
-      set({ isFetchingActiveOrders: false })
+    } finally {
+      set({ isSyncing: false })
     }
   },
 
@@ -213,7 +214,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     }
 
     // 2. Clear/Fetch Active Stores (Strictly Real-time)
-    set({ activeOrdersByCourier: [], isFetchingActiveOrders: true })
+    set({ activeOrdersByCourier: [], isSyncing: true })
 
     try {
       // 2.a ACTIVE ORDERS FETCH
@@ -226,14 +227,14 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
       const fetchedActive = (activeData as Order[]) || []
 
       // 2.b INTELLIGENT GAP-FILL (Finalized Orders: Delivered/Cancelled)
-      const isWeeklyNeeded = courierId ? needsWeeklySync(courierId) : true;
+      const isWeeklyNeeded = needsWeeklySync(courierId);
       const startOfToday = new Date();
       startOfToday.setHours(0, 0, 0, 0);
 
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const sixDaysAgo = new Date();
+      sixDaysAgo.setDate(sixDaysAgo.getDate() - 6);
       
-      const fetchStart = isWeeklyNeeded ? sevenDaysAgo : startOfToday;
+      const fetchStart = isWeeklyNeeded ? sixDaysAgo : startOfToday;
       
       console.log(`[Sync] Fetching finalized orders since ${fetchStart.toISOString()} (Weekly: ${isWeeklyNeeded})`)
 
@@ -254,7 +255,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
       }
 
       // 4. Update Weekly Sync Metadata
-      if (isWeeklyNeeded && courierId) {
+      if (isWeeklyNeeded) {
         saveWeeklySyncTime(courierId)
       }
 
@@ -268,17 +269,15 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
          });
          return {
            activeOrdersByCourier: fetchedActive,
-           orders: newOrders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
-           isFetchingActiveOrders: false,
-           isLoading: false
+           orders: newOrders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
          }
       })
       
-      window.dispatchEvent(new CustomEvent('indexeddb-synced'))
-
     } catch (error) {
       console.error('fetchInitialOrders error:', error)
-      set({ isFetchingActiveOrders: false, isLoading: false })
+    } finally {
+      set({ isSyncing: false, isLoading: false })
+      window.dispatchEvent(new CustomEvent('indexeddb-synced'))
     }
   },
 

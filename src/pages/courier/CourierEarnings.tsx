@@ -29,7 +29,7 @@ export function CourierEarnings() {
   const { user } = useAuth();
   const { commission_rate, commission_threshold } = useSettingsStore();
   const earningSettings = { commission_rate, commission_threshold };
-  const { isFetchingActiveOrders: isSyncing } = useOrderStore();
+  const { isSyncing } = useOrderStore();
 
   const [activeTab, setActiveTab] = useState<Tab>((location.state as any)?.activeTab || 'summary');
   const [period, setPeriod] = useState<Period>('daily');

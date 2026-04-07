@@ -211,9 +211,10 @@ export function needsDeltaSync(
  * Gunakan ini untuk memastikan data Earning 7 hari akurat tanpa membebani Supabase.
  */
 export function needsWeeklySync(
-  userId: string
+  userId?: string
 ): boolean {
-  const userStatus = getUserSyncStatus(userId)
+  const syncId = userId || 'global_admin_sync'
+  const userStatus = getUserSyncStatus(syncId)
   if (!userStatus.last_weekly_sync) return true
   const lastSync = new Date(userStatus.last_weekly_sync)
   const today = new Date()
@@ -224,9 +225,10 @@ export function needsWeeklySync(
  * Catat waktu sinkronisasi mingguan sukses.
  */
 export function saveWeeklySyncTime(
-  userId: string
+  userId?: string
 ) {
-  saveUserSyncStatus(userId, {
+  const syncId = userId || 'global_admin_sync'
+  saveUserSyncStatus(syncId, {
     last_weekly_sync: new Date().toISOString()
   })
 }
