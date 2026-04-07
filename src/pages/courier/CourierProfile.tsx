@@ -93,8 +93,8 @@ export function CourierProfile() {
       {/* Profile Card */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
         <div className="flex items-center gap-4 mb-6">
-          <div className="w-20 h-20 bg-teal-100 rounded-full flex items-center justify-center">
-            <span className="text-3xl font-bold text-teal-600">
+          <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center">
+            <span className="text-3xl font-bold text-emerald-600">
               {user?.name?.charAt(0) || 'C'}
             </span>
           </div>
@@ -102,8 +102,8 @@ export function CourierProfile() {
             <h2 className="text-xl font-bold text-gray-900">{user?.name || 'Kurir'}</h2>
             <p className="text-sm text-gray-500">Kurir</p>
             <div className="flex items-center gap-1 mt-1">
-              <span className={`w-2 h-2 rounded-full ${isSuspended ? 'bg-red-500' : 'bg-teal-500'}`} />
-              <span className={`text-xs ${isSuspended ? 'text-red-600' : 'text-teal-600'}`}>
+              <span className={`w-2 h-2 rounded-full ${isSuspended ? 'bg-red-500' : 'bg-emerald-500'}`} />
+              <span className={`text-xs ${isSuspended ? 'text-red-600' : 'text-emerald-600'}`}>
                 {isSuspended ? 'Disuspend' : 'Aktif'}
               </span>
             </div>
@@ -113,32 +113,32 @@ export function CourierProfile() {
         <div className="grid grid-cols-1 gap-3">
           <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
             <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
-              <UserIcon className="h-5 w-5 text-gray-400" />
+              <UserIcon className="h-5 w-5 text-emerald-600" />
             </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-wider font-semibold text-gray-400">Nama Lengkap</p>
-              <p className="text-sm font-medium text-gray-900">{user?.name || '-'}</p>
-            </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-mobile font-bold text-emerald-600">Nama Lengkap</p>
+                <p className="text-sm font-medium text-gray-900">{user?.name || '-'}</p>
+              </div>
           </div>
 
           <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
             <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
-              <Mail className="h-5 w-5 text-gray-400" />
+              <Mail className="h-5 w-5 text-emerald-600" />
             </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-wider font-semibold text-gray-400">Email</p>
-              <p className="text-sm font-medium text-gray-900">{user?.email || '-'}</p>
-            </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-mobile font-bold text-emerald-600">Email</p>
+                <p className="text-sm font-medium text-gray-900">{user?.email || '-'}</p>
+              </div>
           </div>
 
           <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
             <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
-              <Phone className="h-5 w-5 text-gray-400" />
+              <Phone className="h-5 w-5 text-emerald-600" />
             </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-wider font-semibold text-gray-400">Nomor HP</p>
-              <p className="text-sm font-medium text-gray-900">{user?.phone || '-'}</p>
-            </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-mobile font-bold text-emerald-600">Nomor HP</p>
+                <p className="text-sm font-medium text-gray-900">{user?.phone || '-'}</p>
+              </div>
           </div>
 
           {courierData?.vehicle_type && (
@@ -147,7 +147,7 @@ export function CourierProfile() {
                 <Truck className="h-5 w-5 text-gray-400" />
               </div>
               <div>
-                <p className="text-[10px] uppercase tracking-wider font-semibold text-gray-400">Tipe Kendaraan</p>
+                <p className="text-[10px] uppercase tracking-mobile font-bold text-gray-400">Tipe Kendaraan</p>
                 <p className="text-sm font-medium text-gray-900 capitalize">{courierData.vehicle_type}</p>
               </div>
             </div>
@@ -159,7 +159,7 @@ export function CourierProfile() {
                 <Hash className="h-5 w-5 text-gray-400" />
               </div>
               <div>
-                <p className="text-[10px] uppercase tracking-wider font-semibold text-gray-400">Plat Nomor</p>
+                <p className="text-[10px] uppercase tracking-mobile font-bold text-gray-400">Plat Nomor</p>
                 <p className="text-sm font-medium text-gray-900">{courierData.plate_number}</p>
               </div>
             </div>
@@ -180,11 +180,11 @@ export function CourierProfile() {
             )}
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-teal-50 rounded-xl flex items-center justify-center">
-                <Lock className="h-5 w-5 text-teal-600" />
+              <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center">
+                <Lock className="h-5 w-5 text-emerald-600" />
               </div>
               <div className="text-left">
-                <p className="font-medium text-gray-900">Ganti Password</p>
+                <p className="font-semibold text-gray-900">Ganti Password</p>
                 <p className="text-sm text-gray-500">
                   {isSuspended ? "Akun sedang disuspend" : "Perbarui password akun kamu"}
                 </p>
@@ -212,7 +212,7 @@ export function CourierProfile() {
               <div>
                 <label 
                   htmlFor="new-password"
-                  className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1"
+                  className="block text-[10px] font-bold text-gray-400 uppercase tracking-mobile mb-1"
                 >
                   Password Baru
                 </label>
@@ -228,7 +228,7 @@ export function CourierProfile() {
                     "w-full px-4 py-3 bg-white border rounded-xl focus:ring-2 transition-all",
                     message?.text === 'Password minimal 8 karakter'
                       ? "border-red-500 focus:ring-red-200"
-                      : "border-gray-200 focus:ring-teal-500"
+                      : "border-gray-200 focus:ring-emerald-500"
                   )}
                   placeholder="Masukkan password baru"
                 />
@@ -243,7 +243,7 @@ export function CourierProfile() {
               <div>
                 <label 
                   htmlFor="confirm-password"
-                  className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1"
+                  className="block text-[10px] font-bold text-gray-400 uppercase tracking-mobile mb-1"
                 >
                   Konfirmasi Password Baru
                 </label>
@@ -259,7 +259,7 @@ export function CourierProfile() {
                     "w-full px-4 py-3 bg-white border rounded-xl focus:ring-2 transition-all",
                     message?.text === 'Password tidak cocok'
                       ? "border-red-500 focus:ring-red-200"
-                      : "border-gray-200 focus:ring-teal-500"
+                      : "border-gray-200 focus:ring-emerald-500"
                   )}
                   placeholder="Konfirmasi password baru"
                 />
@@ -274,15 +274,15 @@ export function CourierProfile() {
                 onClick={handleChangePassword}
                 disabled={isLoading || !passwordForm.newPassword || !passwordForm.confirmPassword}
                 className={cn(
-                  "w-full py-3 bg-teal-600 text-white font-bold rounded-xl shadow-lg shadow-teal-200 transition-all active:scale-95",
-                  isLoading ? "opacity-70 cursor-not-allowed" : "hover:bg-teal-700"
+                  "w-full py-3 bg-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-emerald-200 transition-all active:scale-95",
+                  isLoading ? "opacity-70 cursor-not-allowed" : "hover:bg-emerald-700"
                 )}
               >
                 {isLoading ? 'Memperbarui...' : 'Simpan Password Baru'}
               </button>
 
               {message?.type === 'success' && (
-                <div className="flex items-center gap-2 px-4 py-3 bg-teal-50 border border-teal-200 text-teal-700 text-sm font-medium rounded-xl">
+                <div className="flex items-center gap-2 px-4 py-3 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-medium rounded-xl">
                   <CheckCircle className="h-4 w-4 flex-shrink-0" />
                   {message.text}
                 </div>
@@ -296,18 +296,18 @@ export function CourierProfile() {
           <div className="flex items-center justify-between p-4">
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                notifPermission === 'granted' ? 'bg-teal-50' :
+                notifPermission === 'granted' ? 'bg-emerald-50' :
                 notifPermission === 'denied' ? 'bg-red-50' : 'bg-yellow-50'
               }`}>
                 <Bell className={`h-5 w-5 ${
-                  notifPermission === 'granted' ? 'text-teal-600' :
+                  notifPermission === 'granted' ? 'text-emerald-600' :
                   notifPermission === 'denied' ? 'text-red-500' : 'text-yellow-500'
                 }`} />
               </div>
               <div className="text-left">
-                <p className="font-medium text-gray-900">Notifikasi Order</p>
-                <p className={`text-sm font-medium ${
-                  notifPermission === 'granted' ? 'text-teal-600' :
+                <p className="font-semibold text-gray-900">Notifikasi Order</p>
+                <p className={`text-sm font-semibold ${
+                  notifPermission === 'granted' ? 'text-emerald-600' :
                   notifPermission === 'denied' ? 'text-red-500' : 'text-yellow-500'
                 }`}>
                   {notifPermission === 'granted' ? '✅ Diizinkan' :
@@ -318,7 +318,7 @@ export function CourierProfile() {
             {notifPermission === 'default' && (
               <button
                 onClick={handleRequestNotifPermission}
-                className="text-xs font-semibold text-teal-600 bg-teal-50 px-3 py-1.5 rounded-full hover:bg-teal-100"
+                className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full hover:bg-emerald-100"
               >
                 Izinkan
               </button>

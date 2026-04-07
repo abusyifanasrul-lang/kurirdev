@@ -87,7 +87,7 @@ export function CourierLayout() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-800 pb-20">
       {/* Header */}
-      <header className="bg-green-600 dark:bg-gray-900 text-white px-4 py-4 sticky top-0 z-40">
+      <header className="bg-emerald-600 dark:bg-gray-900 text-white px-4 py-4 sticky top-0 z-40 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
@@ -95,7 +95,7 @@ export function CourierLayout() {
             </div>
             <div>
               <p className="font-semibold">{user?.name || 'Courier'}</p>
-              <p className="text-xs text-green-100">Courier App</p>
+              <p className="text-xs text-emerald-100">Courier App</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -149,7 +149,7 @@ export function CourierLayout() {
                 cn(
                   'flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-colors min-w-[60px]',
                   isActive
-                    ? 'text-green-600 bg-green-50'
+                    ? 'text-emerald-600 bg-emerald-50'
                     : 'text-gray-500 hover:text-gray-700'
                 )
               }

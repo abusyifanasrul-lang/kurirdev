@@ -9,17 +9,18 @@ import { getOrdersByCourierFromLocal } from '@/lib/orderCache';
 import { Order } from '@/types';
 import { Badge } from '@/components/ui/Badge';
 import { useOrderStore } from '@/stores/useOrderStore';
+import { formatCurrency, formatShortCurrency } from '@/utils/formatter';
 
 type Period = 'daily' | 'weekly';
 type Tab = 'summary' | 'history';
 type StatusFilter = 'all' | 'delivered' | 'cancelled';
 
 const statusConfig: Record<string, { color: string; bg: string; icon: typeof CheckCircle; label: string }> = {
-  delivered: { color: 'text-teal-600', bg: 'bg-teal-50', icon: CheckCircle, label: '✅ CEKLIS — Terkirim' },
+  delivered: { color: 'text-emerald-600', bg: 'bg-emerald-50', icon: CheckCircle, label: '✅ CEKLIS — Terkirim' },
   cancelled: { color: 'text-red-600', bg: 'bg-red-50', icon: XCircle, label: '❌ CANCEL — Dibatalkan' },
   in_transit: { color: 'text-emerald-600', bg: 'bg-emerald-50', icon: Package, label: 'GAS — Customer' },
   picked_up: { color: 'text-orange-600', bg: 'bg-orange-50', icon: Package, label: 'GAS — Penjual' },
-  assigned: { color: 'text-teal-700', bg: 'bg-teal-50', icon: Clock, label: 'Order Diterima' },
+  assigned: { color: 'text-emerald-700', bg: 'bg-emerald-50', icon: Clock, label: 'Order Diterima' },
   pending: { color: 'text-gray-600', bg: 'bg-gray-50', icon: Clock, label: 'Menunggu Kurir' },
 };
 
@@ -205,33 +206,24 @@ export function CourierEarnings() {
     return [];
   }, [deliveredOrders, period, earningSettings]);
 
-  const formatCurrency = (val: number) =>
-    new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
-
-  const formatChartCurrency = (val: number) => {
-    if (val >= 1000000) return `${(val / 1000000).toFixed(1)}jt`;
-    if (val >= 1000) return `${(val / 1000).toFixed(0)}rb`;
-    return val.toString();
-  };
-
   return (
-    <div className="bg-gray-50">
-      <div className="bg-white border-b border-gray-100 sticky top-0 z-20 shadow-sm transition-all duration-300">
+    <div className="bg-gray-50 pb-20">
+      <div className="bg-white border-b border-gray-100 sticky top-0 z-20 shadow-sm">
         <div className="flex items-center gap-3 p-4">
           <button onClick={() => navigate('/courier')} className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors">
             <ArrowLeft className="w-6 h-6 text-gray-700" />
           </button>
           <div className="flex-1">
-            <h1 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none">
+            <h1 className="text-[10px] font-bold text-gray-400 uppercase tracking-mobile leading-none">
               Pendapatan & Riwayat
             </h1>
             <div className="flex items-center gap-2 mt-1">
-              <span className="text-sm font-black text-gray-900 leading-none">
+              <span className="text-sm font-bold text-gray-900 leading-none">
                 PERFORMA KURIR
               </span>
             </div>
             {isSyncing && (
-              <div className="flex items-center gap-1.5 text-[9px] text-teal-600 font-bold animate-pulse mt-1.5">
+              <div className="flex items-center gap-1.5 text-[9px] text-emerald-600 font-bold animate-pulse mt-1.5">
                 <Clock className="w-3 h-3" />
                 <span>SYNCING DATA...</span>
               </div>
@@ -242,17 +234,17 @@ export function CourierEarnings() {
         <div className="flex px-4 pb-0 gap-6">
           <button 
             onClick={() => setActiveTab('summary')}
-            className={`pb-3 text-xs font-black uppercase tracking-wider transition-all relative ${activeTab === 'summary' ? 'text-teal-700' : 'text-gray-400'}`}
+            className={`pb-3 text-xs font-bold uppercase tracking-wider transition-all relative ${activeTab === 'summary' ? 'text-emerald-700' : 'text-gray-400'}`}
           >
             Ringkasan
-            {activeTab === 'summary' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-teal-500 rounded-full animate-in slide-in-from-left-2" />}
+            {activeTab === 'summary' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-emerald-500 rounded-full animate-in slide-in-from-left-2" />}
           </button>
           <button 
             onClick={() => setActiveTab('history')}
-            className={`pb-3 text-xs font-black uppercase tracking-wider transition-all relative ${activeTab === 'history' ? 'text-teal-700' : 'text-gray-400'}`}
+            className={`pb-3 text-xs font-bold uppercase tracking-wider transition-all relative ${activeTab === 'history' ? 'text-emerald-700' : 'text-gray-400'}`}
           >
             Riwayat
-            {activeTab === 'history' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-teal-500 rounded-full animate-in slide-in-from-right-2" />}
+            {activeTab === 'history' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-emerald-500 rounded-full animate-in slide-in-from-right-2" />}
           </button>
         </div>
       </div>
@@ -265,12 +257,12 @@ export function CourierEarnings() {
                 <DollarSign className="w-12 h-12" />
               </div>
               <div className="flex items-center gap-2 mb-2 text-gray-400">
-                <span className="text-[9px] uppercase font-black tracking-widest">Hari Ini</span>
+                <span className="text-[9px] uppercase font-bold tracking-mobile">Hari Ini</span>
               </div>
-              <p className="text-xl font-black text-gray-900 tracking-tight">{formatCurrency(todayStats.earnings)}</p>
+              <p className="text-xl font-bold text-gray-900 tracking-tight">{formatCurrency(todayStats.earnings)}</p>
               <div className="mt-2 flex items-center gap-1">
-                <div className="w-1.5 h-1.5 bg-teal-500 rounded-full" />
-                <span className="text-[10px] text-teal-600 font-bold">{todayStats.orders} Pesanan</span>
+                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+                <span className="text-[10px] text-emerald-600 font-bold">{todayStats.orders} Pesanan</span>
               </div>
             </div>
             <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 relative overflow-hidden active:scale-[0.98] transition-all">
@@ -278,9 +270,9 @@ export function CourierEarnings() {
                 <TrendingUp className="w-12 h-12" />
               </div>
               <div className="flex items-center gap-2 mb-2 text-gray-400">
-                <span className="text-[9px] uppercase font-black tracking-widest">7 Hari</span>
+                <span className="text-[9px] uppercase font-bold tracking-mobile">7 Hari</span>
               </div>
-              <p className="text-xl font-black text-gray-900 tracking-tight">{formatCurrency(last7DaysStats.earnings)}</p>
+              <p className="text-xl font-bold text-gray-900 tracking-tight">{formatCurrency(last7DaysStats.earnings)}</p>
               <div className="mt-2 flex items-center gap-1">
                 <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
                 <span className="text-[10px] text-emerald-600 font-bold">{last7DaysStats.orders} Pesanan</span>
@@ -294,7 +286,7 @@ export function CourierEarnings() {
                 <button
                   key={p}
                   onClick={() => setPeriod(p)}
-                  className={`flex-1 py-2 text-[10px] uppercase font-black tracking-widest rounded-xl transition-all ${period === p ? 'bg-white text-teal-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                  className={`flex-1 py-2 text-[10px] uppercase font-bold tracking-mobile rounded-xl transition-all ${period === p ? 'bg-white text-emerald-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                 >
                   {p === 'daily' ? 'Harian' : 'Mingguan'}
                 </button>
@@ -305,11 +297,11 @@ export function CourierEarnings() {
           <div className="px-4">
             <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
               <div className="flex items-center justify-between mb-8">
-                <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-teal-600" />
+                <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-mobile flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-emerald-600" />
                   Grafik Performa
                 </h3>
-                <div className="px-3 py-1 bg-teal-50 rounded-full text-[9px] font-black text-teal-600 uppercase tracking-widest">
+                <div className="px-3 py-1 bg-emerald-50 rounded-full text-[9px] font-bold text-emerald-600 uppercase tracking-mobile">
                   Auto-Update
                 </div>
               </div>
@@ -322,16 +314,16 @@ export function CourierEarnings() {
                 <RechartsLib.ResponsiveContainer width="100%" height={240}>
                   <RechartsLib.BarChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                     <RechartsLib.CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <RechartsLib.XAxis dataKey="label" tick={{ fontSize: 9, fontWeight: '800', fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                    <RechartsLib.YAxis tick={{ fontSize: 9, fontWeight: '800', fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={formatChartCurrency} />
+                    <RechartsLib.XAxis dataKey="label" tick={{ fontSize: 9, fontWeight: '700', fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                    <RechartsLib.YAxis tick={{ fontSize: 9, fontWeight: '700', fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={formatShortCurrency} />
                     <RechartsLib.Tooltip
                       cursor={{ fill: '#f1f5f9', radius: 8 }}
                       contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', padding: '12px' }}
-                      itemStyle={{ fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', color: '#0d9488' }}
+                      itemStyle={{ fontSize: '10px', fontWeight: '800', textTransform: 'uppercase', color: '#059669' }}
                       labelStyle={{ fontSize: '9px', fontWeight: 'bold', color: '#94a3b8', marginBottom: '4px' }}
                       formatter={(value: number | undefined) => [formatCurrency(value ?? 0), 'Ringkasan']}
                     />
-                    <RechartsLib.Bar dataKey="earnings" fill="#0d9488" radius={[4, 4, 0, 0]} />
+                    <RechartsLib.Bar dataKey="earnings" fill="#059669" radius={[4, 4, 0, 0]} />
                   </RechartsLib.BarChart>
                 </RechartsLib.ResponsiveContainer>
               ) : (
@@ -345,19 +337,19 @@ export function CourierEarnings() {
           <div className="bg-white/80 backdrop-blur-md border-b p-4 space-y-4 sticky top-[100px] z-10 shadow-sm border-gray-100">
             <div className="flex gap-2">
               <div className="flex-1 relative group">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-teal-600 transition-colors" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-emerald-600 transition-colors" />
                 <input
                   type="text"
                   placeholder="Order # atau Customer..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 text-xs bg-gray-100 border-none rounded-2xl focus:ring-2 focus:ring-teal-500 font-bold placeholder:text-gray-400 placeholder:font-normal"
+                  className="w-full pl-11 pr-4 py-3 text-xs bg-gray-100 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500 font-bold placeholder:text-gray-400 placeholder:font-normal"
                 />
               </div>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-                className="px-4 py-3 text-[10px] bg-gray-100 border-none rounded-2xl focus:ring-2 focus:ring-teal-500 font-black uppercase tracking-widest"
+                className="px-4 py-3 text-[10px] bg-gray-100 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500 font-bold uppercase tracking-mobile"
               >
                 <option value="all">SEMUA</option>
                 <option value="delivered">TERKIRIM</option>
@@ -365,8 +357,8 @@ export function CourierEarnings() {
               </select>
             </div>
             <div className="flex items-center justify-between px-1">
-              <p className="text-[9px] text-gray-400 font-black uppercase tracking-[0.2em]">Data 7 Hari Terakhir</p>
-              <div className="bg-teal-50 px-2 py-0.5 rounded text-[9px] font-black text-teal-600 uppercase">Live</div>
+              <p className="text-[9px] text-gray-400 font-bold uppercase tracking-mobile">Data 7 Hari Terakhir</p>
+              <div className="bg-emerald-50 px-2 py-0.5 rounded text-[9px] font-bold text-emerald-600 uppercase">Live</div>
             </div>
           </div>
 
@@ -382,9 +374,9 @@ export function CourierEarnings() {
             ) : (
               Object.entries(groupedOrders).map(([date, dateOrders]) => (
                 <div key={date}>
-                  <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-teal-600 mb-4 ml-1 flex items-center gap-3">
+                  <h3 className="text-[10px] font-bold uppercase tracking-mobile text-emerald-600 mb-4 ml-1 flex items-center gap-3">
                     {getDateLabel(date)}
-                    <div className="flex-1 h-[1px] bg-teal-100/50" />
+                    <div className="flex-1 h-[1px] bg-emerald-100/50" />
                   </h3>
                   <div className="space-y-3">
                     {dateOrders.map((order) => {
@@ -400,18 +392,18 @@ export function CourierEarnings() {
                         >
                           <div className="flex items-start justify-between mb-4">
                             <div className="min-w-0">
-                              <p className="font-black text-gray-900 text-sm tracking-tight truncate">{order.order_number}</p>
+                              <p className="font-bold text-gray-900 text-sm tracking-tight truncate">{order.order_number}</p>
                               <div className="flex items-center gap-1.5 mt-0.5 text-gray-400">
                                 <Clock className="w-3 h-3" />
-                                <p className="text-[10px] font-bold uppercase tracking-widest">{format(parseISO(order.created_at), 'HH:mm')}</p>
+                                <p className="text-[10px] font-semibold uppercase tracking-mobile">{format(parseISO(order.created_at), 'HH:mm')}</p>
                               </div>
                             </div>
                             <div className="flex flex-col items-end gap-2">
-                              <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-tighter ${config.bg} ${config.color} border shadow-sm`}>
+                              <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-mobile ${config.bg} ${config.color} border border-current/10 shadow-sm`}>
                                 {config.label.split(' — ')[1] || config.label}
                               </div>
                               {order.status === 'delivered' && (
-                                <div className={order.payment_status === 'paid' ? 'text-teal-600' : 'text-orange-500'}>
+                                <div className={order.payment_status === 'paid' ? 'text-emerald-600' : 'text-orange-500'}>
                                   <Badge variant={order.payment_status === 'paid' ? 'success' : 'warning'} size="sm">
                                     {order.payment_status === 'paid' ? 'Paid — Checked' : 'Unpaid — Action Req.'}
                                   </Badge>
@@ -420,18 +412,18 @@ export function CourierEarnings() {
                             </div>
                           </div>
                           <div className="space-y-1 bg-gray-50/50 p-3 rounded-2xl border border-gray-100/50">
-                            <p className="text-xs font-black text-gray-800 uppercase tracking-tight line-clamp-1">{order.customer_name}</p>
-                            <p className="text-[10px] text-gray-500 leading-relaxed line-clamp-2">{order.customer_address}</p>
+                            <p className="text-xs font-bold text-gray-800 uppercase tracking-tight line-clamp-1">{order.customer_name}</p>
+                            <p className="text-[11px] text-gray-500 leading-relaxed line-clamp-2">{order.customer_address}</p>
                           </div>
                           <div className="flex justify-between items-end mt-4 pt-4 border-t border-gray-50">
                             <div className="flex flex-col">
-                              <span className="text-[8px] text-gray-400 font-black uppercase tracking-[0.2em] mb-1">Standard Fee</span>
-                              <span className="text-xs font-bold text-gray-900 font-mono italic">{formatCurrency(order.total_fee)}</span>
+                              <span className="text-[9px] text-gray-400 font-bold uppercase tracking-mobile mb-1">Standard Fee</span>
+                              <span className="text-xs font-bold text-gray-900">{formatCurrency(order.total_fee)}</span>
                             </div>
                             {courierEarning > 0 && (
                               <div className="text-right flex flex-col items-end">
-                                <span className="text-[8px] text-teal-500 font-black uppercase tracking-[0.2em] mb-1">Earning Net</span>
-                                <span className="text-lg font-black text-teal-600 tracking-tighter">{formatCurrency(courierEarning)}</span>
+                                <span className="text-[9px] text-emerald-500 font-bold uppercase tracking-mobile mb-1">Earning Net</span>
+                                <span className="text-lg font-bold text-emerald-600 tracking-tight">{formatCurrency(courierEarning)}</span>
                               </div>
                             )}
                           </div>
@@ -460,15 +452,15 @@ export function CourierEarnings() {
               <div className="bg-white p-4 border border-gray-200 rounded-xl">
                 {/* Header */}
                 <div style={{ textAlign: 'center', paddingBottom: '12px', borderBottom: '2px solid #111827', marginBottom: '14px' }}>
-                  <div style={{ fontSize: '18px', fontWeight: '800', color: '#0f766e' }}>🛵 KurirDev</div>
-                  <div style={{ fontSize: '9px', color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '2px' }}>Invoice Pengiriman</div>
+                  <div style={{ fontSize: '18px', fontWeight: '700', color: '#047857' }}>🛵 KurirDev</div>
+                  <div style={{ fontSize: '9px', color: '#6b7280', letterSpacing: '0.05em', textTransform: 'uppercase', marginTop: '2px', fontWeight: '700' }}>Invoice Pengiriman</div>
                   <div style={{ fontSize: '13px', fontWeight: '700', color: '#111827', marginTop: '10px' }}>{selectedOrder.order_number}</div>
                   <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '2px' }}>{selectedOrder.created_at ? new Date(selectedOrder.created_at).toLocaleString('id-ID', {day:'2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit'}) : new Date().toLocaleString('id-ID')}</div>
                 </div>
 
                 {/* Kepada */}
                 <div style={{ paddingBottom: '12px', borderBottom: '1px dashed #d1d5db', marginBottom: '14px' }}>
-                  <div style={{ fontSize: '8px', fontWeight: '700', letterSpacing: '0.1em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '6px' }}>Kepada</div>
+                  <div style={{ fontSize: '8px', fontWeight: '700', letterSpacing: '0.05em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '6px' }}>Kepada</div>
                   <div style={{ fontWeight: '700', fontSize: '12px', color: '#111827' }}>{selectedOrder.customer_name}</div>
                   <div style={{ color: '#4b5563', marginTop: '2px', fontSize: '11px', lineHeight: '1.4' }}>{selectedOrder.customer_address}</div>
                   <div style={{ color: '#4b5563', marginTop: '2px', fontSize: '11px' }}>{selectedOrder.customer_phone}</div>
@@ -477,7 +469,7 @@ export function CourierEarnings() {
                 {/* Daftar Belanja */}
                 {(selectedOrder.items && selectedOrder.items.length > 0) && (
                   <div style={{ paddingBottom: '12px', borderBottom: '1px dashed #d1d5db', marginBottom: '14px' }}>
-                    <div style={{ fontSize: '8px', fontWeight: '700', letterSpacing: '0.1em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '8px' }}>Daftar Belanja</div>
+                    <div style={{ fontSize: '8px', fontWeight: '700', letterSpacing: '0.05em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '8px' }}>Daftar Belanja</div>
                     {selectedOrder.items.map((item, i) => (
                       <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '11px' }}>
                         <span style={{ color: '#374151', flex: 1, paddingRight: '8px' }}>{item.nama}</span>
@@ -493,7 +485,7 @@ export function CourierEarnings() {
 
                 {/* Biaya Pengiriman */}
                 <div style={{ marginBottom: '14px' }}>
-                  <div style={{ fontSize: '8px', fontWeight: '700', letterSpacing: '0.1em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '8px' }}>Biaya Pengiriman</div>
+                  <div style={{ fontSize: '8px', fontWeight: '700', letterSpacing: '0.05em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '8px' }}>Biaya Pengiriman</div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '11px' }}>
                     <span style={{ color: '#374151' }}>Ongkir</span>
                     <span>Rp {(selectedOrder.total_fee || 0).toLocaleString('id-ID')}</span>
@@ -529,7 +521,7 @@ export function CourierEarnings() {
             <div className="p-6 pt-0">
               <button
                 onClick={handleBagikanInvoice}
-                className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest active:scale-[0.98] transition-all shadow-lg shadow-emerald-100"
+                className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold text-xs uppercase tracking-mobile active:scale-[0.98] transition-all shadow-lg shadow-emerald-100"
               >
                 CETAK / UNDUH INVOICE PNG
               </button>
@@ -544,8 +536,8 @@ export function CourierEarnings() {
           <div ref={invoiceRef} style={{ background: '#ffffff', padding: '24px', width: '320px', fontFamily: 'Arial, sans-serif', fontSize: '12px', color: '#111827' }}>
             {/* Header */}
             <div style={{ textAlign: 'center', paddingBottom: '12px', borderBottom: '2px solid #111827', marginBottom: '14px' }}>
-              <div style={{ fontSize: '20px', fontWeight: '800', color: '#0f766e' }}>🛵 KurirDev</div>
-              <div style={{ fontSize: '10px', color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '2px' }}>Invoice Pengiriman</div>
+              <div style={{ fontSize: '20px', fontWeight: '700', color: '#047857' }}>🛵 KurirDev</div>
+              <div style={{ fontSize: '10px', color: '#6b7280', letterSpacing: '0.05em', textTransform: 'uppercase', marginTop: '2px', fontWeight: '700' }}>Invoice Pengiriman</div>
               <div style={{ fontSize: '14px', fontWeight: '700', color: '#111827', marginTop: '10px' }}>{selectedOrder.order_number}</div>
               <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>{selectedOrder.created_at ? new Date(selectedOrder.created_at).toLocaleString('id-ID', {day:'2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit'}) : new Date().toLocaleString('id-ID')}</div>
               <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '1px' }}>Kurir: {user?.name}</div>

@@ -56,7 +56,7 @@ export function Header({
           )}
           <div>
             <h1 className="text-xl lg:text-2xl font-bold text-gray-900">{title}</h1>
-            {subtitle && <p className="text-xs lg:text-sm text-gray-500 mt-0.5">{subtitle}</p>}
+            {subtitle && <p className="text-xs lg:text-sm font-medium text-gray-600 mt-0.5">{subtitle}</p>}
           </div>
         </div>
 

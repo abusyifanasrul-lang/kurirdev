@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/Button';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { Input } from '@/components/ui/Input';
 import { calcAdminEarning, calcCourierEarning } from '@/lib/calcEarning';
+import { formatCurrency, formatShortCurrency } from '@/utils/formatter';
 
 // Stores
 import { useOrderStore } from '@/stores/useOrderStore';
@@ -215,13 +216,6 @@ export function Reports() {
   }, [reportOrders, couriers, appliedRange]);
 
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-    }).format(value);
-  };
 
   const handleExportReport = async () => {
     const { jsPDF } = await import('jspdf');
@@ -533,17 +527,8 @@ export function Reports() {
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={analytics.dailyData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={(value) => format(new Date(value), 'MMM dd')}
-                  stroke="#9CA3AF"
-                  fontSize={12}
-                />
-                <YAxis
-                  tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
-                  stroke="#9CA3AF"
-                  fontSize={12}
-                />
+                <XAxis dataKey="date" tick={{ fontSize: 12, fontWeight: 500 }} stroke="#9CA3AF" />
+                <YAxis tickFormatter={formatShortCurrency} tick={{ fontSize: 12, fontWeight: 500 }} stroke="#9CA3AF" width={60} />
                 <Tooltip
                   formatter={(value) => [formatCurrency(value as number), 'Revenue']}
                   labelFormatter={(label) => format(new Date(label), 'MMM dd, yyyy')}
@@ -591,10 +576,13 @@ export function Reports() {
             <table className="min-w-full">
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="text-left text-sm font-medium text-gray-500 pb-3">Rank</th>
-                  <th className="text-left text-sm font-medium text-gray-500 pb-3">Courier</th>
-                  <th className="text-left text-sm font-medium text-gray-500 pb-3">Orders Delivered</th>
-                  <th className="text-left text-sm font-medium text-gray-500 pb-3">Revenue Generated</th>
+                  {['Rank', 'Courier', 'Orders Delivered', 'Revenue Generated'].map((header) => (
+                    <th key={header} className="px-6 py-3 text-left">
+                      <span className="text-xs font-bold text-gray-600 uppercase tracking-mobile">
+                        {header}
+                      </span>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">

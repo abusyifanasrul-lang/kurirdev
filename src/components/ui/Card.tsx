@@ -51,7 +51,7 @@ export function StatCard({ title, value, icon, trend, subtitle, className, to, o
     <Card className={cn('h-full', className)} padding="sm" onClick={onClick}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <p className="text-xs lg:text-sm font-medium text-gray-500 truncate">{title}</p>
+          <p className="text-xs lg:text-sm font-bold text-gray-600 uppercase tracking-mobile truncate">{title}</p>
           <p className="mt-1 lg:mt-2 text-xl lg:text-3xl font-semibold text-gray-900 break-words leading-tight">{value}</p>
           {trend && (
             <p className={cn('mt-1 lg:mt-2 text-xs lg:text-sm flex items-center', trend.isPositive ? 'text-green-600' : 'text-red-600')}>
@@ -59,7 +59,7 @@ export function StatCard({ title, value, icon, trend, subtitle, className, to, o
               <span className="text-gray-500 ml-1 hidden lg:inline">vs last period</span>
             </p>
           )}
-          {subtitle && <p className="mt-1 lg:mt-2 text-xs lg:text-sm text-gray-500 truncate">{subtitle}</p>}
+          {subtitle && <p className="mt-1 lg:mt-2 text-xs lg:text-sm font-medium text-gray-600 truncate">{subtitle}</p>}
         </div>
         {icon && (
           <div className="p-2 lg:p-3 bg-teal-50 rounded-lg text-teal-600 flex-shrink-0">

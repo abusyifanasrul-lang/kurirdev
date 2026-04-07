@@ -31,7 +31,7 @@ export const OrderHeader: React.FC<OrderHeaderProps> = ({
       case 'assigned': return { label: 'Pesanan Diterima', emoji: '📋', color: 'bg-blue-100 text-blue-700' };
       case 'picked_up': return { label: 'Menuju Penjual', emoji: '🛵', color: 'bg-emerald-100 text-emerald-700' };
       case 'in_transit': return { label: 'Menuju Customer', emoji: '🚚', color: 'bg-emerald-100 text-emerald-700' };
-      case 'delivered': return { label: 'Pesanan Terkirim', emoji: '✅🖨️', color: 'bg-green-100 text-green-700' };
+      case 'delivered': return { label: 'Pesanan Terkirim', emoji: '✅🖨️', color: 'bg-emerald-100 text-emerald-700' };
       case 'cancelled': return { label: 'Dibatalkan', emoji: '❌', color: 'bg-red-100 text-red-700' };
       default: return { label: order.status.replace('_', ' '), emoji: '📦', color: 'bg-gray-100 text-gray-700' };
     }
@@ -49,8 +49,8 @@ export const OrderHeader: React.FC<OrderHeaderProps> = ({
           <ArrowLeft className="h-6 w-6 text-gray-700" />
         </button>
         <div>
-          <h1 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none">
-            {order.order_number}
+          <h1 className="text-[10px] font-bold text-gray-400 uppercase tracking-mobile leading-tight">
+            ID: {order.order_number}
           </h1>
           <div className="flex items-center gap-2 mt-1">
             {order.status === 'delivered' ? (
@@ -58,26 +58,26 @@ export const OrderHeader: React.FC<OrderHeaderProps> = ({
                 onClick={onBagikanInvoice}
                 disabled={isGeneratingInvoice}
                 className={cn(
-                  "flex items-center gap-2 px-2 py-1 rounded-lg transition-all active:scale-95 bg-green-50 border border-green-200 shadow-sm",
-                  isGeneratingInvoice ? "opacity-50 animate-pulse" : "hover:bg-green-100"
+                  "flex items-center gap-2 px-2 py-1 rounded-lg transition-all active:scale-95 bg-emerald-50 border border-emerald-200 shadow-sm",
+                  isGeneratingInvoice ? "opacity-50 animate-pulse" : "hover:bg-emerald-100"
                 )}
                 title="Klik untuk Unduh Invoice"
               >
-                <span className="text-sm font-black text-green-700 leading-none flex items-center gap-1.5">
+                <span className="text-sm font-bold text-emerald-700 leading-none flex items-center gap-1.5">
                   {status.emoji} {status.label.toUpperCase()}
-                  <span className="text-[10px] bg-green-600 text-white px-1.5 py-0.5 rounded-md font-bold animate-bounce shadow-sm ml-1">PRINT 🖨️</span>
+                  <span className="text-[10px] bg-emerald-600 text-white px-1.5 py-0.5 rounded-md font-bold animate-bounce shadow-sm ml-1">PRINT 🖨️</span>
                 </span>
               </button>
             ) : (
-              <span className="text-sm font-black text-gray-900 leading-none">
+              <span className="text-sm font-bold text-gray-900 leading-snug tracking-tight">
                 {status.emoji} {status.label.toUpperCase()}
               </span>
             )}
           </div>
           {instruction && (
-            <div className="flex items-center gap-1.5 mt-2 px-2 py-1 bg-teal-50 border border-teal-100 rounded-lg animate-in fade-in slide-in-from-top-1 duration-300">
+            <div className="flex items-center gap-1.5 mt-2 px-2 py-1 bg-emerald-50 border border-emerald-100 rounded-lg animate-in fade-in slide-in-from-top-1 duration-300">
               <span className="text-sm leading-none">{instruction.icon}</span>
-              <span className="text-[10px] font-bold text-teal-700 leading-none italic">
+              <span className="text-xs font-semibold text-emerald-700 leading-snug italic">
                 {instruction.instruction}
               </span>
             </div>

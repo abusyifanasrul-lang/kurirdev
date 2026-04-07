@@ -127,9 +127,9 @@ export function CourierOrderDetail() {
 
   const getNextStatusButton = () => {
     switch (getNextStatus()) {
-      case 'picked_up': return { label: 'GAS 🛵 Menuju Penjual', color: 'bg-green-600 hover:bg-green-700' };
-      case 'in_transit': return { label: 'GAS 🛵 Menuju Customer', color: 'bg-green-600 hover:bg-green-700' };
-      case 'delivered': return { label: 'CEKLIS ✅ Tandai Terkirim', color: 'bg-green-600 hover:bg-green-700' };
+      case 'picked_up': return { label: 'GAS 🛵 Menuju Penjual', color: 'bg-emerald-600 hover:bg-emerald-700' };
+      case 'in_transit': return { label: 'GAS 🛵 Menuju Customer', color: 'bg-emerald-600 hover:bg-emerald-700' };
+      case 'delivered': return { label: 'CEKLIS ✅ Tandai Terkirim', color: 'bg-emerald-600 hover:bg-emerald-700' };
       default: return null;
     }
   };
@@ -463,7 +463,7 @@ export function CourierOrderDetail() {
             <div ref={invoiceRef} style={{ background: '#ffffff', padding: '24px', width: '320px', fontFamily: 'Arial, sans-serif', fontSize: '12px', color: '#111827' }}>
               {/* Header */}
               <div style={{ textAlign: 'center', paddingBottom: '12px', borderBottom: '2px solid #111827', marginBottom: '14px' }}>
-                <div style={{ fontSize: '20px', fontWeight: '800', color: '#0f766e' }}>🛵 KurirDev</div>
+                <div style={{ fontSize: '20px', fontWeight: '800', color: '#059669' }}>🛵 KurirDev</div>
                 <div style={{ fontSize: '10px', color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '2px' }}>Invoice Pengiriman</div>
                 <div style={{ fontSize: '14px', fontWeight: '700', color: '#111827', marginTop: '10px' }}>{order.order_number}</div>
                 <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>{order.created_at ? new Date(order.created_at).toLocaleString('id-ID', {day:'2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit'}) : new Date().toLocaleString('id-ID')}</div>
@@ -565,14 +565,14 @@ export function CourierOrderDetail() {
                 <div className="w-20 h-20 bg-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-200">
                   <span className="text-4xl animate-bounce">✅</span>
                 </div>
-                <h2 className="text-24 font-black mb-2 text-gray-900">Pesanan Berhasil Terkirim!</h2>
-                <p className="text-14 text-gray-500 mb-8 max-w-[240px] mx-auto">Saldo Anda telah diperbarui sesuai komisi pesanan ini.</p>
+                <h2 className="text-2xl font-bold mb-2 text-gray-900">Pesanan Berhasil Terkirim!</h2>
+                <p className="text-sm text-gray-500 mb-8 max-w-[240px] mx-auto">Saldo Anda telah diperbarui sesuai komisi pesanan ini.</p>
                 
                 <div className="grid grid-cols-1 gap-3">
                   <button
                     onClick={handleBagikanInvoice}
                     disabled={isGeneratingInvoice}
-                    className="flex items-center justify-center gap-3 w-full p-5 bg-emerald-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all shadow-xl shadow-emerald-200 disabled:opacity-50 border-b-4 border-emerald-800"
+                    className="flex items-center justify-center gap-3 w-full p-5 bg-emerald-600 text-white rounded-2xl font-bold text-xs uppercase tracking-widest active:scale-95 transition-all shadow-xl shadow-emerald-200 disabled:opacity-50 border-b-4 border-emerald-800"
                   >
                     {isGeneratingInvoice ? (
                       <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

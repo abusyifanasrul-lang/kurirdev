@@ -58,14 +58,14 @@ export function CourierNotifications() {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center justify-between gap-2 mb-1">
-                                        <p className={`text-sm font-semibold ${notif.is_read ? 'text-gray-900' : 'text-blue-900'}`}>
+                                        <p className={`text-sm font-bold ${notif.is_read ? 'text-gray-900' : 'text-blue-900'}`}>
                                             {notif.title}
                                         </p>
-                                        <span className="text-xs text-gray-400 whitespace-nowrap">
+                                        <span className="text-[10px] font-bold text-gray-400 whitespace-nowrap uppercase tracking-mobile">
                                             {format(parseISO(notif.sent_at), 'MMM dd, HH:mm')}
                                         </span>
                                     </div>
-                                    <p className={`text-sm ${notif.is_read ? 'text-gray-600' : 'text-blue-800'}`}>
+                                    <p className={`text-xs ${notif.is_read ? 'text-gray-600' : 'text-blue-800'}`}>
                                         {notif.message}
                                     </p>
 

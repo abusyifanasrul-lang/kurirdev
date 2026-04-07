@@ -14,8 +14,7 @@ import { calcCourierEarning, calcAdminEarning } from '@/lib/calcEarning';
 import { getUnpaidOrdersByCourier, getOrdersByCourierFromLocal } from '@/lib/orderCache';
 import { Order } from '@/types';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
-
-// Removed unused CourierOrder interface as we use global Order type
+import { formatCurrency, formatShortCurrency } from '@/utils/formatter';
 
 export function CourierDashboard() {
   const navigate = useNavigate();
@@ -27,11 +26,8 @@ export function CourierDashboard() {
   const { user: currentUser } = useSessionStore();
   const { commission_rate, commission_threshold } = useSettingsStore();
 
-  // Real-time suspended check from useUserStore
   const liveUser = users.find(u => u.id === currentUser?.id);
   const isSuspended = liveUser?.is_active === false;
-
-  // Find this courier's data for online status
   const isOnline = liveUser?.is_online ?? false;
   const isNetworkOnline = useNetworkStatus();
 
@@ -41,8 +37,6 @@ export function CourierDashboard() {
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   const courierStatus = (liveUser as any)?.courier_status ?? (isOnline ? 'on' : 'off');
-
-  // State lokal — diisi dari IndexedDB (history orders)
   const [courierOrders, setCourierOrders] = useState<Order[]>([]);
 
   const loadFromLocalDB = useCallback(async () => {
@@ -77,12 +71,9 @@ export function CourierDashboard() {
     { value: 'Lainnya', label: '📝 Lainnya' },
   ];
 
-  // Derived Stats
-  const myOrders = [...activeOrdersByCourier].sort(
+  const activeOrders = [...activeOrdersByCourier].sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
-
-  const activeOrders = myOrders;
 
   const completedToday = useMemo(() => {
     const today = startOfDay(new Date());
@@ -115,10 +106,8 @@ export function CourierDashboard() {
   useEffect(() => {
     if (!user?.id) return
     getUnpaidOrdersByCourier(user.id).then(unpaidFromDB => {
-      // Gabungkan IndexedDB (order lama) + courierOrders (local DB)
-      // pakai Map agar tidak duplikat
       const map = new Map<string, Order>()
-      unpaidFromDB.forEach(o => map.set(o.id, o))
+      unpaidFromDB.forEach((o: Order) => map.set(o.id, o))
       courierOrders
         .filter(o => o.status === 'delivered' && o.payment_status === 'unpaid')
         .forEach(o => map.set(o.id, o))
@@ -177,20 +166,12 @@ export function CourierDashboard() {
     }
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-    }).format(value);
-  };
-
   return (
     <div className="space-y-6">
       {/* Connection Status */}
       <div className={cn(
         "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium",
-        isNetworkOnline ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
+        isNetworkOnline ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
       )}>
         {isNetworkOnline ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
         {isNetworkOnline ? "Connected" : "Connection lost - Showing cached data"}
@@ -221,7 +202,7 @@ export function CourierDashboard() {
 
       {/* Status Toggle — ON / STAY / OFF */}
       <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-        <p className="text-sm text-gray-500 mb-3">Status Kamu</p>
+        <p className="text-[10px] uppercase font-bold text-gray-400 tracking-mobile mb-3">Status Kamu</p>
         {isSuspended ? (
           <p className="text-xs text-red-500 font-medium">Akun sedang disuspend — tidak bisa mengubah status</p>
         ) : (
@@ -230,10 +211,10 @@ export function CourierDashboard() {
               onClick={handleSetOn}
               disabled={isSuspended || isUpdatingStatus}
               className={cn(
-                "flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all relative overflow-hidden",
+                "flex-1 py-2.5 rounded-xl text-sm font-bold border transition-all relative overflow-hidden",
                 courierStatus === 'on'
-                  ? "bg-green-500 text-white border-green-500"
-                  : "bg-white text-gray-500 border-gray-200 hover:border-green-300",
+                  ? "bg-emerald-500 text-white border-emerald-500"
+                  : "bg-white text-gray-500 border-gray-200 hover:border-emerald-300",
                 isUpdatingStatus && "opacity-50 cursor-wait"
               )}
             >
@@ -243,7 +224,7 @@ export function CourierDashboard() {
               onClick={handleSetStay}
               disabled={isSuspended || isUpdatingStatus}
               className={cn(
-                "flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all relative overflow-hidden",
+                "flex-1 py-2.5 rounded-xl text-sm font-bold border transition-all relative overflow-hidden",
                 courierStatus === 'stay'
                   ? "bg-blue-500 text-white border-blue-500"
                   : "bg-white text-gray-500 border-gray-200 hover:border-blue-300",
@@ -256,7 +237,7 @@ export function CourierDashboard() {
               onClick={() => setShowOffModal(true)}
               disabled={isSuspended || isUpdatingStatus}
               className={cn(
-                "flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all relative overflow-hidden",
+                "flex-1 py-2.5 rounded-xl text-sm font-bold border transition-all relative overflow-hidden",
                 courierStatus === 'off'
                   ? "bg-red-500 text-white border-red-500"
                   : "bg-white text-gray-500 border-gray-200 hover:border-red-300",
@@ -275,25 +256,25 @@ export function CourierDashboard() {
       {/* Stats Cards */}
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center">
-          <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
-            <DollarSign className="h-5 w-5 text-green-600" />
+          <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-2">
+            <DollarSign className="h-5 w-5 text-emerald-600" />
           </div>
-          <p className="text-lg font-bold text-gray-900">{formatCurrency(todayEarnings)}</p>
-          <p className="text-xs text-gray-500">Today's Earnings</p>
+          <p className="text-sm font-bold text-gray-900">{formatShortCurrency(todayEarnings)}</p>
+          <p className="text-[10px] uppercase font-bold text-gray-400 tracking-mobile">Today's Earnings</p>
         </div>
         <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center">
           <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
             <CheckCircle className="h-5 w-5 text-blue-600" />
           </div>
-          <p className="text-lg font-bold text-gray-900">{completedToday}</p>
-          <p className="text-xs text-gray-500">Completed</p>
+          <p className="text-sm font-bold text-gray-900">{completedToday}</p>
+          <p className="text-[10px] uppercase font-bold text-gray-400 tracking-mobile">Completed</p>
         </div>
         <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center">
           <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-2">
             <Clock className="h-5 w-5 text-orange-600" />
           </div>
-          <p className="text-lg font-bold text-gray-900">{activeOrders.length}</p>
-          <p className="text-xs text-gray-500">Active</p>
+          <p className="text-sm font-bold text-gray-900">{activeOrders.length}</p>
+          <p className="text-[10px] uppercase font-bold text-gray-400 tracking-mobile">Active</p>
         </div>
       </div>
 
@@ -316,19 +297,19 @@ export function CourierDashboard() {
               <button
                 key={order.id}
                 onClick={() => navigate(`/courier/orders/${order.id}`)}
-                className="w-full bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-left hover:border-green-300 transition-colors"
+                className="w-full bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-left hover:border-emerald-300 transition-colors"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <p className="font-semibold text-gray-900">{order.order_number}</p>
+                      <p className="font-bold text-gray-900">{order.order_number}</p>
                       <Badge variant={getStatusBadgeVariant(order.status)} size="sm">
                         {getStatusLabel(order.status, 'courier')}
                       </Badge>
                     </div>
-                    <p className="text-sm font-medium text-gray-700">{order.customer_name}</p>
-                    <p className="text-sm text-gray-500 truncate">{order.customer_address}</p>
-                    <p className="text-xs text-gray-400 mt-1">
+                    <p className="font-semibold text-gray-900">{order.customer_name}</p>
+                    <p className="text-xs text-gray-500 truncate">{order.customer_address}</p>
+                    <p className="text-[10px] font-medium text-gray-400 mt-1">
                       {format(new Date(order.created_at), 'HH:mm')}
                     </p>
                   </div>

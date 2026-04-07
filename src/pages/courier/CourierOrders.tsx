@@ -4,6 +4,7 @@ import { Package, ChevronRight, Search } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
 import { useOrderStore } from '@/stores/useOrderStore';
+import { formatCurrency } from '@/utils/formatter';
 
 export function CourierOrders() {
   const navigate = useNavigate();
@@ -19,8 +20,8 @@ export function CourierOrders() {
   if (isLoading && myOrders.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
-        <div className="w-10 h-10 border-4 border-green-200 border-t-green-600 rounded-full animate-spin mb-4" />
-        <p className="text-gray-500 font-medium">Memuat pesanan aktif...</p>
+        <div className="w-10 h-10 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin mb-4" />
+        <p className="text-gray-500 font-medium tracking-tight">Memuat pesanan aktif...</p>
       </div>
     );
   }
@@ -67,7 +68,7 @@ export function CourierOrders() {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search orders..."
-          className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500"
+          className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm font-medium"
         />
       </div>
 
@@ -77,9 +78,9 @@ export function CourierOrders() {
           <button
             key={filter.key}
             onClick={() => setActiveFilter(filter.key)}
-            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${activeFilter === filter.key
-              ? 'bg-green-600 text-white'
-              : 'bg-white text-gray-600 border border-gray-200'
+            className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-colors uppercase tracking-mobile ${activeFilter === filter.key
+              ? 'bg-emerald-600 text-white shadow-sm'
+              : 'bg-white text-gray-400 border border-gray-100'
               }`}
           >
             {filter.label}
@@ -99,24 +100,24 @@ export function CourierOrders() {
             <button
               key={order.id}
               onClick={() => navigate(`/courier/orders/${order.id}`)}
-              className="w-full bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-left hover:border-green-300 transition-colors"
+              className="w-full bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-left hover:border-emerald-300 transition-colors"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <p className="font-semibold text-gray-900">{order.order_number}</p>
+                    <p className="font-bold text-gray-900">{order.order_number}</p>
                     <Badge variant={getStatusBadgeVariant(order.status)} size="sm">
                       {getStatusLabel(order.status, 'courier')}
                     </Badge>
                   </div>
-                  <p className="text-sm font-medium text-gray-700">{order.customer_name}</p>
-                  <p className="text-sm text-gray-500 truncate">{order.customer_address}</p>
+                  <p className="font-semibold text-gray-900">{order.customer_name}</p>
+                  <p className="text-xs text-gray-500 truncate">{order.customer_address}</p>
                   <div className="flex items-center justify-between mt-2">
-                    <p className="text-xs text-gray-400">
+                    <p className="text-[10px] font-medium text-gray-400">
                       {order.created_at ? format(parseISO(order.created_at), 'MMM dd, HH:mm') : '-'}
                     </p>
-                    <p className="text-sm font-medium text-green-600">
-                      Rp {(order.total_fee || 0).toLocaleString()}
+                    <p className="text-sm font-bold text-emerald-600">
+                      {formatCurrency(order.total_fee || 0)}
                     </p>
                   </div>
                 </div>

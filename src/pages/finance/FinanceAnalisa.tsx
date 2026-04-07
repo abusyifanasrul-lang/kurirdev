@@ -19,6 +19,7 @@ import { useUserStore } from '@/stores/useUserStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { calcCourierEarning, calcAdminEarning } from '@/lib/calcEarning';
 import { getOrdersByDateRange } from '@/lib/orderCache';
+import { formatCurrency, formatShortCurrency } from '@/utils/formatter';
 import type { Order } from '@/types';
 
 type Period = '7days' | '30days' | 'thisMonth';
@@ -181,14 +182,6 @@ export function FinanceAnalisa() {
     ].filter(d => d.value > 0);
   }, [filteredDelivered]);
 
-  const formatCurrency = (val: number) =>
-    new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
-
-  const formatShortCurrency = (val: number) => {
-    if (val >= 1000000) return `${(val / 1000000).toFixed(1)}jt`;
-    if (val >= 1000) return `${(val / 1000).toFixed(0)}rb`;
-    return val.toString();
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">

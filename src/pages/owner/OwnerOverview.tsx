@@ -16,6 +16,7 @@ import { useOrderStore } from '@/stores/useOrderStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { calcAdminEarning } from '@/lib/calcEarning';
+import { formatCurrency, formatShortCurrency } from '@/utils/formatter';
 import { getOrdersForWeek, getTopCustomers, getTopCouriers } from '@/lib/orderCache';
 import type { Order } from '@/types';
 
@@ -32,14 +33,6 @@ const STATUS_LABELS: Record<string, string> = {
   cancelled: 'Cancelled',
 };
 
-const formatCurrency = (val: number) =>
-  new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
-
-const formatShortCurrency = (val: number) => {
-  if (val >= 1000000) return `${(val / 1000000).toFixed(1)}jt`;
-  if (val >= 1000) return `${(val / 1000).toFixed(0)}rb`;
-  return val.toString();
-};
 
 export function OwnerOverview() {
   const { orders, activeOrdersByCourier } = useOrderStore();
@@ -253,8 +246,8 @@ export function OwnerOverview() {
               <ResponsiveContainer width="100%" height={280}>
                 <LineChart data={revenueTrend}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                  <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="#9CA3AF" />
-                  <YAxis tickFormatter={formatShortCurrency} tick={{ fontSize: 11 }} stroke="#9CA3AF" width={50} />
+                  <XAxis dataKey="date" tick={{ fontSize: 12, fontWeight: 500 }} stroke="#9CA3AF" />
+                  <YAxis tickFormatter={formatShortCurrency} tick={{ fontSize: 12, fontWeight: 500 }} stroke="#9CA3AF" width={50} />
                   <Tooltip
                     formatter={(value) => [formatCurrency(Number(value || 0))]}
                     labelFormatter={(label) => `Tanggal: ${label}`}

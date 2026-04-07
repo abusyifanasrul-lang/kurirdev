@@ -36,7 +36,7 @@ export const OrderItemsList: React.FC<OrderItemsListProps> = ({
   return (
     <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 mb-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Items / Orderan</h2>
+        <h2 className="text-xs font-bold text-gray-600 uppercase tracking-mobile">Items / Orderan</h2>
         {!isLocked && (
           <button 
             onClick={() => setShowItemForm(!showItemForm)}
@@ -53,8 +53,8 @@ export const OrderItemsList: React.FC<OrderItemsListProps> = ({
             {itemList.map((item, idx) => (
               <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                 <div>
-                  <p className="text-sm font-bold text-gray-900">{item.nama}</p>
-                  <p className="text-xs text-gray-500">Rp {item.harga.toLocaleString('id-ID')}</p>
+                  <p className="text-sm font-semibold text-gray-900 leading-snug">{item.nama}</p>
+                  <p className="text-xs font-medium text-gray-600">Rp {item.harga.toLocaleString('id-ID')}</p>
                 </div>
                 <button onClick={() => handleHapusItem(idx)} className="p-1.5 text-gray-400 hover:text-red-500">
                   <X className="h-4 w-4" />
@@ -103,7 +103,7 @@ export const OrderItemsList: React.FC<OrderItemsListProps> = ({
                   <div className="h-8 w-8 bg-white rounded-lg border border-gray-100 flex items-center justify-center shadow-sm">
                     <Package className="h-4 w-4 text-emerald-600" />
                   </div>
-                  <p className="text-sm font-bold text-gray-900">{item.nama}</p>
+                  <p className="text-sm font-semibold text-gray-900 leading-snug">{item.nama}</p>
                 </div>
                 <p className="text-sm font-bold text-emerald-600 font-mono">
                   Rp {item.harga.toLocaleString('id-ID')}
@@ -113,7 +113,7 @@ export const OrderItemsList: React.FC<OrderItemsListProps> = ({
           ) : (
             <div className="text-center py-6 border-2 border-dashed border-gray-100 rounded-2xl">
               <Package className="h-8 w-8 text-gray-200 mx-auto mb-2" />
-              <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">Belum ada item terdaftar</p>
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-mobile">Belum ada item terdaftar</p>
             </div>
           )}
         </div>
