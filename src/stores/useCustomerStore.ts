@@ -20,7 +20,7 @@ interface CustomerState {
   
   // Admin Methods
   fetchPendingRequests: () => Promise<CustomerChangeRequest[]>
-  approveRequest: (requestId: string, adminId: string) => Promise<void>
+  approveRequest: (requestId: string, adminId: string, modifiedAddress?: string) => Promise<void>
   rejectRequest: (requestId: string, adminId: string, notes: string) => Promise<void>
   createAddressChangeRequest: (
     customerId: string, 
@@ -214,7 +214,7 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
     set(state => ({ changeRequests: [payload as unknown as CustomerChangeRequest, ...state.changeRequests] }));
   },
 
-  approveRequest: async (requestId, adminId) => {
+  approveRequest: async (requestId, adminId, modifiedAddress) => {
     // 1. Get the request
     const { data: request, error: fetchErr } = await supabase
       .from('customer_change_requests')
@@ -224,12 +224,27 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
     
     if (fetchErr) throw fetchErr
     if (!request) throw new Error('Request not found');
+
+    let finalRequestedData = request.requested_data as any;
+    if (modifiedAddress && finalRequestedData.addresses) {
+       if (request.change_type === 'address_add' && request.new_address) {
+          const updatedAddresses = finalRequestedData.addresses.map((a: any) => 
+             a.id === request.new_address!.id ? { ...a, address: modifiedAddress } : a
+          );
+          finalRequestedData = { ...finalRequestedData, addresses: updatedAddresses };
+       } else if (request.change_type === 'address_edit' && request.affected_address_id) {
+          const updatedAddresses = finalRequestedData.addresses.map((a: any) => 
+             a.id === request.affected_address_id ? { ...a, address: modifiedAddress } : a
+          );
+          finalRequestedData = { ...finalRequestedData, addresses: updatedAddresses };
+       }
+    }
     
     // 2. Update customer data in DB
     const { error: updateCustErr } = await supabase
       .from('customers' as any)
       .upsert({
-        ...(request.requested_data as any),
+        ...finalRequestedData,
         id: request.customer_id,
         updated_at: new Date().toISOString()
       }, { onConflict: 'id' })

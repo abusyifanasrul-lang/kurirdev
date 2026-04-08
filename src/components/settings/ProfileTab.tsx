@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import type { User as UserType } from '@/types';
 import { BellRing } from 'lucide-react';
 
 interface ProfileTabProps {

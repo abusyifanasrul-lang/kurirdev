@@ -2,17 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { useCustomerStore } from '@/stores/useCustomerStore';
 import { useAuth } from '@/context/AuthContext';
 import { useToastStore } from '@/stores/useToastStore';
-import { Users, Check, X, Clock, MapPin, Search, Phone } from 'lucide-react';
+import { Users, Check, X, Clock, Search, Phone } from 'lucide-react';
 import { CustomerChangeRequest } from '@/types';
 
 export const Customers: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'master' | 'approvals'>('master');
   const [searchQuery, setSearchQuery] = useState('');
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectNotes, setRejectNotes] = useState<Record<string, string>>({});
+  const [editedAddresses, setEditedAddresses] = useState<Record<string, string>>({});
   
   const { customers, changeRequests, fetchPendingRequests, approveRequest, rejectRequest, isLoaded, loadFromLocal, syncFromServer } = useCustomerStore();
   const { user } = useAuth();
   const { addToast } = useToastStore();
+
+  const canApprove = user?.role === 'owner' || user?.role === 'admin_kurir';
 
   useEffect(() => {
     if (!isLoaded) loadFromLocal();
@@ -26,11 +30,12 @@ export const Customers: React.FC = () => {
     c.phone.includes(searchQuery)
   ).sort((a, b) => (b.order_count || 0) - (a.order_count || 0));
 
-  const handleApprove = async (reqId: string) => {
+  const handleApprove = async (reqId: string, modifiedAddress?: string) => {
     if (!window.confirm('Yakin ingin menyetujui perubahan data ini?')) return;
     try {
-      if (user) await approveRequest(reqId, user.id);
+      if (user) await approveRequest(reqId, user.id, modifiedAddress);
       addToast('Perubahan berhasil disetujui', 'success');
+      setEditedAddresses(prev => { const next = { ...prev }; delete next[reqId]; return next; });
     } catch (err: any) {
       addToast(err.message || 'Gagal menyetujui perubahan', 'error');
     }
@@ -47,6 +52,7 @@ export const Customers: React.FC = () => {
       if (user) await rejectRequest(reqId, user.id, notes);
       addToast('Perubahan berhasil ditolak', 'success');
       setRejectNotes(prev => ({ ...prev, [reqId]: '' }));
+      setRejectingId(null);
     } catch (err: any) {
       addToast(err.message || 'Gagal menolak perubahan', 'error');
     }
@@ -80,19 +86,35 @@ export const Customers: React.FC = () => {
           </p>
           
           {isAddingAddress && req.new_address && (
-            <div className="flex items-start gap-2 bg-emerald-50 text-emerald-700 p-3 rounded-lg border border-emerald-100 mt-2">
-              <MapPin className="h-4 w-4 shrink-0 mt-0.5" />
-              <p className="text-sm font-medium">{req.new_address.address}</p>
+            <div className="flex flex-col gap-2 mt-2">
+              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest pl-1">Alamat Baru</label>
+              <textarea
+                value={editedAddresses[req.id] !== undefined ? editedAddresses[req.id] : req.new_address.address}
+                onChange={(e) => setEditedAddresses(prev => ({ ...prev, [req.id]: e.target.value }))}
+                className="w-full bg-white text-emerald-800 p-3 rounded-xl border border-emerald-200 text-sm font-medium focus:ring-2 focus:ring-emerald-500 outline-none shadow-sm"
+                rows={3}
+              />
             </div>
           )}
 
           {isEditingAddress && (
-            <div className="space-y-2">
-              <div className="text-xs text-gray-500 line-through p-2 bg-gray-100 rounded-lg">
-                {req.old_data.addresses?.find(a => a.id === req.affected_address_id)?.address || 'Alamat Lama Tidak Ditemukan'}
+            <div className="space-y-3 mt-2">
+              <div>
+                 <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest pl-1">Alamat Lama</label>
+                 <div className="text-xs text-gray-500 line-through p-3 bg-gray-100 rounded-xl mt-1 border border-gray-200">
+                   {req.old_data.addresses?.find(a => a.id === req.affected_address_id)?.address || 'Alamat Lama Tidak Ditemukan'}
+                 </div>
               </div>
-              <div className="text-sm font-medium text-emerald-700 p-2 bg-emerald-50 rounded-lg border border-emerald-100">
-                {req.requested_data.addresses?.find(a => a.id === req.affected_address_id)?.address || 'Data Baru Kosong'}
+              <div>
+                 <label className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest pl-1">Perubahan (Dapat Diedit)</label>
+                 <textarea
+                   value={editedAddresses[req.id] !== undefined 
+                     ? editedAddresses[req.id] 
+                     : (req.requested_data.addresses?.find(a => a.id === req.affected_address_id)?.address || '')}
+                   onChange={(e) => setEditedAddresses(prev => ({ ...prev, [req.id]: e.target.value }))}
+                   className="w-full bg-white text-emerald-800 p-3 rounded-xl border border-emerald-200 text-sm font-medium focus:ring-2 focus:ring-emerald-500 outline-none mt-1 shadow-sm"
+                   rows={3}
+                 />
               </div>
             </div>
           )}
@@ -106,27 +128,46 @@ export const Customers: React.FC = () => {
         </div>
 
         <div className="space-y-3">
-          <input 
-            type="text" 
-            placeholder="Catatan penolakan (opsional jika setuju, wajib jika tolak)..." 
-            value={rejectNotes[req.id] || ''}
-            onChange={(e) => setRejectNotes(prev => ({ ...prev, [req.id]: e.target.value }))}
-            className="w-full text-sm px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
-          />
-          <div className="flex gap-2">
-            <button 
-              onClick={() => handleApprove(req.id)}
-              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-3 rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm"
-            >
-              <Check className="h-4 w-4" /> SETUJUI
-            </button>
-            <button 
-              onClick={() => handleReject(req.id)}
-              className="flex-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold text-xs py-3 rounded-xl flex items-center justify-center gap-2 transition-all"
-            >
-              <X className="h-4 w-4" /> TOLAK
-            </button>
-          </div>
+          {rejectingId === req.id ? (
+            <div className="animate-in fade-in slide-in-from-top-2">
+              <textarea 
+                rows={2}
+                placeholder="Wajib isi alasan penolakan..." 
+                value={rejectNotes[req.id] || ''}
+                onChange={(e) => setRejectNotes(prev => ({ ...prev, [req.id]: e.target.value }))}
+                className="w-full text-sm px-3 py-2 border border-red-200 rounded-xl focus:ring-2 focus:ring-red-500 outline-none mb-3 shadow-sm bg-red-50/30"
+              />
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => handleReject(req.id)}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold text-xs py-3 rounded-xl transition-all shadow-sm"
+                >
+                  KONFIRMASI TOLAK
+                </button>
+                <button 
+                  onClick={() => { setRejectingId(null); setRejectNotes(prev => ({...prev, [req.id]: ''})); }}
+                  className="w-1/3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs py-3 rounded-xl transition-all border border-gray-200"
+                >
+                  BATAL
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <button 
+                onClick={() => handleApprove(req.id, editedAddresses[req.id])}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-3 rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm"
+              >
+                <Check className="h-4 w-4" /> SETUJUI
+              </button>
+              <button 
+                onClick={() => setRejectingId(req.id)}
+                className="flex-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold text-xs py-3 rounded-xl flex items-center justify-center gap-2 transition-all"
+              >
+                <X className="h-4 w-4" /> TOLAK
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -158,21 +199,23 @@ export const Customers: React.FC = () => {
         >
           Master Data
         </button>
-        <button
-          onClick={() => setActiveTab('approvals')}
-          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
-            activeTab === 'approvals' 
-              ? 'bg-white text-amber-700 shadow-sm' 
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Persetujuan 
-          {pendingRequests.length > 0 && (
-            <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-[10px] font-black">
-              {pendingRequests.length}
-            </span>
-          )}
-        </button>
+        {canApprove && (
+          <button
+            onClick={() => setActiveTab('approvals')}
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
+              activeTab === 'approvals' 
+                ? 'bg-white text-amber-700 shadow-sm' 
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Persetujuan 
+            {pendingRequests.length > 0 && (
+              <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-[10px] font-black">
+                {pendingRequests.length}
+              </span>
+            )}
+          </button>
+        )}
       </div>
 
       {/* Content */}

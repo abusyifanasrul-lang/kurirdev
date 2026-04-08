@@ -48,6 +48,7 @@ export function Dashboard() {
   const earningSettings = { commission_rate, commission_threshold };
 
   const isFinance = user?.role === 'finance' || user?.role === 'owner';
+  const canApprove = user?.role === 'owner' || user?.role === 'admin_kurir';
   const pendingChangeRequests = changeRequests.filter(r => r.status === 'pending');
 
   const [lastUpdated, setLastUpdated] = useState(new Date());
@@ -185,7 +186,7 @@ export function Dashboard() {
       <div className="p-4 lg:p-8 space-y-6 lg:space-y-8">
 
         {/* Customer Address Change Request Panel */}
-        {pendingChangeRequests.length > 0 && (
+        {pendingChangeRequests.length > 0 && canApprove && (
           <div className="flex items-center justify-between gap-4 p-4 bg-purple-50 border border-purple-300 rounded-xl animate-in fade-in slide-in-from-top-2">
             <div className="flex items-center gap-3">
                <Clock className="h-5 w-5 text-purple-600 shrink-0" />
