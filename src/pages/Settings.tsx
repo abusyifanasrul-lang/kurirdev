@@ -20,7 +20,7 @@ import { lazy, Suspense } from 'react';
 const ProfileTab = lazy(() => import('@/components/settings/ProfileTab').then(m => ({ default: m.ProfileTab })));
 const PasswordTab = lazy(() => import('@/components/settings/PasswordTab').then(m => ({ default: m.PasswordTab })));
 const UsersTab = lazy(() => import('@/components/settings/UsersTab').then(m => ({ default: m.UsersTab })));
-const BusinessTab = lazy(() => import('@/components/settings/BusinessTab').then(m => ({ default: m.BusinessTab })));
+const GeneralOpsTab = lazy(() => import('@/components/settings/GeneralOpsTab').then(m => ({ default: m.GeneralOpsTab })));
 const InstructionsTab = lazy(() => import('@/components/settings/InstructionsTab').then(m => ({ default: m.InstructionsTab })));
 const StorageTab = lazy(() => import('@/components/settings/StorageTab').then(m => ({ default: m.StorageTab })));
 
@@ -46,6 +46,7 @@ const ALL_TABS = [
   { id: 'profile', label: 'Profil Saya', icon: User, category: 'account' },
   { id: 'password', label: 'Keamanan', icon: Lock, category: 'account' },
   { id: 'users', label: 'User Sistem', icon: Users, category: 'ops' },
+  { id: 'general_ops', label: 'Umum (Operasional)', icon: SettingsIcon, category: 'ops' },
   { id: 'instructions', label: 'Instruksi Kurir', icon: SettingsIcon, category: 'ops' },
   { id: 'business', label: 'Komisi & Biaya', icon: Shield, category: 'finance' },
   { id: 'storage', label: 'Penyimpanan', icon: Database, category: 'system' },
@@ -59,6 +60,7 @@ export function Settings() {
   const { 
     commission_rate, 
     commission_threshold, 
+    operational_area,
     courier_instructions,
     updateSettings,
     addCourierInstruction,
@@ -93,6 +95,7 @@ export function Settings() {
         .update({
           commission_rate: state.commission_rate,
           commission_threshold: state.commission_threshold,
+          operational_area: state.operational_area,
           courier_instructions: state.courier_instructions,
         } as any)
         .eq('id', 'global');
@@ -309,6 +312,13 @@ export function Settings() {
                       user={user}
                       users={users}
                       getOrphanedOrdersLocal={getOrphanedOrdersLocal}
+                    />
+                  )}
+
+                  {activeTab === 'general_ops' && (
+                    <GeneralOpsTab 
+                      operational_area={operational_area}
+                      onSaveSettings={handleSaveBusinessSettings}
                     />
                   )}
 

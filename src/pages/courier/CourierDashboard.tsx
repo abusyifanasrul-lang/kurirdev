@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, DollarSign, CheckCircle, Clock, Wifi, WifiOff, ChevronRight, AlertTriangle } from 'lucide-react';
+import { Package, DollarSign, CheckCircle, Clock, WifiOff, ChevronRight, AlertTriangle } from 'lucide-react';
 import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { cn } from '@/utils/cn';
 import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
@@ -167,153 +167,188 @@ export function CourierDashboard() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-1">
       {/* Connection Status */}
       <div className={cn(
-        "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium",
-        isNetworkOnline ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
+        "flex items-center gap-2.5 px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-wider shadow-sm transition-all",
+        isNetworkOnline 
+          ? "bg-emerald-50 text-emerald-700 border border-emerald-100" 
+          : "bg-amber-50 text-amber-700 border border-amber-100"
       )}>
-        {isNetworkOnline ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
-        {isNetworkOnline ? "Connected" : "Connection lost - Showing cached data"}
+        {isNetworkOnline 
+          ? <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> 
+          : <WifiOff className="h-3.5 w-3.5" />
+        }
+        {isNetworkOnline ? "Sistem Terhubung (Online)" : "Koneksi Terputus - Data Lokal"}
       </div>
 
-      {/* Unpaid Warning Card */}
-      {warningLoading ? (
-        <div className="h-[52px] rounded-xl bg-gray-100 animate-pulse" />
-      ) : unpaidDeliveredOrdersCount > 0 ? (
+      {/* Unpaid Warning Card — If any */}
+      {!warningLoading && unpaidDeliveredOrdersCount > 0 && (
         <div
           onClick={() => navigate('/courier/earnings', { state: { activeTab: 'history' } })}
-          className="flex items-center justify-between gap-3 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 cursor-pointer active:scale-[0.98] transition-all"
+          className="flex items-center justify-between gap-3 bg-orange-50 border border-orange-200 rounded-3xl px-5 py-4 cursor-pointer active:scale-[0.98] transition-all shadow-sm"
         >
-          <div className="flex items-center gap-2 min-w-0">
-            <AlertTriangle className="h-4 w-4 text-orange-500 flex-shrink-0" />
-            <p className="text-sm font-medium text-orange-800 truncate">
-              <span className="font-semibold">{unpaidDeliveredOrdersCount} order</span>
-              <span className="text-xs font-normal text-orange-600 ml-1">
-                · {formatCurrency(unpaidTotalEarnings)} belum disetor
-              </span>
-            </p>
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-2xl bg-orange-100 flex items-center justify-center flex-shrink-0 border border-orange-200">
+              <AlertTriangle className="h-5 w-5 text-orange-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-black text-orange-900 leading-tight mb-0.5">
+                {unpaidDeliveredOrdersCount} Pesanan
+              </p>
+              <p className="text-[11px] font-bold text-orange-600 uppercase tracking-tight">
+                {formatCurrency(unpaidTotalEarnings)} Belum Disetor
+              </p>
+            </div>
           </div>
-          <span className="text-xs font-semibold text-orange-600 whitespace-nowrap flex items-center gap-1 flex-shrink-0">
-            Lihat <ChevronRight className="h-3.5 w-3.5" />
-          </span>
+          <div className="p-2 rounded-xl bg-orange-100 text-[10px] font-black text-orange-700 flex items-center gap-1 uppercase tracking-wider">
+            Lihat <ChevronRight className="h-3 w-3" />
+          </div>
         </div>
-      ) : null}
+      )}
 
       {/* Status Toggle — ON / STAY / OFF */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-        <p className="text-[10px] uppercase font-bold text-gray-400 tracking-mobile mb-3">Status Kamu</p>
+      <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+        <div className="flex items-center justify-between mb-5">
+          <p className="text-[10px] uppercase font-black text-gray-400 tracking-[0.2em]">Status Operasional</p>
+          {courierStatus === 'off' && (liveUser as any)?.off_reason && (
+            <Badge variant="secondary" className="text-[10px] border-red-100 text-red-600 font-black bg-red-50/50 uppercase tracking-tighter">
+              HALT: {(liveUser as any).off_reason}
+            </Badge>
+          )}
+        </div>
+
         {isSuspended ? (
-          <p className="text-xs text-red-500 font-medium">Akun sedang disuspend — tidak bisa mengubah status</p>
+          <div className="p-4 rounded-2xl bg-red-50 border border-red-100 flex items-center gap-3">
+            <AlertTriangle className="h-5 w-5 text-red-500" />
+            <p className="text-xs text-red-600 font-black uppercase tracking-tight">Akun Terblokir — Hubungi Admin</p>
+          </div>
         ) : (
-          <div className="flex gap-2">
+          <div className="flex gap-2.5">
             <button
               onClick={handleSetOn}
               disabled={isSuspended || isUpdatingStatus}
               className={cn(
-                "flex-1 py-2.5 rounded-xl text-sm font-bold border transition-all relative overflow-hidden",
+                "flex-1 flex flex-col items-center gap-1.5 py-4 rounded-2xl text-[10px] font-black border transition-all active:scale-95 uppercase tracking-widest",
                 courierStatus === 'on'
-                  ? "bg-emerald-500 text-white border-emerald-500"
-                  : "bg-white text-gray-500 border-gray-200 hover:border-emerald-300",
-                isUpdatingStatus && "opacity-50 cursor-wait"
+                  ? "bg-emerald-600 text-white border-emerald-600 shadow-xl shadow-emerald-100"
+                  : "bg-gray-50 text-gray-400 border-gray-100 hover:border-emerald-200"
               )}
             >
-              {isUpdatingStatus && courierStatus !== 'on' ? "..." : "🚀 ON"}
+              <span className="text-lg mb-0.5">{isUpdatingStatus && courierStatus !== 'on' ? "..." : "⚡"}</span>
+              {courierStatus === 'on' ? "Aktif" : "Bekerja"}
             </button>
             <button
               onClick={handleSetStay}
               disabled={isSuspended || isUpdatingStatus}
               className={cn(
-                "flex-1 py-2.5 rounded-xl text-sm font-bold border transition-all relative overflow-hidden",
+                "flex-1 flex flex-col items-center gap-1.5 py-4 rounded-2xl text-[10px] font-black border transition-all active:scale-95 uppercase tracking-widest",
                 courierStatus === 'stay'
-                  ? "bg-blue-500 text-white border-blue-500"
-                  : "bg-white text-gray-500 border-gray-200 hover:border-blue-300",
-                isUpdatingStatus && "opacity-50 cursor-wait"
+                  ? "bg-blue-600 text-white border-blue-600 shadow-xl shadow-blue-100"
+                  : "bg-gray-50 text-gray-400 border-gray-100 hover:border-blue-200"
               )}
             >
-              {isUpdatingStatus && courierStatus !== 'stay' ? "..." : "🏠 STAY"}
+              <span className="text-lg mb-0.5">{isUpdatingStatus && courierStatus !== 'stay' ? "..." : "🏠"}</span>
+              STAY
             </button>
             <button
               onClick={() => setShowOffModal(true)}
               disabled={isSuspended || isUpdatingStatus}
               className={cn(
-                "flex-1 py-2.5 rounded-xl text-sm font-bold border transition-all relative overflow-hidden",
+                "flex-1 flex flex-col items-center gap-1.5 py-4 rounded-2xl text-[10px] font-black border transition-all active:scale-95 uppercase tracking-widest",
                 courierStatus === 'off'
-                  ? "bg-red-500 text-white border-red-500"
-                  : "bg-white text-gray-500 border-gray-200 hover:border-red-300",
-                isUpdatingStatus && "opacity-50 cursor-wait"
+                  ? "bg-red-600 text-white border-red-600 shadow-xl shadow-red-100"
+                  : "bg-gray-50 text-gray-400 border-gray-100 hover:border-red-200"
               )}
             >
-              {isUpdatingStatus && courierStatus !== 'off' ? "..." : "🔴 OFF"}
+              <span className="text-lg mb-0.5">{isUpdatingStatus && courierStatus !== 'off' ? "..." : "🛑"}</span>
+              OFF
             </button>
           </div>
-        )}
-        {courierStatus === 'off' && (liveUser as any)?.off_reason && (
-          <p className="text-xs text-gray-400 mt-2 italic">Alasan: {(liveUser as any).off_reason}</p>
         )}
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center">
-          <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-2">
-            <DollarSign className="h-5 w-5 text-emerald-600" />
+        {[
+          { label: 'Setoran', val: formatShortCurrency(todayEarnings), icon: DollarSign, color: 'emerald' },
+          { label: 'Selesai', val: completedToday, icon: CheckCircle, color: 'blue' },
+          { label: 'Jalan', val: activeOrders.length, icon: Clock, color: 'orange' }
+        ].map((stat) => (
+          <div key={stat.label} className="bg-white rounded-3xl p-4 shadow-sm border border-gray-100/50 text-center flex flex-col items-center justify-between min-h-[115px]">
+            <div className={cn(
+              "w-11 h-11 rounded-2xl flex items-center justify-center mb-2 border",
+              stat.color === 'emerald' ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
+              stat.color === 'blue' ? "bg-blue-50 text-blue-600 border-blue-100" :
+              "bg-orange-50 text-orange-600 border-orange-100"
+            )}>
+              <stat.icon className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-base font-black text-gray-900 leading-tight tracking-tight">{stat.val}</p>
+              <p className="text-[9px] uppercase font-black text-gray-400 tracking-widest mt-0.5">{stat.label}</p>
+            </div>
           </div>
-          <p className="text-sm font-bold text-gray-900">{formatShortCurrency(todayEarnings)}</p>
-          <p className="text-[10px] uppercase font-bold text-gray-400 tracking-mobile">Today's Earnings</p>
-        </div>
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center">
-          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
-            <CheckCircle className="h-5 w-5 text-blue-600" />
-          </div>
-          <p className="text-sm font-bold text-gray-900">{completedToday}</p>
-          <p className="text-[10px] uppercase font-bold text-gray-400 tracking-mobile">Completed</p>
-        </div>
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center">
-          <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-2">
-            <Clock className="h-5 w-5 text-orange-600" />
-          </div>
-          <p className="text-sm font-bold text-gray-900">{activeOrders.length}</p>
-          <p className="text-[10px] uppercase font-bold text-gray-400 tracking-mobile">Active</p>
-        </div>
+        ))}
       </div>
 
-      {/* Active Orders */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-gray-900">Active Orders</h2>
-          <span className="text-sm text-gray-500">{activeOrders.length} orders</span>
+      {/* Active Orders Section */}
+      <div className="pt-2">
+        <div className="flex items-center justify-between mb-4 px-1">
+          <h2 className="text-xs font-black text-gray-900 uppercase tracking-[0.2em]">Pesanan Aktif</h2>
+          <Badge variant="secondary" className="bg-gray-100 text-gray-500 font-black text-[10px] rounded-lg px-2">
+            {activeOrders.length}
+          </Badge>
         </div>
 
         {activeOrders.length === 0 ? (
-          <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 text-center">
-            <Package className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500">No active orders</p>
-            <p className="text-sm text-gray-400 mt-1">New orders will appear here</p>
+          <div className="bg-white rounded-[2.5rem] p-12 shadow-sm border border-gray-100 text-center">
+            <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-5 border border-gray-100">
+              <Package className="h-10 w-10 text-gray-200" />
+            </div>
+            <p className="text-sm font-black text-gray-400 uppercase tracking-tight">KOSONG</p>
+            <p className="text-[11px] text-gray-400 mt-1 font-medium">Belum ada pesanan masuk</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3.5">
             {activeOrders.map((order: Order) => (
               <button
                 key={order.id}
                 onClick={() => navigate(`/courier/orders/${order.id}`)}
-                className="w-full bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-left hover:border-emerald-300 transition-colors"
+                className="group w-full bg-white rounded-3xl p-5 shadow-sm border border-gray-100/70 text-left hover:border-emerald-400 hover:shadow-xl hover:shadow-emerald-50 transition-all active:scale-[0.98]"
               >
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="font-bold text-gray-900">{order.order_number}</p>
-                      <Badge variant={getStatusBadgeVariant(order.status)} size="sm">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-[10px] font-black bg-gray-900 text-white px-2.5 py-0.5 rounded-lg tracking-tighter">
+                        #{order.order_number}
+                      </span>
+                      <Badge variant={getStatusBadgeVariant(order.status)} className="font-black text-[9px] uppercase tracking-widest h-5">
                         {getStatusLabel(order.status, 'courier')}
                       </Badge>
                     </div>
-                    <p className="font-semibold text-gray-900">{order.customer_name}</p>
-                    <p className="text-xs text-gray-500 truncate">{order.customer_address}</p>
-                    <p className="text-[10px] font-medium text-gray-400 mt-1">
-                      {format(new Date(order.created_at), 'HH:mm')}
-                    </p>
+                    <p className="text-lg font-black text-gray-900 mb-1 tracking-tight">{order.customer_name}</p>
+                    <div className="flex items-center gap-2 mb-4">
+                      <Badge variant="secondary" className="text-[10px] border-emerald-100 text-emerald-600 font-bold bg-emerald-50/50 lowercase">
+                        {order.customer_address}
+                      </Badge>
+                    </div>
+                    
+                    <div className="flex items-center justify-between mt-2 pt-4 border-t border-gray-50">
+                      <div className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-wider">
+                        <Clock className="h-3 w-3" />
+                        {order.created_at ? format(parseISO(order.created_at), 'MMM dd, HH:mm') : '-'}
+                      </div>
+                      <div className="bg-emerald-50 px-4 py-1.5 rounded-xl border border-emerald-100 shadow-sm shadow-emerald-50">
+                        <p className="text-sm font-black text-emerald-600">
+                          {formatCurrency(order.total_fee || 0)}
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                  <ChevronRight className="h-5 w-5 text-gray-400 flex-shrink-0 mt-2" />
+                  <div className="w-11 h-11 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-400 border border-gray-100 flex-shrink-0 mt-3 transition-all group-hover:bg-emerald-50 group-hover:text-emerald-700 group-hover:border-emerald-100 group-hover:scale-110">
+                    <ChevronRight className="h-6 w-6" />
+                  </div>
                 </div>
               </button>
             ))}
@@ -323,47 +358,56 @@ export function CourierDashboard() {
 
       {/* Modal Alasan OFF */}
       {showOffModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-2xl p-5 w-full max-w-sm space-y-4">
-            <h3 className="font-bold text-gray-900">Alasan Offline</h3>
-            <div className="space-y-2">
+        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-xl flex items-center justify-center z-[100] px-5 animate-in fade-in duration-300">
+          <div className="bg-white rounded-[2.5rem] p-7 w-full max-w-sm space-y-6 animate-in zoom-in-95 duration-300 border border-white/20 shadow-2xl">
+            <div className="text-center">
+              <div className="w-14 h-14 bg-red-50 text-red-500 rounded-3xl flex items-center justify-center mx-auto mb-4 border border-red-100">
+                <Clock className="h-7 w-7" />
+              </div>
+              <h3 className="font-black text-xl text-gray-900 tracking-tight">Istirahat Sejenak?</h3>
+              <p className="text-xs text-gray-500 font-medium mt-1">Pilih alasan kamu ingin offline.</p>
+            </div>
+            
+            <div className="grid grid-cols-1 gap-2.5">
               {OFF_REASONS.map(r => (
                 <button
                   key={r.value}
                   onClick={() => setSelectedOffReason(r.value)}
                   className={cn(
-                    "w-full text-left px-4 py-2.5 rounded-xl border text-sm font-medium transition-all",
+                    "w-full text-left px-5 py-4 rounded-2xl border text-xs font-black transition-all uppercase tracking-wider",
                     selectedOffReason === r.value
-                      ? "bg-red-50 border-red-400 text-red-700"
-                      : "bg-gray-50 border-gray-200 text-gray-700 hover:border-gray-300"
+                      ? "bg-red-600 border-red-600 text-white shadow-lg shadow-red-100"
+                      : "bg-gray-50 border-gray-100 text-gray-500 hover:bg-gray-100"
                   )}
                 >
                   {r.label}
                 </button>
               ))}
             </div>
+
             {selectedOffReason === 'Lainnya' && (
               <input
                 type="text"
-                placeholder="Jelaskan alasan..."
+                placeholder="Tulis alasan lainnya..."
                 value={customOffReason}
                 onChange={e => setCustomOffReason(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-red-400"
+                className="w-full border-2 border-gray-100 bg-gray-50 rounded-2xl px-5 py-4 text-xs font-black uppercase tracking-tight focus:outline-none focus:border-red-400 transition-all placeholder:text-gray-300"
               />
             )}
-            <div className="flex gap-3">
+
+            <div className="flex gap-3 pt-2">
               <button
                 onClick={() => { setShowOffModal(false); setSelectedOffReason(''); setCustomOffReason(''); }}
-                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600"
+                className="flex-1 py-4 bg-gray-100 rounded-2xl text-[10px] font-black text-gray-500 active:scale-95 transition-all uppercase tracking-widest"
               >
-                Batal
+                Kembali
               </button>
               <button
                 onClick={handleConfirmOff}
                 disabled={!selectedOffReason || (selectedOffReason === 'Lainnya' && !customOffReason)}
-                className="flex-1 py-2.5 bg-red-500 text-white rounded-xl text-sm font-semibold disabled:opacity-50"
+                className="flex-1 py-4 bg-red-600 text-white rounded-2xl text-[10px] font-black shadow-xl shadow-red-100 active:scale-95 transition-all disabled:opacity-50 uppercase tracking-widest"
               >
-                Konfirmasi OFF
+                Konfirmasi
               </button>
             </div>
           </div>

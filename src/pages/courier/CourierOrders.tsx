@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, ChevronRight, Search } from 'lucide-react';
+import { Package, Clock, ChevronRight, Search, MapPin } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { formatCurrency } from '@/utils/formatter';
+import { cn } from '@/utils/cn';
 
 export function CourierOrders() {
   const navigate = useNavigate();
@@ -26,25 +27,16 @@ export function CourierOrders() {
     );
   }
 
-  // Active orders typically exclude delivered/cancelled for the "Orders" tab? 
-  // Or maybe show all but filter by status tab?
-  // Let's keep logic similar to before but allow filtering.
-  // Actually, usually "History" has delivered/cancelled. "Orders" has active.
-  // But let's follow the existing UI tabs: "All", "Assigned", "Gas — Penjual", "Gas — Customer".
-
   const filteredOrders = myOrders.filter((order) => {
-    // Search
     const matchesSearch =
       !searchQuery ||
       order.order_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.customer_name.toLowerCase().includes(searchQuery.toLowerCase());
 
-    // Filter Tab
     let matchesFilter = true;
     if (activeFilter !== 'all') {
       matchesFilter = order.status === activeFilter;
     } else {
-      // activeOrdersByCourier sudah difilter hanya status aktif
       matchesFilter = true;
     }
 
@@ -60,68 +52,81 @@ export function CourierOrders() {
 
   return (
     <div className="space-y-4">
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+      <div className="relative group px-1">
+        <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 group-focus-within:text-emerald-500 transition-colors" />
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search orders..."
-          className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm font-medium"
+          placeholder="Cari nomor pesanan atau nama..."
+          className="w-full pl-11 pr-4 py-3.5 bg-white border border-gray-100 rounded-2xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500/50 text-sm font-bold shadow-sm transition-all placeholder:text-gray-400 placeholder:font-medium"
         />
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4">
+      <div className="flex gap-2 overflow-x-auto pb-4 no-scrollbar -mx-4 px-5">
         {filters.map((filter) => (
           <button
             key={filter.key}
             onClick={() => setActiveFilter(filter.key)}
-            className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-colors uppercase tracking-mobile ${activeFilter === filter.key
-              ? 'bg-emerald-600 text-white shadow-sm'
-              : 'bg-white text-gray-400 border border-gray-100'
-              }`}
+            className={cn(
+              "px-5 py-2.5 rounded-2xl text-[11px] font-black whitespace-nowrap transition-all uppercase tracking-wider border active:scale-95",
+              activeFilter === filter.key
+                ? "bg-emerald-600 text-white border-emerald-600 shadow-lg shadow-emerald-100"
+                : "bg-white text-gray-400 border-gray-100/70 hover:border-emerald-200"
+            )}
           >
             {filter.label}
           </button>
         ))}
       </div>
 
-      {/* Orders List */}
       {filteredOrders.length === 0 ? (
-        <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 text-center">
-          <Package className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500">No active orders</p>
+        <div className="bg-white rounded-[2.5rem] p-12 shadow-sm border border-gray-100 text-center">
+          <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-5 border border-gray-100">
+            <Package className="h-10 w-10 text-gray-200" />
+          </div>
+          <p className="text-sm font-black text-gray-400 uppercase tracking-tight">KOSONG</p>
+          <p className="text-[11px] text-gray-400 mt-1 font-medium">Tidak ada pesanan ditemukan</p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {filteredOrders.map((order) => (
+        <div className="space-y-4 pt-2">
+          {filteredOrders.map((order: any) => (
             <button
               key={order.id}
               onClick={() => navigate(`/courier/orders/${order.id}`)}
-              className="w-full bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-left hover:border-emerald-300 transition-colors"
+              className="group w-full bg-white rounded-3xl p-5 shadow-sm border border-gray-100 text-left hover:border-emerald-400 hover:shadow-xl hover:shadow-emerald-50 transition-all active:scale-[0.98]"
             >
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <p className="font-bold text-gray-900">{order.order_number}</p>
-                    <Badge variant={getStatusBadgeVariant(order.status)} size="sm">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-[10px] font-black bg-gray-900 text-white px-2.5 py-0.5 rounded-lg tracking-tighter">
+                      #{order.order_number}
+                    </span>
+                    <Badge variant={getStatusBadgeVariant(order.status)} className="font-black text-[9px] uppercase tracking-widest h-5">
                       {getStatusLabel(order.status, 'courier')}
                     </Badge>
                   </div>
-                  <p className="font-semibold text-gray-900">{order.customer_name}</p>
-                  <p className="text-xs text-gray-500 truncate">{order.customer_address}</p>
-                  <div className="flex items-center justify-between mt-2">
-                    <p className="text-[10px] font-medium text-gray-400">
-                      {order.created_at ? format(parseISO(order.created_at), 'MMM dd, HH:mm') : '-'}
-                    </p>
-                    <p className="text-sm font-bold text-emerald-600">
-                      {formatCurrency(order.total_fee || 0)}
-                    </p>
+                  <p className="text-lg font-black text-gray-900 mb-1 tracking-tight">{order.customer_name}</p>
+                  <p className="text-xs font-medium text-gray-500 line-clamp-1 flex items-center gap-1.5">
+                    <MapPin className="h-3 w-3 shrink-0" />
+                    {order.customer_address}
+                  </p>
+                  
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-50">
+                    <div className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-wider">
+                      <Clock className="h-3 w-3" />
+                      {order.created_at ? format(parseISO(order.created_at), 'HH:mm') : '-'}
+                    </div>
+                    <div className="bg-emerald-50 px-4 py-1.5 rounded-xl border border-emerald-100 shadow-sm shadow-emerald-50">
+                      <p className="text-sm font-black text-emerald-600">
+                        {formatCurrency(order.total_fee || 0)}
+                      </p>
+                    </div>
                   </div>
                 </div>
-                <ChevronRight className="h-5 w-5 text-gray-400 flex-shrink-0 mt-2" />
+                <div className="w-11 h-11 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 border border-emerald-100 flex-shrink-0 mt-2 transition-all group-hover:scale-110">
+                  <ChevronRight className="h-6 w-6" />
+                </div>
               </div>
             </button>
           ))}

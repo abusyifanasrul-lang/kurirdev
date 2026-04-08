@@ -8,6 +8,7 @@ export type { CourierInstruction }
 interface BusinessSettings {
   commission_rate: number
   commission_threshold: number
+  operational_area: string
   courier_instructions: CourierInstruction[]
 }
 
@@ -35,6 +36,7 @@ export const useSettingsStore = create<SettingsStore>()(
     (set) => ({
       commission_rate: 80,
       commission_threshold: 5000,
+      operational_area: 'Sengkang, Wajo',
       courier_instructions: DEFAULT_INSTRUCTIONS,
       updateSettings: (data: Partial<BusinessSettings>) => set((state: SettingsStore) => ({ ...state, ...data })),
       addCourierInstruction: (instruction: Omit<CourierInstruction, 'id'>) => set((state: SettingsStore) => ({
@@ -55,6 +57,7 @@ export const useSettingsStore = create<SettingsStore>()(
           ...state,
           commission_rate: data.commission_rate,
           commission_threshold: data.commission_threshold,
+          operational_area: data.operational_area || 'Sengkang, Wajo',
           courier_instructions: data.courier_instructions || DEFAULT_INSTRUCTIONS
         }))
       },
@@ -74,13 +77,14 @@ export const useSettingsStore = create<SettingsStore>()(
         ...state,
         commission_rate: 80,
         commission_threshold: 5000,
+        operational_area: 'Sengkang, Wajo',
         courier_instructions: DEFAULT_INSTRUCTIONS
       }))
     }),
     {
       name: 'business-settings',
       storage: createJSONStorage(() => localStorage),
-      version: 4,
+      version: 5,
       migrate: (persistedState: any, version: number) => {
         const iconNameToEmoji: Record<string, string> = {
           'CheckCircle': '✅', 'Search': '🔍', 'ShoppingCart': '🛒',
