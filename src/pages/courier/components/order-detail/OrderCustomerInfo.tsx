@@ -1,7 +1,9 @@
 import React from 'react';
 import { Phone, MapPin, MessageCircle, Pencil, Trash2, Check, X, Plus, Navigation } from 'lucide-react';
-import { Order } from '@/types';
+import { Order, CustomerChangeRequest } from '@/types';
 import { useSettingsStore } from '@/stores/useSettingsStore';
+import { useCustomerStore } from '@/stores/useCustomerStore';
+import { Clock } from 'lucide-react';
 
 interface OrderCustomerInfoProps {
   order: Order;
@@ -61,7 +63,13 @@ export const OrderCustomerInfo: React.FC<OrderCustomerInfoProps> = ({
   onSetAppliedAddress
 }) => {
   const { operational_area } = useSettingsStore();
+  const { changeRequests } = useCustomerStore();
   const waLink = `https://wa.me/62${order.customer_phone?.replace(/^0/, '')}`;
+
+  const pendingRequests = changeRequests.filter((r: CustomerChangeRequest) => 
+    r.customer_id === courierAddrCustomer?.id && r.status === 'pending'
+  );
+  const pendingAddRequests = pendingRequests.filter((r: CustomerChangeRequest) => r.change_type === 'address_add');
 
   const handleOpenMaps = () => {
     const address = order.customer_address || '';
@@ -131,10 +139,19 @@ export const OrderCustomerInfo: React.FC<OrderCustomerInfoProps> = ({
                 Riwayat Alamat Pelanggan ini:
               </p>
               <div className="space-y-2.5">
-                {courierAddrCustomer.addresses.map((a: any) => (
-                  <div key={a.id} className="flex flex-col gap-1 p-3 bg-white rounded-xl shadow-sm border border-gray-100 group transition-all hover:border-emerald-100">
+                {courierAddrCustomer.addresses.map((a: any) => {
+                  const pendingEdit = pendingRequests.find((r: CustomerChangeRequest) => r.change_type === 'address_edit' && r.affected_address_id === a.id);
+                  const pendingDelete = pendingRequests.find((r: CustomerChangeRequest) => r.change_type === 'address_delete' && r.affected_address_id === a.id);
+                  const isPending = !!pendingEdit || !!pendingDelete;
+
+                  return (
+                  <div key={a.id} className={`flex flex-col gap-1 p-3 bg-white rounded-xl shadow-sm border ${isPending ? 'border-amber-200 bg-amber-50/30' : 'border-gray-100'} group transition-all`}>
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">{a.label || 'ALAMAT'}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">{a.label || 'ALAMAT'}</span>
+                        {pendingEdit && <span className="text-[9px] font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-md flex items-center gap-1"><Clock className="w-3 h-3"/> MENUNGGU UBAH</span>}
+                        {pendingDelete && <span className="text-[9px] font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-md flex items-center gap-1"><Clock className="w-3 h-3"/> MENUNGGU HAPUS</span>}
+                      </div>
                       <div className="flex gap-2">
                         <button 
                           onClick={() => {
@@ -179,11 +196,33 @@ export const OrderCustomerInfo: React.FC<OrderCustomerInfoProps> = ({
                         </button>
                       </div>
                     ) : (
-                      <p className="text-xs text-gray-600 leading-relaxed pr-8">{a.address}</p>
+                      <p className={`text-xs leading-relaxed pr-8 ${pendingDelete ? 'text-gray-400 line-through' : 'text-gray-600'}`}>
+                        {pendingEdit ? pendingEdit.new_address : a.address}
+                      </p>
                     )}
                     
                     <button 
                       onClick={() => onSetAppliedAddress(a.address)}
+                      className="mt-2 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg self-start hover:bg-emerald-600 hover:text-white transition-all shadow-sm shadow-emerald-50"
+                    >
+                      GUNAKAN ALAMAT INI
+                    </button>
+                  </div>
+                  );
+                })}
+                
+                {/* Render Pending Add Requests */}
+                {pendingAddRequests.map((r: CustomerChangeRequest) => (
+                  <div key={r.id} className="flex flex-col gap-1 p-3 bg-white rounded-xl shadow-sm border border-amber-200 bg-amber-50/30 group transition-all">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">ALAMAT BARU</span>
+                        <span className="text-[9px] font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-md flex items-center gap-1"><Clock className="w-3 h-3"/> MENUNGGU ACC</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-600 leading-relaxed mt-1">{r.new_address?.address}</p>
+                    <button 
+                      onClick={() => r.new_address?.address && onSetAppliedAddress(r.new_address.address)}
                       className="mt-2 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg self-start hover:bg-emerald-600 hover:text-white transition-all shadow-sm shadow-emerald-50"
                     >
                       GUNAKAN ALAMAT INI

@@ -21,6 +21,7 @@ import { useOrderStore } from '@/stores/useOrderStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { useAuth } from '@/context/AuthContext';
 import { useSettingsStore } from '@/stores/useSettingsStore';
+import { useCustomerStore } from '@/stores/useCustomerStore';
 import { calcAdminEarning } from '@/lib/calcEarning';
 import type { Order, OrderStatus } from '@/types';
 
@@ -43,19 +44,22 @@ export function Dashboard() {
   const { users } = useUserStore();
   const { user } = useAuth();
   const { commission_rate, commission_threshold } = useSettingsStore();
+  const { changeRequests, fetchPendingRequests } = useCustomerStore();
   const earningSettings = { commission_rate, commission_threshold };
 
   const isFinance = user?.role === 'finance' || user?.role === 'owner';
+  const pendingChangeRequests = changeRequests.filter(r => r.status === 'pending');
 
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [cachedHistorical, setCachedHistorical] = useState<Order[]>([]);
 
   useEffect(() => {
+    fetchPendingRequests();
     const interval = setInterval(() => {
       setLastUpdated(new Date());
     }, 5000);
     return () => clearInterval(interval);
-  }, [])
+  }, [fetchPendingRequests])
 
   useEffect(() => {
     const loadWeekOrders = async () => {
@@ -179,6 +183,27 @@ export function Dashboard() {
       />
 
       <div className="p-4 lg:p-8 space-y-6 lg:space-y-8">
+
+        {/* Customer Address Change Request Panel */}
+        {pendingChangeRequests.length > 0 && (
+          <div className="flex items-center justify-between gap-4 p-4 bg-purple-50 border border-purple-300 rounded-xl animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-center gap-3">
+               <Clock className="h-5 w-5 text-purple-600 shrink-0" />
+               <div>
+                  <p className="font-semibold text-purple-900 text-sm">
+                    ⚠️ {pendingChangeRequests.length} PENGAJUAN DATA PELANGGAN perlu persetujuan
+                  </p>
+                  <p className="text-xs text-purple-700 mt-0.5">Kurir mengajukan koreksi / penambahan alamat. Harap segera ditinjau.</p>
+               </div>
+            </div>
+            <Link
+               to="/admin/customers"
+               className="shrink-0 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-lg transition-colors shadow-sm"
+            >
+               Tinjau Sekarang →
+            </Link>
+          </div>
+        )}
 
         {/* Urgency Panel — pending orders older than 30 min */}
         {(() => {

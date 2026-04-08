@@ -53,6 +53,7 @@ const Couriers = lazy(() => fetchWithRetry(() => import('@/pages/Couriers').then
 const Reports = lazy(() => fetchWithRetry(() => import('@/pages/Reports').then(m => ({ default: m.Reports }))));
 const Notifications = lazy(() => fetchWithRetry(() => import('@/pages/Notifications').then(m => ({ default: m.Notifications }))));
 const Settings = lazy(() => fetchWithRetry(() => import('@/pages/Settings').then(m => ({ default: m.Settings }))));
+const Customers = lazy(() => fetchWithRetry(() => import('@/pages/Customers').then(m => ({ default: m.Customers }))));
 
 // Finance Pages
 const FinanceDashboard = lazy(() => fetchWithRetry(() => import('@/pages/finance/FinanceDashboard').then(m => ({ default: m.FinanceDashboard }))));
@@ -274,6 +275,16 @@ export function App() {
 
                   {/* Couriers */}
                   <Route path="couriers" element={<Couriers />} />
+
+                  {/* Customers */}
+                  <Route 
+                    path="customers" 
+                    element={
+                      <ProtectedRoute allowedRoles={['admin', 'admin_kurir', 'owner']}>
+                        <Customers />
+                      </ProtectedRoute>
+                    } 
+                  />
 
                   {/* Reports - Owner & Finance */}
                   <Route 

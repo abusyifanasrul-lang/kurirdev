@@ -35,7 +35,7 @@ export function ApprovalNotification({ orderNumber, requesterName, onClose }: Om
           
           <button
             onClick={() => {
-              navigate('/admin/settings?tab=approvals');
+              navigate('/admin/customers');
               onClose();
             }}
             className="mt-3 flex items-center gap-1.5 text-xs font-bold text-teal-600 hover:text-teal-700 transition-colors"

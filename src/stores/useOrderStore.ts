@@ -72,9 +72,9 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   isFetchingCourierOrders: false,
   isFetchingHistory: false,
   activeOrdersByCourier: [],
-  isFetchingActiveOrders: false,
   currentOrder: null,
   isSyncingOrders: new Set(),
+  isSyncing: false,
 
   setSyncing: (orderId, isSyncing) => set((state) => {
     const next = new Set(state.isSyncingOrders)
@@ -765,7 +765,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   },
 
   setActiveOrdersByCourier: (orders: Order[]) => {
-    set({ activeOrdersByCourier: orders, isFetchingActiveOrders: false })
+    set({ activeOrdersByCourier: orders })
   },
 
   reset: () => set({

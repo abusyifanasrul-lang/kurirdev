@@ -6,27 +6,19 @@ import type { User as UserType } from '@/types';
 import { BellRing } from 'lucide-react';
 
 interface ProfileTabProps {
-  user: UserType | null;
-  onUpdate: (updates: any) => Promise<void>;
+  user: any;
+  onUpdate: (data: any) => Promise<void>;
   onRefreshPush: () => Promise<void>;
   isLoading: boolean;
   isRefreshingPush: boolean;
-  onResync?: () => void;
-  cacheMeta?: any;
-  isSyncing?: boolean;
-  syncMessage?: string;
 }
 
-export function ProfileTab({
-  user,
-  onUpdate,
+export function ProfileTab({ 
+  user, 
+  onUpdate, 
   onRefreshPush,
   isLoading,
-  isRefreshingPush,
-  onResync,
-  cacheMeta,
-  isSyncing,
-  syncMessage
+  isRefreshingPush
 }: ProfileTabProps) {
   const [form, setForm] = useState({
     name: user?.name || '',

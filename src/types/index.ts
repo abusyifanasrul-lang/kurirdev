@@ -272,4 +272,7 @@ export interface CustomerChangeRequest {
   admin_notes?: string;
   created_at: string;
   updated_at: string;
+  change_type?: 'address_add' | 'address_edit' | 'address_delete' | 'full_update';
+  affected_address_id?: string;
+  new_address?: CustomerAddress;
 }

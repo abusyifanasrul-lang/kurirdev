@@ -32,7 +32,7 @@ export function CourierOrderDetail() {
   const { user } = useAuth();
   const { users } = useUserStore();
   const { user: currentUser } = useSessionStore();
-  const { findByPhone, addAddress, updateAddress: updateCustomerAddress, deleteAddress: deleteCustomerAddress, upsertCustomer } = useCustomerStore();
+  const { findByPhone, upsertCustomer, createAddressChangeRequest } = useCustomerStore();
   const invoiceRef = useRef<HTMLDivElement>(null);
 
   // Stabilize order reference with useMemo to prevent TDZ issues in minified builds
@@ -217,19 +217,39 @@ export function CourierOrderDetail() {
   const handleSimpanCustomer = async () => {
     if (!editName || !editPhone || !editAddress || !order) return;
     
-    // Sync ke master customer store
     const existing = findByPhone(editPhone);
+
+    // Update dokumen order langsung untuk kelancaran pengantaran courier
+    await updateOrder(order.id, {
+      customer_name: editName,
+      customer_phone: editPhone,
+      customer_address: editAddress
+    });
+
     if (existing) {
       const addrExists = existing.addresses.find(a => a.address.toLowerCase() === editAddress.toLowerCase());
       if (!addrExists) {
-        await addAddress(existing.id, {
+        // Alamat baru tidak dikenali, ajukan perubahan ke admin
+        const newAddr = {
+          id: crypto.randomUUID(),
           label: `Koreksi Kurir ${existing.addresses.length + 1}`,
           address: editAddress,
           is_default: existing.addresses.length === 0,
           notes: ''
-        });
+        };
+        await createAddressChangeRequest(
+          existing.id,
+          'address_add',
+          existing,
+          { ...existing, addresses: [...existing.addresses, newAddr] },
+          order.id,
+          user?.id,
+          user?.name,
+          newAddr
+        );
       }
     } else {
+      // Customer baru beneran
       await upsertCustomer({
         name: editName,
         phone: editPhone,
@@ -243,12 +263,6 @@ export function CourierOrderDetail() {
       });
     }
 
-    // Update dokumen order
-    await updateOrder(order.id, {
-      customer_name: editName,
-      customer_phone: editPhone,
-      customer_address: editAddress
-    });
     setEditCustomer(false);
   };
 
@@ -403,17 +417,34 @@ export function CourierOrderDetail() {
             setCourierInlineNewValue={setCourierInlineNewValue}
             onUpdateAddress={async (id, addr) => {
                const cust = findByPhone(order.customer_phone || '');
-               if (cust) await updateCustomerAddress(cust.id, id, { address: addr });
+               if (cust) {
+                  const updatedAddresses = cust.addresses.map(a => a.id === id ? { ...a, address: addr } : a);
+                  await createAddressChangeRequest(cust.id, 'address_edit', cust, { ...cust, addresses: updatedAddresses }, order.id, user?.id, user?.name, undefined, id);
+                  useToastStore.getState().addToast('Perubahan diajukan ke admin', 'success');
+               }
             }}
             onDeleteAddress={async (id) => {
                const cust = findByPhone(order.customer_phone || '');
-               if (cust) await deleteCustomerAddress(cust.id, id);
+               if (cust) {
+                  const updatedAddresses = cust.addresses.filter(a => a.id !== id);
+                  await createAddressChangeRequest(cust.id, 'address_delete', cust, { ...cust, addresses: updatedAddresses }, order.id, user?.id, user?.name, undefined, id);
+                  useToastStore.getState().addToast('Penghapusan diajukan ke admin', 'success');
+               }
             }}
             onAddNewAddress={async (phone, addr) => {
                const cust = findByPhone(phone);
-               if (cust) await addAddress(cust.id, { label: 'Ditambah Kurir', address: addr, is_default: false, notes: '' });
+               if (cust) {
+                  const newAddr = { id: crypto.randomUUID(), label: 'Ditambah Kurir', address: addr, is_default: false, notes: '' };
+                  await createAddressChangeRequest(cust.id, 'address_add', cust, { ...cust, addresses: [...cust.addresses, newAddr] }, order.id, user?.id, user?.name, newAddr);
+                  useToastStore.getState().addToast('Penambahan diajukan ke admin', 'success');
+               }
             }}
-            onSetAppliedAddress={(addr) => setEditAddress(addr)}
+            onSetAppliedAddress={async (addr) => {
+               setEditAddress(addr);
+               await updateOrder(order.id, { customer_address: addr });
+               setEditCustomer(false);
+               useToastStore.getState().addToast('Alamat diterapkan pada order ini', 'success');
+            }}
           />
 
           <OrderItemsList 

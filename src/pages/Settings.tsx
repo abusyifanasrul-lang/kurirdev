@@ -23,6 +23,7 @@ const UsersTab = lazy(() => import('@/components/settings/UsersTab').then(m => (
 const GeneralOpsTab = lazy(() => import('@/components/settings/GeneralOpsTab').then(m => ({ default: m.GeneralOpsTab })));
 const InstructionsTab = lazy(() => import('@/components/settings/InstructionsTab').then(m => ({ default: m.InstructionsTab })));
 const StorageTab = lazy(() => import('@/components/settings/StorageTab').then(m => ({ default: m.StorageTab })));
+const BusinessTab = lazy(() => import('@/components/settings/BusinessTab').then(m => ({ default: m.BusinessTab })));
 
 function TabLoading() {
   return (
@@ -272,10 +273,6 @@ export function Settings() {
                       user={user} 
                       onUpdate={handleUpdateProfile} 
                       onRefreshPush={handleRefreshPush}
-                      onResync={handleResync}
-                      cacheMeta={cacheMeta}
-                      isSyncing={isSyncing}
-                      syncMessage={syncMessage}
                       isLoading={isLoading}
                       isRefreshingPush={isRefreshingPush}
                     />

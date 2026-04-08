@@ -323,6 +323,38 @@ CREATE POLICY "System and Admins can insert notifications" ON notifications
 CREATE POLICY "Users can update own notifications" ON notifications
   FOR UPDATE USING (user_id = auth.uid());
 
+-- 7. Create Customer Change Requests Table
+CREATE TABLE public.customer_change_requests (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  customer_id UUID REFERENCES public.customers(id) ON DELETE CASCADE,
+  customer_name VARCHAR(255),
+  requester_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  requester_name VARCHAR(255),
+  change_type VARCHAR(50),
+  old_data JSONB DEFAULT '{}'::JSONB,
+  requested_data JSONB DEFAULT '{}'::JSONB,
+  new_address JSONB,
+  affected_address_id TEXT,
+  order_id UUID REFERENCES public.orders(id) ON DELETE SET NULL,
+  status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  admin_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  admin_notes TEXT,
+  reviewed_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  reviewed_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE public.customer_change_requests ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone logged in can read customer_change_requests" ON customer_change_requests
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Couriers can insert requests" ON customer_change_requests
+  FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+
+CREATE POLICY "Admins and Owners can update requests" ON customer_change_requests
+  FOR UPDATE USING (public.get_auth_user_role() IN ('owner', 'admin_kurir'));
 
 -- Initial Insert for Settings
 INSERT INTO public.settings (id, commission_rate, commission_threshold, courier_instructions) 

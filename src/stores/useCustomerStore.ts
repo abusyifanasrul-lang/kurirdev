@@ -5,6 +5,7 @@ import { getAllCustomersLocal, upsertCustomerLocal, saveCustomerSyncTime, getCus
 
 interface CustomerState {
   customers: Customer[]
+  changeRequests: CustomerChangeRequest[]
   isLoaded: boolean
 
   loadFromLocal: () => Promise<void>
@@ -21,10 +22,22 @@ interface CustomerState {
   fetchPendingRequests: () => Promise<CustomerChangeRequest[]>
   approveRequest: (requestId: string, adminId: string) => Promise<void>
   rejectRequest: (requestId: string, adminId: string, notes: string) => Promise<void>
+  createAddressChangeRequest: (
+    customerId: string, 
+    changeType: 'address_add' | 'address_edit' | 'address_delete' | 'full_update',
+    oldData: Partial<Customer>,
+    newData: Partial<Customer>,
+    orderId?: string,
+    requesterId?: string,
+    requesterName?: string,
+    newAddress?: CustomerAddress,
+    affectedAddressId?: string
+  ) => Promise<void>
 }
 
 export const useCustomerStore = create<CustomerState>()((set, get) => ({
   customers: [],
+  changeRequests: [],
   isLoaded: false,
 
   loadFromLocal: async () => {
@@ -168,7 +181,37 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
       .order('created_at', { ascending: false })
     
     if (error) throw error
+    set({ changeRequests: data as unknown as CustomerChangeRequest[] })
     return data as unknown as CustomerChangeRequest[]
+  },
+
+  createAddressChangeRequest: async (customerId, changeType, oldData, newData, orderId, requesterId, requesterName, newAddress, affectedAddressId) => {
+    const customer = get().customers.find(c => c.id === customerId);
+    
+    const payload = {
+      id: crypto.randomUUID(),
+      customer_id: customerId,
+      customer_name: customer?.name || oldData.name || 'Unknown',
+      change_type: changeType,
+      old_data: oldData,
+      requested_data: newData,
+      order_id: orderId,
+      requester_id: requesterId || 'system',
+      requester_name: requesterName || 'System',
+      status: 'pending',
+      new_address: newAddress,
+      affected_address_id: affectedAddressId,
+      updated_at: new Date().toISOString()
+    };
+
+    const { error } = await (supabase.from('customer_change_requests') as any).insert(payload);
+
+    if (error) {
+      console.error('Failed to create address change request:', error);
+      throw error;
+    }
+    
+    set(state => ({ changeRequests: [payload as unknown as CustomerChangeRequest, ...state.changeRequests] }));
   },
 
   approveRequest: async (requestId, adminId) => {
@@ -208,6 +251,7 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
     // 4. Sync local state
     const { syncFromServer } = get()
     await syncFromServer()
+    set(state => ({ changeRequests: state.changeRequests.filter(r => r.id !== requestId) }))
   },
 
   rejectRequest: async (requestId, adminId, notes) => {
@@ -222,5 +266,6 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
       .eq('id', requestId as any)
     
     if (error) throw error
+    set(state => ({ changeRequests: state.changeRequests.filter(r => r.id !== requestId) }))
   }
 }))
