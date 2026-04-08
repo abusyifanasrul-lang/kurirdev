@@ -35,6 +35,7 @@ const roleNavItems: Record<string, NavItem[]> = {
     { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true },
     { path: '/admin/orders', label: 'Orders', icon: Package },
     { path: '/admin/couriers', label: 'Couriers', icon: Users },
+    { path: '/admin/customers', label: 'Customers', icon: BookUser },
     { path: '/admin/notifications', label: 'Notifikasi', icon: Bell },
     { path: '/admin/settings', label: 'Settings', icon: Settings },
   ],

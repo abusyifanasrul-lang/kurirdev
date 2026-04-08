@@ -16,7 +16,7 @@ export const Customers: React.FC = () => {
   const { user } = useAuth();
   const { addToast } = useToastStore();
 
-  const canApprove = user?.role === 'owner' || user?.role === 'admin_kurir';
+  const canApprove = user?.role === 'admin' || user?.role === 'admin_kurir';
 
   useEffect(() => {
     if (!isLoaded) loadFromLocal();

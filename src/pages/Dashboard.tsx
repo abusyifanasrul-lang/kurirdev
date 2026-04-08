@@ -48,7 +48,7 @@ export function Dashboard() {
   const earningSettings = { commission_rate, commission_threshold };
 
   const isFinance = user?.role === 'finance' || user?.role === 'owner';
-  const canApprove = user?.role === 'owner' || user?.role === 'admin_kurir';
+  const canApprove = user?.role === 'admin' || user?.role === 'admin_kurir';
   const pendingChangeRequests = changeRequests.filter(r => r.status === 'pending');
 
   const [lastUpdated, setLastUpdated] = useState(new Date());
