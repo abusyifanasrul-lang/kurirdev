@@ -443,7 +443,6 @@ export function CourierOrderDetail() {
             onSetAppliedAddress={async (addr) => {
                setEditAddress(addr);
                await updateOrder(order.id, { customer_address: addr });
-               setEditCustomer(false);
                useToastStore.getState().addToast('Alamat diterapkan pada order ini', 'success');
             }}
           />

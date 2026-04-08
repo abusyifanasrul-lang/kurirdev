@@ -89,12 +89,12 @@ export const OrderCustomerInfo: React.FC<OrderCustomerInfoProps> = ({
     <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 mb-6">
       <div className="flex items-center justify-between mb-5 px-1">
         <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Customer Info</h2>
-        {!isLocked && (
+        {!isLocked && !editCustomer && (
           <button 
-            onClick={() => setEditCustomer(!editCustomer)}
+            onClick={() => setEditCustomer(true)}
             className="text-emerald-700 text-[10px] font-black hover:bg-emerald-50 px-4 py-2 rounded-xl transition-all border border-emerald-100 shadow-sm uppercase tracking-widest active:scale-95"
           >
-            {editCustomer ? 'BATAL' : 'UBAH DATA'}
+            UBAH DATA
           </button>
         )}
       </div>
@@ -143,9 +143,15 @@ export const OrderCustomerInfo: React.FC<OrderCustomerInfoProps> = ({
                   const pendingEdit = pendingRequests.find((r: CustomerChangeRequest) => r.change_type === 'address_edit' && r.affected_address_id === a.id);
                   const pendingDelete = pendingRequests.find((r: CustomerChangeRequest) => r.change_type === 'address_delete' && r.affected_address_id === a.id);
                   const isPending = !!pendingEdit || !!pendingDelete;
+                  const isApplied = editAddress === a.address;
 
                   return (
-                  <div key={a.id} className={`flex flex-col gap-1 p-3 bg-white rounded-xl shadow-sm border ${isPending ? 'border-amber-200 bg-amber-50/30' : 'border-gray-100'} group transition-all`}>
+                  <div key={a.id} className={`flex flex-col gap-1 p-3 bg-white rounded-xl shadow-sm border ${isApplied ? 'border-emerald-500 ring-1 ring-emerald-500 bg-emerald-50/10' : (isPending ? 'border-amber-200 bg-amber-50/30' : 'border-gray-100')} group transition-all relative overflow-hidden`}>
+                    {isApplied && (
+                      <div className="absolute top-0 right-0 bg-emerald-500 text-white px-2 py-1 rounded-bl-lg animate-in slide-in-from-top-full duration-300">
+                        <Check className="h-3 w-3" />
+                      </div>
+                    )}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">{a.label || 'ALAMAT'}</span>
@@ -212,8 +218,15 @@ export const OrderCustomerInfo: React.FC<OrderCustomerInfoProps> = ({
                 })}
                 
                 {/* Render Pending Add Requests */}
-                {pendingAddRequests.map((r: CustomerChangeRequest) => (
-                  <div key={r.id} className="flex flex-col gap-1 p-3 bg-white rounded-xl shadow-sm border border-amber-200 bg-amber-50/30 group transition-all">
+                {pendingAddRequests.map((r: CustomerChangeRequest) => {
+                  const isApplied = editAddress === r.new_address?.address;
+                  return (
+                  <div key={r.id} className={`flex flex-col gap-1 p-3 bg-white rounded-xl shadow-sm border ${isApplied ? 'border-emerald-500 ring-1 ring-emerald-500 bg-emerald-50/10' : 'border-amber-200 bg-amber-50/30'} group transition-all relative overflow-hidden`}>
+                    {isApplied && (
+                      <div className="absolute top-0 right-0 bg-emerald-500 text-white px-2 py-1 rounded-bl-lg animate-in slide-in-from-top-full duration-300">
+                        <Check className="h-3 w-3" />
+                      </div>
+                    )}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">ALAMAT BARU</span>
@@ -228,7 +241,8 @@ export const OrderCustomerInfo: React.FC<OrderCustomerInfoProps> = ({
                       GUNAKAN ALAMAT INI
                     </button>
                   </div>
-                ))}
+                  );
+                })}
                 
                 {courierInlineAddingNew ? (
                   <div className="p-3 bg-white rounded-xl shadow-sm border border-emerald-200 animate-in fade-in slide-in-from-top-1 duration-200">
@@ -271,12 +285,20 @@ export const OrderCustomerInfo: React.FC<OrderCustomerInfoProps> = ({
             </div>
           )}
 
-          <button
-            onClick={handleSimpanCustomer}
-            className="w-full bg-emerald-600 text-white rounded-2xl py-4 text-sm font-bold shadow-lg shadow-emerald-200 active:scale-[0.98] transition-all hover:bg-emerald-700 mt-2"
-          >
-            SIMPAN PERUBAHAN
-          </button>
+          <div className="flex gap-3 mt-4">
+            <button
+              onClick={() => setEditCustomer(false)}
+              className="flex-1 bg-gray-100 text-gray-600 rounded-2xl py-4 text-sm font-bold active:scale-[0.98] transition-all hover:bg-gray-200 uppercase tracking-widest"
+            >
+              BATAL
+            </button>
+            <button
+              onClick={handleSimpanCustomer}
+              className="flex-[2] bg-emerald-600 text-white rounded-2xl py-4 text-sm font-bold shadow-lg shadow-emerald-200 active:scale-[0.98] transition-all hover:bg-emerald-700 uppercase tracking-widest"
+            >
+              SIMPAN
+            </button>
+          </div>
         </div>
       ) : (
         <div className="space-y-6">
