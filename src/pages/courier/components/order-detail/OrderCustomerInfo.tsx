@@ -67,7 +67,7 @@ export const OrderCustomerInfo: React.FC<OrderCustomerInfoProps> = ({
   const waLink = `https://wa.me/62${order.customer_phone?.replace(/^0/, '')}`;
 
   const pendingRequests = changeRequests.filter((r: CustomerChangeRequest) => 
-    r.customer_id === courierAddrCustomer?.id && r.status === 'pending'
+    r.order_id === order.id && r.status === 'pending'
   );
   const pendingAddRequests = pendingRequests.filter((r: CustomerChangeRequest) => r.change_type === 'address_add');
 
