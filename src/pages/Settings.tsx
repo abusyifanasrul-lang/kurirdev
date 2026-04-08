@@ -194,8 +194,12 @@ export function Settings() {
     if (tab.id === 'instructions') {
       return user?.role === 'admin' || user?.role === 'owner';
     }
+    if (tab.id === 'general_ops') {
+      return user?.role !== 'finance';
+    }
     return true;
   });
+
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20 lg:pb-0">
@@ -206,30 +210,36 @@ export function Settings() {
           {/* Left Sidebar - Desktop */}
           <aside className="hidden lg:block w-64 flex-shrink-0">
             <nav className="space-y-8 sticky top-24">
-              {ALL_CATEGORIES.map(cat => (
-                <div key={cat.id}>
-                  <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-2 flex items-center gap-2">
-                    <cat.icon className="h-3 w-3" />
-                    {cat.label}
-                  </h4>
-                  <div className="space-y-1">
-                    {tabs.filter(t => t.category === cat.id).map(tab => (
-                      <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
-                          activeTab === tab.id 
-                            ? 'bg-teal-50 text-teal-700 shadow-sm border border-teal-100' 
-                            : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900 border border-transparent'
-                        }`}
-                      >
-                        <tab.icon className={`h-4 w-4 ${activeTab === tab.id ? 'text-teal-600' : 'text-gray-400'}`} />
-                        {tab.label}
-                      </button>
-                    ))}
+              {ALL_CATEGORIES.map(cat => {
+                const categoryTabs = tabs.filter(t => t.category === cat.id);
+                if (categoryTabs.length === 0) return null;
+                
+                return (
+                  <div key={cat.id}>
+                    <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-2 flex items-center gap-2">
+                      <cat.icon className="h-3 w-3" />
+                      {cat.label}
+                    </h4>
+                    <div className="space-y-1">
+                      {categoryTabs.map(tab => (
+                        <button
+                          key={tab.id}
+                          onClick={() => setActiveTab(tab.id)}
+                          className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
+                            activeTab === tab.id 
+                              ? 'bg-teal-50 text-teal-700 shadow-sm border border-teal-100' 
+                              : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900 border border-transparent'
+                          }`}
+                        >
+                          <tab.icon className={`h-4 w-4 ${activeTab === tab.id ? 'text-teal-600' : 'text-gray-400'}`} />
+                          {tab.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
+
             </nav>
           </aside>
 
