@@ -21,6 +21,9 @@ import {
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/context/AuthContext';
 import { getRoleLabel, getRoleBadgeColor } from '@/types';
+import { useOrderStore } from '@/stores/useOrderStore';
+import { useNotificationStore } from '@/stores/useNotificationStore';
+import { useSettingsStore } from '@/stores/useSettingsStore';
 
 interface NavItem {
   path: string;
@@ -72,6 +75,16 @@ export function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+
+  const orderRealtimeStatus = useOrderStore(state => state.realtimeStatus);
+  const notificationRealtimeStatus = useNotificationStore(state => state.realtimeStatus);
+  const settingsRealtimeStatus = useSettingsStore(state => state.realtimeStatus);
+
+  const isOrdersLive = orderRealtimeStatus['orders:global'] === 'joined';
+  const isNotificationsLive = notificationRealtimeStatus['notifications:all'] === 'joined';
+  const isSettingsLive = settingsRealtimeStatus['public:settings'] === 'joined';
+
+  const isFullyLive = isOrdersLive && isNotificationsLive && isSettingsLive;
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -139,7 +152,16 @@ export function Layout() {
           <div className="p-1.5 bg-teal-600 rounded-lg">
             <Truck className="h-5 w-5" />
           </div>
-          <span className="font-bold">KurirDev</span>
+          <div className="flex items-center gap-2">
+            <span className="font-bold">KurirDev</span>
+            <div 
+              className={cn(
+                "w-2 h-2 rounded-full shadow-sm transition-all duration-500",
+                isFullyLive ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
+              )} 
+              title={isFullyLive ? "LIVE - Connected to Realtime" : "Connecting..."}
+            />
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -177,10 +199,22 @@ export function Layout() {
               <Truck className="h-6 w-6" />
             </div>
             <div>
-              <h1 className="font-bold text-lg">KurirDev</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="font-bold text-lg">KurirDev</h1>
+                <div 
+                  className={cn(
+                    "w-2 h-2 rounded-full shadow-sm transition-all duration-500",
+                    isFullyLive ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
+                  )} 
+                  title={isFullyLive ? "LIVE - Connected to Realtime" : "Connecting..."}
+                />
+              </div>
               <div className="flex items-center gap-2">
                 <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", roleBadgeColor)}>
                   {roleLabel}
+                </span>
+                <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">
+                  {isFullyLive ? 'Live' : 'Syncing...'}
                 </span>
               </div>
             </div>
