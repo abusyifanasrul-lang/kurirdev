@@ -285,7 +285,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     }
   },
 
-  subscribeOrders: async (filter) => {
+  subscribeOrders: (filter) => {
     const { courierId } = filter || {}
     const channelId = courierId ? `orders:courier:${courierId}` : 'orders:global'
     const filterStr = courierId ? `courier_id=eq.${courierId}` : undefined
@@ -296,129 +296,132 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
       return () => {} // Already active or connecting
     }
 
-    // 2. CLEANUP PREVIOUS IF EXISTS (Awaited)
-    if (existing) {
-      console.log(`♻️ Cleaning up existing channel for ${channelId}...`)
-      await supabase.removeChannel(existing)
-      orderChannels.delete(channelId)
-    }
-
-    console.log(`📡 Initializing stable realtime for ${channelId}...`)
-    orderStates.set(channelId, 'joining')
-
-    const channelConfig: any = { event: '*', schema: 'public', table: 'orders' }
-    if (filterStr) channelConfig.filter = filterStr
-
-
-
-    const channel = supabase.channel(channelId)
-      .on(
-        'postgres_changes',
-        channelConfig,
-        async (payload) => {
-          const { eventType, new: newRec, old: oldRec } = payload
-          console.log(`🔔 Realtime [${channelId}] ${eventType}:`, newRec || oldRec)
-          
-          // MIRRORING ARCHITECTURE: Only finalized orders to localDB
-          if (eventType === 'UPDATE' || eventType === 'INSERT') {
-            const FINAL_STATUSES = ['delivered', 'cancelled']
-            const isFinal = FINAL_STATUSES.includes(newRec.status)
-            
-            if (isFinal) {
-              console.info(`[useOrderStore] Realtime ${eventType} mirroring to localDB: ${newRec.id}`)
-              await moveToLocalDB(newRec as Order, eventType === 'UPDATE')
-            }
-          }
-
-          set((state) => {
-            let updatedActive = [...state.activeOrdersByCourier]
-            let updatedHistory = [...state.orders]
-
-            if (eventType === 'INSERT') {
-              const order = newRec as Order
-              const isNowActive = !['delivered', 'cancelled'].includes(order.status)
-              if (isNowActive) {
-                // Prevent duplicate inserts if already in state
-                if (!updatedActive.some(o => o.id === order.id)) {
-                  updatedActive = [order, ...updatedActive]
-                }
-              } else {
-                if (!updatedHistory.some(o => o.id === order.id)) {
-                  updatedHistory = [order, ...updatedHistory]
-                }
-              }
-            } else if (eventType === 'UPDATE') {
-              const orderId = (newRec as Order).id
-              const existingActive = updatedActive.find(o => o.id === orderId)
-              const existingHistory = updatedHistory.find(o => o.id === orderId)
-              
-              // MERGE logic: Use existing state or full row from newRec
-              let baseOrder: Order = (existingActive || existingHistory) as Order
-
-              let mergedOrder: Order
-              if (baseOrder) {
-                mergedOrder = { ...baseOrder }
-                Object.keys(newRec).forEach(k => { 
-                  if (newRec[k] !== undefined && newRec[k] !== null) (mergedOrder as any)[k] = newRec[k] 
-                })
-              } else {
-                mergedOrder = newRec as Order
-              }
-
-              const wasActive = updatedActive.some(o => o.id === mergedOrder.id)
-              const isNowActive = !['delivered', 'cancelled'].includes(mergedOrder.status)
-
-              if (wasActive && !isNowActive) {
-                updatedActive = updatedActive.filter(o => o.id !== mergedOrder.id)
-                if (!updatedHistory.some(o => o.id === mergedOrder.id)) {
-                  updatedHistory = [mergedOrder, ...updatedHistory]
-                } else {
-                  updatedHistory = updatedHistory.map(o => o.id === mergedOrder.id ? mergedOrder : o)
-                }
-              } else if (isNowActive) {
-                const idx = updatedActive.findIndex(o => o.id === mergedOrder.id)
-                if (idx !== -1) updatedActive[idx] = mergedOrder
-                else updatedActive = [mergedOrder, ...updatedActive]
-              } else {
-                const idx = updatedHistory.findIndex(o => o.id === mergedOrder.id)
-                if (idx !== -1) updatedHistory[idx] = mergedOrder
-              }
-            } else if (eventType === 'DELETE') {
-              updatedActive = updatedActive.filter(o => o.id !== oldRec.id)
-              updatedHistory = updatedHistory.filter(o => o.id !== oldRec.id)
-              removeFromLocalDB(oldRec.id)
-            }
-
-            return { 
-              activeOrdersByCourier: updatedActive,
-              orders: updatedHistory
-            }
-          })
-        }
-      )
-
-    // Set map BEFORE subscribe to lock other callers
-    orderChannels.set(channelId, channel)
-
-    channel.subscribe((status, err) => {
-      if (status === 'SUBSCRIBED') {
-        console.log(`✅ Realtime subscription active for ${channelId}`)
-        orderStates.set(channelId, 'joined')
-        set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
-      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-        console.warn(`❌ Realtime ${channelId} ${status}:`, err)
-        const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
-        orderStates.set(channelId, finalStatus)
-        set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
-        // MANDATORY: Remove from Map to allow re-subscription attempt
+    // 2. INTERNAL ASYNC INIT
+    (async () => {
+      if (existing) {
+        console.log(`♻️ Cleaning up existing channel for ${channelId}...`)
+        await supabase.removeChannel(existing)
         orderChannels.delete(channelId)
       }
-    })
+
+      console.log(`📡 Initializing stable realtime for ${channelId}...`)
+      orderStates.set(channelId, 'joining')
+
+      const channelConfig: any = { event: '*', schema: 'public', table: 'orders' }
+      if (filterStr) channelConfig.filter = filterStr
+
+      const channel = supabase.channel(channelId)
+        .on(
+          'postgres_changes',
+          channelConfig,
+          async (payload) => {
+            const { eventType, new: newRec, old: oldRec } = payload
+            console.log(`🔔 Realtime [${channelId}] ${eventType}:`, newRec || oldRec)
+            
+            // MIRRORING ARCHITECTURE: Only finalized orders to localDB
+            if (eventType === 'UPDATE' || eventType === 'INSERT') {
+              const FINAL_STATUSES = ['delivered', 'cancelled']
+              const isFinal = FINAL_STATUSES.includes(newRec.status)
+              
+              if (isFinal) {
+                console.info(`[useOrderStore] Realtime ${eventType} mirroring to localDB: ${newRec.id}`)
+                await moveToLocalDB(newRec as Order, eventType === 'UPDATE')
+              }
+            }
+
+            set((state) => {
+              let updatedActive = [...state.activeOrdersByCourier]
+              let updatedHistory = [...state.orders]
+
+              if (eventType === 'INSERT') {
+                const order = newRec as Order
+                const isNowActive = !['delivered', 'cancelled'].includes(order.status)
+                if (isNowActive) {
+                  // Prevent duplicate inserts if already in state
+                  if (!updatedActive.some(o => o.id === order.id)) {
+                    updatedActive = [order, ...updatedActive]
+                  }
+                } else {
+                  if (!updatedHistory.some(o => o.id === order.id)) {
+                    updatedHistory = [order, ...updatedHistory]
+                  }
+                }
+              } else if (eventType === 'UPDATE') {
+                const orderId = (newRec as Order).id
+                const existingActive = updatedActive.find(o => o.id === orderId)
+                const existingHistory = updatedHistory.find(o => o.id === orderId)
+                
+                // MERGE logic: Use existing state or full row from newRec
+                let baseOrder: Order = (existingActive || existingHistory) as Order
+
+                let mergedOrder: Order
+                if (baseOrder) {
+                  mergedOrder = { ...baseOrder }
+                  Object.keys(newRec).forEach(k => { 
+                    if (newRec[k] !== undefined && newRec[k] !== null) (mergedOrder as any)[k] = newRec[k] 
+                  })
+                } else {
+                  mergedOrder = newRec as Order
+                }
+
+                const wasActive = updatedActive.some(o => o.id === mergedOrder.id)
+                const isNowActive = !['delivered', 'cancelled'].includes(mergedOrder.status)
+
+                if (wasActive && !isNowActive) {
+                  updatedActive = updatedActive.filter(o => o.id !== mergedOrder.id)
+                  if (!updatedHistory.some(o => o.id === mergedOrder.id)) {
+                    updatedHistory = [mergedOrder, ...updatedHistory]
+                  } else {
+                    updatedHistory = updatedHistory.map(o => o.id === mergedOrder.id ? mergedOrder : o)
+                  }
+                } else if (isNowActive) {
+                  const idx = updatedActive.findIndex(o => o.id === mergedOrder.id)
+                  if (idx !== -1) updatedActive[idx] = mergedOrder
+                  else updatedActive = [mergedOrder, ...updatedActive]
+                } else {
+                  const idx = updatedHistory.findIndex(o => o.id === mergedOrder.id)
+                  if (idx !== -1) updatedHistory[idx] = mergedOrder
+                }
+              } else if (eventType === 'DELETE') {
+                updatedActive = updatedActive.filter(o => o.id !== oldRec.id)
+                updatedHistory = updatedHistory.filter(o => o.id !== oldRec.id)
+                removeFromLocalDB(oldRec.id)
+              }
+
+              return { 
+                activeOrdersByCourier: updatedActive,
+                orders: updatedHistory
+              }
+            })
+          }
+        )
+
+      // Set map BEFORE subscribe to lock other callers
+      orderChannels.set(channelId, channel)
+
+      channel.subscribe((status, err) => {
+        if (status === 'SUBSCRIBED') {
+          console.log(`✅ Realtime subscription active for ${channelId}`)
+          orderStates.set(channelId, 'joined')
+          set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          console.warn(`❌ Realtime ${channelId} ${status}:`, err)
+          const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
+          orderStates.set(channelId, finalStatus)
+          set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
+          // MANDATORY: Remove from Map to allow re-subscription attempt
+          orderChannels.delete(channelId)
+        }
+      })
+    })()
 
     return () => {
-      supabase.removeChannel(channel)
-      orderChannels.delete(channelId)
-      orderStates.delete(channelId)
+      const current = orderChannels.get(channelId)
+      if (current) {
+        supabase.removeChannel(current).catch(() => {})
+        orderChannels.delete(channelId)
+        orderStates.delete(channelId)
+      }
     }
   },
 
@@ -465,8 +468,12 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
       })
 
     return () => {
-      supabase.removeChannel(channel)
-      orderChannels.delete(channelId)
+      const current = orderChannels.get(channelId)
+      if (current) {
+        supabase.removeChannel(current).catch(() => {})
+        orderChannels.delete(channelId)
+        orderStates.delete(channelId)
+      }
     }
   },
 

@@ -12,8 +12,8 @@ interface NotificationState {
   notifications: Notification[]
   isLoading: boolean
 
-  subscribeNotifications: (userId: string) => Promise<(() => void) | void>
-  subscribeAllNotifications: () => Promise<(() => void) | void>
+  subscribeNotifications: (userId: string) => (() => void)
+  subscribeAllNotifications: () => (() => void)
   resyncRealtime: (userId?: string, options?: { force?: boolean }) => Promise<void>
   addNotification: (notification: Omit<Notification, 'id' | 'sent_at' | 'is_read'>) => Promise<void>
   markAsRead: (id: string) => Promise<void>
@@ -33,7 +33,7 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
   realtimeStatus: {},
   _resyncLock: null,
 
-  subscribeNotifications: async (userId: string) => {
+  subscribeNotifications: (userId: string) => {
     // 1. Initial Load from Local Cache (Mirroring)
     getCachedNotifications(userId).then(cached => {
       if (cached.length > 0) {
@@ -63,70 +63,74 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
       return () => {} // Already active or connecting
     }
 
-    // 4. CLEANUP PREVIOUS IF EXISTS (Awaited)
-    if (existing) {
-      console.log(`♻️ Cleaning up existing notification channel for ${userId}...`)
-      await supabase.removeChannel(existing)
-      notifChannels.delete(channelId)
-    }
-
-    console.log(`📡 Initializing stable notifications for ${userId}...`)
-    notifStates.set(channelId, 'joining')
-
-    const channel = supabase.channel(channelId)
-    let heartbeatInterval: any = null
-
-    channel.on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
-        (payload) => {
-          const { eventType, new: newRec, old: oldRec } = payload
-          set((state) => {
-            const updated = [...state.notifications]
-            if (eventType === 'INSERT') {
-              if (!updated.some(n => n.id === (newRec as any).id)) {
-                updated.unshift(newRec as Notification)
-                cacheNotifications([newRec as Notification])
-              }
-            } else if (eventType === 'UPDATE') {
-              const idx = updated.findIndex(n => n.id === (newRec as any).id)
-              if (idx !== -1) {
-                updated[idx] = { ...updated[idx], ...newRec }
-                cacheNotifications([updated[idx]])
-              }
-            } else if (eventType === 'DELETE') {
-              const idx = updated.findIndex(n => n.id === (oldRec as any).id)
-              if (idx !== -1) updated.splice(idx, 1)
-            }
-            
-            return { 
-              notifications: updated.sort((a,b) => new Date(b.sent_at || 0).getTime() - new Date(a.sent_at || 0).getTime()) 
-            }
-          })
-        }
-      )
-
-    notifChannels.set(channelId, channel)
-
-    channel.subscribe((status, err) => {
-      if (status === 'SUBSCRIBED') {
-        console.log(`✅ Realtime notifications active for ${channelId}`)
-        notifStates.set(channelId, 'joined')
-        set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
-      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-        console.warn(`❌ Realtime notifications ${channelId} ${status}:`, err)
-        const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
-        notifStates.set(channelId, finalStatus)
-        set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
-        // Clean up singleton Map to allow recovery
+    // 4. INTERNAL ASYNC INIT
+    (async () => {
+      if (existing) {
+        console.log(`♻️ Cleaning up existing notification channel for ${userId}...`)
+        await supabase.removeChannel(existing)
         notifChannels.delete(channelId)
       }
-    })
+
+      console.log(`📡 Initializing stable notifications for ${userId}...`)
+      notifStates.set(channelId, 'joining')
+
+      const channel = supabase.channel(channelId)
+      
+      channel.on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
+          (payload) => {
+            const { eventType, new: newRec, old: oldRec } = payload
+            set((state) => {
+              const updated = [...state.notifications]
+              if (eventType === 'INSERT') {
+                if (!updated.some(n => n.id === (newRec as any).id)) {
+                  updated.unshift(newRec as Notification)
+                  cacheNotifications([newRec as Notification])
+                }
+              } else if (eventType === 'UPDATE') {
+                const idx = updated.findIndex(n => n.id === (newRec as any).id)
+                if (idx !== -1) {
+                  updated[idx] = { ...updated[idx], ...newRec }
+                  cacheNotifications([updated[idx]])
+                }
+              } else if (eventType === 'DELETE') {
+                const idx = updated.findIndex(n => n.id === (oldRec as any).id)
+                if (idx !== -1) updated.splice(idx, 1)
+              }
+              
+              return { 
+                notifications: updated.sort((a,b) => new Date(b.sent_at || 0).getTime() - new Date(a.sent_at || 0).getTime()) 
+              }
+            })
+          }
+        )
+
+      notifChannels.set(channelId, channel)
+
+      channel.subscribe((status, err) => {
+        if (status === 'SUBSCRIBED') {
+          console.log(`✅ Realtime notifications active for ${channelId}`)
+          notifStates.set(channelId, 'joined')
+          set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          console.warn(`❌ Realtime notifications ${channelId} ${status}:`, err)
+          const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
+          notifStates.set(channelId, finalStatus)
+          set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
+          // Clean up singleton Map to allow recovery
+          notifChannels.delete(channelId)
+        }
+      })
+    })()
 
     return () => { 
-      supabase.removeChannel(channel)
-      notifChannels.delete(channelId)
-      notifStates.delete(channelId)
+      const current = notifChannels.get(channelId)
+      if (current) {
+        supabase.removeChannel(current).catch(() => {})
+        notifChannels.delete(channelId)
+        notifStates.delete(channelId)
+      }
     }
   },
 

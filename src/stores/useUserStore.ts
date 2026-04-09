@@ -18,8 +18,8 @@ interface UserState {
   fetchUsers: () => Promise<void>
   fetchProfile: (id: string) => Promise<void>
   resyncRealtime: (id?: string, options?: { force?: boolean }) => Promise<void>
-  subscribeUsers: () => Promise<() => void>
-  subscribeProfile: (id: string) => Promise<() => void>
+  subscribeUsers: () => (() => void)
+  subscribeProfile: (id: string) => (() => void)
   addUser: (data: CreateUserInput) => Promise<{ success: boolean; error?: string }>
   updateUser: (id: string, data: Partial<User>) => Promise<{ success: boolean; error?: string }>
   removeUser: (id: string) => Promise<void>
@@ -166,7 +166,7 @@ export const useUserStore = create<UserState>()((set, get) => ({
     return resyncPromise
   },
 
-  subscribeUsers: async () => {
+  subscribeUsers: () => {
     const channelId = 'users:list'
     
     // 1. FAST DEDUPLICATION
@@ -175,69 +175,138 @@ export const useUserStore = create<UserState>()((set, get) => ({
       return () => {} // Already active or connecting
     }
 
-    // 2. CLEANUP PREVIOUS IF EXISTS (Awaited)
-    if (existing) {
-      console.log(`♻️ Cleaning up existing channel for ${channelId}...`)
-      await supabase.removeChannel(existing)
-      userChannels.delete(channelId)
-    }
-
-    console.log(`📡 Initializing stable realtime for ${channelId}...`)
-    userStates.set(channelId, 'joining')
-
-    const channel = supabase.channel(channelId)
-    let heartbeatInterval: any = null
-
-    channel
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'profiles' },
-        (payload) => {
-          const { eventType, new: newRec, old: oldRec } = payload
-          const currentUsers = [...get().users]
-          const { profiles } = localDB
-
-          if (eventType === 'INSERT') {
-            const newUser = mapProfileToUser(newRec)
-            set({ users: [...currentUsers, newUser] })
-            profiles.put(newUser)
-          } else if (eventType === 'UPDATE') {
-            const existingUser = currentUsers.find(u => u.id === newRec.id)
-            const updatedUser = mapProfileToUser(newRec, existingUser)
-            
-            set({ users: currentUsers.map(u => u.id === newRec.id ? updatedUser : u) })
-            profiles.put(updatedUser)
-          } else if (eventType === 'DELETE') {
-            set({ users: currentUsers.filter(u => u.id !== oldRec.id) })
-            profiles.delete(oldRec.id)
-          }
-        }
-      )
-
-    userChannels.set(channelId, channel)
-
-    channel.subscribe((status, err) => {
-      if (status === 'SUBSCRIBED') {
-        console.log(`✅ Realtime enabled for ${channelId}`)
-        userStates.set(channelId, 'joined')
-        set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
-      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-        console.warn(`❌ Realtime ${channelId} ${status}:`, err)
-        const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
-        userStates.set(channelId, finalStatus)
-        set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
+    // 2. INTERNAL ASYNC INIT
+    (async () => {
+      if (existing) {
+        console.log(`♻️ Cleaning up existing channel for ${channelId}...`)
+        await supabase.removeChannel(existing)
         userChannels.delete(channelId)
       }
-    })
+
+      console.log(`📡 Initializing stable realtime for ${channelId}...`)
+      userStates.set(channelId, 'joining')
+
+      const channel = supabase.channel(channelId)
+      
+      channel
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'profiles' },
+          (payload) => {
+            const { eventType, new: newRec, old: oldRec } = payload
+            const currentUsers = [...get().users]
+            const { profiles } = localDB
+
+            if (eventType === 'INSERT') {
+              const newUser = mapProfileToUser(newRec)
+              set({ users: [...currentUsers, newUser] })
+              profiles.put(newUser)
+            } else if (eventType === 'UPDATE') {
+              const existingUser = currentUsers.find(u => u.id === newRec.id)
+              const updatedUser = mapProfileToUser(newRec, existingUser)
+              
+              set({ users: currentUsers.map(u => u.id === newRec.id ? updatedUser : u) })
+              profiles.put(updatedUser)
+            } else if (eventType === 'DELETE') {
+              set({ users: currentUsers.filter(u => u.id !== oldRec.id) })
+              profiles.delete(oldRec.id)
+            }
+          }
+        )
+
+      userChannels.set(channelId, channel)
+
+      channel.subscribe((status, err) => {
+        if (status === 'SUBSCRIBED') {
+          console.log(`✅ Realtime enabled for ${channelId}`)
+          userStates.set(channelId, 'joined')
+          set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          console.warn(`❌ Realtime ${channelId} ${status}:`, err)
+          const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
+          userStates.set(channelId, finalStatus)
+          set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
+          userChannels.delete(channelId)
+        }
+      })
+    })()
       
     return () => {
-      supabase.removeChannel(channel)
-      userChannels.delete(channelId)
-      userStates.delete(channelId)
+      const current = userChannels.get(channelId)
+      if (current) {
+        supabase.removeChannel(current).catch(() => {})
+        userChannels.delete(channelId)
+        userStates.delete(channelId)
+      }
     }
   },
 
-  subscribeProfile: async (id: string) => {
+  subscribeProfile: (id: string) => {
+    const channelId = `profile:single:${id}`
+    
+    // 1. FAST DEDUPLICATION
+    const existing = userChannels.get(channelId)
+    if (existing && (userStates.get(channelId) === 'joined' || userStates.get(channelId) === 'joining')) {
+      return () => {} // Already active or connecting
+    }
+
+    // 2. INTERNAL ASYNC INIT
+    (async () => {
+      if (existing) {
+        console.log(`♻️ Cleaning up existing channel for ${channelId}...`)
+        await supabase.removeChannel(existing)
+        userChannels.delete(channelId)
+      }
+
+      console.log(`📡 Initializing stable profile realtime for ${id}...`)
+      userStates.set(channelId, 'joining')
+
+      const channel = supabase.channel(channelId)
+      
+      channel
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${id}` },
+          (payload) => {
+            const existingUsers = get().users
+            const existingUser = existingUsers.find(u => u.id === id)
+            
+            let updatedUser: User = existingUser 
+              ? { ...existingUser, ...payload.new } 
+              : mapProfileToUser(payload.new)
+
+            set(state => ({
+              users: state.users.map(u => u.id === id ? updatedUser : u)
+            }))
+          }
+        )
+
+      userChannels.set(channelId, channel)
+
+      channel.subscribe((status, err) => {
+        if (status === 'SUBSCRIBED') {
+          console.log(`✅ Profile realtime active: ${channelId}`)
+          userStates.set(channelId, 'joined')
+          set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          console.warn(`❌ Profile realtime ${channelId} ${status}:`, err)
+          const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
+          userStates.set(channelId, finalStatus)
+          set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
+          userChannels.delete(channelId)
+        }
+      })
+    })()
+      
+    return () => {
+      const current = userChannels.get(channelId)
+      if (current) {
+        supabase.removeChannel(current).catch(() => {})
+        userChannels.delete(channelId)
+        userStates.delete(channelId)
+      }
+    }
+  },
     const channelId = `profile:single:${id}`
     
     // 1. FAST DEDUPLICATION

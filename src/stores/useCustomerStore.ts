@@ -44,8 +44,8 @@ interface CustomerState {
   realtimeStatus: Record<string, string>
   // Internal lock for resync operations (helps with HMR stability)
   _resyncLock: Promise<void> | null
-  subscribeToRequests: () => Promise<(() => void) | void>
-  subscribeToCustomers: () => Promise<(() => void) | void>
+  subscribeToRequests: () => (() => void)
+  subscribeToCustomers: () => (() => void)
   resyncRealtime: (options?: { force?: boolean }) => Promise<void>
 }
 
@@ -322,7 +322,7 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
     set(state => ({ changeRequests: state.changeRequests.filter(r => r.id !== requestId) }))
   },
 
-  subscribeToRequests: async () => {
+  subscribeToRequests: () => {
     const channelId = 'customer_requests_all'
     
     const currentRef = customerRefs.get(channelId) || 0
@@ -333,53 +333,56 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
       return () => get().unsubscribeFromRequests()
     }
 
-    if (existing) {
-      console.log(`♻️ Cleaning up existing customer requests channel...`)
-      await supabase.removeChannel(existing)
-      customerChannels.delete(channelId)
-    }
+    // INTERNAL ASYNC INIT
+    (async () => {
+      if (existing) {
+        console.log(`♻️ Cleaning up existing customer requests channel...`)
+        await supabase.removeChannel(existing)
+        customerChannels.delete(channelId)
+      }
 
-    console.log(`📡 Joining customer requests channel: ${channelId}`)
-    customerStates.set(channelId, 'joining')
+      console.log(`📡 Joining customer requests channel: ${channelId}`)
+      customerStates.set(channelId, 'joining')
 
-    const channel = supabase
-      .channel(channelId)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'customer_change_requests' },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            const newItem = payload.new as CustomerChangeRequest
-            set((state) => {
-              if (state.changeRequests.some(r => r.id === newItem.id)) return state;
-              return { changeRequests: [newItem, ...state.changeRequests] };
-            })
-          } else if (payload.eventType === 'UPDATE') {
-            set((state) => ({
-              changeRequests: state.changeRequests.map(r => 
-                r.id === payload.new.id ? (payload.new as CustomerChangeRequest) : r
-              )
-            }))
-          } else if (payload.eventType === 'DELETE') {
-            set((state) => ({
-              changeRequests: state.changeRequests.filter(r => r.id !== payload.old.id)
-            }))
+      const channel = supabase
+        .channel(channelId)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'customer_change_requests' },
+          (payload) => {
+            if (payload.eventType === 'INSERT') {
+              const newItem = payload.new as CustomerChangeRequest
+              set((state) => {
+                if (state.changeRequests.some(r => r.id === newItem.id)) return state;
+                return { changeRequests: [newItem, ...state.changeRequests] };
+              })
+            } else if (payload.eventType === 'UPDATE') {
+              set((state) => ({
+                changeRequests: state.changeRequests.map(r => 
+                  r.id === payload.new.id ? (payload.new as CustomerChangeRequest) : r
+                )
+              }))
+            } else if (payload.eventType === 'DELETE') {
+              set((state) => ({
+                changeRequests: state.changeRequests.filter(r => r.id !== payload.old.id)
+              }))
+            }
           }
-        }
-      )
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          customerStates.set(channelId, 'joined')
-          set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-          const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
-          customerStates.set(channelId, finalStatus)
-          set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
-          customerChannels.delete(channelId)
-        }
-      })
+        )
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            customerStates.set(channelId, 'joined')
+            set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+            const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
+            customerStates.set(channelId, finalStatus)
+            set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
+            customerChannels.delete(channelId)
+          }
+        })
 
-    customerChannels.set(channelId, channel)
+      customerChannels.set(channelId, channel)
+    })()
 
     return () => get().unsubscribeFromRequests()
   },
@@ -401,7 +404,7 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
     }
   },
 
-  subscribeToCustomers: async () => {
+  subscribeToCustomers: () => {
     const channelId = 'customers_all'
     
     const currentRef = customerRefs.get(channelId) || 0
@@ -412,57 +415,60 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
       return () => get().unsubscribeFromCustomers()
     }
 
-    if (existing) {
-      console.log(`♻️ Cleaning up existing customers channel...`)
-      await supabase.removeChannel(existing)
-      customerChannels.delete(channelId)
-    }
+    // INTERNAL ASYNC INIT
+    (async () => {
+      if (existing) {
+        console.log(`♻️ Cleaning up existing customers channel...`)
+        await supabase.removeChannel(existing)
+        customerChannels.delete(channelId)
+      }
 
-    console.log(`📡 Joining customers channel: ${channelId}`)
-    customerStates.set(channelId, 'joining')
+      console.log(`📡 Joining customers channel: ${channelId}`)
+      customerStates.set(channelId, 'joining')
 
-    const channel = supabase
-      .channel(channelId)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'customers' },
-        async (payload) => {
-          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-            const customer = payload.new as Customer
-            await upsertCustomerLocal(customer)
-            
-            set((state) => {
-              const exists = state.customers.find(c => c.id === customer.id)
-              if (exists) {
-                return {
-                  customers: state.customers.map(c => c.id === customer.id ? customer : c)
+      const channel = supabase
+        .channel(channelId)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'customers' },
+          async (payload) => {
+            if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+              const customer = payload.new as Customer
+              await upsertCustomerLocal(customer)
+              
+              set((state) => {
+                const exists = state.customers.find(c => c.id === customer.id)
+                if (exists) {
+                  return {
+                    customers: state.customers.map(c => c.id === customer.id ? customer : c)
+                  }
+                } else {
+                  return {
+                    customers: [customer, ...state.customers]
+                  }
                 }
-              } else {
-                return {
-                  customers: [customer, ...state.customers]
-                }
-              }
-            })
-          } else if (payload.eventType === 'DELETE') {
-            set((state) => ({
-              customers: state.customers.filter(c => c.id !== payload.old.id)
-            }))
+              })
+            } else if (payload.eventType === 'DELETE') {
+              set((state) => ({
+                customers: state.customers.filter(c => c.id !== payload.old.id)
+              }))
+            }
           }
-        }
-      )
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          customerStates.set(channelId, 'joined')
-          set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-          const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
-          customerStates.set(channelId, finalStatus)
-          set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
-          customerChannels.delete(channelId)
-        }
-      })
+        )
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            customerStates.set(channelId, 'joined')
+            set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+            const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
+            customerStates.set(channelId, finalStatus)
+            set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
+            customerChannels.delete(channelId)
+          }
+        })
 
-    customerChannels.set(channelId, channel)
+      customerChannels.set(channelId, channel)
+    })()
 
     return () => get().unsubscribeFromCustomers()
   },

@@ -24,7 +24,7 @@ interface SettingsStore extends BusinessSettings {
   updateCourierInstruction: (id: string, instruction: Partial<CourierInstruction>) => void
   deleteCourierInstruction: (id: string) => void
   fetchSettings: () => Promise<void>
-  subscribeSettings: () => Promise<(() => void) | void>
+  subscribeSettings: () => (() => void)
   resyncRealtime: (options?: { force?: boolean }) => Promise<void>
   reset: () => void
   
@@ -75,7 +75,7 @@ export const useSettingsStore = create<SettingsStore>()(
           courier_instructions: data.courier_instructions || DEFAULT_INSTRUCTIONS
         }))
       },
-      subscribeSettings: async () => {
+      subscribeSettings: () => {
         const channelId = 'public:settings'
         
         // 1. FAST DEDUPLICATION
@@ -84,44 +84,48 @@ export const useSettingsStore = create<SettingsStore>()(
           return () => {} // Already active or connecting
         }
 
-        // 2. CLEANUP PREVIOUS IF EXISTS (Awaited)
-        if (existing) {
-          console.log(`♻️ Cleaning up existing settings channel...`)
-          await supabase.removeChannel(existing)
-          settingsChannels.delete(channelId)
-        }
+        // 2. INTERNAL ASYNC INIT
+        (async () => {
+          if (existing) {
+            console.log(`♻️ Cleaning up existing settings channel...`)
+            await supabase.removeChannel(existing)
+            settingsChannels.delete(channelId)
+          }
 
-        const channel = supabase.channel(channelId)
+          const channel = supabase.channel(channelId)
 
+          channel
+            .on(
+              'postgres_changes',
+              { event: '*', schema: 'public', table: 'settings' },
+              () => {
+                (useSettingsStore.getState() as any).fetchSettings()
+              }
+            )
+            .subscribe((status, err) => {
+              if (status === 'SUBSCRIBED') {
+                 console.log(`✅ Settings realtime active: ${channelId}`)
+                 settingsStates.set(channelId, 'joined')
+                 set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
+              } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+                 console.warn(`❌ Settings realtime ${channelId} ${status}:`, err)
+                 const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
+                 settingsStates.set(channelId, finalStatus)
+                 set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
+                 settingsChannels.delete(channelId)
+              }
+            })
 
-        channel
-          .on(
-            'postgres_changes',
-            { event: '*', schema: 'public', table: 'settings' },
-            () => {
-              (useSettingsStore.getState() as any).fetchSettings()
-            }
-          )
-          .subscribe((status, err) => {
-            if (status === 'SUBSCRIBED') {
-               console.log(`✅ Settings realtime active: ${channelId}`)
-               settingsStates.set(channelId, 'joined')
-               set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
-            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-               console.warn(`❌ Settings realtime ${channelId} ${status}:`, err)
-               const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
-               settingsStates.set(channelId, finalStatus)
-               set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
-               settingsChannels.delete(channelId)
-            }
-          })
-
-        settingsChannels.set(channelId, channel)
+          settingsChannels.set(channelId, channel)
+        })()
 
         return () => {
-          supabase.removeChannel(channel)
-          settingsChannels.delete(channelId)
-          settingsStates.delete(channelId)
+          const current = settingsChannels.get(channelId)
+          if (current) {
+            supabase.removeChannel(current).catch(() => {})
+            settingsChannels.delete(channelId)
+            settingsStates.delete(channelId)
+          }
         }
       },
       resyncRealtime: async (options) => {
