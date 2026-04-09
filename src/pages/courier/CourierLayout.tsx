@@ -25,8 +25,8 @@ export function CourierLayout() {
 
   // Consider "LIVE" if the primary courier channel is subscribed
   const courierChannelId = user?.id ? `orders:courier:${user.id}` : 'orders:global';
-  const isOrdersLive = orderRealtimeStatus[courierChannelId] === 'SUBSCRIBED';
-  const isRequestsLive = customerRealtimeStatus['customer_requests_all'] === 'SUBSCRIBED';
+  const isOrdersLive = orderRealtimeStatus[courierChannelId] === 'joined';
+  const isRequestsLive = customerRealtimeStatus['customer_requests_all'] === 'joined';
   
   const isFullyLive = isOrdersLive && isRequestsLive;
 

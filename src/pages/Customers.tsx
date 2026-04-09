@@ -73,14 +73,14 @@ export const Customers: React.FC = () => {
             <Users className="h-8 w-8 text-emerald-600" />
             Manajemen Pelanggan
             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-              realtimeStatus['customer_requests_all'] === 'SUBSCRIBED' 
+              realtimeStatus['customer_requests_all'] === 'joined' 
                 ? 'bg-emerald-100 text-emerald-700' 
                 : 'bg-amber-100 text-amber-700 animate-pulse'
             }`}>
               <div className={`w-1.5 h-1.5 rounded-full ${
-                realtimeStatus['customer_requests_all'] === 'SUBSCRIBED' ? 'bg-emerald-500' : 'bg-amber-500'
+                realtimeStatus['customer_requests_all'] === 'joined' ? 'bg-emerald-500' : 'bg-amber-500'
               }`} />
-              {realtimeStatus['customer_requests_all'] === 'SUBSCRIBED' ? 'LIVE' : 'CONNECTING...'}
+              {realtimeStatus['customer_requests_all'] === 'joined' ? 'LIVE' : 'CONNECTING...'}
             </span>
           </h1>
           <p className="text-gray-500 font-medium mt-1">

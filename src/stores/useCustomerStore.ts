@@ -364,11 +364,13 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
         }
       )
       .subscribe((status) => {
-        set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: status } }))
         if (status === 'SUBSCRIBED') {
           customerStates.set(channelId, 'joined')
+          set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-          customerStates.set(channelId, status === 'CLOSED' ? 'closed' : 'errored')
+          const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
+          customerStates.set(channelId, finalStatus)
+          set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
           customerChannels.delete(channelId)
         }
       })
@@ -444,11 +446,13 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
         }
       )
       .subscribe((status) => {
-        set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: status } }))
         if (status === 'SUBSCRIBED') {
           customerStates.set(channelId, 'joined')
+          set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-          customerStates.set(channelId, status === 'CLOSED' ? 'closed' : 'errored')
+          const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
+          customerStates.set(channelId, finalStatus)
+          set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
           customerChannels.delete(channelId)
         }
       })
