@@ -3,10 +3,6 @@ import { supabase } from '@/lib/supabaseClient'
 import { Customer, CustomerAddress, CustomerChangeRequest } from '@/types'
 import { getAllCustomersLocal, upsertCustomerLocal, saveCustomerSyncTime, getCustomerSyncTime } from '@/lib/orderCache'
 
-// Module-level tracker for active channels with reference counting
-const customerChannels = new Map<string, any>()
-const customerStates = new Map<string, 'joining' | 'joined' | 'errored' | 'closed'>()
-const customerRefs = new Map<string, number>()
 let customerResyncTime = 0
 
 interface CustomerState {
@@ -42,8 +38,10 @@ interface CustomerState {
   
   // Real-time Subscriptions Status
   realtimeStatus: Record<string, string>
-  subscribeToRequests: () => () => void
-  subscribeToCustomers: () => () => void
+  // Internal lock for resync operations (helps with HMR stability)
+  _resyncLock: Promise<void> | null
+  subscribeToRequests: () => Promise<(() => void) | void>
+  subscribeToCustomers: () => Promise<(() => void) | void>
   resyncRealtime: (options?: { force?: boolean }) => Promise<void>
 }
 
@@ -52,6 +50,7 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
   changeRequests: [],
   isLoaded: false,
   realtimeStatus: {},
+  _resyncLock: null,
 
   loadFromLocal: async () => {
     try {
@@ -319,7 +318,7 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
     set(state => ({ changeRequests: state.changeRequests.filter(r => r.id !== requestId) }))
   },
 
-  subscribeToRequests: () => {
+  subscribeToRequests: async () => {
     const channelId = 'customer_requests_all'
     
     const currentRef = customerRefs.get(channelId) || 0
@@ -331,7 +330,8 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
     }
 
     if (existing) {
-      supabase.removeChannel(existing)
+      console.log(`♻️ Cleaning up existing customer requests channel...`)
+      await supabase.removeChannel(existing)
       customerChannels.delete(channelId)
     }
 
@@ -397,7 +397,7 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
     }
   },
 
-  subscribeToCustomers: () => {
+  subscribeToCustomers: async () => {
     const channelId = 'customers_all'
     
     const currentRef = customerRefs.get(channelId) || 0
@@ -409,7 +409,8 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
     }
 
     if (existing) {
-      supabase.removeChannel(existing)
+      console.log(`♻️ Cleaning up existing customers channel...`)
+      await supabase.removeChannel(existing)
       customerChannels.delete(channelId)
     }
 
@@ -480,27 +481,41 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
   },
 
   resyncRealtime: async (options) => {
-    const now = Date.now()
-    if (!options?.force && (now - customerResyncTime < 30000)) return
-    customerResyncTime = now
+    // 1. Operation Lock: Prevent parallel resyncs (HMR friendly)
+    if (get()._resyncLock) {
+      console.log('⏳ Customer store resync already in progress, skipping duplicate call.')
+      return get()._resyncLock as Promise<void>
+    }
 
-    if (options?.force) {
-      console.log('🔄 Forced customers resync triggered...')
-    } else {
-      console.log('🔄 Throttled customers resync triggered...')
-    }
-    
-    await get().syncFromServer()
-    
-    const channels = ['customer_requests_all', 'customers_all']
-    for (const channelName of channels) {
-      const state = customerStates.get(channelName)
-      if (state === 'errored' || state === 'closed' || !customerChannels.has(channelName)) {
-         console.warn(`⚠️ [CustomerStore] Connection dead for ${channelName} (${state})...`)
-         customerChannels.delete(channelName)
-         if (channelName === 'customer_requests_all') get().subscribeToRequests()
-         else get().subscribeToCustomers()
+    const resyncPromise = (async () => {
+      try {
+        const now = Date.now()
+        if (!options?.force && (now - customerResyncTime < 30000)) return
+        customerResyncTime = now
+
+        if (options?.force) {
+          console.log('🔄 Forced customers resync triggered...')
+        } else {
+          console.log('🔄 Throttled customers resync triggered...')
+        }
+        
+        await get().syncFromServer()
+        
+        const channels = ['customer_requests_all', 'customers_all']
+        for (const channelName of channels) {
+          const channelState = customerStates.get(channelName)
+          if (channelState === 'errored' || channelState === 'closed' || !customerChannels.has(channelName)) {
+            console.warn(`⚠️ [CustomerStore] Connection dead for ${channelName} (${channelState})...`)
+            if (channelName === 'customer_requests_all') await get().subscribeToRequests()
+            else await get().subscribeToCustomers()
+          }
+        }
+      } finally {
+        set({ _resyncLock: null })
       }
-    }
+    })()
+
+    set({ _resyncLock: resyncPromise })
+    return resyncPromise
   }
 }))

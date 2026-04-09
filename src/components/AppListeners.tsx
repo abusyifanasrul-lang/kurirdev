@@ -19,24 +19,26 @@ import {
 
 export const AppListeners = () => {
   const { user, logout } = useAuth()
-  const { fetchSettings } = useSettingsStore()
+  const { fetchSettings, subscribeSettings } = useSettingsStore()
   const sessionCheckPromise = useRef<Promise<boolean> | null>(null);
+  const resyncAllLock = useRef<Promise<void> | null>(null);
 
   // 1. Settings listeners (Global)
   useEffect(() => {
     if (user) {
       fetchSettings()
-      const unsub = (useSettingsStore.getState() as any).subscribeSettings()
-      return () => unsub()
+      let cleanup: (() => void) | void
+      subscribeSettings().then(unsub => { cleanup = unsub })
+      return () => { if (cleanup) cleanup() }
     }
-  }, [user?.id])
+  }, [user?.id, fetchSettings, subscribeSettings])
 
     // 1.b Profile specific listener (Force logout if suspended + Real-time sync)
     useEffect(() => {
       if (user) {
-        // subscribeProfile already handles the realtime 'on' listener for profiles
-        const unsubProfile = useUserStore.getState().subscribeProfile(user.id)
-        return () => unsubProfile()
+        let cleanup: (() => void) | void
+        useUserStore.getState().subscribeProfile(user.id).then(unsub => { cleanup = unsub })
+        return () => { if (cleanup) cleanup() }
       }
     }, [user?.id])
 
@@ -63,13 +65,17 @@ export const AppListeners = () => {
     orderStore.fetchInitialOrders(filter)
 
     // 2.b Real-time Subscription
-    const unsubOrders = orderStore.subscribeOrders(filter)
+    let unsubOrders: (() => void) | void
+    orderStore.subscribeOrders(filter).then(unsub => { unsubOrders = unsub })
 
     // 2.c Notifications Subscription
     const notifStore = useNotificationStore.getState()
-    const unsubNotifs = user.role === 'courier' 
-      ? notifStore.subscribeNotifications(user.id)
-      : notifStore.subscribeAllNotifications()
+    let unsubNotifs: (() => void) | void
+    if (user.role === 'courier') {
+      notifStore.subscribeNotifications(user.id).then(unsub => { unsubNotifs = unsub })
+    } else {
+      notifStore.subscribeAllNotifications().then(unsub => { unsubNotifs = unsub })
+    }
 
     // 2.d Integration with FCM for Token Refresh & Foreground Refresh
     let fcmCleanup: { unsubscribe?: any } = {}
@@ -177,8 +183,9 @@ export const AppListeners = () => {
   // 4. Admin-wide Users subscription
   useEffect(() => {
     if (user && user.role !== 'courier') {
-      const unsubUsers = useUserStore.getState().subscribeUsers()
-      return () => unsubUsers()
+      let cleanup: (() => void) | void
+      useUserStore.getState().subscribeUsers().then(unsub => { cleanup = unsub })
+      return () => { if (cleanup) cleanup() }
     }
   }, [user?.id, user?.role])
 
@@ -232,60 +239,74 @@ export const AppListeners = () => {
     }
 
     const resyncAll = async (force: boolean = false) => {
-      // Throttle by 5 seconds to avoid firing multiple times (unless forced)
-      const now = Date.now();
-      if (!force && (now - lastSyncTime < 5000)) {
-        console.log('⏳ Skipping resyncAll (cooldown active)');
-        return;
-      }
-      
-      if (timeoutId) return;
-      timeoutId = setTimeout(() => { timeoutId = null }, 2000);
-      lastSyncTime = now;
-
-      console.log(`🔄 Triggering staggered ${force ? 'FORCED ' : ''}realtime resync...`);
-      
-      const filter = {
-        courierId: user.role === 'courier' ? user.id : undefined,
-        activeOnly: user.role === 'courier'
+      // 1. Operation Lock: Prevent multiple staggered resync waves
+      if (resyncAllLock.current) {
+        console.log('⏳ Global resync already in flight, queuing for next trigger.');
+        return resyncAllLock.current;
       }
 
-      // Step 1: Orders (Highest Priority)
-      await useOrderStore.getState().resyncRealtime(filter, { force })
-      
-      // Step 2: Stagger (500ms)
-      await new Promise(r => setTimeout(r, 500))
+      resyncAllLock.current = (async () => {
+        try {
+          // Throttle by 5 seconds to avoid firing multiple times (unless forced)
+          const now = Date.now();
+          if (!force && (now - lastSyncTime < 5000)) {
+            console.log('⏳ Skipping resyncAll (cooldown active)');
+            return;
+          }
+          
+          if (timeoutId) return;
+          timeoutId = setTimeout(() => { timeoutId = null }, 2000);
+          lastSyncTime = now;
 
-      // Step 3: Users/Profile
-      if (user.role === 'courier') {
-        await useUserStore.getState().resyncRealtime(user.id, { force })
-      } else {
-        await useUserStore.getState().resyncRealtime(undefined, { force })
-      }
+          console.log(`🔄 Triggering staggered ${force ? 'FORCED ' : ''}realtime resync...`);
+          
+          const filter = {
+            courierId: user.role === 'courier' ? user.id : undefined,
+            activeOnly: user.role === 'courier'
+          }
 
-      // Step 4: Stagger (500ms)
-      await new Promise(r => setTimeout(r, 500))
+          // Step 1: Orders (Highest Priority)
+          await useOrderStore.getState().resyncRealtime(filter, { force })
+          
+          // Step 2: Stagger (300ms)
+          await new Promise(r => setTimeout(r, 300))
 
-      // Step 5: Notifications
-      if (user.role === 'courier') {
-        await useNotificationStore.getState().resyncRealtime(user.id, { force })
-      } else {
-        await useNotificationStore.getState().resyncRealtime(undefined, { force })
-      }
+          // Step 3: Users/Profile
+          if (user.role === 'courier') {
+            await useUserStore.getState().resyncRealtime(user.id, { force })
+          } else {
+            await useUserStore.getState().resyncRealtime(undefined, { force })
+          }
 
-      // Step 6: Stagger (500ms)
-      await new Promise(r => setTimeout(r, 500))
+          // Step 4: Stagger (300ms)
+          await new Promise(r => setTimeout(r, 300))
 
-      // Step 7: Customers
-      await useCustomerStore.getState().resyncRealtime({ force })
+          // Step 5: Notifications
+          if (user.role === 'courier') {
+            await useNotificationStore.getState().resyncRealtime(user.id, { force })
+          } else {
+            await useNotificationStore.getState().resyncRealtime(undefined, { force })
+          }
 
-      // Step 8: Stagger (500ms)
-      await new Promise(r => setTimeout(r, 500))
+          // Step 6: Stagger (300ms)
+          await new Promise(r => setTimeout(r, 300))
 
-      // Step 9: Settings
-      await useSettingsStore.getState().resyncRealtime({ force })
+          // Step 7: Customers
+          await useCustomerStore.getState().resyncRealtime({ force })
 
-      console.log(`✅ Staggered ${force ? 'FORCED ' : ''}resync completed`)
+          // Step 8: Stagger (300ms)
+          await new Promise(r => setTimeout(r, 300))
+
+          // Step 9: Settings
+          await useSettingsStore.getState().resyncRealtime({ force })
+
+          console.log(`✅ Staggered ${force ? 'FORCED ' : ''}resync completed`);
+        } finally {
+          resyncAllLock.current = null;
+        }
+      })();
+
+      return resyncAllLock.current;
     }
 
     const handleSyncTrigger = async (source: string) => {

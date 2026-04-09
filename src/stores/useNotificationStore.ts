@@ -3,17 +3,14 @@ import { supabase } from '@/lib/supabaseClient'
 import { Notification } from '@/types'
 import { cacheNotifications, getCachedNotifications, markNotificationReadLocal } from '@/lib/orderCache'
 
-// Module-level tracker for active channels
-const notifChannels = new Map<string, any>()
-const notifStates = new Map<string, 'joining' | 'joined' | 'errored' | 'closed'>()
 let notifResyncTime = 0
 
 interface NotificationState {
   notifications: Notification[]
   isLoading: boolean
 
-  subscribeNotifications: (userId: string) => () => void
-  subscribeAllNotifications: () => () => void
+  subscribeNotifications: (userId: string) => Promise<(() => void) | void>
+  subscribeAllNotifications: () => Promise<(() => void) | void>
   resyncRealtime: (userId?: string, options?: { force?: boolean }) => Promise<void>
   addNotification: (notification: Omit<Notification, 'id' | 'sent_at' | 'is_read'>) => Promise<void>
   markAsRead: (id: string) => Promise<void>
@@ -21,6 +18,8 @@ interface NotificationState {
   getNotificationsByUser: (userId: string) => Notification[]
   reset: () => void
   
+  // Internal lock for resync operations (helps with HMR stability)
+  _resyncLock: Promise<void> | null
   // Real-time Subscriptions Status
   realtimeStatus: Record<string, string>
 }
@@ -29,8 +28,9 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
   notifications: [],
   isLoading: true,
   realtimeStatus: {},
+  _resyncLock: null,
 
-  subscribeNotifications: (userId: string) => {
+  subscribeNotifications: async (userId: string) => {
     // 1. Initial Load from Local Cache (Mirroring)
     getCachedNotifications(userId).then(cached => {
       if (cached.length > 0) {
@@ -60,9 +60,10 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
       return () => {} // Already active or connecting
     }
 
-    // 4. CLEANUP PREVIOUS IF ERRORED
+    // 4. CLEANUP PREVIOUS IF EXISTS (Awaited)
     if (existing) {
-      supabase.removeChannel(existing)
+      console.log(`♻️ Cleaning up existing notification channel for ${userId}...`)
+      await supabase.removeChannel(existing)
       notifChannels.delete(channelId)
     }
 
@@ -126,7 +127,7 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
     }
   },
 
-  subscribeAllNotifications: () => {
+  subscribeAllNotifications: async () => {
     // Admins usually see everything
     supabase.from('notifications')
       .select('*')
@@ -143,9 +144,10 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
       return () => {} // Already active or connecting
     }
 
-    // 2. CLEANUP PREVIOUS IF ERRORED
+    // 2. CLEANUP PREVIOUS IF EXISTS (Awaited)
     if (existing) {
-      supabase.removeChannel(existing)
+      console.log(`♻️ Cleaning up existing admin notification channel...`)
+      await supabase.removeChannel(existing)
       notifChannels.delete(channelId)
     }
 
@@ -209,43 +211,57 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
   },
 
   resyncRealtime: async (userId, options) => {
-    const now = Date.now()
-    if (!options?.force && (now - notifResyncTime < 30000)) {
-      console.log('⏳ Skipping notification resync (cooldown active)')
-      return
-    }
-    notifResyncTime = now
-
-    if (options?.force) {
-      console.log('🔄 Forced notifications resync triggered...')
-    } else {
-      console.log('🔄 Resyncing notifications...')
-    }
-    
-    // 1. Data Gap Fill
-    let query = supabase.from('notifications').select('*')
-    if (userId) {
-      query = query.eq('user_id', userId)
-    }
-    
-    const { data } = await query.order('sent_at', { ascending: false }).limit(50)
-    
-    if (data) {
-      const fetched = data as Notification[]
-      set({ notifications: fetched })
-      if (userId) cacheNotifications(fetched)
+    // 1. Operation Lock: Prevent parallel resyncs (HMR friendly)
+    if (get()._resyncLock) {
+      console.log('⏳ Notification store resync already in progress, skipping duplicate call.')
+      return get()._resyncLock as Promise<void>
     }
 
-    // 2. WebSocket Recovery
-    const channelId = userId ? `notifications:user:${userId}` : 'notifications:all'
-    const state = notifStates.get(channelId)
-    
-    if (state === 'closed' || state === 'errored' || !notifChannels.has(channelId)) {
-      console.warn(`⚠️ [NotificationStore] Connection dead (${state}). Re-subscribing...`)
-      notifChannels.delete(channelId)
-      if (userId) get().subscribeNotifications(userId)
-      else get().subscribeAllNotifications()
-    }
+    const resyncPromise = (async () => {
+      try {
+        const now = Date.now()
+        if (!options?.force && (now - notifResyncTime < 30000)) {
+          console.log('⏳ Skipping notification resync (cooldown active)')
+          return
+        }
+        notifResyncTime = now
+
+        if (options?.force) {
+          console.log('🔄 Forced notifications resync triggered...')
+        } else {
+          console.log('🔄 Resyncing notifications...')
+        }
+        
+        // 1. Data Gap Fill
+        let query = supabase.from('notifications').select('*')
+        if (userId) {
+          query = query.eq('user_id', userId)
+        }
+        
+        const { data } = await query.order('sent_at', { ascending: false }).limit(50)
+        
+        if (data) {
+          const fetched = data as Notification[]
+          set({ notifications: fetched })
+          if (userId) cacheNotifications(fetched)
+        }
+
+        // 2. WebSocket Recovery
+        const channelId = userId ? `notifications:user:${userId}` : 'notifications:all'
+        const channelState = notifStates.get(channelId)
+        
+        if (channelState === 'closed' || channelState === 'errored' || !notifChannels.has(channelId)) {
+          console.warn(`⚠️ [NotificationStore] Connection dead (${channelState}). Re-subscribing...`)
+          if (userId) await get().subscribeNotifications(userId)
+          else await get().subscribeAllNotifications()
+        }
+      } finally {
+        set({ _resyncLock: null })
+      }
+    })()
+
+    set({ _resyncLock: resyncPromise })
+    return resyncPromise
   },
 
   addNotification: async (data: Omit<Notification, 'id' | 'sent_at' | 'is_read'>) => {

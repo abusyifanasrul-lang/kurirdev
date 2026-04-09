@@ -4,9 +4,6 @@ import { supabase } from '@/lib/supabaseClient'
 import { CourierInstruction } from '@/types'
 import { logger } from '@/lib/logger'
 
-// Module-level trackers
-const settingsChannels = new Map<string, any>()
-const settingsStates = new Map<string, 'joining' | 'joined' | 'errored' | 'closed'>()
 let settingsResyncTime = 0
 
 export type { CourierInstruction }
@@ -24,10 +21,12 @@ interface SettingsStore extends BusinessSettings {
   updateCourierInstruction: (id: string, instruction: Partial<CourierInstruction>) => void
   deleteCourierInstruction: (id: string) => void
   fetchSettings: () => Promise<void>
-  subscribeSettings: () => () => void
+  subscribeSettings: () => Promise<(() => void) | void>
   resyncRealtime: (options?: { force?: boolean }) => Promise<void>
   reset: () => void
   
+  // Internal lock for resync operations (helps with HMR stability)
+  _resyncLock: Promise<void> | null
   // Real-time Subscriptions Status
   realtimeStatus: Record<string, string>
 }
@@ -49,6 +48,7 @@ export const useSettingsStore = create<SettingsStore>()(
       operational_area: 'Sengkang, Wajo',
       courier_instructions: DEFAULT_INSTRUCTIONS,
       realtimeStatus: {},
+      _resyncLock: null,
       updateSettings: (data: Partial<BusinessSettings>) => set((state: SettingsStore) => ({ ...state, ...data })),
       addCourierInstruction: (instruction: Omit<CourierInstruction, 'id'>) => set((state: SettingsStore) => ({
         courier_instructions: [...state.courier_instructions, { ...instruction, id: crypto.randomUUID() }]
@@ -72,13 +72,19 @@ export const useSettingsStore = create<SettingsStore>()(
           courier_instructions: data.courier_instructions || DEFAULT_INSTRUCTIONS
         }))
       },
-      subscribeSettings: () => {
+      subscribeSettings: async () => {
         const channelId = 'public:settings'
         
         // 1. FAST DEDUPLICATION
         const existing = settingsChannels.get(channelId)
+        if (existing && (settingsStates.get(channelId) === 'joined' || settingsStates.get(channelId) === 'joining')) {
+          return () => {} // Already active or connecting
+        }
+
+        // 2. CLEANUP PREVIOUS IF EXISTS (Awaited)
         if (existing) {
-          supabase.removeChannel(existing)
+          console.log(`♻️ Cleaning up existing settings channel...`)
+          await supabase.removeChannel(existing)
           settingsChannels.delete(channelId)
         }
 
@@ -116,23 +122,39 @@ export const useSettingsStore = create<SettingsStore>()(
         }
       },
       resyncRealtime: async (options) => {
-        const now = Date.now()
-        if (!options?.force && (now - settingsResyncTime < 30000)) return
-        settingsResyncTime = now
-
-        if (options?.force) {
-          console.log('🔄 Forced settings resync triggered...')
-        } else {
-          console.log('🔄 Throttled settings resync triggered...')
+        // 1. Operation Lock: Prevent parallel resyncs (HMR friendly)
+        if (get()._resyncLock) {
+          console.log('⏳ Settings store resync already in progress, skipping duplicate call.')
+          return get()._resyncLock as Promise<void>
         }
 
-        await get().fetchSettings()
+        const resyncPromise = (async () => {
+          try {
+            const now = Date.now()
+            if (!options?.force && (now - settingsResyncTime < 30000)) return
+            settingsResyncTime = now
 
-        const channelId = 'public:settings'
-        const state = settingsStates.get(channelId)
-        if (state === 'closed' || state === 'errored' || !settingsChannels.has(channelId)) {
-          get().subscribeSettings()
-        }
+            if (options?.force) {
+              console.log('🔄 Forced settings resync triggered...')
+            } else {
+              console.log('🔄 Throttled settings resync triggered...')
+            }
+
+            await get().fetchSettings()
+
+            const channelId = 'public:settings'
+            const channelState = settingsStates.get(channelId)
+            if (channelState === 'closed' || channelState === 'errored' || !settingsChannels.has(channelId)) {
+              console.warn(`⚠️ [SettingsStore] Connection dead (${channelState}). Re-subscribing...`)
+              await get().subscribeSettings()
+            }
+          } finally {
+            set({ _resyncLock: null })
+          }
+        })()
+
+        set({ _resyncLock: resyncPromise })
+        return resyncPromise
       },
       reset: () => set((state: SettingsStore) => ({
         ...state,

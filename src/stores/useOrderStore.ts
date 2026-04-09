@@ -15,9 +15,6 @@ import {
 import { useSettingsStore } from '@/stores/useSettingsStore'
 import { logger } from '@/lib/logger'
 
-// Module-level tracker for active channels to prevent redundant subscriptions
-const orderChannels = new Map<string, any>()
-const orderStates = new Map<string, 'joining' | 'joined' | 'errored' | 'closed'>()
 let orderResyncTime = 0
 
 export interface OrderState {
@@ -35,6 +32,8 @@ export interface OrderState {
   isSyncing: boolean
   currentOrder: Order | null
   fetchActiveOrdersByCourier: (courierId: string) => Promise<void>
+  // Internal lock for resync operations (helps with HMR stability)
+  _resyncLock: Promise<void> | null
   resyncRealtime: (filter?: { courierId?: string; activeOnly?: boolean }, options?: { force?: boolean }) => Promise<void>
   
   isSyncingOrders: Set<string>
@@ -81,6 +80,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   isSyncingOrders: new Set(),
   isSyncing: false,
   realtimeStatus: {},
+  _resyncLock: null,
 
   setSyncing: (orderId, isSyncing) => set((state) => {
     const next = new Set(state.isSyncingOrders)
@@ -157,30 +157,44 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   },
 
   resyncRealtime: async (filter, options) => {
-    // THROTTLE: Only sync once every 30s max to prevent DB hammers (unless forced)
-    const now = Date.now()
-    if (!options?.force && (now - orderResyncTime < 30000)) return
-    orderResyncTime = now
+    // 1. Operation Lock: Prevent parallel resyncs (HMR friendly)
+    if (get()._resyncLock) {
+      console.log('⏳ Order store resync already in progress, skipping duplicate call.')
+      return get()._resyncLock as Promise<void>
+    }
 
-    if (options?.force) {
-      console.log('🔄 Forced orders resync triggered...')
-    } else {
-      console.log('🔄 Throttled orders resync triggered...')
-    }
-    
-    // 1. Gap fill via HTTP
-    await get().fetchInitialOrders(filter)
-    
-    // 2. WebSocket Recovery
-    const { courierId } = filter || {}
-    const channelId = courierId ? `orders:courier:${courierId}` : 'orders:global'
-    const state = orderStates.get(channelId)
-    
-    if (state === 'closed' || state === 'errored' || !orderChannels.has(channelId)) {
-      console.warn(`⚠️ [OrderStore] Connection dead (${state}). Re-subscribing...`)
-      orderChannels.delete(channelId)
-      get().subscribeOrders(filter)
-    }
+    const resyncPromise = (async () => {
+      try {
+        // 2. THROTTLE check (unless forced)
+        const now = Date.now()
+        if (!options?.force && (now - orderResyncTime < 30000)) return
+        orderResyncTime = now
+
+        if (options?.force) {
+          console.log('🔄 Forced orders resync triggered...')
+        } else {
+          console.log('🔄 Throttled orders resync triggered...')
+        }
+        
+        // 3. Gap fill via HTTP
+        await get().fetchInitialOrders(filter)
+        
+        // 4. WebSocket Recovery
+        const { courierId } = filter || {}
+        const channelId = courierId ? `orders:courier:${courierId}` : 'orders:global'
+        const channelState = orderStates.get(channelId)
+        
+        if (channelState === 'closed' || channelState === 'errored' || !orderChannels.has(channelId)) {
+          console.warn(`⚠️ [OrderStore] Connection dead (${channelState}). Re-subscribing...`)
+          await get().subscribeOrders(filter)
+        }
+      } finally {
+        set({ _resyncLock: null })
+      }
+    })()
+
+    set({ _resyncLock: resyncPromise })
+    return resyncPromise
   },
 
   fetchInitialOrders: async (filter) => {
@@ -268,7 +282,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     }
   },
 
-  subscribeOrders: (filter) => {
+  subscribeOrders: async (filter) => {
     const { courierId } = filter || {}
     const channelId = courierId ? `orders:courier:${courierId}` : 'orders:global'
     const filterStr = courierId ? `courier_id=eq.${courierId}` : undefined
@@ -279,9 +293,10 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
       return () => {} // Already active or connecting
     }
 
-    // 2. CLEANUP PREVIOUS IF ERRORED
+    // 2. CLEANUP PREVIOUS IF EXISTS (Awaited)
     if (existing) {
-      supabase.removeChannel(existing)
+      console.log(`♻️ Cleaning up existing channel for ${channelId}...`)
+      await supabase.removeChannel(existing)
       orderChannels.delete(channelId)
     }
 

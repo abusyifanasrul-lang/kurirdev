@@ -3,10 +3,6 @@ import { supabase } from '@/lib/supabaseClient'
 import { User, UserRole, CreateUserInput } from '@/types'
 import { cacheProfiles, getCachedProfiles, saveProfileSyncTime, localDB } from '@/lib/orderCache'
 
-// Module-level tracker for active channels
-// Module-level tracker for active channels
-const userChannels = new Map<string, any>()
-const userStates = new Map<string, 'joining' | 'joined' | 'errored' | 'closed'>()
 let userResyncTime = 0
 
 interface UserState {
@@ -19,13 +15,15 @@ interface UserState {
   fetchUsers: () => Promise<void>
   fetchProfile: (id: string) => Promise<void>
   resyncRealtime: (id?: string, options?: { force?: boolean }) => Promise<void>
-  subscribeUsers: () => () => void
-  subscribeProfile: (id: string) => () => void
+  subscribeUsers: () => Promise<() => void>
+  subscribeProfile: (id: string) => Promise<() => void>
   addUser: (data: CreateUserInput) => Promise<{ success: boolean; error?: string }>
   updateUser: (id: string, data: Partial<User>) => Promise<{ success: boolean; error?: string }>
   removeUser: (id: string) => Promise<void>
   reset: () => void
   
+  // Internal lock for resync operations (helps with HMR stability)
+  _resyncLock: Promise<void> | null
   // Real-time Subscriptions Status
   realtimeStatus: Record<string, string>
 }
@@ -63,6 +61,7 @@ export const useUserStore = create<UserState>()((set, get) => ({
   isLoaded: false,
   error: null,
   realtimeStatus: {},
+  _resyncLock: null,
 
   loadFromLocal: async () => {
     try {
@@ -120,40 +119,51 @@ export const useUserStore = create<UserState>()((set, get) => ({
   },
 
   resyncRealtime: async (id, options) => {
-    // THROTTLE: Only sync once every 30s max (unless forced)
-    const now = Date.now()
-    if (!options?.force && (now - userResyncTime < 30000)) return
-    userResyncTime = now
-
-    if (options?.force) {
-      console.log('🔄 Forced users resync triggered...')
-    } else {
-      console.log('🔄 Throttled users resync triggered...')
+    // 1. Operation Lock: Prevent parallel resyncs (HMR friendly)
+    if (get()._resyncLock) {
+      console.log('⏳ User store resync already in progress, skipping duplicate call.')
+      return get()._resyncLock as Promise<void>
     }
-    try {
-      // 1. Data gap fill
-      if (id) {
-        await get().fetchProfile(id)
-      } else {
-        await get().fetchUsers()
-      }
 
-      // 2. WebSocket recovery
-      const channelId = id ? `profile:single:${id}` : 'users:list'
-      const state = userStates.get(channelId)
-      
-      if (state === 'closed' || state === 'errored' || !userChannels.has(channelId)) {
-        console.warn(`⚠️ [UserStore] Connection dead (${state}). Re-subscribing...`)
-        userChannels.delete(channelId)
-        if (id) get().subscribeProfile(id)
-        else get().subscribeUsers()
+    const resyncPromise = (async () => {
+      try {
+        // 2. THROTTLE check (unless forced)
+        const now = Date.now()
+        if (!options?.force && (now - userResyncTime < 30000)) return
+        userResyncTime = now
+
+        if (options?.force) {
+          console.log('🔄 Forced users resync triggered...')
+        } else {
+          console.log('🔄 Throttled users resync triggered...')
+        }
+        
+        // 3. Data gap fill
+        if (id) {
+          await get().fetchProfile(id)
+        } else {
+          await get().fetchUsers()
+        }
+
+        // 4. WebSocket recovery
+        const channelId = id ? `profile:single:${id}` : 'users:list'
+        const channelState = userStates.get(channelId)
+        
+        if (channelState === 'closed' || channelState === 'errored' || !userChannels.has(channelId)) {
+          console.warn(`⚠️ [UserStore] Connection dead (${channelState}). Re-subscribing...`)
+          if (id) await get().subscribeProfile(id)
+          else await get().subscribeUsers()
+        }
+      } finally {
+        set({ _resyncLock: null })
       }
-    } catch(err) {
-      console.error('[resyncRealtime_user] Failed to fetch data', err)
-    }
+    })()
+
+    set({ _resyncLock: resyncPromise })
+    return resyncPromise
   },
 
-  subscribeUsers: () => {
+  subscribeUsers: async () => {
     const channelId = 'users:list'
     
     // 1. FAST DEDUPLICATION
@@ -162,9 +172,10 @@ export const useUserStore = create<UserState>()((set, get) => ({
       return () => {} // Already active or connecting
     }
 
-    // 2. CLEANUP PREVIOUS IF ERRORED
+    // 2. CLEANUP PREVIOUS IF EXISTS (Awaited)
     if (existing) {
-      supabase.removeChannel(existing)
+      console.log(`♻️ Cleaning up existing channel for ${channelId}...`)
+      await supabase.removeChannel(existing)
       userChannels.delete(channelId)
     }
 
@@ -223,7 +234,7 @@ export const useUserStore = create<UserState>()((set, get) => ({
     }
   },
 
-  subscribeProfile: (id: string) => {
+  subscribeProfile: async (id: string) => {
     const channelId = `profile:single:${id}`
     
     // 1. FAST DEDUPLICATION
@@ -232,9 +243,10 @@ export const useUserStore = create<UserState>()((set, get) => ({
       return () => {} // Already active or connecting
     }
 
-    // 2. CLEANUP PREVIOUS IF ERRORED
+    // 2. CLEANUP PREVIOUS IF EXISTS (Awaited)
     if (existing) {
-      supabase.removeChannel(existing)
+      console.log(`♻️ Cleaning up existing profile channel for ${id}...`)
+      await supabase.removeChannel(existing)
       userChannels.delete(channelId)
     }
 
