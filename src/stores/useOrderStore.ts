@@ -36,6 +36,10 @@ export interface OrderState {
   fetchActiveOrdersByCourier: (courierId: string) => Promise<void>
   resyncRealtime: (filter?: { courierId?: string; activeOnly?: boolean }) => Promise<void>
   
+  isSyncingOrders: Set<string>
+  setSyncing: (orderId: string, isSyncing: boolean) => void
+  reset: () => void
+
   // Realtime "oneSnapshot" pattern
   fetchInitialOrders: (filter?: { courierId?: string; activeOnly?: boolean }) => Promise<void>
   subscribeOrders: (filter?: { courierId?: string; activeOnly?: boolean }) => () => void
@@ -58,10 +62,6 @@ export interface OrderState {
   
   setOrders: (orders: Order[]) => void
   setActiveOrdersByCourier: (orders: Order[]) => void
-  isSyncingOrders: Set<string>
-  setSyncing: (orderId: string, isSyncing: boolean) => void
-  reset: () => void
-  realtimeStatus: Record<string, string>
 }
 
 export const useOrderStore = create<OrderState>()((set, get) => ({
@@ -76,7 +76,6 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   currentOrder: null,
   isSyncingOrders: new Set(),
   isSyncing: false,
-  realtimeStatus: {},
 
   setSyncing: (orderId, isSyncing) => set((state) => {
     const next = new Set(state.isSyncingOrders)
@@ -153,49 +152,13 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   },
 
   resyncRealtime: async (filter) => {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
-      console.warn('[useOrderStore] Aborting resyncRealtime: No active session')
-      return
-    }
+    // THROTTLE: Only sync once every 30s max to prevent DB hammers
+    const now = Date.now()
+    if (now - (useOrderStore as any)._lastSync < 30000) return
+    ;(useOrderStore as any)._lastSync = now
 
-    const { courierId } = filter || {}
-    
-    // 1. Force fetch active orders to patch gap based on visibility/focus
-    try {
-      if (courierId) {
-        await get().fetchActiveOrdersByCourier(courierId)
-      } else {
-        const activeStatuses = ['pending', 'assigned', 'picked_up', 'in_transit']
-        const { data } = await supabase.from('orders')
-          .select('*')
-          .in('status', activeStatuses)
-          .order('created_at', { ascending: false })
-        if (data) {
-          set({ activeOrdersByCourier: data as Order[] })
-        }
-      }
-    } catch(err) {
-      console.error('[resyncRealtime] Failed to patch data', err)
-    }
-
-    // 2. Check channel state and self-heal if necessary
-    const channelId = courierId ? `orders:courier:${courierId}` : 'orders:global'
-
-    
-    const currentState = channelStates.get(channelId)
-    if (!currentState || currentState === 'errored' || currentState === 'closed') {
-      console.warn(`[useOrderStore] Channel ${channelId} dead (state: ${currentState}). Resyncing...`)
-      const existing = activeChannels.get(channelId)
-      if (existing) supabase.removeChannel(existing)
-      activeChannels.delete(channelId)
-      channelStates.delete(channelId)
-      
-      // Give it a brief delay before subscribing again to allow cleanup
-      setTimeout(() => {
-        get().subscribeOrders(filter)
-      }, 500)
-    }
+    console.log('🔄 Throttled orders resync triggered...')
+    await get().fetchInitialOrders(filter)
   },
 
   fetchInitialOrders: async (filter) => {
@@ -285,27 +248,23 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
 
   subscribeOrders: (filter) => {
     const { courierId } = filter || {}
-    
-    // 1. UNIQUE CHANNEL IDENTIFIER
-    // Adding a timestamp or random string ensures we don't clash with stale server-side channels
-    const instanceId = Date.now()
-    const channelBaseName = courierId ? `orders:courier:${courierId}` : 'orders:global'
-    const channelId = `${channelBaseName}:${instanceId}`
+    const channelId = courierId ? `orders:courier:${courierId}` : 'orders:global'
     const filterStr = courierId ? `courier_id=eq.${courierId}` : undefined
 
-    // 2. Singleton Cleanup
-    // We clean up ANY channel starting with the base name to ensure only one instance is active
-    activeChannels.forEach((ch, key) => {
-      if (key.startsWith(channelBaseName)) {
-        console.log(`📡 Cleaning up overlapping channel ${key}...`)
-        supabase.removeChannel(ch)
-        activeChannels.delete(key)
-        channelStates.delete(key)
-      }
-    })
+    // 1. FAST DEDUPLICATION
+    const existing = activeChannels.get(channelId)
+    if (existing && (channelStates.get(channelId) === 'joined' || channelStates.get(channelId) === 'joining')) {
+      return () => {} // Already active or connecting
+    }
 
+    // 2. CLEANUP PREVIOUS IF ERRORED
+    if (existing) {
+      supabase.removeChannel(existing)
+      activeChannels.delete(channelId)
+    }
+
+    console.log(`📡 Initializing stable realtime for ${channelId}...`)
     channelStates.set(channelId, 'joining')
-    console.log(`📡 Initializing realtime for ${channelId}...`)
 
     const channelConfig: any = { event: '*', schema: 'public', table: 'orders' }
     if (filterStr) channelConfig.filter = filterStr
@@ -402,52 +361,30 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     activeChannels.set(channelId, channel)
 
     channel.subscribe((status, err) => {
-        if (status === 'SUBSCRIBED') {
-          console.log(`✅ Realtime subscription active for ${channelId}`)
-          channelStates.set(channelId, 'joined')
-          set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelBaseName]: 'SUBSCRIBED' } }))
-
-          // 3. HEARTBEAT/KEEPALIVE
-          // Send a broadcast every 30s to keep the WebSocket active
-          if (heartbeatInterval) clearInterval(heartbeatInterval)
-          heartbeatInterval = setInterval(() => {
+      if (status === 'SUBSCRIBED') {
+        console.log(`✅ Realtime subscription active for ${channelId}`)
+        channelStates.set(channelId, 'joined')
+        
+        // 3. HEARTBEAT/KEEPALIVE (Optimized)
+        if (heartbeatInterval) clearInterval(heartbeatInterval)
+        heartbeatInterval = setInterval(() => {
+          if (document.visibilityState === 'visible') {
             channel.send({
               type: 'broadcast',
               event: 'heartbeat',
               payload: { t: Date.now() }
             })
-          }, 30000)
-
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-          console.error(`❌ Realtime connection ${status} for ${channelId}:`, err)
-          channelStates.set(channelId, 'errored')
-          if (heartbeatInterval) clearInterval(heartbeatInterval)
-          
-          set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelBaseName]: status } }))
-
-          // 4. ROBUST AUTO-RECONNECT
-          // Only attempt if this is still the "active" channel for this store
-          const currentChannel = activeChannels.get(channelId)
-          if (currentChannel) {
-             console.log(`♻️ Auto-reconnecting channel ${channelBaseName}...`)
-             supabase.removeChannel(currentChannel)
-             activeChannels.delete(channelId)
-             channelStates.delete(channelId)
-             
-             // Dynamic delay to avoid hammering the server
-             const delay = status === 'TIMED_OUT' ? 2000 : 5000
-             setTimeout(() => {
-               // Verify we still need to subscribe (component might have unmounted)
-               // This check is a bit tricky with zustand, but by checking if the 
-               // channelId is no longer in activeChannels we can avoid ghosts.
-               get().subscribeOrders(filter)
-             }, delay)
           }
-        }
-      })
+        }, 60000) // 60s is enough to keep most proxies alive
+
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        console.warn(`❌ Realtime ${channelId} ${status}:`, err)
+        channelStates.set(channelId, 'errored')
+        if (heartbeatInterval) clearInterval(heartbeatInterval)
+      }
+    })
 
     return () => {
-      console.log(`🔌 Removing realtime channel: ${channelId}`)
       if (heartbeatInterval) clearInterval(heartbeatInterval)
       supabase.removeChannel(channel)
       activeChannels.delete(channelId)

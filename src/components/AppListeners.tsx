@@ -255,8 +255,10 @@ export const AppListeners = () => {
       
       if (user.role === 'courier') {
         useUserStore.getState().resyncRealtime(user.id)
+        useNotificationStore.getState().resyncRealtime(user.id)
       } else {
         useUserStore.getState().resyncRealtime()
+        useNotificationStore.getState().resyncRealtime()
       }
     }
 

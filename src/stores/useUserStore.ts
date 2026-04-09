@@ -115,13 +115,12 @@ export const useUserStore = create<UserState>()((set, get) => ({
   },
 
   resyncRealtime: async (id) => {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
-      console.warn('[useUserStore] Aborting resyncRealtime: No active session')
-      return
-    }
+    // THROTTLE: Only sync once every 30s max
+    const now = Date.now()
+    if (now - (useUserStore as any)._lastSync < 30000) return
+    ;(useUserStore as any)._lastSync = now
 
-    // 1. Force fetch data
+    console.log('🔄 Throttled users resync triggered...')
     try {
       if (id) {
         await get().fetchProfile(id)
@@ -129,49 +128,31 @@ export const useUserStore = create<UserState>()((set, get) => ({
         await get().fetchUsers()
       }
     } catch(err) {
-      console.error('[resyncRealtime_user] Failed to patch data', err)
-    }
-    
-    // 2. Check channel state and self-heal if necessary
-    const channelId = id ? `profile:single:${id}` : 'users:list'
-    const currentState = channelStates.get(channelId)
-    
-    if (!currentState || currentState === 'errored' || currentState === 'closed') {
-      console.warn(`[useUserStore] Channel ${channelId} dead (state: ${currentState}). Resyncing...`)
-      const existing = activeChannels.get(channelId)
-      if (existing) supabase.removeChannel(existing)
-      activeChannels.delete(channelId)
-      channelStates.delete(channelId)
-      
-      setTimeout(() => {
-        if (id) {
-          get().subscribeProfile(id)
-        } else {
-          get().subscribeUsers()
-        }
-      }, 500)
+      console.error('[resyncRealtime_user] Failed to fetch data', err)
     }
   },
 
   subscribeUsers: () => {
-    const instanceId = Date.now()
-    const channelBaseName = 'users:list'
-    const channelId = `${channelBaseName}:${instanceId}`
+    const channelId = 'users:list'
     
-    // 1. Singleton pattern: cleanup ANY channel starting with the base name
-    activeChannels.forEach((ch, key) => {
-      if (key.startsWith(channelBaseName)) {
-        console.log(`📡 Cleaning up overlapping channel ${key}...`)
-        supabase.removeChannel(ch)
-        activeChannels.delete(key)
-        channelStates.delete(key)
-      }
-    })
+    // 1. FAST DEDUPLICATION
+    const existing = activeChannels.get(channelId)
+    if (existing && (channelStates.get(channelId) === 'joined' || channelStates.get(channelId) === 'joining')) {
+      return () => {} // Already active or connecting
+    }
+
+    // 2. CLEANUP PREVIOUS IF ERRORED
+    if (existing) {
+      supabase.removeChannel(existing)
+      activeChannels.delete(channelId)
+    }
+
+    console.log(`📡 Initializing stable realtime for ${channelId}...`)
+    channelStates.set(channelId, 'joining')
 
     const channel = supabase.channel(channelId)
     let heartbeatInterval: any = null
 
-    // IMPORTANT: Register before subscribe
     channel
       .on(
         'postgres_changes',
@@ -191,10 +172,6 @@ export const useUserStore = create<UserState>()((set, get) => ({
             
             set({ users: currentUsers.map(u => u.id === newRec.id ? updatedUser : u) })
             profiles.put(updatedUser)
-            
-            if (newRec.courier_status || newRec.is_online !== undefined) {
-              console.log(`✅ Courier ${updatedUser.name} status updated: ${updatedUser.is_online ? 'Online' : 'Offline'} (${updatedUser.courier_status})`)
-            }
           } else if (eventType === 'DELETE') {
             set({ users: currentUsers.filter(u => u.id !== oldRec.id) })
             profiles.delete(oldRec.id)
@@ -202,47 +179,28 @@ export const useUserStore = create<UserState>()((set, get) => ({
         }
       )
 
-    // Set map BEFORE subscribe to lock other callers
     activeChannels.set(channelId, channel)
 
     channel.subscribe((status, err) => {
       if (status === 'SUBSCRIBED') {
-        console.log(`✅ Realtime connection active: ${channelId}. Syncing state...`)
+        console.log(`✅ Realtime enabled for ${channelId}`)
         channelStates.set(channelId, 'joined')
-        get().fetchUsers()
-
-        // 2. HEARTBEAT
+        
+        // HEARTBEAT
         if (heartbeatInterval) clearInterval(heartbeatInterval)
         heartbeatInterval = setInterval(() => {
-          channel.send({
-            type: 'broadcast',
-            event: 'heartbeat',
-            payload: { t: Date.now() }
-          })
-        }, 30000)
-
+          if (document.visibilityState === 'visible') {
+            channel.send({ type: 'broadcast', event: 'heartbeat', payload: { t: Date.now() } })
+          }
+        }, 60000)
       } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-        console.error(`❌ Realtime subscription ${status} for ${channelId}:`, err)
+        console.warn(`❌ Realtime ${channelId} ${status}:`, err)
         channelStates.set(channelId, 'errored')
         if (heartbeatInterval) clearInterval(heartbeatInterval)
-        
-        // 3. Self-healing
-        const currentChannel = activeChannels.get(channelId)
-        if (currentChannel) {
-          console.log(`♻️ Auto-reconnecting channel ${channelBaseName}...`)
-          supabase.removeChannel(currentChannel)
-          activeChannels.delete(channelId)
-          channelStates.delete(channelId)
-          
-          setTimeout(() => {
-            get().subscribeUsers()
-          }, status === 'TIMED_OUT' ? 2000 : 5000)
-        }
       }
     })
       
     return () => {
-      console.log(`🧼 Cleaning up channel: ${channelId}`)
       if (heartbeatInterval) clearInterval(heartbeatInterval)
       supabase.removeChannel(channel)
       activeChannels.delete(channelId)
@@ -251,24 +209,26 @@ export const useUserStore = create<UserState>()((set, get) => ({
   },
 
   subscribeProfile: (id: string) => {
-    const instanceId = Date.now()
-    const channelBaseName = `profile:single:${id}`
-    const channelId = `${channelBaseName}:${instanceId}`
+    const channelId = `profile:single:${id}`
     
-    // 1. Singleton pattern: cleanup overlapping
-    activeChannels.forEach((ch, key) => {
-      if (key.startsWith(channelBaseName)) {
-        console.log(`📡 Cleaning up overlapping profile channel ${key}...`)
-        supabase.removeChannel(ch)
-        activeChannels.delete(key)
-        channelStates.delete(key)
-      }
-    })
+    // 1. FAST DEDUPLICATION
+    const existing = activeChannels.get(channelId)
+    if (existing && (channelStates.get(channelId) === 'joined' || channelStates.get(channelId) === 'joining')) {
+      return () => {} // Already active or connecting
+    }
+
+    // 2. CLEANUP PREVIOUS IF ERRORED
+    if (existing) {
+      supabase.removeChannel(existing)
+      activeChannels.delete(channelId)
+    }
+
+    console.log(`📡 Initializing stable profile realtime for ${id}...`)
+    channelStates.set(channelId, 'joining')
 
     const channel = supabase.channel(channelId)
     let heartbeatInterval: any = null
     
-    // IMPORTANT: Setup listeners BEFORE subscribe
     channel
       .on(
         'postgres_changes',
@@ -277,18 +237,9 @@ export const useUserStore = create<UserState>()((set, get) => ({
           const existingUsers = get().users
           const existingUser = existingUsers.find(u => u.id === id)
           
-          let updatedUser: User
-          if (existingUser) {
-             // Merge partial update and deep clone for safety
-             updatedUser = JSON.parse(JSON.stringify(existingUser))
-             Object.keys(payload.new).forEach(key => {
-               if (payload.new[key] !== undefined) {
-                  (updatedUser as any)[key] = payload.new[key]
-               }
-             })
-          } else {
-             updatedUser = mapProfileToUser(payload.new)
-          }
+          let updatedUser: User = existingUser 
+            ? { ...existingUser, ...payload.new } 
+            : mapProfileToUser(payload.new)
 
           set(state => ({
             users: state.users.map(u => u.id === id ? updatedUser : u)
@@ -296,41 +247,24 @@ export const useUserStore = create<UserState>()((set, get) => ({
         }
       )
 
-    // Set map BEFORE subscribe to lock other callers
     activeChannels.set(channelId, channel)
 
     channel.subscribe((status, err) => {
       if (status === 'SUBSCRIBED') {
-        console.log(`✅ Realtime profile sync active: ${channelId}`)
+        console.log(`✅ Profile realtime active: ${channelId}`)
         channelStates.set(channelId, 'joined')
-        get().fetchProfile(id)
-
-        // 2. HEARTBEAT
+        
+        // HEARTBEAT
         if (heartbeatInterval) clearInterval(heartbeatInterval)
         heartbeatInterval = setInterval(() => {
-          channel.send({
-            type: 'broadcast',
-            event: 'heartbeat',
-            payload: { t: Date.now() }
-          })
-        }, 30000)
-
+          if (document.visibilityState === 'visible') {
+            channel.send({ type: 'broadcast', event: 'heartbeat', payload: { t: Date.now() } })
+          }
+        }, 60000)
       } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-        console.error(`❌ Realtime profile ${status} for ${channelId}:`, err)
+        console.warn(`❌ Profile realtime ${channelId} ${status}:`, err)
         channelStates.set(channelId, 'errored')
         if (heartbeatInterval) clearInterval(heartbeatInterval)
-        
-        const currentChannel = activeChannels.get(channelId)
-        if (currentChannel) {
-           console.log(`♻️ Auto-reconnecting profile channel ${channelBaseName}...`)
-           supabase.removeChannel(currentChannel)
-           activeChannels.delete(channelId)
-           channelStates.delete(channelId)
-           
-           setTimeout(() => {
-              get().subscribeProfile(id)
-           }, status === 'TIMED_OUT' ? 2000 : 5000)
-        }
       }
     })
       

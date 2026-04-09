@@ -62,10 +62,15 @@ export const useSettingsStore = create<SettingsStore>()(
         }))
       },
       subscribeSettings: () => {
-        const instanceId = Date.now()
-        const channelBaseName = 'public:settings'
-        const channelId = `${channelBaseName}:${instanceId}`
+        const channelId = 'public:settings'
         
+        // 1. FAST DEDUPLICATION
+        const existing = activeChannels.get(channelId)
+        if (existing) {
+          supabase.removeChannel(existing)
+          activeChannels.delete(channelId)
+        }
+
         const channel = supabase.channel(channelId)
         let heartbeatInterval: any = null
 
@@ -80,28 +85,25 @@ export const useSettingsStore = create<SettingsStore>()(
           .subscribe((status, err) => {
             if (status === 'SUBSCRIBED') {
                console.log(`✅ Settings realtime active: ${channelId}`)
-               // Heartbeat
+               // HEARTBEAT
                if (heartbeatInterval) clearInterval(heartbeatInterval)
                heartbeatInterval = setInterval(() => {
-                 channel.send({
-                   type: 'broadcast',
-                   event: 'heartbeat',
-                   payload: { t: Date.now() }
-                 })
-               }, 30000)
+                 if (document.visibilityState === 'visible') {
+                   channel.send({ type: 'broadcast', event: 'heartbeat', payload: { t: Date.now() } })
+                 }
+               }, 60000)
             } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-               console.error(`❌ Settings realtime ${status} for ${channelId}:`, err)
+               console.warn(`❌ Settings realtime ${channelId} ${status}:`, err)
                if (heartbeatInterval) clearInterval(heartbeatInterval)
-               
-               // Auto-reconnect
-               setTimeout(() => {
-                 (useSettingsStore.getState() as any).subscribeSettings()
-               }, status === 'TIMED_OUT' ? 2000 : 5000)
             }
           })
+
+        activeChannels.set(channelId, channel)
+
         return () => {
           if (heartbeatInterval) clearInterval(heartbeatInterval)
           supabase.removeChannel(channel)
+          activeChannels.delete(channelId)
         }
       },
       reset: () => set((state: SettingsStore) => ({

@@ -5,6 +5,8 @@ import { cacheNotifications, getCachedNotifications, markNotificationReadLocal }
 
 // Module-level tracker for active channels
 const activeChannels = new Map<string, any>()
+const channelStates = new Map<string, 'joining' | 'joined' | 'errored'>()
+let lastResyncTime = 0
 
 interface NotificationState {
   notifications: Notification[]
@@ -12,6 +14,7 @@ interface NotificationState {
 
   subscribeNotifications: (userId: string) => () => void
   subscribeAllNotifications: () => () => void
+  resyncRealtime: (userId?: string) => Promise<void>
   addNotification: (notification: Omit<Notification, 'id' | 'sent_at' | 'is_read'>) => Promise<void>
   markAsRead: (id: string) => Promise<void>
   markAllAsRead: (userId: string) => Promise<void>
@@ -41,23 +44,26 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
         if (data) {
           const fetched = data as Notification[]
           set({ notifications: fetched, isLoading: false })
-          // 3. Update Mirror
           cacheNotifications(fetched)
         }
       })
 
-    const instanceId = Date.now()
-    const channelBaseName = `notifications:user:${userId}`
-    const channelId = `${channelBaseName}:${instanceId}`
+    const channelId = `notifications:user:${userId}`
     
-    // Cleanup overlapping
-    activeChannels.forEach((ch, key) => {
-      if (key.startsWith(channelBaseName)) {
-        console.log(`📡 Cleaning up overlapping notification channel ${key}...`)
-        supabase.removeChannel(ch)
-        activeChannels.delete(key)
-      }
-    })
+    // 3. FAST DEDUPLICATION
+    const existing = activeChannels.get(channelId)
+    if (existing && (channelStates.get(channelId) === 'joined' || channelStates.get(channelId) === 'joining')) {
+      return () => {} // Already active or connecting
+    }
+
+    // 4. CLEANUP PREVIOUS IF ERRORED
+    if (existing) {
+      supabase.removeChannel(existing)
+      activeChannels.delete(channelId)
+    }
+
+    console.log(`📡 Initializing stable notifications for ${userId}...`)
+    channelStates.set(channelId, 'joining')
 
     const channel = supabase.channel(channelId)
     let heartbeatInterval: any = null
@@ -96,33 +102,20 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
 
     channel.subscribe((status, err) => {
       if (status === 'SUBSCRIBED') {
-        console.log(`✅ Realtime subscription active for ${channelId}`)
-        activeChannels.set(channelId, channel)
+        console.log(`✅ Realtime notifications active for ${channelId}`)
+        channelStates.set(channelId, 'joined')
 
         // HEARTBEAT
         if (heartbeatInterval) clearInterval(heartbeatInterval)
         heartbeatInterval = setInterval(() => {
-          channel.send({
-            type: 'broadcast',
-            event: 'heartbeat',
-            payload: { t: Date.now() }
-          })
-        }, 30000)
-
+          if (document.visibilityState === 'visible') {
+            channel.send({ type: 'broadcast', event: 'heartbeat', payload: { t: Date.now() } })
+          }
+        }, 60000)
       } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-        console.error(`❌ Realtime notifications ${status} for ${channelId}:`, err)
+        console.warn(`❌ Realtime notifications ${channelId} ${status}:`, err)
+        channelStates.set(channelId, 'errored')
         if (heartbeatInterval) clearInterval(heartbeatInterval)
-        
-        const currentChannel = activeChannels.get(channelId)
-        if (currentChannel) {
-          console.log(`♻️ Auto-reconnecting notification channel ${channelBaseName}...`)
-          supabase.removeChannel(currentChannel)
-          activeChannels.delete(channelId)
-          
-          setTimeout(() => {
-            get().subscribeNotifications(userId)
-          }, status === 'TIMED_OUT' ? 2000 : 5000)
-        }
       }
     })
 
@@ -130,6 +123,7 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
       if (heartbeatInterval) clearInterval(heartbeatInterval)
       supabase.removeChannel(channel)
       activeChannels.delete(channelId)
+      channelStates.delete(channelId)
     }
   },
 
@@ -142,18 +136,22 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
         if (data) set({ notifications: data as Notification[], isLoading: false })
       })
 
-    const instanceId = Date.now()
-    const channelBaseName = 'notifications:all'
-    const channelId = `${channelBaseName}:${instanceId}`
+    const channelId = 'notifications:all'
     
-    // Cleanup overlapping
-    activeChannels.forEach((ch, key) => {
-      if (key.startsWith(channelBaseName)) {
-        console.log(`📡 Cleaning up overlapping admin notification channel ${key}...`)
-        supabase.removeChannel(ch)
-        activeChannels.delete(key)
-      }
-    })
+    // 1. FAST DEDUPLICATION
+    const existing = activeChannels.get(channelId)
+    if (existing && (channelStates.get(channelId) === 'joined' || channelStates.get(channelId) === 'joining')) {
+      return () => {} // Already active or connecting
+    }
+
+    // 2. CLEANUP PREVIOUS IF ERRORED
+    if (existing) {
+      supabase.removeChannel(existing)
+      activeChannels.delete(channelId)
+    }
+
+    console.log(`📡 Initializing stable admin notifications...`)
+    channelStates.set(channelId, 'joining')
 
     const channel = supabase.channel(channelId)
     let heartbeatInterval: any = null
@@ -192,33 +190,20 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
 
     channel.subscribe((status, err) => {
       if (status === 'SUBSCRIBED') {
-        console.log(`✅ Realtime subscription active for ${channelId}`)
-        activeChannels.set(channelId, channel)
+        console.log(`✅ Admin notifications active: ${channelId}`)
+        channelStates.set(channelId, 'joined')
 
         // HEARTBEAT
         if (heartbeatInterval) clearInterval(heartbeatInterval)
         heartbeatInterval = setInterval(() => {
-          channel.send({
-            type: 'broadcast',
-            event: 'heartbeat',
-            payload: { t: Date.now() }
-          })
-        }, 30000)
-
+          if (document.visibilityState === 'visible') {
+            channel.send({ type: 'broadcast', event: 'heartbeat', payload: { t: Date.now() } })
+          }
+        }, 60000)
       } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-        console.error(`❌ Realtime admin notifications ${status} for ${channelId}:`, err)
+        console.warn(`❌ Admin notifications ${channelId} ${status}:`, err)
+        channelStates.set(channelId, 'errored')
         if (heartbeatInterval) clearInterval(heartbeatInterval)
-        
-        const currentChannel = activeChannels.get(channelId)
-        if (currentChannel) {
-          console.log(`♻️ Auto-reconnecting admin notification channel ${channelBaseName}...`)
-          supabase.removeChannel(currentChannel)
-          activeChannels.delete(channelId)
-          
-          setTimeout(() => {
-            get().subscribeAllNotifications()
-          }, status === 'TIMED_OUT' ? 2000 : 5000)
-        }
       }
     })
 
@@ -226,6 +211,31 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
       if (heartbeatInterval) clearInterval(heartbeatInterval)
       supabase.removeChannel(channel)
       activeChannels.delete(channelId)
+      channelStates.delete(channelId)
+    }
+  },
+
+  resyncRealtime: async (userId?: string) => {
+    const now = Date.now()
+    if (now - lastResyncTime < 30000) {
+      console.log('⏳ Skipping notification resync (cooldown active)')
+      return
+    }
+    lastResyncTime = now
+
+    console.log('🔄 Resyncing notifications...')
+    
+    let query = supabase.from('notifications').select('*')
+    if (userId) {
+      query = query.eq('user_id', userId)
+    }
+    
+    const { data } = await query.order('sent_at', { ascending: false }).limit(50)
+    
+    if (data) {
+      const fetched = data as Notification[]
+      set({ notifications: fetched })
+      if (userId) cacheNotifications(fetched)
     }
   },
 
