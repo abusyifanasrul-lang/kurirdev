@@ -12,7 +12,7 @@ interface BulkSettleModalProps {
   unpaidOrders: Order[];
   updateOrder: (id: string, data: Partial<Order>) => Promise<void>;
   markAsPaidInLocalDB: (id: string) => Promise<void>;
-  getOrdersForWeek: () => Promise<Order[]>;
+  getInitialOrders: () => Promise<Order[]>;
   setLocalDBOrders: (orders: Order[]) => void;
   calcPlatformFee: (order: Order) => number;
 }
@@ -24,7 +24,7 @@ export const BulkSettleModal: React.FC<BulkSettleModalProps> = ({
   unpaidOrders,
   updateOrder,
   markAsPaidInLocalDB,
-  getOrdersForWeek,
+  getInitialOrders,
   setLocalDBOrders,
   calcPlatformFee
 }) => {
@@ -43,7 +43,7 @@ export const BulkSettleModal: React.FC<BulkSettleModalProps> = ({
         await markAsPaidInLocalDB(order.id);
       }
       // 3. Refresh LocalDB state
-      const updated = await getOrdersForWeek();
+      const updated = await getInitialOrders();
       setLocalDBOrders(updated);
       onClose();
     } catch (error) {

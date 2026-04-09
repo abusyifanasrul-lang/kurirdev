@@ -22,6 +22,7 @@ export const AppListeners = () => {
   const { fetchSettings, subscribeSettings } = useSettingsStore()
   const sessionCheckPromise = useRef<Promise<boolean> | null>(null);
   const resyncAllLock = useRef<Promise<void> | null>(null);
+  const watchdogTimer = useRef<NodeJS.Timeout | null>(null);
 
   // 1. Settings listeners (Global)
   useEffect(() => {
@@ -311,13 +312,30 @@ export const AppListeners = () => {
       }
 
       console.log(`📡 [${source}] Triggered. Pre-flight auth check...`)
-      const isValid = await ensureValidSession()
-      if (isValid) {
-        // AppListeners resyncs are ALWAYS forced to bypass store throttles, 
-        // since AppListeners itself implements a 5s throttle.
-        resyncAll(true)
-      } else {
-        console.warn(`⚠️ [${source}] Session invalid. Resync aborted.`)
+      
+      // 1. START WATCHDOG (10s limit for recover)
+      if (watchdogTimer.current) clearTimeout(watchdogTimer.current);
+      watchdogTimer.current = setTimeout(() => {
+        console.warn(`🚨 [Watchdog] Resync from ${source} stuck > 10s. Forcing hard reload.`);
+        window.location.reload();
+      }, 10000);
+
+      try {
+        const isValid = await ensureValidSession()
+        if (isValid) {
+          // AppListeners resyncs are ALWAYS forced to bypass store throttles, 
+          // since AppListeners itself implements a 5s throttle.
+          await resyncAll(true)
+        } else {
+          console.warn(`⚠️ [${source}] Session invalid. Resync aborted.`)
+        }
+      } finally {
+        // 2. CLEAR WATCHDOG
+        if (watchdogTimer.current) {
+          clearTimeout(watchdogTimer.current);
+          watchdogTimer.current = null;
+          console.log(`✅ [Watchdog] Resync from ${source} completed. Timer cleared.`);
+        }
       }
     }
 

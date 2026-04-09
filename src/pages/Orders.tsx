@@ -5,10 +5,8 @@ import { formatWIB, getWIBNow } from '@/utils/date';
 import {
   getCachedOrdersByRange,
   cacheOrdersByDate,
-  getOrdersForWeek,
-  getUnpaidOrdersByCourier,
-  markAsPaidInLocalDB,
-  getOrdersByDateRange
+  getOrdersByDateRange,
+  getOrdersForMonth
 } from '@/lib/orderCache';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/Button';
@@ -125,9 +123,13 @@ export function Orders() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchCategory, setSearchCategory] = useState('all');
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const now = getWIBNow();
+  const oneMonthAgo = new Date(now);
+  oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+
   const [dateFilter, setDateFilter] = useState({ 
-    start: formatWIB(getWIBNow(), 'yyyy-MM-dd'), 
-    end: formatWIB(getWIBNow(), 'yyyy-MM-dd') 
+    start: formatWIB(oneMonthAgo, 'yyyy-MM-dd'), 
+    end: formatWIB(now, 'yyyy-MM-dd') 
   });
 
   const [sortConfig, setSortConfig] = useState<{ field: SortField; order: SortOrder }>({
@@ -208,21 +210,23 @@ export function Orders() {
     allOrders.find(o => o.courier_id === courierId && o.is_waiting === true);
 
   useEffect(() => {
-    // 1. Initial Load from IndexedDB
-    const loadWeekOrders = async () => {
-      const weekOrders = await getOrdersForWeek()
-      setLocalDBOrders(weekOrders)
+    // 1. Initial Load from IndexedDB (Matching Default Filter)
+    const loadInitialOrders = async () => {
+      const start = formatWIB(oneMonthAgo, 'yyyy-MM-dd')
+      const end = formatWIB(now, 'yyyy-MM-dd')
+      const initialOrders = await getOrdersByDateRange(start, end)
+      setLocalDBOrders(initialOrders)
     }
-    loadWeekOrders()
+    loadInitialOrders()
 
     // 2. Initial Fetch to Zustand
     fetchInitialOrders()
 
     // Listen for manual syncs or background updates
-    window.addEventListener('indexeddb-synced', loadWeekOrders)
+    window.addEventListener('indexeddb-synced', loadInitialOrders)
 
     return () => {
-      window.removeEventListener('indexeddb-synced', loadWeekOrders)
+      window.removeEventListener('indexeddb-synced', loadInitialOrders)
     }
   }, [fetchInitialOrders])
 
@@ -863,7 +867,11 @@ export function Orders() {
         unpaidOrders={bulkUnpaidOrders}
         updateOrder={updateOrder}
         markAsPaidInLocalDB={markAsPaidInLocalDB}
-        getOrdersForWeek={getOrdersForWeek}
+        getInitialOrders={() => {
+          const start = formatWIB(oneMonthAgo, 'yyyy-MM-dd')
+          const end = formatWIB(now, 'yyyy-MM-dd')
+          return getOrdersByDateRange(start, end)
+        }}
         setLocalDBOrders={setLocalDBOrders}
         calcPlatformFee={calcPlatformFee}
       />
