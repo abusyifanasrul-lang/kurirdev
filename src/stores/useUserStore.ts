@@ -5,9 +5,9 @@ import { cacheProfiles, getCachedProfiles, saveProfileSyncTime, localDB } from '
 
 // Module-level tracker for active channels
 // Module-level tracker for active channels
-const activeChannels = new Map<string, any>()
-const channelStates = new Map<string, 'joining' | 'joined' | 'errored' | 'closed'>()
-let lastResyncTime = 0
+const userChannels = new Map<string, any>()
+const userStates = new Map<string, 'joining' | 'joined' | 'errored' | 'closed'>()
+let userResyncTime = 0
 
 interface UserState {
   users: User[]
@@ -192,24 +192,23 @@ export const useUserStore = create<UserState>()((set, get) => ({
         }
       )
 
-    activeChannels.set(channelId, channel)
+    userChannels.set(channelId, channel)
 
     channel.subscribe((status, err) => {
       if (status === 'SUBSCRIBED') {
         console.log(`✅ Realtime enabled for ${channelId}`)
-        channelStates.set(channelId, 'joined')
+        userStates.set(channelId, 'joined')
       } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
         console.warn(`❌ Realtime ${channelId} ${status}:`, err)
-        channelStates.set(channelId, status === 'CLOSED' ? 'closed' : 'errored')
-        // Clean up singleton Map to allow recovery
-        activeChannels.delete(channelId)
+        userStates.set(channelId, status === 'CLOSED' ? 'closed' : 'errored')
+        userChannels.delete(channelId)
       }
     })
       
     return () => {
       supabase.removeChannel(channel)
-      activeChannels.delete(channelId)
-      channelStates.delete(channelId)
+      userChannels.delete(channelId)
+      userStates.delete(channelId)
     }
   },
 

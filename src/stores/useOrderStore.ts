@@ -16,9 +16,9 @@ import { useSettingsStore } from '@/stores/useSettingsStore'
 import { logger } from '@/lib/logger'
 
 // Module-level tracker for active channels to prevent redundant subscriptions
-const activeChannels = new Map<string, any>()
-const channelStates = new Map<string, 'joining' | 'joined' | 'errored' | 'closed'>()
-let lastResyncTime = 0
+const orderChannels = new Map<string, any>()
+const orderStates = new Map<string, 'joining' | 'joined' | 'errored' | 'closed'>()
+let orderResyncTime = 0
 
 export interface OrderState {
   orders: Order[]
@@ -155,8 +155,8 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   resyncRealtime: async (filter) => {
     // THROTTLE: Only sync once every 30s max to prevent DB hammers
     const now = Date.now()
-    if (now - lastResyncTime < 30000) return
-    lastResyncTime = now
+    if (now - orderResyncTime < 30000) return
+    orderResyncTime = now
 
     console.log('🔄 Throttled orders resync triggered...')
     
@@ -166,11 +166,11 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     // 2. WebSocket Recovery
     const { courierId } = filter || {}
     const channelId = courierId ? `orders:courier:${courierId}` : 'orders:global'
-    const state = channelStates.get(channelId)
+    const state = orderStates.get(channelId)
     
-    if (state === 'closed' || state === 'errored' || !activeChannels.has(channelId)) {
+    if (state === 'closed' || state === 'errored' || !orderChannels.has(channelId)) {
       console.warn(`⚠️ [OrderStore] Connection dead (${state}). Re-subscribing...`)
-      activeChannels.delete(channelId)
+      orderChannels.delete(channelId)
       get().subscribeOrders(filter)
     }
   },
@@ -266,19 +266,19 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     const filterStr = courierId ? `courier_id=eq.${courierId}` : undefined
 
     // 1. FAST DEDUPLICATION
-    const existing = activeChannels.get(channelId)
-    if (existing && (channelStates.get(channelId) === 'joined' || channelStates.get(channelId) === 'joining')) {
+    const existing = orderChannels.get(channelId)
+    if (existing && (orderStates.get(channelId) === 'joined' || orderStates.get(channelId) === 'joining')) {
       return () => {} // Already active or connecting
     }
 
     // 2. CLEANUP PREVIOUS IF ERRORED
     if (existing) {
       supabase.removeChannel(existing)
-      activeChannels.delete(channelId)
+      orderChannels.delete(channelId)
     }
 
     console.log(`📡 Initializing stable realtime for ${channelId}...`)
-    channelStates.set(channelId, 'joining')
+    orderStates.set(channelId, 'joining')
 
     const channelConfig: any = { event: '*', schema: 'public', table: 'orders' }
     if (filterStr) channelConfig.filter = filterStr
@@ -372,24 +372,24 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
       )
 
     // Set map BEFORE subscribe to lock other callers
-    activeChannels.set(channelId, channel)
+    orderChannels.set(channelId, channel)
 
     channel.subscribe((status, err) => {
       if (status === 'SUBSCRIBED') {
         console.log(`✅ Realtime subscription active for ${channelId}`)
-        channelStates.set(channelId, 'joined')
+        orderStates.set(channelId, 'joined')
       } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
         console.warn(`❌ Realtime ${channelId} ${status}:`, err)
-        channelStates.set(channelId, status === 'CLOSED' ? 'closed' : 'errored')
+        orderStates.set(channelId, status === 'CLOSED' ? 'closed' : 'errored')
         // MANDATORY: Remove from Map to allow re-subscription attempt
-        activeChannels.delete(channelId)
+        orderChannels.delete(channelId)
       }
     })
 
     return () => {
       supabase.removeChannel(channel)
-      activeChannels.delete(channelId)
-      channelStates.delete(channelId)
+      orderChannels.delete(channelId)
+      orderStates.delete(channelId)
     }
   },
 

@@ -4,9 +4,9 @@ import { Notification } from '@/types'
 import { cacheNotifications, getCachedNotifications, markNotificationReadLocal } from '@/lib/orderCache'
 
 // Module-level tracker for active channels
-const activeChannels = new Map<string, any>()
-const channelStates = new Map<string, 'joining' | 'joined' | 'errored'>()
-let lastResyncTime = 0
+const notifChannels = new Map<string, any>()
+const notifStates = new Map<string, 'joining' | 'joined' | 'errored' | 'closed'>()
+let notifResyncTime = 0
 
 interface NotificationState {
   notifications: Notification[]
@@ -98,24 +98,24 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
         }
       )
 
-    activeChannels.set(channelId, channel)
+    notifChannels.set(channelId, channel)
 
     channel.subscribe((status, err) => {
       if (status === 'SUBSCRIBED') {
         console.log(`✅ Realtime notifications active for ${channelId}`)
-        channelStates.set(channelId, 'joined')
+        notifStates.set(channelId, 'joined')
       } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
         console.warn(`❌ Realtime notifications ${channelId} ${status}:`, err)
-        channelStates.set(channelId, status === 'CLOSED' ? 'closed' : 'errored')
+        notifStates.set(channelId, status === 'CLOSED' ? 'closed' : 'errored')
         // Clean up singleton Map to allow recovery
-        activeChannels.delete(channelId)
+        notifChannels.delete(channelId)
       }
     })
 
     return () => { 
       supabase.removeChannel(channel)
-      activeChannels.delete(channelId)
-      channelStates.delete(channelId)
+      notifChannels.delete(channelId)
+      notifStates.delete(channelId)
     }
   },
 

@@ -5,9 +5,9 @@ import { CourierInstruction } from '@/types'
 import { logger } from '@/lib/logger'
 
 // Module-level trackers
-const activeChannels = new Map<string, any>()
-const channelStates = new Map<string, 'joining' | 'joined' | 'errored' | 'closed'>()
-let lastResyncTime = 0
+const settingsChannels = new Map<string, any>()
+const settingsStates = new Map<string, 'joining' | 'joined' | 'errored' | 'closed'>()
+let settingsResyncTime = 0
 
 export type { CourierInstruction }
 
@@ -40,7 +40,7 @@ const DEFAULT_INSTRUCTIONS: CourierInstruction[] = [
 
 export const useSettingsStore = create<SettingsStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       commission_rate: 80,
       commission_threshold: 5000,
       operational_area: 'Sengkang, Wajo',
@@ -72,10 +72,10 @@ export const useSettingsStore = create<SettingsStore>()(
         const channelId = 'public:settings'
         
         // 1. FAST DEDUPLICATION
-        const existing = activeChannels.get(channelId)
+        const existing = settingsChannels.get(channelId)
         if (existing) {
           supabase.removeChannel(existing)
-          activeChannels.delete(channelId)
+          settingsChannels.delete(channelId)
         }
 
         const channel = supabase.channel(channelId)
@@ -92,32 +92,32 @@ export const useSettingsStore = create<SettingsStore>()(
           .subscribe((status, err) => {
             if (status === 'SUBSCRIBED') {
                console.log(`✅ Settings realtime active: ${channelId}`)
-               channelStates.set(channelId, 'joined')
+               settingsStates.set(channelId, 'joined')
             } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
                console.warn(`❌ Settings realtime ${channelId} ${status}:`, err)
-               channelStates.set(channelId, status === 'CLOSED' ? 'closed' : 'errored')
-               activeChannels.delete(channelId)
+               settingsStates.set(channelId, status === 'CLOSED' ? 'closed' : 'errored')
+               settingsChannels.delete(channelId)
             }
           })
 
-        activeChannels.set(channelId, channel)
+        settingsChannels.set(channelId, channel)
 
         return () => {
           supabase.removeChannel(channel)
-          activeChannels.delete(channelId)
-          channelStates.delete(channelId)
+          settingsChannels.delete(channelId)
+          settingsStates.delete(channelId)
         }
       },
       resyncRealtime: async () => {
         const now = Date.now()
-        if (now - lastResyncTime < 30000) return
-        lastResyncTime = now
+        if (now - settingsResyncTime < 30000) return
+        settingsResyncTime = now
 
         await get().fetchSettings()
 
         const channelId = 'public:settings'
-        const state = channelStates.get(channelId)
-        if (state === 'closed' || state === 'errored' || !activeChannels.has(channelId)) {
+        const state = settingsStates.get(channelId)
+        if (state === 'closed' || state === 'errored' || !settingsChannels.has(channelId)) {
           get().subscribeSettings()
         }
       },
