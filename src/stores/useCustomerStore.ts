@@ -44,7 +44,7 @@ interface CustomerState {
   realtimeStatus: Record<string, string>
   subscribeToRequests: () => () => void
   subscribeToCustomers: () => () => void
-  resyncRealtime: () => Promise<void>
+  resyncRealtime: (options?: { force?: boolean }) => Promise<void>
 }
 
 export const useCustomerStore = create<CustomerState>()((set, get) => ({
@@ -479,12 +479,16 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
     }
   },
 
-  resyncRealtime: async () => {
+  resyncRealtime: async (options) => {
     const now = Date.now()
-    if (now - customerResyncTime < 30000) return
+    if (!options?.force && (now - customerResyncTime < 30000)) return
     customerResyncTime = now
 
-    console.log('🔄 Throttled customers resync triggered...')
+    if (options?.force) {
+      console.log('🔄 Forced customers resync triggered...')
+    } else {
+      console.log('🔄 Throttled customers resync triggered...')
+    }
     
     await get().syncFromServer()
     

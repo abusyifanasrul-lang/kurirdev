@@ -137,6 +137,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.log('🔄 Syncing Realtime auth with new token');
           supabase.realtime.setAuth(session.access_token);
           lastTokenRef.current = session.access_token;
+          
+          // Notify the system that realtime auth has changed
+          window.dispatchEvent(new CustomEvent('supabase-realtime-auth-synced'));
         } catch (e) {
           console.error('Failed to sync Realtime auth:', e);
         }

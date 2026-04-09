@@ -18,7 +18,7 @@ interface UserState {
   syncFromServer: () => Promise<void>
   fetchUsers: () => Promise<void>
   fetchProfile: (id: string) => Promise<void>
-  resyncRealtime: (id?: string) => Promise<void>
+  resyncRealtime: (id?: string, options?: { force?: boolean }) => Promise<void>
   subscribeUsers: () => () => void
   subscribeProfile: (id: string) => () => void
   addUser: (data: CreateUserInput) => Promise<{ success: boolean; error?: string }>
@@ -119,13 +119,17 @@ export const useUserStore = create<UserState>()((set, get) => ({
     }))
   },
 
-  resyncRealtime: async (id) => {
-    // THROTTLE: Only sync once every 30s max
+  resyncRealtime: async (id, options) => {
+    // THROTTLE: Only sync once every 30s max (unless forced)
     const now = Date.now()
-    if (now - userResyncTime < 30000) return
+    if (!options?.force && (now - userResyncTime < 30000)) return
     userResyncTime = now
 
-    console.log('🔄 Throttled users resync triggered...')
+    if (options?.force) {
+      console.log('🔄 Forced users resync triggered...')
+    } else {
+      console.log('🔄 Throttled users resync triggered...')
+    }
     try {
       // 1. Data gap fill
       if (id) {

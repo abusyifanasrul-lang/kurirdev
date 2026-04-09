@@ -35,7 +35,7 @@ export interface OrderState {
   isSyncing: boolean
   currentOrder: Order | null
   fetchActiveOrdersByCourier: (courierId: string) => Promise<void>
-  resyncRealtime: (filter?: { courierId?: string; activeOnly?: boolean }) => Promise<void>
+  resyncRealtime: (filter?: { courierId?: string; activeOnly?: boolean }, options?: { force?: boolean }) => Promise<void>
   
   isSyncingOrders: Set<string>
   setSyncing: (orderId: string, isSyncing: boolean) => void
@@ -156,13 +156,17 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     }
   },
 
-  resyncRealtime: async (filter) => {
-    // THROTTLE: Only sync once every 30s max to prevent DB hammers
+  resyncRealtime: async (filter, options) => {
+    // THROTTLE: Only sync once every 30s max to prevent DB hammers (unless forced)
     const now = Date.now()
-    if (now - orderResyncTime < 30000) return
+    if (!options?.force && (now - orderResyncTime < 30000)) return
     orderResyncTime = now
 
-    console.log('🔄 Throttled orders resync triggered...')
+    if (options?.force) {
+      console.log('🔄 Forced orders resync triggered...')
+    } else {
+      console.log('🔄 Throttled orders resync triggered...')
+    }
     
     // 1. Gap fill via HTTP
     await get().fetchInitialOrders(filter)

@@ -231,10 +231,10 @@ export const AppListeners = () => {
       return sessionCheckPromise.current;
     }
 
-    const resyncAll = async () => {
-      // Throttle by 5 seconds to avoid firing multiple times
+    const resyncAll = async (force: boolean = false) => {
+      // Throttle by 5 seconds to avoid firing multiple times (unless forced)
       const now = Date.now();
-      if (now - lastSyncTime < 5000) {
+      if (!force && (now - lastSyncTime < 5000)) {
         console.log('⏳ Skipping resyncAll (cooldown active)');
         return;
       }
@@ -243,7 +243,7 @@ export const AppListeners = () => {
       timeoutId = setTimeout(() => { timeoutId = null }, 2000);
       lastSyncTime = now;
 
-      console.log('🔄 Triggering staggered staggered realtime resync...');
+      console.log(`🔄 Triggering staggered ${force ? 'FORCED ' : ''}realtime resync...`);
       
       const filter = {
         courierId: user.role === 'courier' ? user.id : undefined,
@@ -251,16 +251,16 @@ export const AppListeners = () => {
       }
 
       // Step 1: Orders (Highest Priority)
-      await useOrderStore.getState().resyncRealtime(filter)
+      await useOrderStore.getState().resyncRealtime(filter, { force })
       
       // Step 2: Stagger (500ms)
       await new Promise(r => setTimeout(r, 500))
 
       // Step 3: Users/Profile
       if (user.role === 'courier') {
-        await useUserStore.getState().resyncRealtime(user.id)
+        await useUserStore.getState().resyncRealtime(user.id, { force })
       } else {
-        await useUserStore.getState().resyncRealtime()
+        await useUserStore.getState().resyncRealtime(undefined, { force })
       }
 
       // Step 4: Stagger (500ms)
@@ -268,24 +268,24 @@ export const AppListeners = () => {
 
       // Step 5: Notifications
       if (user.role === 'courier') {
-        await useNotificationStore.getState().resyncRealtime(user.id)
+        await useNotificationStore.getState().resyncRealtime(user.id, { force })
       } else {
-        await useNotificationStore.getState().resyncRealtime()
+        await useNotificationStore.getState().resyncRealtime(undefined, { force })
       }
 
       // Step 6: Stagger (500ms)
       await new Promise(r => setTimeout(r, 500))
 
       // Step 7: Customers
-      await useCustomerStore.getState().resyncRealtime()
+      await useCustomerStore.getState().resyncRealtime({ force })
 
       // Step 8: Stagger (500ms)
       await new Promise(r => setTimeout(r, 500))
 
       // Step 9: Settings
-      await useSettingsStore.getState().resyncRealtime()
+      await useSettingsStore.getState().resyncRealtime({ force })
 
-      console.log('✅ Staggered resync completed')
+      console.log(`✅ Staggered ${force ? 'FORCED ' : ''}resync completed`)
     }
 
     const handleSyncTrigger = async (source: string) => {
@@ -301,7 +301,9 @@ export const AppListeners = () => {
       console.log(`📡 [${source}] Triggered. Pre-flight auth check...`)
       const isValid = await ensureValidSession()
       if (isValid) {
-        resyncAll()
+        // AppListeners resyncs are ALWAYS forced to bypass store throttles, 
+        // since AppListeners itself implements a 5s throttle.
+        resyncAll(true)
       } else {
         console.warn(`⚠️ [${source}] Session invalid. Resync aborted.`)
       }
@@ -319,14 +321,20 @@ export const AppListeners = () => {
       handleSyncTrigger('Online')
     }
 
+    const handleRealtimeAuthSync = () => {
+      handleSyncTrigger('AuthSync')
+    }
+
     window.addEventListener('visibilitychange', handleVisibility)
     window.addEventListener('focus', handleFocus)
     window.addEventListener('online', handleOnline)
+    window.addEventListener('supabase-realtime-auth-synced', handleRealtimeAuthSync)
 
     return () => {
       window.removeEventListener('visibilitychange', handleVisibility)
       window.removeEventListener('focus', handleFocus)
       window.removeEventListener('online', handleOnline)
+      window.removeEventListener('supabase-realtime-auth-synced', handleRealtimeAuthSync)
       if (timeoutId) clearTimeout(timeoutId)
     }
   }, [user?.id, user?.role])

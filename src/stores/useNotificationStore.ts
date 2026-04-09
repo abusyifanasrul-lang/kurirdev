@@ -14,7 +14,7 @@ interface NotificationState {
 
   subscribeNotifications: (userId: string) => () => void
   subscribeAllNotifications: () => () => void
-  resyncRealtime: (userId?: string) => Promise<void>
+  resyncRealtime: (userId?: string, options?: { force?: boolean }) => Promise<void>
   addNotification: (notification: Omit<Notification, 'id' | 'sent_at' | 'is_read'>) => Promise<void>
   markAsRead: (id: string) => Promise<void>
   markAllAsRead: (userId: string) => Promise<void>
@@ -208,15 +208,19 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
     }
   },
 
-  resyncRealtime: async (userId?: string) => {
+  resyncRealtime: async (userId, options) => {
     const now = Date.now()
-    if (now - notifResyncTime < 30000) {
+    if (!options?.force && (now - notifResyncTime < 30000)) {
       console.log('⏳ Skipping notification resync (cooldown active)')
       return
     }
     notifResyncTime = now
 
-    console.log('🔄 Resyncing notifications...')
+    if (options?.force) {
+      console.log('🔄 Forced notifications resync triggered...')
+    } else {
+      console.log('🔄 Resyncing notifications...')
+    }
     
     // 1. Data Gap Fill
     let query = supabase.from('notifications').select('*')

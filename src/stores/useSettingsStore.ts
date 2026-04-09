@@ -25,7 +25,7 @@ interface SettingsStore extends BusinessSettings {
   deleteCourierInstruction: (id: string) => void
   fetchSettings: () => Promise<void>
   subscribeSettings: () => () => void
-  resyncRealtime: () => Promise<void>
+  resyncRealtime: (options?: { force?: boolean }) => Promise<void>
   reset: () => void
   
   // Real-time Subscriptions Status
@@ -115,10 +115,16 @@ export const useSettingsStore = create<SettingsStore>()(
           settingsStates.delete(channelId)
         }
       },
-      resyncRealtime: async () => {
+      resyncRealtime: async (options) => {
         const now = Date.now()
-        if (now - settingsResyncTime < 30000) return
+        if (!options?.force && (now - settingsResyncTime < 30000)) return
         settingsResyncTime = now
+
+        if (options?.force) {
+          console.log('🔄 Forced settings resync triggered...')
+        } else {
+          console.log('🔄 Throttled settings resync triggered...')
+        }
 
         await get().fetchSettings()
 
