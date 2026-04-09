@@ -1,3 +1,4 @@
+import { create } from 'zustand'
 import { supabase } from '@/lib/supabaseClient'
 import { RealtimeChannel } from '@supabase/supabase-js'
 import { Customer, CustomerAddress, CustomerChangeRequest } from '@/types'
