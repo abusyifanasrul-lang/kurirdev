@@ -1,5 +1,5 @@
-import { create } from 'zustand'
 import { supabase } from '@/lib/supabaseClient'
+import { RealtimeChannel } from '@supabase/supabase-js'
 import { withRetry } from '@/utils/retry'
 import { useToastStore } from '@/stores/useToastStore'
 import { Order, OrderStatus, OrderStatusHistory } from '@/types'
@@ -16,6 +16,8 @@ import { useSettingsStore } from '@/stores/useSettingsStore'
 import { logger } from '@/lib/logger'
 
 let orderResyncTime = 0
+const orderChannels = new Map<string, RealtimeChannel>()
+const orderStates = new Map<string, string>()
 
 export interface OrderState {
   orders: Order[]

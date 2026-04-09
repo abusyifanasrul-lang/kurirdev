@@ -1,9 +1,12 @@
-import { create } from 'zustand'
 import { supabase } from '@/lib/supabaseClient'
+import { RealtimeChannel } from '@supabase/supabase-js'
 import { Customer, CustomerAddress, CustomerChangeRequest } from '@/types'
 import { getAllCustomersLocal, upsertCustomerLocal, saveCustomerSyncTime, getCustomerSyncTime } from '@/lib/orderCache'
 
 let customerResyncTime = 0
+const customerChannels = new Map<string, RealtimeChannel>()
+const customerStates = new Map<string, string>()
+const customerRefs = new Map<string, number>()
 
 interface CustomerState {
   customers: Customer[]

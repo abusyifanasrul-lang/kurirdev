@@ -1,9 +1,11 @@
-import { create } from 'zustand'
 import { supabase } from '@/lib/supabaseClient'
+import { RealtimeChannel } from '@supabase/supabase-js'
 import { Notification } from '@/types'
 import { cacheNotifications, getCachedNotifications, markNotificationReadLocal } from '@/lib/orderCache'
 
 let notifResyncTime = 0
+const notifChannels = new Map<string, RealtimeChannel>()
+const notifStates = new Map<string, string>()
 
 interface NotificationState {
   notifications: Notification[]

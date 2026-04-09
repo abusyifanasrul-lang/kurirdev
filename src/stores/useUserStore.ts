@@ -1,9 +1,11 @@
-import { create } from 'zustand'
 import { supabase } from '@/lib/supabaseClient'
+import { RealtimeChannel } from '@supabase/supabase-js'
 import { User, UserRole, CreateUserInput } from '@/types'
 import { cacheProfiles, getCachedProfiles, saveProfileSyncTime, localDB } from '@/lib/orderCache'
 
 let userResyncTime = 0
+const userChannels = new Map<string, RealtimeChannel>()
+const userStates = new Map<string, string>()
 
 interface UserState {
   users: User[]

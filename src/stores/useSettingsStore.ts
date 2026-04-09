@@ -1,10 +1,12 @@
-import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { supabase } from '@/lib/supabaseClient'
+import { RealtimeChannel } from '@supabase/supabase-js'
 import { CourierInstruction } from '@/types'
 import { logger } from '@/lib/logger'
 
 let settingsResyncTime = 0
+const settingsChannels = new Map<string, RealtimeChannel>()
+const settingsStates = new Map<string, string>()
 
 export type { CourierInstruction }
 
