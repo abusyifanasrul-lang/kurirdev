@@ -168,19 +168,6 @@ export function CourierDashboard() {
 
   return (
     <div className="space-y-6 p-1">
-      {/* Connection Status */}
-      <div className={cn(
-        "flex items-center gap-2.5 px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-wider shadow-sm transition-all",
-        isNetworkOnline 
-          ? "bg-emerald-50 text-emerald-700 border border-emerald-100" 
-          : "bg-amber-50 text-amber-700 border border-amber-100"
-      )}>
-        {isNetworkOnline 
-          ? <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> 
-          : <WifiOff className="h-3.5 w-3.5" />
-        }
-        {isNetworkOnline ? "Sistem Terhubung (Online)" : "Koneksi Terputus - Data Lokal"}
-      </div>
 
       {/* Unpaid Warning Card — If any */}
       {!warningLoading && unpaidDeliveredOrdersCount > 0 && (

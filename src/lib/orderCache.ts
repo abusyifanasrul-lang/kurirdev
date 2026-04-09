@@ -110,6 +110,12 @@ class KurirDevDB extends Dexie {
       notifications: 'id, user_id, is_read, sent_at',
       profiles: 'id, role, is_active, is_online'
     })
+    this.version(5).stores({
+      orders: 'id, _date, courier_id, customer_id, status, created_at',
+      customers: 'id, name, phone, updated_at',
+      notifications: 'id, user_id, is_read, sent_at',
+      profiles: 'id, role, is_active, is_online'
+    })
   }
 }
 

@@ -209,6 +209,11 @@ export const AppListeners = () => {
             }
           }
           console.log('✅ Session validated')
+          // ENSURE REALTIME AUTH SYNC
+          if (session && session.access_token) {
+            console.log('🔑 Syncing realtime auth token...')
+            supabase.realtime.setAuth(session.access_token)
+          }
           return true
         } catch (err: any) {
           if (err?.name === 'AbortError') {

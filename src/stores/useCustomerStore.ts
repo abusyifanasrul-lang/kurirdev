@@ -3,6 +3,11 @@ import { supabase } from '@/lib/supabaseClient'
 import { Customer, CustomerAddress, CustomerChangeRequest } from '@/types'
 import { getAllCustomersLocal, upsertCustomerLocal, saveCustomerSyncTime, getCustomerSyncTime } from '@/lib/orderCache'
 
+// Module-level tracker for active channels with reference counting
+const activeChannels = new Map<string, any>()
+const channelStates = new Map<string, 'joining' | 'joined' | 'errored' | 'closed'>()
+const channelRefs = new Map<string, number>()
+
 interface CustomerState {
   customers: Customer[]
   changeRequests: CustomerChangeRequest[]
@@ -33,12 +38,18 @@ interface CustomerState {
     newAddress?: CustomerAddress,
     affectedAddressId?: string
   ) => Promise<void>
+  
+  // Real-time Subscriptions Status
+  realtimeStatus: Record<string, string>
+  subscribeToRequests: () => () => void
+  subscribeToCustomers: () => () => void
 }
 
 export const useCustomerStore = create<CustomerState>()((set, get) => ({
   customers: [],
   changeRequests: [],
   isLoaded: false,
+  realtimeStatus: {},
 
   loadFromLocal: async () => {
     try {
@@ -251,6 +262,37 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
     
     if (updateCustErr) throw updateCustErr
 
+    // 2.5 Propagate changes to active orders
+    if (request.change_type === 'address_edit' || request.change_type === 'address_add' || request.change_type === 'full_update') {
+      let updatedAddress = '';
+      if (request.change_type === 'address_add' && request.new_address) {
+        updatedAddress = modifiedAddress || request.new_address.address;
+      } else if (request.change_type === 'address_edit' && request.affected_address_id) {
+        const addr = finalRequestedData.addresses?.find((a: any) => a.id === request.affected_address_id);
+        updatedAddress = addr?.address || '';
+      } else if (request.change_type === 'full_update') {
+        const defaultAddr = finalRequestedData.addresses?.find((a: any) => a.is_default);
+        updatedAddress = defaultAddr?.address || '';
+        // Special case: if change was triggered from a specific order, it might not be the default one
+        if (request.order_id && request.new_address) {
+           updatedAddress = request.new_address.address;
+        }
+      }
+
+      if (updatedAddress) {
+        console.log(`[Sync] Propagating address update to active orders for phone: ${finalRequestedData.phone}`)
+        await supabase
+          .from('orders')
+          .update({ 
+            customer_address: updatedAddress, 
+            customer_name: finalRequestedData.name,
+            updated_at: new Date().toISOString()
+          })
+          .eq('customer_phone', finalRequestedData.phone)
+          .in('status', ['assigned', 'picked_up', 'in_transit']);
+      }
+    }
+
     // 3. Update request status
     const { error: updateReqErr } = await (supabase
       .from('customer_change_requests' as any) as any)
@@ -282,5 +324,198 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
     
     if (error) throw error
     set(state => ({ changeRequests: state.changeRequests.filter(r => r.id !== requestId) }))
+  },
+
+  subscribeToRequests: () => {
+    const channelName = 'customer_requests_all'
+    
+    // Increment reference count
+    const currentRefs = channelRefs.get(channelName) || 0
+    channelRefs.set(channelName, currentRefs + 1)
+
+    if (activeChannels.has(channelName)) {
+      console.log(`[Realtime] Reusing existing channel: ${channelName} (Refs: ${currentRefs + 1})`)
+      return () => {
+        const refs = channelRefs.get(channelName) || 1
+        if (refs <= 1) {
+          console.log(`[Realtime] Closing last listener for: ${channelName}`)
+          activeChannels.get(channelName).unsubscribe()
+          activeChannels.delete(channelName)
+          channelStates.delete(channelName)
+          channelRefs.delete(channelName)
+          set(state => {
+            const newStatus = { ...state.realtimeStatus }
+            delete newStatus[channelName]
+            return { realtimeStatus: newStatus }
+          })
+        } else {
+          console.log(`[Realtime] Removing one listener from: ${channelName} (Remaining: ${refs - 1})`)
+          channelRefs.set(channelName, refs - 1)
+        }
+      }
+    }
+
+    console.group(`[Realtime] New Subscription: ${channelName}`)
+    console.log(`[Realtime] Table: customer_change_requests`)
+    channelStates.set(channelName, 'joining')
+
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'customer_change_requests' },
+        (payload) => {
+          console.log('[Realtime] EVENT [customer_change_requests]:', payload.eventType, payload.new)
+          
+          if (payload.eventType === 'INSERT') {
+            const newItem = payload.new as CustomerChangeRequest
+            set((state) => {
+              // Prevent duplicates if fetch and realtime collide
+              if (state.changeRequests.some(r => r.id === newItem.id)) return state;
+              return { changeRequests: [newItem, ...state.changeRequests] };
+            })
+          } else if (payload.eventType === 'UPDATE') {
+            set((state) => ({
+              changeRequests: state.changeRequests.map(r => 
+                r.id === payload.new.id ? (payload.new as CustomerChangeRequest) : r
+              )
+            }))
+          } else if (payload.eventType === 'DELETE') {
+            set((state) => ({
+              changeRequests: state.changeRequests.filter(r => r.id !== payload.old.id)
+            }))
+          }
+        }
+      )
+      .subscribe((status, err) => {
+        console.log(`[Realtime] Status [${channelName}]:`, status)
+        if (err) console.error(`[Realtime] Error [${channelName}]:`, err)
+        
+        set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelName]: status } }))
+        
+        if (status === 'SUBSCRIBED') channelStates.set(channelName, 'joined')
+        if (status === 'CHANNEL_ERROR') channelStates.set(channelName, 'errored')
+        if (status === 'TIMED_OUT') channelStates.set(channelName, 'errored')
+      })
+
+    console.groupEnd()
+    activeChannels.set(channelName, channel)
+
+    return () => {
+      const refs = channelRefs.get(channelName) || 1
+      if (refs <= 1) {
+        console.log(`[Realtime] Cleaning up root channel: ${channelName}`)
+        channel.unsubscribe()
+        activeChannels.delete(channelName)
+        channelStates.delete(channelName)
+        channelRefs.delete(channelName)
+        set(state => {
+          const newStatus = { ...state.realtimeStatus }
+          delete newStatus[channelName]
+          return { realtimeStatus: newStatus }
+        })
+      } else {
+        console.log(`[Realtime] Removing one listener from: ${channelName} (Remaining: ${refs - 1})`)
+        channelRefs.set(channelName, refs - 1)
+      }
+    }
+  },
+
+  subscribeToCustomers: () => {
+    const channelName = 'customers_all'
+    
+    // Increment reference count
+    const currentRefs = channelRefs.get(channelName) || 0
+    channelRefs.set(channelName, currentRefs + 1)
+
+    if (activeChannels.has(channelName)) {
+      console.log(`[Realtime] Reusing existing channel: ${channelName} (Refs: ${currentRefs + 1})`)
+      return () => {
+        const refs = channelRefs.get(channelName) || 1
+        if (refs <= 1) {
+          console.log(`[Realtime] Closing last listener for: ${channelName}`)
+          activeChannels.get(channelName).unsubscribe()
+          activeChannels.delete(channelName)
+          channelStates.delete(channelName)
+          channelRefs.delete(channelName)
+          set(state => {
+            const newStatus = { ...state.realtimeStatus }
+            delete newStatus[channelName]
+            return { realtimeStatus: newStatus }
+          })
+        } else {
+          console.log(`[Realtime] Removing one listener from: ${channelName} (Remaining: ${refs - 1})`)
+          channelRefs.set(channelName, refs - 1)
+        }
+      }
+    }
+
+    console.group(`[Realtime] New Subscription: ${channelName}`)
+    console.log(`[Realtime] Table: customers`)
+    channelStates.set(channelName, 'joining')
+
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'customers' },
+        async (payload) => {
+          console.log('[Realtime] EVENT [customers]:', payload.eventType, payload.new)
+          
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+            const customer = payload.new as Customer
+            await upsertCustomerLocal(customer)
+            
+            set((state) => {
+              const exists = state.customers.find(c => c.id === customer.id)
+              if (exists) {
+                return {
+                  customers: state.customers.map(c => c.id === customer.id ? customer : c)
+                }
+              } else {
+                return {
+                  customers: [customer, ...state.customers]
+                }
+              }
+            })
+          } else if (payload.eventType === 'DELETE') {
+            set((state) => ({
+              customers: state.customers.filter(c => c.id !== payload.old.id)
+            }))
+          }
+        }
+      )
+      .subscribe((status, err) => {
+        console.log(`[Realtime] Status [${channelName}]:`, status)
+        if (err) console.error(`[Realtime] Error [${channelName}]:`, err)
+        
+        set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelName]: status } }))
+        
+        if (status === 'SUBSCRIBED') channelStates.set(channelName, 'joined')
+        if (status === 'CHANNEL_ERROR') channelStates.set(channelName, 'errored')
+        if (status === 'TIMED_OUT') channelStates.set(channelName, 'errored')
+      })
+
+    console.groupEnd()
+    activeChannels.set(channelName, channel)
+
+    return () => {
+      const refs = channelRefs.get(channelName) || 1
+      if (refs <= 1) {
+        console.log(`[Realtime] Cleaning up root channel: ${channelName}`)
+        channel.unsubscribe()
+        activeChannels.delete(channelName)
+        channelStates.delete(channelName)
+        channelRefs.delete(channelName)
+        set(state => {
+          const newStatus = { ...state.realtimeStatus }
+          delete newStatus[channelName]
+          return { realtimeStatus: newStatus }
+        })
+      } else {
+        console.log(`[Realtime] Removing one listener from: ${channelName} (Remaining: ${refs - 1})`)
+        channelRefs.set(channelName, refs - 1)
+      }
+    }
   }
 }))

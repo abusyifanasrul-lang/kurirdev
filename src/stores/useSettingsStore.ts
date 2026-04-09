@@ -62,7 +62,14 @@ export const useSettingsStore = create<SettingsStore>()(
         }))
       },
       subscribeSettings: () => {
-        const channel = supabase.channel('public:settings')
+        const instanceId = Date.now()
+        const channelBaseName = 'public:settings'
+        const channelId = `${channelBaseName}:${instanceId}`
+        
+        const channel = supabase.channel(channelId)
+        let heartbeatInterval: any = null
+
+        channel
           .on(
             'postgres_changes',
             { event: '*', schema: 'public', table: 'settings' },
@@ -70,8 +77,32 @@ export const useSettingsStore = create<SettingsStore>()(
               (useSettingsStore.getState() as any).fetchSettings()
             }
           )
-          .subscribe()
-        return () => supabase.removeChannel(channel)
+          .subscribe((status, err) => {
+            if (status === 'SUBSCRIBED') {
+               console.log(`✅ Settings realtime active: ${channelId}`)
+               // Heartbeat
+               if (heartbeatInterval) clearInterval(heartbeatInterval)
+               heartbeatInterval = setInterval(() => {
+                 channel.send({
+                   type: 'broadcast',
+                   event: 'heartbeat',
+                   payload: { t: Date.now() }
+                 })
+               }, 30000)
+            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+               console.error(`❌ Settings realtime ${status} for ${channelId}:`, err)
+               if (heartbeatInterval) clearInterval(heartbeatInterval)
+               
+               // Auto-reconnect
+               setTimeout(() => {
+                 (useSettingsStore.getState() as any).subscribeSettings()
+               }, status === 'TIMED_OUT' ? 2000 : 5000)
+            }
+          })
+        return () => {
+          if (heartbeatInterval) clearInterval(heartbeatInterval)
+          supabase.removeChannel(channel)
+        }
       },
       reset: () => set((state: SettingsStore) => ({
         ...state,

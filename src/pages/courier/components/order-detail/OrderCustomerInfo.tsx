@@ -121,15 +121,6 @@ export const OrderCustomerInfo: React.FC<OrderCustomerInfoProps> = ({
               placeholder="CONTOH: 08123456789"
             />
           </div>
-          <div>
-            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider ml-1">Alamat Sekarang</label>
-            <textarea
-              value={editAddress}
-              onChange={(e) => setEditAddress(e.target.value)}
-              className="w-full bg-gray-50 border-gray-100 rounded-xl px-4 py-3 text-sm font-semibold focus:ring-2 focus:ring-emerald-500 h-20 transition-all border"
-              placeholder="Alamat Pengantaran..."
-            />
-          </div>
 
           {/* Inline Address Picker for Courier */}
           {courierAddrCustomer && (
@@ -325,7 +316,23 @@ export const OrderCustomerInfo: React.FC<OrderCustomerInfoProps> = ({
               <MapPin className="h-5 w-5 text-blue-600" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-gray-700 leading-tight font-black line-clamp-2">{order.customer_address}</p>
+              <div className="flex items-center gap-2 mb-1">
+                <p className="text-xs text-gray-700 leading-tight font-black line-clamp-2">{order.customer_address}</p>
+                {pendingRequests.length > 0 && (
+                  <span className="shrink-0 text-[8px] font-black bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md flex items-center gap-0.5 border border-amber-200 animate-pulse">
+                    <Clock className="w-2.5 h-2.5" />
+                    REQ
+                  </span>
+                )}
+              </div>
+              {/* Optional: Sync suggestion if order snapshot is outdated compared to customer record */}
+              {courierAddrCustomer && !pendingRequests.length && !isLocked && 
+               !courierAddrCustomer.addresses.some((a: any) => a.address === order.customer_address) && (
+                 <p className="text-[9px] text-amber-600 font-bold mt-1 flex items-center gap-1">
+                   🚨 Alamat profil berbeda dengan order ini
+                 </p>
+               )
+              }
             </div>
             <button
               onClick={handleOpenMaps}

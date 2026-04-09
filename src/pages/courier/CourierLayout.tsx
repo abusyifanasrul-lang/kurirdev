@@ -4,6 +4,7 @@ import { Home, Package, DollarSign, User, LogOut, Bell } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/context/AuthContext';
 import { useOrderStore } from '@/stores/useOrderStore';
+import { useCustomerStore } from '@/stores/useCustomerStore';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { useSessionStore } from '@/stores/useSessionStore';
@@ -19,51 +20,30 @@ export function CourierLayout() {
   const liveUser = users.find(u => u.id === currentUser?.id);
   const isSuspended = liveUser?.is_active === false;
 
+  const orderRealtimeStatus = useOrderStore(state => state.realtimeStatus);
+  const customerRealtimeStatus = useCustomerStore(state => state.realtimeStatus);
+
+  // Consider "LIVE" if the primary courier channel is subscribed
+  const courierChannelId = user?.id ? `orders:courier:${user.id}` : 'orders:global';
+  const isOrdersLive = orderRealtimeStatus[courierChannelId] === 'SUBSCRIBED';
+  const isRequestsLive = customerRealtimeStatus['customer_requests_all'] === 'SUBSCRIBED';
+  
+  const isFullyLive = isOrdersLive && isRequestsLive;
+
   useEffect(() => {
     if (!user?.id) return
 
-    // Active orders kurir — realtime
-    const sevenDaysAgo = new Date()
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-
-    // Initial fetch
-    supabase.from('orders')
-      .select('*')
-      .eq('courier_id', user.id)
-      .in('status', ['assigned', 'picked_up', 'in_transit'])
-      .gte('created_at', sevenDaysAgo.toISOString())
-      .then(({ data }) => {
-        if (data) {
-          useOrderStore.getState().setActiveOrdersByCourier(data as Order[])
-        }
-      })
-
-    // Subscribe to changes for this courier
-    const channel = supabase.channel(`public:orders:courier_${user.id}_${Date.now()}`)
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'orders',
-        filter: `courier_id=eq.${user.id}`
-      }, async () => {
-        // Simple refetch strategy for active orders to maintain correct local state
-        const { data } = await supabase.from('orders')
-          .select('*')
-          .eq('courier_id', user.id)
-          .in('status', ['assigned', 'picked_up', 'in_transit'])
-          .gte('created_at', sevenDaysAgo.toISOString())
-        if (data) {
-          useOrderStore.getState().setActiveOrdersByCourier(data as Order[])
-        }
-      })
-      .subscribe()
-
-    // History orders kurir — sekarang diurus oleh
-    // background sync IndexedDB di AppListeners.
+    // Centralized subscriptions
+    useOrderStore.getState().fetchActiveOrdersByCourier(user.id);
+    const unsubOrders = useOrderStore.getState().subscribeOrders({ courierId: user.id });
+    const unsubRequests = useCustomerStore.getState().subscribeToRequests();
+    const unsubCustomers = useCustomerStore.getState().subscribeToCustomers();
 
     return () => {
-      supabase.removeChannel(channel)
-    }
+      unsubOrders();
+      unsubRequests();
+      unsubCustomers();
+    };
   }, [user?.id])
   const { notifications } = useNotificationStore();
   const unreadCount = notifications.filter(n => n.user_id === currentUser?.id && !n.is_read).length;
@@ -94,8 +74,19 @@ export function CourierLayout() {
               <span className="text-lg font-bold">{user?.name?.charAt(0) || 'C'}</span>
             </div>
             <div>
-              <p className="font-semibold">{user?.name || 'Courier'}</p>
-              <p className="text-xs text-emerald-100">Courier App</p>
+              <div className="flex items-center gap-2">
+                <p className="font-semibold">{user?.name || 'Courier'}</p>
+                <div 
+                  className={cn(
+                    "w-2 h-2 rounded-full shadow-sm",
+                    isFullyLive ? "bg-emerald-300 animate-pulse" : "bg-amber-400"
+                  )} 
+                  title={isFullyLive ? "Connected to Realtime" : "Connecting..."}
+                />
+              </div>
+              <p className="text-xs text-emerald-100 flex items-center gap-1">
+                {isFullyLive ? 'LIVE' : 'Connecting...'}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">

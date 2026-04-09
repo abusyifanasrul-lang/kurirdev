@@ -32,7 +32,14 @@ export function CourierOrderDetail() {
   const { user } = useAuth();
   const { users } = useUserStore();
   const { user: currentUser } = useSessionStore();
-  const { findByPhone, upsertCustomer, createAddressChangeRequest, fetchPendingRequests } = useCustomerStore();
+  const { 
+    findByPhone, 
+    upsertCustomer, 
+    createAddressChangeRequest, 
+    fetchPendingRequests,
+    subscribeToRequests,
+    subscribeToCustomers
+  } = useCustomerStore();
   const invoiceRef = useRef<HTMLDivElement>(null);
 
   // Stabilize order reference with useMemo to prevent TDZ issues in minified builds
@@ -47,10 +54,18 @@ export function CourierOrderDetail() {
 
   useEffect(() => {
     if (!id) return;
-    const unsub = subscribeOrderById(id);
+    const unsubOrder = subscribeOrderById(id);
+    const unsubRequests = subscribeToRequests();
+    const unsubCustomers = subscribeToCustomers();
+    
     fetchPendingRequests();
-    return () => unsub();
-  }, [id, subscribeOrderById, fetchPendingRequests]);
+    
+    return () => {
+      unsubOrder();
+      unsubRequests();
+      unsubCustomers();
+    };
+  }, [id, subscribeOrderById, subscribeToRequests, subscribeToCustomers, fetchPendingRequests]);
 
   // Auto-scroll to show success view when delivered - use separate ref to avoid repetitive scrolls
   const hasScrolled = useRef(false);

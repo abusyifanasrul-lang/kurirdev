@@ -154,27 +154,23 @@ export const useUserStore = create<UserState>()((set, get) => ({
   },
 
   subscribeUsers: () => {
-    const channelId = 'users:list'
+    const instanceId = Date.now()
+    const channelBaseName = 'users:list'
+    const channelId = `${channelBaseName}:${instanceId}`
     
-    // 1. Singleton pattern: return existing active channel if already established
-    const currentState = channelStates.get(channelId)
-    const existing = activeChannels.get(channelId)
-    if (existing && currentState !== 'errored' && currentState !== 'closed') {
-      if (currentState === 'joined' || currentState === 'joining') {
-        console.log(`♻️ Reusing active realtime channel for ${channelId}`)
-        get().fetchUsers()
-        return () => {
-          // No-op if someone else is still using it? 
-          // Actually, for simplicity, we don't handle reference counting yet, 
-          // but we avoid the 'postgres_changes after subscribe' crash.
-        }
+    // 1. Singleton pattern: cleanup ANY channel starting with the base name
+    activeChannels.forEach((ch, key) => {
+      if (key.startsWith(channelBaseName)) {
+        console.log(`📡 Cleaning up overlapping channel ${key}...`)
+        supabase.removeChannel(ch)
+        activeChannels.delete(key)
+        channelStates.delete(key)
       }
-      // If it exists but is broken/closed, clean it up before recreating
-      supabase.removeChannel(existing)
-      activeChannels.delete(channelId)
-    }
+    })
 
     const channel = supabase.channel(channelId)
+    let heartbeatInterval: any = null
+
     // IMPORTANT: Register before subscribe
     channel
       .on(
@@ -210,58 +206,67 @@ export const useUserStore = create<UserState>()((set, get) => ({
     activeChannels.set(channelId, channel)
 
     channel.subscribe((status, err) => {
-      if (status === 'CHANNEL_ERROR') {
-        console.error(`❌ Realtime subscription failed for ${channelId}:`, err)
-        channelStates.set(channelId, 'errored')
-        
-        // Self-healing
-        setTimeout(() => {
-          if (channelStates.get(channelId) === 'errored') {
-            console.log(`♻️ Auto-reconnecting channel ${channelId}...`)
-            const existing = activeChannels.get(channelId)
-            if (existing) supabase.removeChannel(existing)
-            activeChannels.delete(channelId)
-            channelStates.delete(channelId)
-            get().subscribeUsers()
-          }
-        }, 5000)
-      } else if (status === 'SUBSCRIBED') {
+      if (status === 'SUBSCRIBED') {
         console.log(`✅ Realtime connection active: ${channelId}. Syncing state...`)
-        activeChannels.set(channelId, channel)
         channelStates.set(channelId, 'joined')
         get().fetchUsers()
-      } else if (status === 'CLOSED') {
-        console.log(`🔌 Realtime connection closed: ${channelId}`)
-        channelStates.set(channelId, 'closed')
+
+        // 2. HEARTBEAT
+        if (heartbeatInterval) clearInterval(heartbeatInterval)
+        heartbeatInterval = setInterval(() => {
+          channel.send({
+            type: 'broadcast',
+            event: 'heartbeat',
+            payload: { t: Date.now() }
+          })
+        }, 30000)
+
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        console.error(`❌ Realtime subscription ${status} for ${channelId}:`, err)
+        channelStates.set(channelId, 'errored')
+        if (heartbeatInterval) clearInterval(heartbeatInterval)
+        
+        // 3. Self-healing
+        const currentChannel = activeChannels.get(channelId)
+        if (currentChannel) {
+          console.log(`♻️ Auto-reconnecting channel ${channelBaseName}...`)
+          supabase.removeChannel(currentChannel)
+          activeChannels.delete(channelId)
+          channelStates.delete(channelId)
+          
+          setTimeout(() => {
+            get().subscribeUsers()
+          }, status === 'TIMED_OUT' ? 2000 : 5000)
+        }
       }
     })
       
     return () => {
       console.log(`🧼 Cleaning up channel: ${channelId}`)
+      if (heartbeatInterval) clearInterval(heartbeatInterval)
       supabase.removeChannel(channel)
       activeChannels.delete(channelId)
+      channelStates.delete(channelId)
     }
   },
 
   subscribeProfile: (id: string) => {
-    const channelId = `profile:single:${id}`
+    const instanceId = Date.now()
+    const channelBaseName = `profile:single:${id}`
+    const channelId = `${channelBaseName}:${instanceId}`
     
-    // 1. Singleton pattern: return existing active channel if already established
-    const currentState = channelStates.get(channelId)
-    const existing = activeChannels.get(channelId)
-    if (existing && currentState !== 'errored' && currentState !== 'closed') {
-      if (currentState === 'joined' || currentState === 'joining') {
-        get().fetchProfile(id)
-        return () => {
-           // We keep it alive as long as at least one component needs it
-           // In this simplified version, we just let it be reused.
-        }
+    // 1. Singleton pattern: cleanup overlapping
+    activeChannels.forEach((ch, key) => {
+      if (key.startsWith(channelBaseName)) {
+        console.log(`📡 Cleaning up overlapping profile channel ${key}...`)
+        supabase.removeChannel(ch)
+        activeChannels.delete(key)
+        channelStates.delete(key)
       }
-      supabase.removeChannel(existing)
-      activeChannels.delete(channelId)
-    }
+    })
 
     const channel = supabase.channel(channelId)
+    let heartbeatInterval: any = null
     
     // IMPORTANT: Setup listeners BEFORE subscribe
     channel
@@ -295,33 +300,45 @@ export const useUserStore = create<UserState>()((set, get) => ({
     activeChannels.set(channelId, channel)
 
     channel.subscribe((status, err) => {
-      if (status === 'CHANNEL_ERROR') {
-        console.error(`❌ Realtime profile subscription failed for ${channelId}:`, err)
-        channelStates.set(channelId, 'errored')
-        
-        setTimeout(() => {
-          if (channelStates.get(channelId) === 'errored') {
-             console.log(`♻️ Auto-reconnecting profile channel ${id}...`)
-             const existing = activeChannels.get(channelId)
-             if (existing) supabase.removeChannel(existing)
-             activeChannels.delete(channelId)
-             channelStates.delete(channelId)
-             get().subscribeProfile(id)
-          }
-        }, 5000)
-      } else if (status === 'SUBSCRIBED') {
-        console.log(`✅ Realtime profile sync active: ${id}`)
-        activeChannels.set(channelId, channel)
+      if (status === 'SUBSCRIBED') {
+        console.log(`✅ Realtime profile sync active: ${channelId}`)
         channelStates.set(channelId, 'joined')
         get().fetchProfile(id)
-      } else if (status === 'CLOSED') {
-        channelStates.set(channelId, 'closed')
+
+        // 2. HEARTBEAT
+        if (heartbeatInterval) clearInterval(heartbeatInterval)
+        heartbeatInterval = setInterval(() => {
+          channel.send({
+            type: 'broadcast',
+            event: 'heartbeat',
+            payload: { t: Date.now() }
+          })
+        }, 30000)
+
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        console.error(`❌ Realtime profile ${status} for ${channelId}:`, err)
+        channelStates.set(channelId, 'errored')
+        if (heartbeatInterval) clearInterval(heartbeatInterval)
+        
+        const currentChannel = activeChannels.get(channelId)
+        if (currentChannel) {
+           console.log(`♻️ Auto-reconnecting profile channel ${channelBaseName}...`)
+           supabase.removeChannel(currentChannel)
+           activeChannels.delete(channelId)
+           channelStates.delete(channelId)
+           
+           setTimeout(() => {
+              get().subscribeProfile(id)
+           }, status === 'TIMED_OUT' ? 2000 : 5000)
+        }
       }
     })
       
     return () => {
+      if (heartbeatInterval) clearInterval(heartbeatInterval)
       supabase.removeChannel(channel)
       activeChannels.delete(channelId)
+      channelStates.delete(channelId)
     }
   },
 
