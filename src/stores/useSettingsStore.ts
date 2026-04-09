@@ -27,6 +27,9 @@ interface SettingsStore extends BusinessSettings {
   subscribeSettings: () => () => void
   resyncRealtime: () => Promise<void>
   reset: () => void
+  
+  // Real-time Subscriptions Status
+  realtimeStatus: Record<string, string>
 }
 
 const DEFAULT_INSTRUCTIONS: CourierInstruction[] = [
@@ -45,6 +48,7 @@ export const useSettingsStore = create<SettingsStore>()(
       commission_threshold: 5000,
       operational_area: 'Sengkang, Wajo',
       courier_instructions: DEFAULT_INSTRUCTIONS,
+      realtimeStatus: {},
       updateSettings: (data: Partial<BusinessSettings>) => set((state: SettingsStore) => ({ ...state, ...data })),
       addCourierInstruction: (instruction: Omit<CourierInstruction, 'id'>) => set((state: SettingsStore) => ({
         courier_instructions: [...state.courier_instructions, { ...instruction, id: crypto.randomUUID() }]
@@ -93,9 +97,12 @@ export const useSettingsStore = create<SettingsStore>()(
             if (status === 'SUBSCRIBED') {
                console.log(`✅ Settings realtime active: ${channelId}`)
                settingsStates.set(channelId, 'joined')
+               set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
             } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
                console.warn(`❌ Settings realtime ${channelId} ${status}:`, err)
-               settingsStates.set(channelId, status === 'CLOSED' ? 'closed' : 'errored')
+               const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
+               settingsStates.set(channelId, finalStatus)
+               set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
                settingsChannels.delete(channelId)
             }
           })

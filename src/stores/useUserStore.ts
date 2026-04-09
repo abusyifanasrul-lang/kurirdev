@@ -25,6 +25,9 @@ interface UserState {
   updateUser: (id: string, data: Partial<User>) => Promise<{ success: boolean; error?: string }>
   removeUser: (id: string) => Promise<void>
   reset: () => void
+  
+  // Real-time Subscriptions Status
+  realtimeStatus: Record<string, string>
 }
 
 const mapProfileToUser = (profile: any, existingUser?: User): User => {
@@ -59,6 +62,7 @@ export const useUserStore = create<UserState>()((set, get) => ({
   isLoading: true,
   isLoaded: false,
   error: null,
+  realtimeStatus: {},
 
   loadFromLocal: async () => {
     try {
@@ -198,9 +202,12 @@ export const useUserStore = create<UserState>()((set, get) => ({
       if (status === 'SUBSCRIBED') {
         console.log(`✅ Realtime enabled for ${channelId}`)
         userStates.set(channelId, 'joined')
+        set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
       } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
         console.warn(`❌ Realtime ${channelId} ${status}:`, err)
-        userStates.set(channelId, status === 'CLOSED' ? 'closed' : 'errored')
+        const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
+        userStates.set(channelId, finalStatus)
+        set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
         userChannels.delete(channelId)
       }
     })
@@ -257,9 +264,12 @@ export const useUserStore = create<UserState>()((set, get) => ({
       if (status === 'SUBSCRIBED') {
         console.log(`✅ Profile realtime active: ${channelId}`)
         userStates.set(channelId, 'joined')
+        set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
       } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
         console.warn(`❌ Profile realtime ${channelId} ${status}:`, err)
-        userStates.set(channelId, status === 'CLOSED' ? 'closed' : 'errored')
+        const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
+        userStates.set(channelId, finalStatus)
+        set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
         userChannels.delete(channelId)
       }
     })

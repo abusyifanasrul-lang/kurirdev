@@ -20,11 +20,15 @@ interface NotificationState {
   markAllAsRead: (userId: string) => Promise<void>
   getNotificationsByUser: (userId: string) => Notification[]
   reset: () => void
+  
+  // Real-time Subscriptions Status
+  realtimeStatus: Record<string, string>
 }
 
 export const useNotificationStore = create<NotificationState>()((set, get) => ({
   notifications: [],
   isLoading: true,
+  realtimeStatus: {},
 
   subscribeNotifications: (userId: string) => {
     // 1. Initial Load from Local Cache (Mirroring)
@@ -104,9 +108,12 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
       if (status === 'SUBSCRIBED') {
         console.log(`✅ Realtime notifications active for ${channelId}`)
         notifStates.set(channelId, 'joined')
+        set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
       } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
         console.warn(`❌ Realtime notifications ${channelId} ${status}:`, err)
-        notifStates.set(channelId, status === 'CLOSED' ? 'closed' : 'errored')
+        const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
+        notifStates.set(channelId, finalStatus)
+        set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
         // Clean up singleton Map to allow recovery
         notifChannels.delete(channelId)
       }
@@ -184,9 +191,12 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
       if (status === 'SUBSCRIBED') {
         console.log(`✅ Admin notifications active: ${channelId}`)
         notifStates.set(channelId, 'joined')
+        set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
       } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
         console.warn(`❌ Admin notifications ${channelId} ${status}:`, err)
-        notifStates.set(channelId, status === 'CLOSED' ? 'closed' : 'errored')
+        const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
+        notifStates.set(channelId, finalStatus)
+        set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
         notifChannels.delete(channelId)
       }
     })

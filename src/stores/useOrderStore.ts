@@ -63,6 +63,9 @@ export interface OrderState {
   
   setOrders: (orders: Order[]) => void
   setActiveOrdersByCourier: (orders: Order[]) => void
+  
+  // Real-time Subscriptions Status
+  realtimeStatus: Record<string, string>
 }
 
 export const useOrderStore = create<OrderState>()((set, get) => ({
@@ -77,6 +80,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   currentOrder: null,
   isSyncingOrders: new Set(),
   isSyncing: false,
+  realtimeStatus: {},
 
   setSyncing: (orderId, isSyncing) => set((state) => {
     const next = new Set(state.isSyncingOrders)
@@ -378,9 +382,12 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
       if (status === 'SUBSCRIBED') {
         console.log(`✅ Realtime subscription active for ${channelId}`)
         orderStates.set(channelId, 'joined')
+        set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
       } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
         console.warn(`❌ Realtime ${channelId} ${status}:`, err)
-        orderStates.set(channelId, status === 'CLOSED' ? 'closed' : 'errored')
+        const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
+        orderStates.set(channelId, finalStatus)
+        set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
         // MANDATORY: Remove from Map to allow re-subscription attempt
         orderChannels.delete(channelId)
       }
@@ -427,6 +434,11 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
           orderChannels.set(channelId, channel)
+          orderStates.set(channelId, 'joined')
+          set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
+        } else {
+          orderStates.set(channelId, 'errored')
+          set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'errored' } }))
         }
       })
 
