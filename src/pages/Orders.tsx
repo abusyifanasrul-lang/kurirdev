@@ -6,7 +6,8 @@ import {
   getCachedOrdersByRange,
   cacheOrdersByDate,
   getOrdersByDateRange,
-  getOrdersForMonth
+  getOrdersForMonth,
+  markAsPaidInLocalDB
 } from '@/lib/orderCache';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/Button';
