@@ -307,67 +307,6 @@ export const useUserStore = create<UserState>()((set, get) => ({
       }
     }
   },
-    const channelId = `profile:single:${id}`
-    
-    // 1. FAST DEDUPLICATION
-    const existing = userChannels.get(channelId)
-    if (existing && (userStates.get(channelId) === 'joined' || userStates.get(channelId) === 'joining')) {
-      return () => {} // Already active or connecting
-    }
-
-    // 2. CLEANUP PREVIOUS IF EXISTS (Awaited)
-    if (existing) {
-      console.log(`♻️ Cleaning up existing profile channel for ${id}...`)
-      await supabase.removeChannel(existing)
-      userChannels.delete(channelId)
-    }
-
-    console.log(`📡 Initializing stable profile realtime for ${id}...`)
-    userStates.set(channelId, 'joining')
-
-    const channel = supabase.channel(channelId)
-    let heartbeatInterval: any = null
-    
-    channel
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${id}` },
-        (payload) => {
-          const existingUsers = get().users
-          const existingUser = existingUsers.find(u => u.id === id)
-          
-          let updatedUser: User = existingUser 
-            ? { ...existingUser, ...payload.new } 
-            : mapProfileToUser(payload.new)
-
-          set(state => ({
-            users: state.users.map(u => u.id === id ? updatedUser : u)
-          }))
-        }
-      )
-
-    userChannels.set(channelId, channel)
-
-    channel.subscribe((status, err) => {
-      if (status === 'SUBSCRIBED') {
-        console.log(`✅ Profile realtime active: ${channelId}`)
-        userStates.set(channelId, 'joined')
-        set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
-      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-        console.warn(`❌ Profile realtime ${channelId} ${status}:`, err)
-        const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
-        userStates.set(channelId, finalStatus)
-        set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
-        userChannels.delete(channelId)
-      }
-    })
-      
-    return () => {
-      supabase.removeChannel(channel)
-      userChannels.delete(channelId)
-      userStates.delete(channelId)
-    }
-  },
 
   addUser: async (data: CreateUserInput) => {
     set({ isLoading: true, error: null })

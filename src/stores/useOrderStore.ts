@@ -426,46 +426,71 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   },
 
   subscribeOrderById: (orderId: string) => {
+    // 1. Initial Load
     const fetchCurrent = async () => {
-       const { data } = await supabase.from('orders').select('*').eq('id', orderId).single()
-       if (data) set({ currentOrder: data as Order })
+      const { data } = await supabase.from('orders').select('*').eq('id', orderId).single()
+      if (data) set({ currentOrder: data as Order })
     }
     fetchCurrent()
 
     const channelId = `order:single:${orderId}`
 
-    if (orderChannels.has(channelId)) {
-      console.log(`♻️ Reusing existing realtime channel for ${channelId}`)
-      return () => {}
+    // 2. FAST DEDUPLICATION
+    const existing = orderChannels.get(channelId)
+    if (existing && (orderStates.get(channelId) === 'joined' || orderStates.get(channelId) === 'joining')) {
+      return () => {
+        // Since we don't have reference counting here yet, we just return a no-op 
+        // IF it's already being handled. But for simplicity, we provide a cleanup 
+        // that only removes if it's the one we found.
+      }
     }
 
-    const channel = supabase.channel(channelId)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `id=eq.${orderId}` }, (payload) => {
-        if (payload.eventType === 'DELETE') {
-           set({ currentOrder: null })
-        } else if (payload.eventType === 'UPDATE') {
-           const existing = get().currentOrder
-           if (existing && existing.id === orderId) {
-             const merged = JSON.parse(JSON.stringify(existing)) // deep clone for safety
-             Object.keys(payload.new).forEach(k => { if (payload.new[k] !== undefined) (merged as any)[k] = payload.new[k] })
-             set({ currentOrder: merged as Order })
-           } else {
+    // 3. INTERNAL ASYNC INIT
+    (async () => {
+      if (existing) {
+        console.log(`♻️ Cleaning up existing channel for ${channelId}...`)
+        await supabase.removeChannel(existing)
+        orderChannels.delete(channelId)
+      }
+
+      console.log(`📡 Initializing stable order realtime for ${orderId}...`)
+      orderStates.set(channelId, 'joining')
+
+      const channel = supabase.channel(channelId)
+      
+      channel
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `id=eq.${orderId}` }, (payload) => {
+          if (payload.eventType === 'DELETE') {
+             set({ currentOrder: null })
+          } else if (payload.eventType === 'UPDATE') {
+             const existing = get().currentOrder
+             if (existing && existing.id === orderId) {
+               const merged = JSON.parse(JSON.stringify(existing))
+               Object.keys(payload.new).forEach(k => { if (payload.new[k] !== undefined) (merged as any)[k] = payload.new[k] })
+               set({ currentOrder: merged as Order })
+             } else {
+               set({ currentOrder: payload.new as Order })
+             }
+          } else {
              set({ currentOrder: payload.new as Order })
-           }
-        } else {
-           set({ currentOrder: payload.new as Order })
-        }
-      })
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          orderChannels.set(channelId, channel)
-          orderStates.set(channelId, 'joined')
-          set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
-        } else {
-          orderStates.set(channelId, 'errored')
-          set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'errored' } }))
-        }
-      })
+          }
+        })
+        .subscribe((status, err) => {
+          if (status === 'SUBSCRIBED') {
+            console.log(`✅ Realtime active: ${channelId}`)
+            orderStates.set(channelId, 'joined')
+            set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+            console.warn(`❌ Realtime ${channelId} ${status}:`, err)
+            const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
+            orderStates.set(channelId, finalStatus)
+            set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
+            orderChannels.delete(channelId)
+          }
+        })
+
+      orderChannels.set(channelId, channel)
+    })()
 
     return () => {
       const current = orderChannels.get(channelId)
