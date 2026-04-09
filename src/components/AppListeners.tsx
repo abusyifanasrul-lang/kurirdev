@@ -27,18 +27,16 @@ export const AppListeners = () => {
   useEffect(() => {
     if (user) {
       fetchSettings()
-      let cleanup: (() => void) | void
-      subscribeSettings().then(unsub => { cleanup = unsub })
-      return () => { if (cleanup) cleanup() }
+      const cleanup = subscribeSettings()
+      return () => { cleanup() }
     }
   }, [user?.id, fetchSettings, subscribeSettings])
 
     // 1.b Profile specific listener (Force logout if suspended + Real-time sync)
     useEffect(() => {
       if (user) {
-        let cleanup: (() => void) | void
-        useUserStore.getState().subscribeProfile(user.id).then(unsub => { cleanup = unsub })
-        return () => { if (cleanup) cleanup() }
+        const cleanup = useUserStore.getState().subscribeProfile(user.id)
+        return () => { cleanup() }
       }
     }, [user?.id])
 
@@ -65,17 +63,13 @@ export const AppListeners = () => {
     orderStore.fetchInitialOrders(filter)
 
     // 2.b Real-time Subscription
-    let unsubOrders: (() => void) | void
-    orderStore.subscribeOrders(filter).then(unsub => { unsubOrders = unsub })
+    const unsubOrders = orderStore.subscribeOrders(filter)
 
     // 2.c Notifications Subscription
     const notifStore = useNotificationStore.getState()
-    let unsubNotifs: (() => void) | void
-    if (user.role === 'courier') {
-      notifStore.subscribeNotifications(user.id).then(unsub => { unsubNotifs = unsub })
-    } else {
-      notifStore.subscribeAllNotifications().then(unsub => { unsubNotifs = unsub })
-    }
+    const unsubNotifs = user.role === 'courier'
+      ? notifStore.subscribeNotifications(user.id)
+      : notifStore.subscribeAllNotifications()
 
     // 2.d Integration with FCM for Token Refresh & Foreground Refresh
     let fcmCleanup: { unsubscribe?: any } = {}
@@ -116,15 +110,13 @@ export const AppListeners = () => {
     }
 
     return () => {
-      if (typeof unsubOrders === 'function') unsubOrders()
-      if (typeof unsubNotifs === 'function') unsubNotifs()
+      unsubOrders()
+      unsubNotifs()
       if (fcmRefreshInterval) clearInterval(fcmRefreshInterval)
       if (fcmCleanup.unsubscribe) {
         const u = fcmCleanup.unsubscribe
         if (typeof u === 'function') {
           u()
-        } else if (u && typeof (u as any).then === 'function') {
-          (u as any).then((h: any) => h.remove?.())
         }
       }
     }
@@ -183,9 +175,8 @@ export const AppListeners = () => {
   // 4. Admin-wide Users subscription
   useEffect(() => {
     if (user && user.role !== 'courier') {
-      let cleanup: (() => void) | void
-      useUserStore.getState().subscribeUsers().then(unsub => { cleanup = unsub })
-      return () => { if (cleanup) cleanup() }
+      const cleanup = useUserStore.getState().subscribeUsers()
+      return () => { cleanup() }
     }
   }, [user?.id, user?.role])
 
