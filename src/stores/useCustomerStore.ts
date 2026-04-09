@@ -7,6 +7,7 @@ import { getAllCustomersLocal, upsertCustomerLocal, saveCustomerSyncTime, getCus
 const activeChannels = new Map<string, any>()
 const channelStates = new Map<string, 'joining' | 'joined' | 'errored' | 'closed'>()
 const channelRefs = new Map<string, number>()
+let lastResyncTime = 0
 
 interface CustomerState {
   customers: Customer[]
@@ -43,6 +44,7 @@ interface CustomerState {
   realtimeStatus: Record<string, string>
   subscribeToRequests: () => () => void
   subscribeToCustomers: () => () => void
+  resyncRealtime: () => Promise<void>
 }
 
 export const useCustomerStore = create<CustomerState>()((set, get) => ({
@@ -515,6 +517,30 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
       } else {
         console.log(`[Realtime] Removing one listener from: ${channelName} (Remaining: ${refs - 1})`)
         channelRefs.set(channelName, refs - 1)
+      }
+      }
+    }
+  },
+  
+  resyncRealtime: async () => {
+    const now = Date.now()
+    if (now - lastResyncTime < 30000) return
+    lastResyncTime = now
+
+    console.log('🔄 Throttled customers resync triggered...')
+    
+    // 1. Data gap sync
+    await get().syncFromServer()
+    
+    // 2. WebSocket recovery for both channels
+    const channels = ['customer_requests_all', 'customers_all']
+    for (const channelName of channels) {
+      const state = channelStates.get(channelName)
+      if (state === 'errored' || state === 'closed' || !activeChannels.has(channelName)) {
+        console.warn(`⚠️ [CustomerStore] Connection dead for ${channelName} (${state}). Re-subscribing...`)
+        activeChannels.delete(channelName)
+        if (channelName === 'customer_requests_all') get().subscribeToRequests()
+        else get().subscribeToCustomers()
       }
     }
   }

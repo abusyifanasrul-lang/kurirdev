@@ -104,23 +104,15 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
       if (status === 'SUBSCRIBED') {
         console.log(`✅ Realtime notifications active for ${channelId}`)
         channelStates.set(channelId, 'joined')
-
-        // HEARTBEAT
-        if (heartbeatInterval) clearInterval(heartbeatInterval)
-        heartbeatInterval = setInterval(() => {
-          if (document.visibilityState === 'visible') {
-            channel.send({ type: 'broadcast', event: 'heartbeat', payload: { t: Date.now() } })
-          }
-        }, 60000)
       } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
         console.warn(`❌ Realtime notifications ${channelId} ${status}:`, err)
-        channelStates.set(channelId, 'errored')
-        if (heartbeatInterval) clearInterval(heartbeatInterval)
+        channelStates.set(channelId, status === 'CLOSED' ? 'closed' : 'errored')
+        // Clean up singleton Map to allow recovery
+        activeChannels.delete(channelId)
       }
     })
 
     return () => { 
-      if (heartbeatInterval) clearInterval(heartbeatInterval)
       supabase.removeChannel(channel)
       activeChannels.delete(channelId)
       channelStates.delete(channelId)
@@ -192,23 +184,14 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
       if (status === 'SUBSCRIBED') {
         console.log(`✅ Admin notifications active: ${channelId}`)
         channelStates.set(channelId, 'joined')
-
-        // HEARTBEAT
-        if (heartbeatInterval) clearInterval(heartbeatInterval)
-        heartbeatInterval = setInterval(() => {
-          if (document.visibilityState === 'visible') {
-            channel.send({ type: 'broadcast', event: 'heartbeat', payload: { t: Date.now() } })
-          }
-        }, 60000)
       } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
         console.warn(`❌ Admin notifications ${channelId} ${status}:`, err)
-        channelStates.set(channelId, 'errored')
-        if (heartbeatInterval) clearInterval(heartbeatInterval)
+        channelStates.set(channelId, status === 'CLOSED' ? 'closed' : 'errored')
+        activeChannels.delete(channelId)
       }
     })
 
     return () => { 
-      if (heartbeatInterval) clearInterval(heartbeatInterval)
       supabase.removeChannel(channel)
       activeChannels.delete(channelId)
       channelStates.delete(channelId)
@@ -225,6 +208,7 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
 
     console.log('🔄 Resyncing notifications...')
     
+    // 1. Data Gap Fill
     let query = supabase.from('notifications').select('*')
     if (userId) {
       query = query.eq('user_id', userId)
@@ -236,6 +220,17 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
       const fetched = data as Notification[]
       set({ notifications: fetched })
       if (userId) cacheNotifications(fetched)
+    }
+
+    // 2. WebSocket Recovery
+    const channelId = userId ? `notifications:user:${userId}` : 'notifications:all'
+    const state = channelStates.get(channelId)
+    
+    if (state === 'closed' || state === 'errored' || !activeChannels.has(channelId)) {
+      console.warn(`⚠️ [NotificationStore] Connection dead (${state}). Re-subscribing...`)
+      activeChannels.delete(channelId)
+      if (userId) get().subscribeNotifications(userId)
+      else get().subscribeAllNotifications()
     }
   },
 

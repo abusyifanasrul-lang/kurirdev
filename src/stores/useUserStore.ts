@@ -7,6 +7,7 @@ import { cacheProfiles, getCachedProfiles, saveProfileSyncTime, localDB } from '
 // Module-level tracker for active channels
 const activeChannels = new Map<string, any>()
 const channelStates = new Map<string, 'joining' | 'joined' | 'errored' | 'closed'>()
+let lastResyncTime = 0
 
 interface UserState {
   users: User[]
@@ -117,15 +118,27 @@ export const useUserStore = create<UserState>()((set, get) => ({
   resyncRealtime: async (id) => {
     // THROTTLE: Only sync once every 30s max
     const now = Date.now()
-    if (now - (useUserStore as any)._lastSync < 30000) return
-    ;(useUserStore as any)._lastSync = now
+    if (now - lastResyncTime < 30000) return
+    lastResyncTime = now
 
     console.log('🔄 Throttled users resync triggered...')
     try {
+      // 1. Data gap fill
       if (id) {
         await get().fetchProfile(id)
       } else {
         await get().fetchUsers()
+      }
+
+      // 2. WebSocket recovery
+      const channelId = id ? `profile:single:${id}` : 'users:list'
+      const state = channelStates.get(channelId)
+      
+      if (state === 'closed' || state === 'errored' || !activeChannels.has(channelId)) {
+        console.warn(`⚠️ [UserStore] Connection dead (${state}). Re-subscribing...`)
+        activeChannels.delete(channelId)
+        if (id) get().subscribeProfile(id)
+        else get().subscribeUsers()
       }
     } catch(err) {
       console.error('[resyncRealtime_user] Failed to fetch data', err)
@@ -185,23 +198,15 @@ export const useUserStore = create<UserState>()((set, get) => ({
       if (status === 'SUBSCRIBED') {
         console.log(`✅ Realtime enabled for ${channelId}`)
         channelStates.set(channelId, 'joined')
-        
-        // HEARTBEAT
-        if (heartbeatInterval) clearInterval(heartbeatInterval)
-        heartbeatInterval = setInterval(() => {
-          if (document.visibilityState === 'visible') {
-            channel.send({ type: 'broadcast', event: 'heartbeat', payload: { t: Date.now() } })
-          }
-        }, 60000)
       } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
         console.warn(`❌ Realtime ${channelId} ${status}:`, err)
-        channelStates.set(channelId, 'errored')
-        if (heartbeatInterval) clearInterval(heartbeatInterval)
+        channelStates.set(channelId, status === 'CLOSED' ? 'closed' : 'errored')
+        // Clean up singleton Map to allow recovery
+        activeChannels.delete(channelId)
       }
     })
       
     return () => {
-      if (heartbeatInterval) clearInterval(heartbeatInterval)
       supabase.removeChannel(channel)
       activeChannels.delete(channelId)
       channelStates.delete(channelId)
@@ -253,23 +258,14 @@ export const useUserStore = create<UserState>()((set, get) => ({
       if (status === 'SUBSCRIBED') {
         console.log(`✅ Profile realtime active: ${channelId}`)
         channelStates.set(channelId, 'joined')
-        
-        // HEARTBEAT
-        if (heartbeatInterval) clearInterval(heartbeatInterval)
-        heartbeatInterval = setInterval(() => {
-          if (document.visibilityState === 'visible') {
-            channel.send({ type: 'broadcast', event: 'heartbeat', payload: { t: Date.now() } })
-          }
-        }, 60000)
       } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
         console.warn(`❌ Profile realtime ${channelId} ${status}:`, err)
-        channelStates.set(channelId, 'errored')
-        if (heartbeatInterval) clearInterval(heartbeatInterval)
+        channelStates.set(channelId, status === 'CLOSED' ? 'closed' : 'errored')
+        activeChannels.delete(channelId)
       }
     })
       
     return () => {
-      if (heartbeatInterval) clearInterval(heartbeatInterval)
       supabase.removeChannel(channel)
       activeChannels.delete(channelId)
       channelStates.delete(channelId)

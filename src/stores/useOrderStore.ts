@@ -18,6 +18,7 @@ import { logger } from '@/lib/logger'
 // Module-level tracker for active channels to prevent redundant subscriptions
 const activeChannels = new Map<string, any>()
 const channelStates = new Map<string, 'joining' | 'joined' | 'errored' | 'closed'>()
+let lastResyncTime = 0
 
 export interface OrderState {
   orders: Order[]
@@ -154,11 +155,24 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   resyncRealtime: async (filter) => {
     // THROTTLE: Only sync once every 30s max to prevent DB hammers
     const now = Date.now()
-    if (now - (useOrderStore as any)._lastSync < 30000) return
-    ;(useOrderStore as any)._lastSync = now
+    if (now - lastResyncTime < 30000) return
+    lastResyncTime = now
 
     console.log('🔄 Throttled orders resync triggered...')
+    
+    // 1. Gap fill via HTTP
     await get().fetchInitialOrders(filter)
+    
+    // 2. WebSocket Recovery
+    const { courierId } = filter || {}
+    const channelId = courierId ? `orders:courier:${courierId}` : 'orders:global'
+    const state = channelStates.get(channelId)
+    
+    if (state === 'closed' || state === 'errored' || !activeChannels.has(channelId)) {
+      console.warn(`⚠️ [OrderStore] Connection dead (${state}). Re-subscribing...`)
+      activeChannels.delete(channelId)
+      get().subscribeOrders(filter)
+    }
   },
 
   fetchInitialOrders: async (filter) => {
@@ -269,7 +283,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     const channelConfig: any = { event: '*', schema: 'public', table: 'orders' }
     if (filterStr) channelConfig.filter = filterStr
 
-    let heartbeatInterval: any = null
+
 
     const channel = supabase.channel(channelId)
       .on(
@@ -364,28 +378,15 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
       if (status === 'SUBSCRIBED') {
         console.log(`✅ Realtime subscription active for ${channelId}`)
         channelStates.set(channelId, 'joined')
-        
-        // 3. HEARTBEAT/KEEPALIVE (Optimized)
-        if (heartbeatInterval) clearInterval(heartbeatInterval)
-        heartbeatInterval = setInterval(() => {
-          if (document.visibilityState === 'visible') {
-            channel.send({
-              type: 'broadcast',
-              event: 'heartbeat',
-              payload: { t: Date.now() }
-            })
-          }
-        }, 60000) // 60s is enough to keep most proxies alive
-
       } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
         console.warn(`❌ Realtime ${channelId} ${status}:`, err)
-        channelStates.set(channelId, 'errored')
-        if (heartbeatInterval) clearInterval(heartbeatInterval)
+        channelStates.set(channelId, status === 'CLOSED' ? 'closed' : 'errored')
+        // MANDATORY: Remove from Map to allow re-subscription attempt
+        activeChannels.delete(channelId)
       }
     })
 
     return () => {
-      if (heartbeatInterval) clearInterval(heartbeatInterval)
       supabase.removeChannel(channel)
       activeChannels.delete(channelId)
       channelStates.delete(channelId)

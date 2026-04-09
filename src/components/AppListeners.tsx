@@ -231,9 +231,8 @@ export const AppListeners = () => {
       return sessionCheckPromise.current;
     }
 
-    const resyncAll = () => {
+    const resyncAll = async () => {
       // Throttle by 5 seconds to avoid firing multiple times
-      // and to avoid clashing with AuthContext background refreshes
       const now = Date.now();
       if (now - lastSyncTime < 5000) {
         console.log('⏳ Skipping resyncAll (cooldown active)');
@@ -244,22 +243,49 @@ export const AppListeners = () => {
       timeoutId = setTimeout(() => { timeoutId = null }, 2000);
       lastSyncTime = now;
 
-      console.log('🔄 Triggering realtime resync...');
+      console.log('🔄 Triggering staggered staggered realtime resync...');
       
       const filter = {
         courierId: user.role === 'courier' ? user.id : undefined,
         activeOnly: user.role === 'courier'
       }
 
-      useOrderStore.getState().resyncRealtime(filter)
+      // Step 1: Orders (Highest Priority)
+      await useOrderStore.getState().resyncRealtime(filter)
       
+      // Step 2: Stagger (500ms)
+      await new Promise(r => setTimeout(r, 500))
+
+      // Step 3: Users/Profile
       if (user.role === 'courier') {
-        useUserStore.getState().resyncRealtime(user.id)
-        useNotificationStore.getState().resyncRealtime(user.id)
+        await useUserStore.getState().resyncRealtime(user.id)
       } else {
-        useUserStore.getState().resyncRealtime()
-        useNotificationStore.getState().resyncRealtime()
+        await useUserStore.getState().resyncRealtime()
       }
+
+      // Step 4: Stagger (500ms)
+      await new Promise(r => setTimeout(r, 500))
+
+      // Step 5: Notifications
+      if (user.role === 'courier') {
+        await useNotificationStore.getState().resyncRealtime(user.id)
+      } else {
+        await useNotificationStore.getState().resyncRealtime()
+      }
+
+      // Step 6: Stagger (500ms)
+      await new Promise(r => setTimeout(r, 500))
+
+      // Step 7: Customers
+      await useCustomerStore.getState().resyncRealtime()
+
+      // Step 8: Stagger (500ms)
+      await new Promise(r => setTimeout(r, 500))
+
+      // Step 9: Settings
+      await useSettingsStore.getState().resyncRealtime()
+
+      console.log('✅ Staggered resync completed')
     }
 
     const handleSyncTrigger = async (source: string) => {

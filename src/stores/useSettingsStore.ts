@@ -2,6 +2,12 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { supabase } from '@/lib/supabaseClient'
 import { CourierInstruction } from '@/types'
+import { logger } from '@/lib/logger'
+
+// Module-level trackers
+const activeChannels = new Map<string, any>()
+const channelStates = new Map<string, 'joining' | 'joined' | 'errored' | 'closed'>()
+let lastResyncTime = 0
 
 export type { CourierInstruction }
 
@@ -19,6 +25,7 @@ interface SettingsStore extends BusinessSettings {
   deleteCourierInstruction: (id: string) => void
   fetchSettings: () => Promise<void>
   subscribeSettings: () => () => void
+  resyncRealtime: () => Promise<void>
   reset: () => void
 }
 
@@ -72,7 +79,7 @@ export const useSettingsStore = create<SettingsStore>()(
         }
 
         const channel = supabase.channel(channelId)
-        let heartbeatInterval: any = null
+
 
         channel
           .on(
@@ -85,25 +92,33 @@ export const useSettingsStore = create<SettingsStore>()(
           .subscribe((status, err) => {
             if (status === 'SUBSCRIBED') {
                console.log(`✅ Settings realtime active: ${channelId}`)
-               // HEARTBEAT
-               if (heartbeatInterval) clearInterval(heartbeatInterval)
-               heartbeatInterval = setInterval(() => {
-                 if (document.visibilityState === 'visible') {
-                   channel.send({ type: 'broadcast', event: 'heartbeat', payload: { t: Date.now() } })
-                 }
-               }, 60000)
+               channelStates.set(channelId, 'joined')
             } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
                console.warn(`❌ Settings realtime ${channelId} ${status}:`, err)
-               if (heartbeatInterval) clearInterval(heartbeatInterval)
+               channelStates.set(channelId, status === 'CLOSED' ? 'closed' : 'errored')
+               activeChannels.delete(channelId)
             }
           })
 
         activeChannels.set(channelId, channel)
 
         return () => {
-          if (heartbeatInterval) clearInterval(heartbeatInterval)
           supabase.removeChannel(channel)
           activeChannels.delete(channelId)
+          channelStates.delete(channelId)
+        }
+      },
+      resyncRealtime: async () => {
+        const now = Date.now()
+        if (now - lastResyncTime < 30000) return
+        lastResyncTime = now
+
+        await get().fetchSettings()
+
+        const channelId = 'public:settings'
+        const state = channelStates.get(channelId)
+        if (state === 'closed' || state === 'errored' || !activeChannels.has(channelId)) {
+          get().subscribeSettings()
         }
       },
       reset: () => set((state: SettingsStore) => ({

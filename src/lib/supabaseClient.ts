@@ -19,6 +19,11 @@ export const supabase = createClient<Database>(
       detectSessionInUrl: true,
       storage: window.sessionStorage,
       storageKey: 'kurirdev-auth-token',
+    },
+    realtime: {
+      heartbeatIntervalMs: 20000,
+      worker: true,
+      workerUrl: '/worker.js',
     }
   }
 )
