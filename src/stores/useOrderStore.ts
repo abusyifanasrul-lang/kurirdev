@@ -402,7 +402,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
 
     const channelId = `order:single:${orderId}`
 
-    if (activeChannels.has(channelId)) {
+    if (orderChannels.has(channelId)) {
       console.log(`♻️ Reusing existing realtime channel for ${channelId}`)
       return () => {}
     }
@@ -426,13 +426,13 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
       })
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          activeChannels.set(channelId, channel)
+          orderChannels.set(channelId, channel)
         }
       })
 
     return () => {
       supabase.removeChannel(channel)
-      activeChannels.delete(channelId)
+      orderChannels.delete(channelId)
     }
   },
 

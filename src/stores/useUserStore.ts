@@ -118,8 +118,8 @@ export const useUserStore = create<UserState>()((set, get) => ({
   resyncRealtime: async (id) => {
     // THROTTLE: Only sync once every 30s max
     const now = Date.now()
-    if (now - lastResyncTime < 30000) return
-    lastResyncTime = now
+    if (now - userResyncTime < 30000) return
+    userResyncTime = now
 
     console.log('🔄 Throttled users resync triggered...')
     try {
@@ -132,11 +132,11 @@ export const useUserStore = create<UserState>()((set, get) => ({
 
       // 2. WebSocket recovery
       const channelId = id ? `profile:single:${id}` : 'users:list'
-      const state = channelStates.get(channelId)
+      const state = userStates.get(channelId)
       
-      if (state === 'closed' || state === 'errored' || !activeChannels.has(channelId)) {
+      if (state === 'closed' || state === 'errored' || !userChannels.has(channelId)) {
         console.warn(`⚠️ [UserStore] Connection dead (${state}). Re-subscribing...`)
-        activeChannels.delete(channelId)
+        userChannels.delete(channelId)
         if (id) get().subscribeProfile(id)
         else get().subscribeUsers()
       }
@@ -149,19 +149,19 @@ export const useUserStore = create<UserState>()((set, get) => ({
     const channelId = 'users:list'
     
     // 1. FAST DEDUPLICATION
-    const existing = activeChannels.get(channelId)
-    if (existing && (channelStates.get(channelId) === 'joined' || channelStates.get(channelId) === 'joining')) {
+    const existing = userChannels.get(channelId)
+    if (existing && (userStates.get(channelId) === 'joined' || userStates.get(channelId) === 'joining')) {
       return () => {} // Already active or connecting
     }
 
     // 2. CLEANUP PREVIOUS IF ERRORED
     if (existing) {
       supabase.removeChannel(existing)
-      activeChannels.delete(channelId)
+      userChannels.delete(channelId)
     }
 
     console.log(`📡 Initializing stable realtime for ${channelId}...`)
-    channelStates.set(channelId, 'joining')
+    userStates.set(channelId, 'joining')
 
     const channel = supabase.channel(channelId)
     let heartbeatInterval: any = null
@@ -216,19 +216,19 @@ export const useUserStore = create<UserState>()((set, get) => ({
     const channelId = `profile:single:${id}`
     
     // 1. FAST DEDUPLICATION
-    const existing = activeChannels.get(channelId)
-    if (existing && (channelStates.get(channelId) === 'joined' || channelStates.get(channelId) === 'joining')) {
+    const existing = userChannels.get(channelId)
+    if (existing && (userStates.get(channelId) === 'joined' || userStates.get(channelId) === 'joining')) {
       return () => {} // Already active or connecting
     }
 
     // 2. CLEANUP PREVIOUS IF ERRORED
     if (existing) {
       supabase.removeChannel(existing)
-      activeChannels.delete(channelId)
+      userChannels.delete(channelId)
     }
 
     console.log(`📡 Initializing stable profile realtime for ${id}...`)
-    channelStates.set(channelId, 'joining')
+    userStates.set(channelId, 'joining')
 
     const channel = supabase.channel(channelId)
     let heartbeatInterval: any = null
@@ -251,23 +251,23 @@ export const useUserStore = create<UserState>()((set, get) => ({
         }
       )
 
-    activeChannels.set(channelId, channel)
+    userChannels.set(channelId, channel)
 
     channel.subscribe((status, err) => {
       if (status === 'SUBSCRIBED') {
         console.log(`✅ Profile realtime active: ${channelId}`)
-        channelStates.set(channelId, 'joined')
+        userStates.set(channelId, 'joined')
       } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
         console.warn(`❌ Profile realtime ${channelId} ${status}:`, err)
-        channelStates.set(channelId, status === 'CLOSED' ? 'closed' : 'errored')
-        activeChannels.delete(channelId)
+        userStates.set(channelId, status === 'CLOSED' ? 'closed' : 'errored')
+        userChannels.delete(channelId)
       }
     })
       
     return () => {
       supabase.removeChannel(channel)
-      activeChannels.delete(channelId)
-      channelStates.delete(channelId)
+      userChannels.delete(channelId)
+      userStates.delete(channelId)
     }
   },
 

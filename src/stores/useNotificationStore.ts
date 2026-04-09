@@ -51,19 +51,19 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
     const channelId = `notifications:user:${userId}`
     
     // 3. FAST DEDUPLICATION
-    const existing = activeChannels.get(channelId)
-    if (existing && (channelStates.get(channelId) === 'joined' || channelStates.get(channelId) === 'joining')) {
+    const existing = notifChannels.get(channelId)
+    if (existing && (notifStates.get(channelId) === 'joined' || notifStates.get(channelId) === 'joining')) {
       return () => {} // Already active or connecting
     }
 
     // 4. CLEANUP PREVIOUS IF ERRORED
     if (existing) {
       supabase.removeChannel(existing)
-      activeChannels.delete(channelId)
+      notifChannels.delete(channelId)
     }
 
     console.log(`📡 Initializing stable notifications for ${userId}...`)
-    channelStates.set(channelId, 'joining')
+    notifStates.set(channelId, 'joining')
 
     const channel = supabase.channel(channelId)
     let heartbeatInterval: any = null
@@ -131,19 +131,19 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
     const channelId = 'notifications:all'
     
     // 1. FAST DEDUPLICATION
-    const existing = activeChannels.get(channelId)
-    if (existing && (channelStates.get(channelId) === 'joined' || channelStates.get(channelId) === 'joining')) {
+    const existing = notifChannels.get(channelId)
+    if (existing && (notifStates.get(channelId) === 'joined' || notifStates.get(channelId) === 'joining')) {
       return () => {} // Already active or connecting
     }
 
     // 2. CLEANUP PREVIOUS IF ERRORED
     if (existing) {
       supabase.removeChannel(existing)
-      activeChannels.delete(channelId)
+      notifChannels.delete(channelId)
     }
 
     console.log(`📡 Initializing stable admin notifications...`)
-    channelStates.set(channelId, 'joining')
+    notifStates.set(channelId, 'joining')
 
     const channel = supabase.channel(channelId)
     let heartbeatInterval: any = null
@@ -178,33 +178,33 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
         }
       )
 
-    activeChannels.set(channelId, channel)
+    notifChannels.set(channelId, channel)
 
     channel.subscribe((status, err) => {
       if (status === 'SUBSCRIBED') {
         console.log(`✅ Admin notifications active: ${channelId}`)
-        channelStates.set(channelId, 'joined')
+        notifStates.set(channelId, 'joined')
       } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
         console.warn(`❌ Admin notifications ${channelId} ${status}:`, err)
-        channelStates.set(channelId, status === 'CLOSED' ? 'closed' : 'errored')
-        activeChannels.delete(channelId)
+        notifStates.set(channelId, status === 'CLOSED' ? 'closed' : 'errored')
+        notifChannels.delete(channelId)
       }
     })
 
     return () => { 
       supabase.removeChannel(channel)
-      activeChannels.delete(channelId)
-      channelStates.delete(channelId)
+      notifChannels.delete(channelId)
+      notifStates.delete(channelId)
     }
   },
 
   resyncRealtime: async (userId?: string) => {
     const now = Date.now()
-    if (now - lastResyncTime < 30000) {
+    if (now - notifResyncTime < 30000) {
       console.log('⏳ Skipping notification resync (cooldown active)')
       return
     }
-    lastResyncTime = now
+    notifResyncTime = now
 
     console.log('🔄 Resyncing notifications...')
     
@@ -224,11 +224,11 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
 
     // 2. WebSocket Recovery
     const channelId = userId ? `notifications:user:${userId}` : 'notifications:all'
-    const state = channelStates.get(channelId)
+    const state = notifStates.get(channelId)
     
-    if (state === 'closed' || state === 'errored' || !activeChannels.has(channelId)) {
+    if (state === 'closed' || state === 'errored' || !notifChannels.has(channelId)) {
       console.warn(`⚠️ [NotificationStore] Connection dead (${state}). Re-subscribing...`)
-      activeChannels.delete(channelId)
+      notifChannels.delete(channelId)
       if (userId) get().subscribeNotifications(userId)
       else get().subscribeAllNotifications()
     }
