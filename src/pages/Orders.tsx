@@ -356,7 +356,7 @@ export function Orders() {
     }
   };
 
-  const [isAssigning, setIsAssigning] = useState(false);
+
 
   const handleAssign = async (courierId: string, instructions?: string) => {
     if (!selectedOrder || !courierId || isAssigning) return;
