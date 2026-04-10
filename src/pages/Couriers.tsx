@@ -32,7 +32,7 @@ export function Couriers() {
   const { addCourier, updateCourier } = useCourierStore();
   const { users } = useUserStore();
   const couriers = users.filter(u => u.role === 'courier') as Courier[];
-  const { orders, getOrdersByCourier, updateOrder } = useOrderStore();
+  const { orders, activeOrdersByCourier, getOrdersByCourier, updateOrder } = useOrderStore();
   const { commission_rate, commission_threshold } = useSettingsStore();
   const earningSettings = { commission_rate, commission_threshold };
   const { user } = useAuth();
@@ -61,6 +61,7 @@ export function Couriers() {
     const map = new Map<string, Order>()
     weekOrders.forEach(o => map.set(o.id, o))
     orders.forEach(o => map.set(o.id, o))
+    activeOrdersByCourier.forEach(o => map.set(o.id, o))
     return Array.from(map.values())
   }, [weekOrders, orders])
 
@@ -316,11 +317,11 @@ export function Couriers() {
                         </Badge>
                         {courier.is_active && (() => {
                           const status = (courier as any).courier_status ?? (courier.is_online ? 'on' : 'off')
-                          const waitingOrder = allOrders.find(o => 
+                          const activeOrders = allOrders.filter(o => 
                             o.courier_id === courier.id && 
-                            o.is_waiting === true &&
                             !['cancelled', 'delivered'].includes(o.status)
                           );
+                          const waitingOrder = activeOrders.find(o => o.is_waiting) || activeOrders[0];
                           return (
                             <>
                               {status === 'on' && <span className="text-xs text-green-600 font-semibold">{'\u{1F680}'} ON</span>}
