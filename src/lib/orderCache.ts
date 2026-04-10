@@ -426,13 +426,20 @@ export async function bulkMoveToLocalDB(
  */
 export async function purgeNonFinalizedOrders() {
   const FINAL_STATUSES = ['delivered', 'cancelled']
-  const all = await localDB.orders.toArray()
-  const toDelete = all.filter(o => !FINAL_STATUSES.includes(o.status))
-  
-  if (toDelete.length > 0) {
-    await localDB.orders.bulkDelete(toDelete.map(o => o.id))
-    console.info(`[MirrorDB] Purged ${toDelete.length} non-finalized orders.`)
-    window.dispatchEvent(new CustomEvent('indexeddb-synced'))
+  try {
+    const deletedCount = await localDB.orders
+      .where('status')
+      .noneOf(FINAL_STATUSES)
+      .delete()
+    
+    if (deletedCount > 0) {
+      console.info(`[MirrorDB] Purged ${deletedCount} non-finalized orders using index.`)
+      window.dispatchEvent(new CustomEvent('indexeddb-synced'))
+      const total = await localDB.orders.count()
+      saveMeta({ total_records: total })
+    }
+  } catch (err) {
+    console.error('[MirrorDB] Efficient purge failed:', err)
   }
 }
 
@@ -546,19 +553,16 @@ export async function checkIntegrity()
 export async function getOrdersByCourierFromLocal(
   courierId: string
 ): Promise<import('@/types').Order[]> {
+  const FINAL_STATUSES = ['delivered', 'cancelled']
+  
   const all = await localDB.orders
     .where('courier_id')
     .equals(courierId)
+    .filter(o => FINAL_STATUSES.includes(o.status))
     .toArray()
 
-  return all
-    .filter(o =>
-      o.status === 'delivered' ||
-      o.status === 'cancelled'
-    )
-    .map(({ _date, ...o }) =>
-      o as import('@/types').Order
-    )
+  return (all as any[])
+    .map(({ _date, ...o }) => o as import('@/types').Order)
     .sort((a, b) =>
       new Date(b.created_at).getTime() -
       new Date(a.created_at).getTime()

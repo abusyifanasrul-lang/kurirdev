@@ -204,11 +204,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     const { courierId } = filter || {}
     set({ isLoading: true })
     
-    // MANDATORY Cleanup: Ensure local DB doesn't have active orders
-    const { purgeNonFinalizedOrders } = await import('@/lib/orderCache')
-    await purgeNonFinalizedOrders()
-    
-    // 1. LATEST MIRROR LOAD (Optimistic - Instant UI)
+    // 1. LATEST MIRROR LOAD (Optimistic - Instant UI) - Start immediately
     if (courierId) {
       const cached = await getOrdersByCourierFromLocal(courierId)
       if (cached.length > 0) set({ orders: cached })
@@ -217,7 +213,13 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
       if (cached.length > 0) set({ orders: cached })
     }
 
-    // 2. Clear/Fetch Active Stores (Strictly Real-time)
+    // 2. MANDATORY Cleanup (Non-blocking for UI)
+    // We do this after optimistic load to ensure UI paints first
+    import('@/lib/orderCache').then(({ purgeNonFinalizedOrders }) => {
+      purgeNonFinalizedOrders().catch(console.error)
+    })
+    
+    // 3. Clear/Fetch Active Stores (Strictly Real-time)
     set({ activeOrdersByCourier: [], isSyncing: true })
 
     try {

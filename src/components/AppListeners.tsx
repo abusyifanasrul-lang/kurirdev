@@ -59,9 +59,15 @@ export const AppListeners = () => {
       activeOnly: user.role === 'courier'
     }
 
-    // 2.a Initial Load (Cache-first then background fetch)
+    // 2.a Initial Load (Cache-first then background fetch) - Delayed for boot efficiency
     const orderStore = useOrderStore.getState()
-    orderStore.fetchInitialOrders(filter)
+    const task = () => orderStore.fetchInitialOrders(filter)
+    
+    if ('requestIdleCallback' in window) {
+      (window as any).requestIdleCallback(() => setTimeout(task, 500), { timeout: 5000 })
+    } else {
+      setTimeout(task, 1000)
+    }
 
     // 2.b Real-time Subscription
     const unsubOrders = orderStore.subscribeOrders(filter)
@@ -127,18 +133,28 @@ export const AppListeners = () => {
   useEffect(() => {
     if (user) {
        const initStores = async () => {
-         // Stagger 1: User Profile (Immediate)
+         // Delay all store inits to let React finish hydration/initial render
+         await new Promise(r => setTimeout(r, 800))
+
+         // Stagger 1: User Profile
          const userStore = useUserStore.getState()
          if (!userStore.isLoaded) {
            await userStore.loadFromLocal()
            userStore.syncFromServer()
          }
 
-         // Stagger 2: Customers (1.5s delay)
-         await new Promise(r => setTimeout(r, 1500))
-         const customerStore = useCustomerStore.getState()
-         await customerStore.loadFromLocal()
-         customerStore.syncFromServer()
+         // Stagger 2: Customers (Deeper delay and idle-based)
+         const loadCustomers = async () => {
+           const customerStore = useCustomerStore.getState()
+           await customerStore.loadFromLocal()
+           customerStore.syncFromServer()
+         }
+
+         if ('requestIdleCallback' in window) {
+           (window as any).requestIdleCallback(() => setTimeout(loadCustomers, 2000), { timeout: 10000 })
+         } else {
+           setTimeout(loadCustomers, 3000)
+         }
        }
        initStores()
     }
