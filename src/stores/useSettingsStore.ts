@@ -35,12 +35,10 @@ interface SettingsStore extends BusinessSettings {
 }
 
 const DEFAULT_INSTRUCTIONS: CourierInstruction[] = [
-  { id: '1', label: 'Barang sudah siap, langsung ambil', instruction: 'Barang sudah siap, langsung ambil!', icon: '✅' },
-  { id: '2', label: 'Cek dulu ke penjual sebelum ambil', instruction: 'Cek dulu ke penjual sebelum ambil', icon: '🔍' },
-  { id: '3', label: 'Kurir yang pesan di tempat', instruction: 'Kamu yang pesan di tempat', icon: '🛒' },
-  { id: '4', label: 'Minta kurir update posisi', instruction: 'Admin minta update posisimu', icon: '📍' },
-  { id: '5', label: 'Hubungi admin', instruction: 'Hubungi Admin untuk data detail konsumen', icon: '📞' },
-  { id: '6', label: 'Periksa kondisi barang', instruction: 'Periksa kondisi barang saat serah terima', icon: '📦' },
+  { id: '1', label: '✅ [SLS] Barang Selesai (Siap Ambil)', instruction: 'Barang sudah selesai & tinggal diambil di penjual.', icon: '✅' },
+  { id: '2', label: '🔍 Cek Langsung ke Penjual', instruction: 'Sudah admin pesan, mohon cek langsung di penjual apakah sudah selesai dibuat atau belum.', icon: '🔍' },
+  { id: '3', label: '🛒 Pesan Langsung di Tempat', instruction: 'Mohon pesan langsung di tempat penjual.', icon: '🛒' },
+  { id: '4', label: '📍 [PSS] Update Posisi Sekarang', instruction: 'Mohon komunikasikan posisi Anda saat ini ke Admin.', icon: '📍' },
 ]
 
 export const useSettingsStore = create<SettingsStore>()(

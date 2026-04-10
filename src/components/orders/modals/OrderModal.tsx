@@ -678,12 +678,12 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   }
                 }}
                 className="bg-white border-teal-200"
-                options={courierInstructions.map(i => ({ value: i.label, label: `${i.icon} ${i.label}` }))}
+                options={courierInstructions.map(i => ({ value: i.instruction, label: `${i.icon} ${i.label}` }))}
                 placeholder="— Tidak ada instruksi —"
               />
               {(isEditing ? editForm.notes : instructions) && (() => {
                 const noteValue = isEditing ? editForm.notes : instructions;
-                const match = courierInstructions.find(i => i.label === noteValue);
+                const match = courierInstructions.find(i => i.label === noteValue || i.instruction === noteValue);
                 if (!match) return null;
                 return (
                   <div className="flex items-center gap-2 text-[11px] text-teal-700 bg-white/80 p-2.5 rounded-xl border border-teal-100 shadow-sm">
