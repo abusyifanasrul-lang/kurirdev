@@ -11,7 +11,7 @@ import { useOrderStore } from '@/stores/useOrderStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { calcAdminEarning } from '@/lib/calcEarning';
-import { getOrdersForWeek } from '@/lib/orderCache';
+import { getOrdersForWeek, getAllUnpaidOrdersLocal } from '@/lib/orderCache';
 import { useNavigate } from 'react-router-dom';
 import type { Order } from '@/types';
 
@@ -25,32 +25,38 @@ export function FinanceDashboard() {
 
   const couriers = users.filter(u => u.role === 'courier');
   const [weekOrders, setWeekOrders] = useState<Order[]>([]);
+  const [allUnpaidOrders, setAllUnpaidOrders] = useState<Order[]>([]);
   const [isDataReady, setIsDataReady] = useState(false);
 
-  const loadWeekOrders = useCallback(async () => {
+  const loadFinanceData = useCallback(async () => {
     try {
-      const dbOrders = await getOrdersForWeek();
-      setWeekOrders(dbOrders);
+      const [dbWeekOrders, dbUnpaidOrders] = await Promise.all([
+        getOrdersForWeek(),
+        getAllUnpaidOrdersLocal()
+      ]);
+      setWeekOrders(dbWeekOrders);
+      setAllUnpaidOrders(dbUnpaidOrders);
     } finally {
       setIsDataReady(true);
     }
   }, []);
 
   useEffect(() => {
-    loadWeekOrders();
-    window.addEventListener('indexeddb-synced', loadWeekOrders);
-    return () => window.removeEventListener('indexeddb-synced', loadWeekOrders);
-  }, [loadWeekOrders]);
+    loadFinanceData();
+    window.addEventListener('indexeddb-synced', loadFinanceData);
+    return () => window.removeEventListener('indexeddb-synced', loadFinanceData);
+  }, [loadFinanceData]);
 
   // All hooks MUST be called before any early return (Rules of Hooks)
   // Merge orders — safe to compute even when weekOrders is empty
   const allOrders = useMemo(() => {
     const map = new Map<string, Order>();
     weekOrders.forEach(o => map.set(o.id, o));
+    allUnpaidOrders.forEach(o => map.set(o.id, o));
     orders.forEach(o => map.set(o.id, o));
     activeOrdersByCourier.forEach(o => map.set(o.id, o));
     return Array.from(map.values());
-  }, [weekOrders, orders, activeOrdersByCourier]);
+  }, [weekOrders, allUnpaidOrders, orders, activeOrdersByCourier]);
 
   // Delivered orders
   const deliveredOrders = useMemo(() =>
@@ -132,7 +138,7 @@ export function FinanceDashboard() {
       <Header
         title="Dashboard Keuangan"
         subtitle={`Selamat datang, ${user?.name}`}
-        onRefresh={loadWeekOrders}
+        onRefresh={loadFinanceData}
       />
 
       <div className="p-4 lg:p-8 space-y-6">

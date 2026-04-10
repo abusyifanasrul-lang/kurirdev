@@ -18,7 +18,7 @@ import { useOrderStore } from '@/stores/useOrderStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { calcCourierEarning, calcAdminEarning } from '@/lib/calcEarning';
-import { getOrdersByDateRange } from '@/lib/orderCache';
+import { getOrdersByDateRange, getAllUnpaidOrdersLocal } from '@/lib/orderCache';
 import { formatCurrency, formatShortCurrency } from '@/utils/formatter';
 import type { Order } from '@/types';
 
@@ -43,6 +43,7 @@ export function FinanceAnalisa() {
 
   const [period, setPeriod] = useState<Period>('7days');
   const [periodOrders, setPeriodOrders] = useState<Order[]>([]);
+  const [globalUnpaidOrders, setGlobalUnpaidOrders] = useState<Order[]>([]);
 
   const loadPeriodOrders = useCallback(async () => {
     const now = getWIBNow();
@@ -52,8 +53,12 @@ export function FinanceAnalisa() {
     else start = getWIBStartOfMonth();
     const end = endOfDay(now);
 
-    const dbOrders = await getOrdersByDateRange(start.toISOString(), end.toISOString());
+    const [dbOrders, dbUnpaid] = await Promise.all([
+      getOrdersByDateRange(start.toISOString(), end.toISOString()),
+      getAllUnpaidOrdersLocal()
+    ]);
     setPeriodOrders(dbOrders);
+    setGlobalUnpaidOrders(dbUnpaid);
   }, [period]);
 
   useEffect(() => {
@@ -65,9 +70,10 @@ export function FinanceAnalisa() {
   const allOrders = useMemo(() => {
     const map = new Map<string, Order>();
     periodOrders.forEach(o => map.set(o.id, o));
+    globalUnpaidOrders.forEach(o => map.set(o.id, o));
     orders.forEach(o => map.set(o.id, o));
     return Array.from(map.values());
-  }, [periodOrders, orders]);
+  }, [periodOrders, globalUnpaidOrders, orders]);
 
   const dateRange = useMemo(() => {
     const now = getWIBNow();
@@ -336,7 +342,7 @@ export function FinanceAnalisa() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {(() => {
               const now = getWIBNow();
-              const unpaid = filteredDelivered.filter(o => o.payment_status === 'unpaid');
+              const unpaid = allOrders.filter(o => o.status === 'delivered' && o.payment_status === 'unpaid');
               const buckets = [
                 { label: '0-3 hari', min: 0, max: 3, color: 'green' },
                 { label: '4-7 hari', min: 4, max: 7, color: 'amber' },
