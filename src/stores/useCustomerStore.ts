@@ -373,6 +373,10 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
           if (status === 'SUBSCRIBED') {
             customerStates.set(channelId, 'joined')
             set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
+
+            // SNAPSHOT REPLACEMENT: Always fetch fresh data on (re)connect
+            console.log(`📡 [CustomerStore] Request snapshot replacement...`)
+            get().fetchPendingRequests().catch(err => console.error('Request snapshot error:', err))
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
             const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
             customerStates.set(channelId, finalStatus)
@@ -459,6 +463,10 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
           if (status === 'SUBSCRIBED') {
             customerStates.set(channelId, 'joined')
             set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
+
+            // SNAPSHOT REPLACEMENT: Always fetch fresh data on (re)connect
+            console.log(`📡 [CustomerStore] Customer list snapshot replacement...`)
+            get().syncFromServer().catch(err => console.error('Customer snapshot error:', err))
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
             const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
             customerStates.set(channelId, finalStatus)

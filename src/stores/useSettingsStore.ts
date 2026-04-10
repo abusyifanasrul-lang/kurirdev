@@ -105,6 +105,10 @@ export const useSettingsStore = create<SettingsStore>()(
                  console.log(`✅ Settings realtime active: ${channelId}`)
                  settingsStates.set(channelId, 'joined')
                  set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
+
+                 // SNAPSHOT REPLACEMENT: Always fetch fresh data on (re)connect
+                 console.log(`📡 [SettingsStore] Snapshot replacement...`)
+                 get().fetchSettings().catch(err => console.error('Settings snapshot error:', err))
               } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
                  console.warn(`❌ Settings realtime ${channelId} ${status}:`, err)
                  const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'

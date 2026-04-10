@@ -339,14 +339,6 @@ export const AppListeners = () => {
       }
     }
 
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') handleSyncTrigger('Visibility')
-    }
-    
-    const handleFocus = () => {
-      handleSyncTrigger('Focus')
-    }
-
     const handleOnline = () => {
       handleSyncTrigger('Online')
     }
@@ -355,14 +347,10 @@ export const AppListeners = () => {
       handleSyncTrigger('AuthSync')
     }
 
-    window.addEventListener('visibilitychange', handleVisibility)
-    window.addEventListener('focus', handleFocus)
     window.addEventListener('online', handleOnline)
     window.addEventListener('supabase-realtime-auth-synced', handleRealtimeAuthSync)
 
     return () => {
-      window.removeEventListener('visibilitychange', handleVisibility)
-      window.removeEventListener('focus', handleFocus)
       window.removeEventListener('online', handleOnline)
       window.removeEventListener('supabase-realtime-auth-synced', handleRealtimeAuthSync)
       if (timeoutId) clearTimeout(timeoutId)

@@ -113,6 +113,10 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
           console.log(`✅ Realtime notifications active for ${channelId}`)
           notifStates.set(channelId, 'joined')
           set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
+
+          // SNAPSHOT REPLACEMENT: Fetch fresh baseline on connect
+          console.log(`📡 [NotificationStore] Snapshot replacement for ${userId}...`)
+          get().resyncRealtime(userId, { force: true }).catch(err => console.error('Notif snapshot error:', err))
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
           console.warn(`❌ Realtime notifications ${channelId} ${status}:`, err)
           const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
@@ -201,6 +205,10 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
           console.log(`✅ Admin notifications active: ${channelId}`)
           notifStates.set(channelId, 'joined')
           set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
+
+          // SNAPSHOT REPLACEMENT: Fetch fresh baseline on connect
+          console.log(`📡 [NotificationStore] Admin snapshot replacement...`)
+          get().resyncRealtime(undefined, { force: true }).catch(err => console.error('Admin notif snapshot error:', err))
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
           console.warn(`❌ Admin notifications ${channelId} ${status}:`, err)
           const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'

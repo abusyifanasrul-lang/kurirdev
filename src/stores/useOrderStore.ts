@@ -404,6 +404,10 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
           console.log(`✅ Realtime subscription active for ${channelId}`)
           orderStates.set(channelId, 'joined')
           set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
+
+          // SNAPSHOT REPLACEMENT: Always fetch fresh data on (re)connect
+          console.log(`📡 [OrderStore] Snapshot replacement for ${channelId}...`)
+          get().fetchInitialOrders(filter).catch(err => console.error('Snapshot fetch error:', err))
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
           console.warn(`❌ Realtime ${channelId} ${status}:`, err)
           const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
@@ -480,6 +484,10 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
             console.log(`✅ Realtime active: ${channelId}`)
             orderStates.set(channelId, 'joined')
             set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
+
+            // SNAPSHOT REPLACEMENT: Always fetch fresh data on (re)connect
+            console.log(`📡 [OrderStore] Single order snapshot replacement: ${orderId}...`)
+            fetchCurrent().catch(err => console.error('Single snapshot fetch error:', err))
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
             console.warn(`❌ Realtime ${channelId} ${status}:`, err)
             const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'

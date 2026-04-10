@@ -221,6 +221,10 @@ export const useUserStore = create<UserState>()((set, get) => ({
           console.log(`✅ Realtime enabled for ${channelId}`)
           userStates.set(channelId, 'joined')
           set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
+          
+          // SNAPSHOT REPLACEMENT: Always fetch fresh data on (re)connect
+          console.log(`📡 [UserStore] Snapshot replacement for ${channelId}...`)
+          get().fetchUsers().catch(err => console.error('Snapshot fetch error:', err))
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
           console.warn(`❌ Realtime ${channelId} ${status}:`, err)
           const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
@@ -288,6 +292,10 @@ export const useUserStore = create<UserState>()((set, get) => ({
           console.log(`✅ Profile realtime active: ${channelId}`)
           userStates.set(channelId, 'joined')
           set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
+
+          // SNAPSHOT REPLACEMENT: Always fetch fresh data on (re)connect
+          console.log(`📡 [UserStore] Profile snapshot replacement for ${id}...`)
+          get().fetchProfile(id).catch(err => console.error('Profile snapshot fetch error:', err))
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
           console.warn(`❌ Profile realtime ${channelId} ${status}:`, err)
           const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
