@@ -1,20 +1,19 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, DollarSign, CheckCircle, Clock, WifiOff, ChevronRight, AlertTriangle } from 'lucide-react';
-import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
+import { ChevronRight, AlertTriangle, DollarSign, CheckCircle, Clock, Package } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
 import { cn } from '@/utils/cn';
-import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
+import { Badge } from '@/components/ui/Badge';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useCourierStore } from '@/stores/useCourierStore';
 import { useAuth } from '@/context/AuthContext';
 import { useSessionStore } from '@/stores/useSessionStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
-import { calcCourierEarning, calcAdminEarning } from '@/lib/calcEarning';
-import { getUnpaidOrdersByCourier, getOrdersByCourierFromLocal } from '@/lib/orderCache';
-import { Order } from '@/types';
-import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { calcAdminEarning } from '@/lib/calcEarning';
 import { formatCurrency, formatShortCurrency } from '@/utils/formatter';
+import { Order } from '@/types';
+import { getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
 
 export function CourierDashboard() {
   const navigate = useNavigate();
@@ -29,7 +28,6 @@ export function CourierDashboard() {
   const liveUser = users.find(u => u.id === currentUser?.id);
   const isSuspended = liveUser?.is_active === false;
   const isOnline = liveUser?.is_online ?? false;
-  const isNetworkOnline = useNetworkStatus();
 
   const [showOffModal, setShowOffModal] = useState(false);
   const [selectedOffReason, setSelectedOffReason] = useState('');

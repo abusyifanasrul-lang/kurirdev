@@ -25,6 +25,7 @@ export const OrderHeader: React.FC<OrderHeaderProps> = ({
   }, [order.notes, courier_instructions]);
 
   const getStatusDisplay = () => {
+    if (order.status === 'cancelled') return { label: 'Dibatalkan', emoji: '❌', color: 'bg-red-100 text-red-700' };
     if (order.is_waiting) return { label: 'Sedang Menunggu', emoji: '🕒', color: 'bg-amber-100 text-amber-700' };
     
     switch (order.status) {
@@ -32,7 +33,7 @@ export const OrderHeader: React.FC<OrderHeaderProps> = ({
       case 'picked_up': return { label: 'Menuju Penjual', emoji: '🛵', color: 'bg-emerald-100 text-emerald-700' };
       case 'in_transit': return { label: 'Menuju Customer', emoji: '🚚', color: 'bg-emerald-100 text-emerald-700' };
       case 'delivered': return { label: 'Pesanan Terkirim', emoji: '✅🖨️', color: 'bg-emerald-100 text-emerald-700' };
-      case 'cancelled': return { label: 'Dibatalkan', emoji: '❌', color: 'bg-red-100 text-red-700' };
+
       default: return { label: order.status.replace('_', ' '), emoji: '📦', color: 'bg-gray-100 text-gray-700' };
     }
   };

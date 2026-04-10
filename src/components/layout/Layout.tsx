@@ -17,15 +17,10 @@ import {
   BarChart3,
   ShieldAlert,
   BookUser,
-  WifiOff,
-  Activity,
-  RefreshCw,
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/context/AuthContext';
 import { getRoleLabel, getRoleBadgeColor } from '@/types';
-import { useOrderStore } from '@/stores/useOrderStore';
-import { useNotificationStore } from '@/stores/useNotificationStore';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useRealtimeHealth } from '@/hooks/useRealtimeHealth';
 
@@ -81,7 +76,7 @@ export function Layout() {
   const { user, logout } = useAuth();
 
   const isOnline = useNetworkStatus();
-  const { joined, total, overall } = useRealtimeHealth();
+  const { overall } = useRealtimeHealth();
   const isHealthy = isOnline && overall === 'healthy';
   const isOffline = !isOnline || overall === 'disconnected';
 

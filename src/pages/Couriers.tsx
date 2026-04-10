@@ -274,6 +274,7 @@ export function Couriers() {
               <TableRow>
                 <TableHeader>Name</TableHeader>
                 <TableHeader>Status</TableHeader>
+                <TableHeader>Active</TableHeader>
                 <TableHeader>Completed (7H)</TableHeader>
                 {isFinance && (
                   <>
@@ -287,7 +288,7 @@ export function Couriers() {
             <TableBody>
               {couriers.length === 0 ? (
                 <TableEmpty 
-                  colSpan={6} 
+                  colSpan={isFinance ? 7 : 5} 
                   message="No couriers registered yet. Please click 'Add Courier' to onboard a new team member." 
                 />
               ) : (
@@ -315,7 +316,11 @@ export function Couriers() {
                         </Badge>
                         {courier.is_active && (() => {
                           const status = (courier as any).courier_status ?? (courier.is_online ? 'on' : 'off')
-                          const waitingOrder = allOrders.find(o => o.courier_id === courier.id && o.is_waiting === true)
+                          const waitingOrder = allOrders.find(o => 
+                            o.courier_id === courier.id && 
+                            o.is_waiting === true &&
+                            !['cancelled', 'delivered'].includes(o.status)
+                          );
                           return (
                             <>
                               {status === 'on' && <span className="text-xs text-green-600 font-semibold">{'\u{1F680}'} ON</span>}
@@ -334,6 +339,14 @@ export function Couriers() {
                           )
                         })()}
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="info">
+                        {allOrders.filter(o =>
+                          o.courier_id === courier.id &&
+                          !['delivered', 'cancelled'].includes(o.status)
+                        ).length}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       {allOrders.filter(o =>

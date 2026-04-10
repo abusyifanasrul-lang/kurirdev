@@ -107,7 +107,7 @@ export function CourierOrderDetail() {
   const [courierInlineAddingNew, setCourierInlineAddingNew] = useState(false);
   const [courierInlineNewValue, setCourierInlineNewValue] = useState('');
 
-  const isLocked = order?.status === 'delivered' || isSuspended;
+  const isLocked = order?.status === 'delivered' || order?.status === 'cancelled' || isSuspended;
 
   useEffect(() => {
     if (order && !showItemForm) {
@@ -420,7 +420,6 @@ export function CourierOrderDetail() {
             editPhone={editPhone}
             setEditPhone={setEditPhone}
             editAddress={editAddress}
-            setEditAddress={setEditAddress}
             handleSimpanCustomer={handleSimpanCustomer}
             courierAddrCustomer={courierAddrCustomer}
             courierInlineEditId={courierInlineEditId}

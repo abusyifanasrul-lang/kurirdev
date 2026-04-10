@@ -224,7 +224,11 @@ export function Orders() {
     .sort((a, b) => ((a as any).queue_position ?? 999) - ((b as any).queue_position ?? 999));
 
   const courierWaitingOrder = (courierId: string) =>
-    activeOrdersByCourier.find(o => o.courier_id === courierId && o.is_waiting === true);
+    activeOrdersByCourier.find(o => 
+      o.courier_id === courierId && 
+      o.is_waiting === true &&
+      !['cancelled', 'delivered'].includes(o.status)
+    );
 
   useEffect(() => {
     // 1. Initial Load from IndexedDB (Matching Default Filter)

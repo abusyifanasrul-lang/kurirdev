@@ -8,8 +8,6 @@ import { useCustomerStore } from '@/stores/useCustomerStore';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { useSessionStore } from '@/stores/useSessionStore';
-import { supabase } from '@/lib/supabaseClient';
-import { Order } from '@/types';
 
 export function CourierLayout() {
   const navigate = useNavigate();

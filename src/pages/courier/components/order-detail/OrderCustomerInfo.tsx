@@ -15,7 +15,7 @@ interface OrderCustomerInfoProps {
   editPhone: string;
   setEditPhone: (v: string) => void;
   editAddress: string;
-  setEditAddress: (v: string) => void;
+
   handleSimpanCustomer: () => void;
   
   // Inline Address Picker props
@@ -46,7 +46,7 @@ export const OrderCustomerInfo: React.FC<OrderCustomerInfoProps> = ({
   editPhone,
   setEditPhone,
   editAddress,
-  setEditAddress,
+
   handleSimpanCustomer,
   courierAddrCustomer,
   courierInlineEditId,

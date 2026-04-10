@@ -376,7 +376,11 @@ export function Dashboard() {
                       )}
                       {onlineQueue.map((courier, index) => {
                         const status = (courier as any).courier_status ?? 'on'
-                        const waitingOrder = activeOrdersByCourier.find(o => o.courier_id === courier.id && o.is_waiting === true)
+                        const waitingOrder = activeOrdersByCourier.find(o => 
+                          o.courier_id === courier.id && 
+                          o.is_waiting === true &&
+                          !['cancelled', 'delivered'].includes(o.status)
+                        );
                         return (
                           <div key={courier.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
                             <div className="flex items-center gap-3">

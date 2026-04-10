@@ -3,7 +3,7 @@ import { useCustomerStore } from '@/stores/useCustomerStore';
 import { localDB } from '@/lib/orderCache';
 import { useAuth } from '@/context/AuthContext';
 import { useToastStore } from '@/stores/useToastStore';
-import { Users, Check, X, Clock, Search, Phone, MapPin, Plus, Trash2, Edit2, Save, Package, Calendar, AlertCircle } from 'lucide-react';
+import { Users, Check, X, Clock, Phone, MapPin, Plus, Trash2, Edit2, Save, Package, Calendar, AlertCircle } from 'lucide-react';
 import { Customer } from '@/types';
 import { Modal } from '@/components/ui/Modal';
 import { Header } from '@/components/layout/Header';

@@ -729,7 +729,8 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
       cancellation_reason: reason,
       cancel_reason_type: cancelReasonType ?? null,
       cancelled_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
+      is_waiting: false
     }).eq('id', orderId)
     if (error) throw error
     await get().updateOrderStatus(orderId, 'cancelled', userId, userName, reason)
@@ -744,11 +745,12 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
            await (supabase.from('orders') as any).update({ ...restUpdates, updated_at: new Date().toISOString() }).eq('id', orderId)
         }
         import('@/lib/orderCache').then(({ markAsPaidInLocalDB }) => markAsPaidInLocalDB(orderId).catch(err => console.error('Confirm payment error:', err)))
-    } else {
-       await (supabase.from('orders') as any).update({
-         ...updates,
-         updated_at: new Date().toISOString()
-       }).eq('id', orderId)
+     } else {
+       const finalUpdates = { ...updates, updated_at: new Date().toISOString() };
+       if (updates.status === 'cancelled' || updates.status === 'delivered') {
+         (finalUpdates as any).is_waiting = false;
+       }
+       await (supabase.from('orders') as any).update(finalUpdates).eq('id', orderId)
     }
     set(state => ({
       orders: state.orders.map(o => o.id === orderId ? { ...o, ...updates } : o)

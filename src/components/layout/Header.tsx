@@ -1,16 +1,13 @@
-import { Bell, Search, RefreshCw, Wifi, WifiOff, Menu, Activity, AlertTriangle } from 'lucide-react';
+import { Bell, Search, RefreshCw, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/context/AuthContext';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import { useNavigate } from 'react-router-dom';
-import { useNetworkStatus } from '@/hooks/useNetworkStatus';
-import { useRealtimeHealth } from '@/hooks/useRealtimeHealth';
 
 interface HeaderProps {
   title: string;
   subtitle?: string;
-  isConnected?: boolean | undefined;
   onRefresh?: () => void;
   showSearch?: boolean;
   searchValue?: string;
@@ -23,7 +20,6 @@ interface HeaderProps {
 export function Header({
   title,
   subtitle,
-  isConnected: propIsConnected,
   onRefresh,
   showSearch = false,
   searchValue = '',
@@ -35,9 +31,6 @@ export function Header({
   const { user } = useAuth();
   const { notifications } = useNotificationStore();
   const navigate = useNavigate();
-  const isOnline = useNetworkStatus();
-  const isConnected = propIsConnected ?? isOnline;
-  const { total, joined, overall } = useRealtimeHealth();
 
   // Calculate unread for THIS user
   const userUnreadCount = notifications.filter(n => n.user_id === user?.id && !n.is_read).length;
@@ -63,36 +56,6 @@ export function Header({
 
         {/* Actions Section */}
         <div className="flex items-center gap-2 lg:gap-4">
-          {/* Unified Connection Status */}
-          <div
-            className={cn(
-              "flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-bold transition-all duration-500 border shadow-sm",
-              !isConnected || overall === 'disconnected'
-                ? "bg-red-50 text-red-700 border-red-100"
-                : overall === 'degraded' || overall === 'joining'
-                ? "bg-amber-50 text-amber-700 border-amber-100 animate-pulse"
-                : "bg-emerald-50 text-emerald-700 border-emerald-100"
-            )}
-            title={!isConnected ? "Offline" : `${joined}/${total} Channels Active`}
-          >
-            {!isConnected || overall === 'disconnected' ? (
-              <WifiOff className="h-3.5 w-3.5" />
-            ) : overall === 'degraded' || overall === 'joining' ? (
-              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Activity className="h-3.5 w-3.5" />
-            )}
-            
-            <span className="tracking-tight">
-              {!isConnected || overall === 'disconnected' 
-                ? "OFFLINE" 
-                : overall === 'degraded' || overall === 'joining'
-                ? "SYNCING"
-                : `${joined}/${total} LIVE`}
-            </span>
-          </div>
-
-
           {showSearch && onSearchChange && (
             <div className="hidden lg:block w-64">
               <Input
