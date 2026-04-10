@@ -93,24 +93,26 @@ export default defineConfig({
     }),
   ],
   build: {
-    // Completely disable modulePreload to stop Vite from pre-fetching 
-    // heavy lazy-loaded chunks (PDF/Charts) unless they are actually required.
-    modulePreload: false,
+    // Restore stable module pre-loading. Disabling this entirely in a
+    // fragmented chunk environment caused dependency discovery issues.
+    modulePreload: { polyfill: false },
     rollupOptions: {
       output: {
         manualChunks(id) {
-          // Firebase core — dipakai semua user
-          // NOTE: firebase/messaging & firebase/installations intentionally excluded
-          // — they're only needed for courier push notifications (lazy-loaded via fcm.ts)
-          if (id.includes('firebase/app') || id.includes('firebase/auth') || id.includes('firebase/firestore')) {
+          // Firebase core — shared across admin/owner
+          if (id.includes('node_modules/firebase/app/') || id.includes('node_modules/firebase/auth/') || id.includes('node_modules/firebase/firestore/')) {
             return 'vendor-firebase';
           }
-          // React DOM isolated for better scheduling
-          if (id.includes('react-dom')) {
-            return 'vendor-react-dom';
-          }
-          // React core & Router
-          if (id.includes('react') || id.includes('react-router-dom')) {
+          // Precise matching for React core to avoid catching 
+          // 'lucide-react' or other UI libraries with "react" in their name.
+          // Combined React core bundle to avoid circular dependencies
+          // while using precise matching to avoid catching 'lucide-react'.
+          if (
+            id.includes('node_modules/react/') || 
+            id.includes('node_modules/react-dom/') ||
+            id.includes('node_modules/react-router-dom/') ||
+            id.includes('node_modules/scheduler/')
+          ) {
             return 'vendor-react';
           }
           // State management
