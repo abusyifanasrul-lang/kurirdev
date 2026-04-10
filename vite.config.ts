@@ -93,6 +93,10 @@ export default defineConfig({
     }),
   ],
   build: {
+    // Disable automatic modulePreload to prevent heavy vendor chunks
+    // (vendor-pdf ~130KB, vendor-charts ~143KB) from loading on pages
+    // that don't need them. Lazy-loaded chunks will still load on demand.
+    modulePreload: { polyfill: false },
     rollupOptions: {
       output: {
         manualChunks(id) {
