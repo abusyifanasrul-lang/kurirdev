@@ -25,6 +25,7 @@ interface NotificationState {
   _resyncLock: Promise<void> | null
   // Real-time Subscriptions Status
   realtimeStatus: Record<string, string>
+  pingRealtime: () => Promise<void>
 }
 
 export const useNotificationStore = create<NotificationState>()((set, get) => ({
@@ -75,8 +76,7 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
       notifStates.set(channelId, 'joining')
 
       const channel = supabase.channel(channelId)
-      
-      channel.on(
+        .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
           (payload) => {
@@ -103,6 +103,14 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
                 notifications: updated.sort((a,b) => new Date(b.sent_at || 0).getTime() - new Date(a.sent_at || 0).getTime()) 
               }
             })
+          }
+        )
+        .on(
+          'broadcast',
+          { event: 'ping' },
+          () => {
+            console.log(`📡 [NotificationStore] Loopback PONG received for ${channelId}`);
+            set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }));
           }
         )
 
@@ -321,5 +329,21 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
   getNotificationsByUser: (userId) => {
     return get().notifications.filter(n => n.user_id === userId)
   },
-  reset: () => set({ notifications: [], isLoading: false })
+  reset: () => set({ notifications: [], isLoading: false }),
+
+  pingRealtime: async () => {
+    const channels = Array.from(notifChannels.values());
+    if (channels.length === 0) return;
+    
+    console.log(`📡 [NotificationStore] Sending broadcast ping to ${channels.length} channels...`);
+    await Promise.all(
+      channels.map(ch => 
+        ch.send({
+          type: 'broadcast',
+          event: 'ping',
+          payload: {}
+        })
+      )
+    );
+  }
 }))

@@ -17,13 +17,17 @@ import {
   BarChart3,
   ShieldAlert,
   BookUser,
+  WifiOff,
+  Activity,
+  RefreshCw,
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/context/AuthContext';
 import { getRoleLabel, getRoleBadgeColor } from '@/types';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useNotificationStore } from '@/stores/useNotificationStore';
-import { useSettingsStore } from '@/stores/useSettingsStore';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { useRealtimeHealth } from '@/hooks/useRealtimeHealth';
 
 interface NavItem {
   path: string;
@@ -76,15 +80,10 @@ export function Layout() {
   const location = useLocation();
   const { user, logout } = useAuth();
 
-  const orderRealtimeStatus = useOrderStore(state => state.realtimeStatus);
-  const notificationRealtimeStatus = useNotificationStore(state => state.realtimeStatus);
-  const settingsRealtimeStatus = useSettingsStore(state => state.realtimeStatus);
-
-  const isOrdersLive = orderRealtimeStatus['orders:global'] === 'joined';
-  const isNotificationsLive = notificationRealtimeStatus['notifications:all'] === 'joined';
-  const isSettingsLive = settingsRealtimeStatus['public:settings'] === 'joined';
-
-  const isFullyLive = isOrdersLive && isNotificationsLive && isSettingsLive;
+  const isOnline = useNetworkStatus();
+  const { joined, total, overall } = useRealtimeHealth();
+  const isHealthy = isOnline && overall === 'healthy';
+  const isOffline = !isOnline || overall === 'disconnected';
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -157,9 +156,9 @@ export function Layout() {
             <div 
               className={cn(
                 "w-2 h-2 rounded-full shadow-sm transition-all duration-500",
-                isFullyLive ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
+                isOffline ? "bg-red-500" : isHealthy ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
               )} 
-              title={isFullyLive ? "LIVE - Connected to Realtime" : "Connecting..."}
+              title={isOffline ? "Offline" : isHealthy ? "LIVE" : "Syncing..."}
             />
           </div>
         </div>
@@ -204,9 +203,9 @@ export function Layout() {
                 <div 
                   className={cn(
                     "w-2 h-2 rounded-full shadow-sm transition-all duration-500",
-                    isFullyLive ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
+                    isOffline ? "bg-red-500" : isHealthy ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
                   )} 
-                  title={isFullyLive ? "LIVE - Connected to Realtime" : "Connecting..."}
+                  title={isOffline ? "Offline" : isHealthy ? "LIVE" : "Syncing..."}
                 />
               </div>
               <div className="flex items-center gap-2">
@@ -214,7 +213,7 @@ export function Layout() {
                   {roleLabel}
                 </span>
                 <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">
-                  {isFullyLive ? 'Live' : 'Syncing...'}
+                  {isOffline ? 'Offline' : isHealthy ? 'Live' : 'Syncing...'}
                 </span>
               </div>
             </div>

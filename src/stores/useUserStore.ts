@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { supabase } from '@/lib/supabaseClient'
 import { RealtimeChannel } from '@supabase/supabase-js'
 import { User, UserRole, CreateUserInput } from '@/types'
-import { cacheProfiles, getCachedProfiles, saveProfileSyncTime, localDB } from '@/lib/orderCache'
+import { cacheProfiles, getCachedProfiles, saveProfileSyncTime } from '@/lib/orderCache'
 
 let userResyncTime = 0
 const userChannels = new Map<string, RealtimeChannel>()
@@ -29,6 +29,7 @@ interface UserState {
   _resyncLock: Promise<void> | null
   // Real-time Subscriptions Status
   realtimeStatus: Record<string, string>
+  pingRealtime: () => Promise<void>
 }
 
 const mapProfileToUser = (profile: any, existingUser?: User): User => {
@@ -193,24 +194,28 @@ export const useUserStore = create<UserState>()((set, get) => ({
           'postgres_changes',
           { event: '*', schema: 'public', table: 'profiles' },
           (payload) => {
-            const { eventType, new: newRec, old: oldRec } = payload
-            const currentUsers = [...get().users]
-            const { profiles } = localDB
-
+            const { eventType, new: newRec, old: oldRec } = payload as any
             if (eventType === 'INSERT') {
               const newUser = mapProfileToUser(newRec)
-              set({ users: [...currentUsers, newUser] })
-              profiles.put(newUser)
+              set(state => ({ users: [...state.users, newUser] }))
             } else if (eventType === 'UPDATE') {
-              const existingUser = currentUsers.find(u => u.id === newRec.id)
-              const updatedUser = mapProfileToUser(newRec, existingUser)
-              
-              set({ users: currentUsers.map(u => u.id === newRec.id ? updatedUser : u) })
-              profiles.put(updatedUser)
+              const updatedUser = mapProfileToUser(newRec)
+              set(state => ({
+                users: state.users.map(u => u.id === (newRec as any).id ? updatedUser : u)
+              }))
             } else if (eventType === 'DELETE') {
-              set({ users: currentUsers.filter(u => u.id !== oldRec.id) })
-              profiles.delete(oldRec.id)
+              set(state => ({
+                users: state.users.filter(u => u.id !== (oldRec as any).id)
+              }))
             }
+          }
+        )
+        .on(
+          'broadcast',
+          { event: 'ping' },
+          () => {
+            console.log(`📡 [UserStore] Loopback PONG received for ${channelId}`);
+            set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }));
           }
         )
 
@@ -282,6 +287,14 @@ export const useUserStore = create<UserState>()((set, get) => ({
             set(state => ({
               users: state.users.map(u => u.id === id ? updatedUser : u)
             }))
+          }
+        )
+        .on(
+          'broadcast',
+          { event: 'ping' },
+          () => {
+            console.log(`📡 [UserStore] Loopback PONG received for ${channelId}`);
+            set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }));
           }
         )
 
@@ -443,4 +456,20 @@ export const useUserStore = create<UserState>()((set, get) => ({
   },
 
   reset: () => set({ users: [], isLoading: false, error: null }),
+
+  pingRealtime: async () => {
+    const channels = Array.from(userChannels.values());
+    if (channels.length === 0) return;
+    
+    console.log(`📡 [UserStore] Sending broadcast ping to ${channels.length} channels...`);
+    await Promise.all(
+      channels.map(ch => 
+        ch.send({
+          type: 'broadcast',
+          event: 'ping',
+          payload: {}
+        })
+      )
+    );
+  }
 }))

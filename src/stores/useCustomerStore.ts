@@ -46,6 +46,8 @@ interface CustomerState {
   _resyncLock: Promise<void> | null
   subscribeToRequests: () => (() => void)
   subscribeToCustomers: () => (() => void)
+  unsubscribeFromRequests: () => void
+  unsubscribeFromCustomers: () => void
   resyncRealtime: (options?: { force?: boolean }) => Promise<void>
 }
 

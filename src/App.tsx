@@ -6,7 +6,7 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { useOrderStore } from '@/stores/useOrderStore';
 // Removed useCustomerStore, useUserStore, and sync sync helpers as they are moved to AppListeners
 const AppListeners = lazy(() => import('@/components/AppListeners').then(m => ({ default: m.AppListeners })));
-import { OfflineBanner } from '@/components/ui/OfflineBanner';
+// Removed OfflineBanner as connection monitoring is now consolidated in Header/Layout
 // NOTE: fcm.ts is NOT statically imported — it's dynamically imported only for courier role
 // to avoid pulling firebase/messaging (~30KB) into the main bundle for all users.
 import type { UserRole } from '@/types';
@@ -229,7 +229,6 @@ export function App() {
     <ErrorBoundary>
       <ThemeProvider>
         <AuthProvider>
-          <OfflineBanner />
           <AppListeners />
           <ToastContainer />
           <PWAUpdateBanner />

@@ -367,12 +367,12 @@ export const AppListeners = () => {
 
       console.log(`📡 [${source}] Triggered. Pre-flight auth check...`)
       
-      // 1. START WATCHDOG (10s limit for recover)
+      // 1. START WATCHDOG (15s limit for recover)
       if (watchdogTimer.current) clearTimeout(watchdogTimer.current);
       watchdogTimer.current = setTimeout(() => {
-        console.warn(`🚨 [Watchdog] Resync from ${source} stuck > 10s. Forcing hard reload.`);
+        console.warn(`🚨 [Watchdog] Resync from ${source} stuck > 15s. Forcing hard reload.`);
         window.location.reload();
-      }, 10000);
+      }, 15000);
 
       try {
         const isValid = await ensureValidSession()
@@ -393,6 +393,16 @@ export const AppListeners = () => {
       }
     }
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        handleSyncTrigger('Visibility')
+      }
+    }
+
+    const handleFocus = () => {
+      handleSyncTrigger('Focus')
+    }
+
     const handleOnline = () => {
       handleSyncTrigger('Online')
     }
@@ -402,11 +412,67 @@ export const AppListeners = () => {
     }
 
     window.addEventListener('online', handleOnline)
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
     window.addEventListener('supabase-realtime-auth-synced', handleRealtimeAuthSync)
+
+    // 5.b PERIODIC DEEP HEALTH CHECK (TIC-TOC) - Every 3 minutes
+    const deepHealthCheck = async () => {
+      if (!user || !navigator.onLine) return;
+
+      console.log('📡 [DeepHealth] Running periodic granular check...');
+      
+      // ACTIVE POKE: Send broadcast pings to critical stores
+      try {
+        await Promise.allSettled([
+          useOrderStore.getState().pingRealtime(),
+          useNotificationStore.getState().pingRealtime(),
+          useUserStore.getState().pingRealtime()
+        ]);
+      } catch (err) {
+        console.warn('📡 [DeepHealth] Ping failed:', err);
+      }
+
+      // Wait 5 seconds for loopback "PONG" to update statuses
+      await new Promise(r => setTimeout(r, 5000));
+
+      const stores = [
+        { name: 'Orders', store: useOrderStore.getState() },
+        { name: 'Notifications', store: useNotificationStore.getState() },
+        { name: 'Users', store: useUserStore.getState() },
+        { name: 'Settings', store: useSettingsStore.getState() },
+        { name: 'Customers', store: useCustomerStore.getState() }
+      ];
+
+      let anyDead = false;
+      for (const item of stores) {
+        const statuses = Object.values(item.store.realtimeStatus);
+        const hasDead = statuses.length > 0 && statuses.some(s => s !== 'joined');
+        const hasNone = statuses.length === 0; // Possibly not subscribed yet but should be
+        
+        if (hasDead || hasNone) {
+          console.warn(`📡 [DeepHealth] ${item.name} channel(s) detected as dead or missing. Statuses:`, item.store.realtimeStatus);
+          anyDead = true;
+          break;
+        }
+      }
+
+      if (anyDead) {
+        console.log('📡 [DeepHealth] Dead channels detected. Triggering auth sync and global resync...');
+        await handleSyncTrigger('DeepHealth');
+      } else {
+        console.log('✅ [DeepHealth] All channels healthy.');
+      }
+    }
+
+    const healthInterval = setInterval(deepHealthCheck, 45000); // 45 seconds (Match Heartbeat responsiveness)
 
     return () => {
       window.removeEventListener('online', handleOnline)
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('supabase-realtime-auth-synced', handleRealtimeAuthSync)
+      clearInterval(healthInterval)
       if (timeoutId) clearTimeout(timeoutId)
     }
   }, [user?.id, user?.role])

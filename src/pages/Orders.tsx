@@ -6,7 +6,7 @@ import {
   getCachedOrdersByRange,
   cacheOrdersByDate,
   getOrdersByDateRange,
-  getOrdersForMonth,
+  getUnpaidOrdersByCourier,
   markAsPaidInLocalDB
 } from '@/lib/orderCache';
 import { Header } from '@/components/layout/Header';
@@ -224,7 +224,7 @@ export function Orders() {
     .sort((a, b) => ((a as any).queue_position ?? 999) - ((b as any).queue_position ?? 999));
 
   const courierWaitingOrder = (courierId: string) =>
-    allOrders.find(o => o.courier_id === courierId && o.is_waiting === true);
+    activeOrdersByCourier.find(o => o.courier_id === courierId && o.is_waiting === true);
 
   useEffect(() => {
     // 1. Initial Load from IndexedDB (Matching Default Filter)

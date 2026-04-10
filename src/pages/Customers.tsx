@@ -4,8 +4,9 @@ import { localDB } from '@/lib/orderCache';
 import { useAuth } from '@/context/AuthContext';
 import { useToastStore } from '@/stores/useToastStore';
 import { Users, Check, X, Clock, Search, Phone, MapPin, Plus, Trash2, Edit2, Save, Package, Calendar, AlertCircle } from 'lucide-react';
-import { Customer, CustomerAddress, CustomerChangeRequest } from '@/types';
+import { Customer } from '@/types';
 import { Modal } from '@/components/ui/Modal';
+import { Header } from '@/components/layout/Header';
 
 export const Customers: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -21,12 +22,7 @@ export const Customers: React.FC = () => {
     syncFromServer,
     subscribeToRequests,
     subscribeToCustomers,
-    realtimeStatus
   } = useCustomerStore();
-  const { user } = useAuth();
-  const { addToast } = useToastStore();
-
-  const canApprove = user?.role === 'admin' || user?.role === 'admin_kurir';
 
   useEffect(() => {
     if (!isLoaded) loadFromLocal();
@@ -66,44 +62,18 @@ export const Customers: React.FC = () => {
 
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-3">
-            <Users className="h-8 w-8 text-emerald-600" />
-            Manajemen Pelanggan
-            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-              realtimeStatus['customer_requests_all'] === 'joined' 
-                ? 'bg-emerald-100 text-emerald-700' 
-                : 'bg-amber-100 text-amber-700 animate-pulse'
-            }`}>
-              <div className={`w-1.5 h-1.5 rounded-full ${
-                realtimeStatus['customer_requests_all'] === 'joined' ? 'bg-emerald-500' : 'bg-amber-500'
-              }`} />
-              {realtimeStatus['customer_requests_all'] === 'joined' ? 'LIVE' : 'CONNECTING...'}
-            </span>
-          </h1>
-          <p className="text-gray-500 font-medium mt-1">
-            Kelola master data pelanggan dan persetujuan perubahan alamat.
-          </p>
-        </div>
-      </div>
+    <div className="min-h-screen">
+      <Header 
+        title="Manajemen Pelanggan"
+        subtitle="Kelola master data pelanggan dan persetujuan perubahan alamat."
+        showSearch
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Cari nama atau no. telepon..."
+      />
 
-
-      {/* Content */}
-      <div className="space-y-4 animate-in fade-in duration-300">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Cari nama atau no. telepon pelanggan..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-4 bg-white border border-gray-200 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-emerald-500 outline-none shadow-sm"
-            />
-          </div>
-
-          <div className="bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm">
+      <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6 animate-in fade-in duration-300">
+        <div className="bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse min-w-[600px]">
                 <thead>
@@ -284,6 +254,16 @@ const DetailModal: React.FC<DetailModalProps> = ({ isOpen, onClose, customer }) 
       setIsAddingAddress(false);
     } catch (err: any) {
       addToast(err.message || 'Gagal menambahkan alamat', 'error');
+    }
+  };
+
+  const handleDeleteAddress = async (addrId: string) => {
+    if (!window.confirm('Yakin ingin menghapus alamat ini?')) return;
+    try {
+      await deleteAddress(customer.id, addrId);
+      addToast('Alamat berhasil dihapus', 'success');
+    } catch (err: any) {
+      addToast(err.message || 'Gagal menghapus alamat', 'error');
     }
   };
 
@@ -661,12 +641,3 @@ const DetailModal: React.FC<DetailModalProps> = ({ isOpen, onClose, customer }) 
     </Modal>
   );
 };
-
-// Quick helper
-const TrashIcon = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M3 6h18"></path>
-    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-  </svg>
-);

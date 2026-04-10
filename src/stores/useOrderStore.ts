@@ -6,7 +6,7 @@ import { useToastStore } from '@/stores/useToastStore'
 import { Order, OrderStatus, OrderStatusHistory } from '@/types'
 // orderCache functions are now dynamically imported inside methods to defer Dexie loading
 import { useSettingsStore } from '@/stores/useSettingsStore'
-import { logger } from '@/lib/logger'
+// import { logger } from '@/lib/logger'
 
 let orderResyncTime = 0
 const orderChannels = new Map<string, RealtimeChannel>()
@@ -60,6 +60,7 @@ export interface OrderState {
   
   // Real-time Subscriptions Status
   realtimeStatus: Record<string, string>
+  pingRealtime: () => Promise<void>
 }
 
 export const useOrderStore = create<OrderState>()((set, get) => ({
@@ -392,6 +393,14 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
                 orders: updatedHistory
               }
             })
+          }
+        )
+        .on(
+          'broadcast',
+          { event: 'ping' },
+          () => {
+            console.log(`📡 [OrderStore] Loopback PONG received for ${channelId}`);
+            set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }));
           }
         )
 
@@ -817,5 +826,21 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     activeOrdersByCourier: [],
     currentOrder: null,
     isLoading: false
-  })
+  }),
+
+  pingRealtime: async () => {
+    const channels = Array.from(orderChannels.values());
+    if (channels.length === 0) return;
+    
+    console.log(`📡 [OrderStore] Sending broadcast ping to ${channels.length} channels...`);
+    await Promise.all(
+      channels.map(ch => 
+        ch.send({
+          type: 'broadcast',
+          event: 'ping',
+          payload: {}
+        })
+      )
+    );
+  }
 }))
