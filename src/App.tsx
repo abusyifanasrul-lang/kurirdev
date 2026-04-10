@@ -5,7 +5,7 @@ import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { useOrderStore } from '@/stores/useOrderStore';
 // Removed useCustomerStore, useUserStore, and sync sync helpers as they are moved to AppListeners
-import { AppListeners } from '@/components/AppListeners';
+const AppListeners = lazy(() => import('@/components/AppListeners').then(m => ({ default: m.AppListeners })));
 import { OfflineBanner } from '@/components/ui/OfflineBanner';
 // NOTE: fcm.ts is NOT statically imported — it's dynamically imported only for courier role
 // to avoid pulling firebase/messaging (~30KB) into the main bundle for all users.

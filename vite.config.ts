@@ -93,27 +93,32 @@ export default defineConfig({
     }),
   ],
   build: {
-    // Restore stable module pre-loading. Disabling this entirely in a
-    // fragmented chunk environment caused dependency discovery issues.
-    modulePreload: { polyfill: false },
+    // Disable module preloading to stop the browser from aggressively 
+    // fetching sub-page chunks during the initial boot. This is critical
+    // for reducing TBT and network congestion on low-end devices.
+    modulePreload: false,
     rollupOptions: {
       output: {
         manualChunks(id) {
-          // Firebase core — shared across admin/owner
+          // React Core (Smallest footprint for initialization)
+          if (id.includes('node_modules/react/') || id.includes('node_modules/scheduler/')) {
+            return 'vendor-react-core';
+          }
+          // React DOM & Router (Evaluation bridge)
+          if (id.includes('node_modules/react-dom/') || id.includes('node_modules/react-router-dom/')) {
+            return 'vendor-react-dom-bridge';
+          }
+          // Core Utilities & Auth
+          if (id.includes('node_modules/@supabase/') || id.includes('node_modules/axios/')) {
+            return 'vendor-core-utils';
+          }
+          // Firebase core
           if (id.includes('node_modules/firebase/app/') || id.includes('node_modules/firebase/auth/') || id.includes('node_modules/firebase/firestore/')) {
             return 'vendor-firebase';
           }
-          // Precise matching for React core to avoid catching 
-          // 'lucide-react' or other UI libraries with "react" in their name.
-          // Combined React core bundle to avoid circular dependencies
-          // while using precise matching to avoid catching 'lucide-react'.
-          if (
-            id.includes('node_modules/react/') || 
-            id.includes('node_modules/react-dom/') ||
-            id.includes('node_modules/react-router-dom/') ||
-            id.includes('node_modules/scheduler/')
-          ) {
-            return 'vendor-react';
+          // UI Icons (Large library isolation)
+          if (id.includes('node_modules/lucide-react/')) {
+            return 'vendor-ui-icons';
           }
           // State management
           if (id.includes('zustand')) {
@@ -123,7 +128,7 @@ export default defineConfig({
           if (id.includes('date-fns')) {
             return 'vendor-date';
           }
-          // IndexedDB
+          // Heavy Dynamic Vendors (Lazy-loaded)
           if (id.includes('dexie')) {
             return 'vendor-dexie';
           }
@@ -133,8 +138,6 @@ export default defineConfig({
           if (id.includes('recharts') || id.includes('d3')) {
             return 'vendor-charts';
           }
-          // Firebase messaging is lazy-loaded in App.tsx
-          // to avoid bloat for non-courier roles.
         },
       },
     },
