@@ -288,11 +288,25 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
   },
 
   markAsRead: async (id) => {
+    // 1. Local IndexedDB Cache
     markNotificationReadLocal(id)
+    
+    // 2. Optimistic Zustand State
+    set((state) => ({
+      notifications: state.notifications.map(n => n.id === id ? { ...n, is_read: true } : n)
+    }))
+
+    // 3. Remote Sync
     await (supabase.from('notifications') as any).update({ is_read: true }).eq('id', id)
   },
 
   markAllAsRead: async (userId) => {
+    // 1. Optimistic Zustand State
+    set((state) => ({
+      notifications: state.notifications.map(n => n.user_id === userId ? { ...n, is_read: true } : n)
+    }))
+
+    // 2. Remote Sync
     await (supabase.from('notifications') as any).update({ is_read: true }).eq('user_id', userId).eq('is_read', false)
   },
 

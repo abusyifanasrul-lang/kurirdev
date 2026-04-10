@@ -1,12 +1,15 @@
 import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Bell, CheckCircle, Clock } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { Badge } from '@/components/ui/Badge';
 import { format, parseISO } from 'date-fns';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import { useAuth } from '@/context/AuthContext';
+import { Notification } from '@/types';
 
 export function CourierNotifications() {
+    const navigate = useNavigate();
     const { user } = useAuth();
     const { notifications, markAsRead, markAllAsRead, subscribeNotifications } = useNotificationStore();
 
@@ -20,8 +23,14 @@ export function CourierNotifications() {
         .filter(n => n.user_id === user?.id)
         .sort((a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime());
 
-    const handleMarkAsRead = async (id: string) => {
-        await markAsRead(id);
+    const handleMarkAsRead = async (notif: Notification) => {
+        await markAsRead(notif.id);
+        
+        // Navigation logic for order-related notifications
+        const orderId = notif.data?.orderId || notif.data?.order_id;
+        if (orderId) {
+            navigate(`/courier/orders/${orderId}`);
+        }
     };
 
     return (
@@ -52,7 +61,7 @@ export function CourierNotifications() {
                     myNotifications.map((notif) => (
                         <button
                             key={notif.id}
-                            onClick={() => handleMarkAsRead(notif.id)}
+                            onClick={() => handleMarkAsRead(notif)}
                             className={cn(
                                 "w-full text-left bg-white rounded-3xl p-5 shadow-sm border transition-all active:scale-[0.98] group",
                                 notif.is_read 
