@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { ArrowLeft, TrendingUp, DollarSign, Package, Calendar, Search, X, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { cn } from '@/utils/cn';
 import { format, parseISO, startOfDay, subDays, startOfWeek, isWithinInterval, endOfDay, isToday, isYesterday } from 'date-fns';
 import { useAuth } from '@/context/AuthContext';
 import { useSettingsStore } from '@/stores/useSettingsStore';
@@ -231,21 +232,33 @@ export function CourierEarnings() {
           </div>
         </div>
 
-        <div className="flex px-4 pb-0 gap-6">
-          <button 
-            onClick={() => setActiveTab('summary')}
-            className={`pb-3 text-xs font-bold uppercase tracking-wider transition-all relative ${activeTab === 'summary' ? 'text-emerald-700' : 'text-gray-400'}`}
-          >
-            Ringkasan
-            {activeTab === 'summary' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-emerald-500 rounded-full animate-in slide-in-from-left-2" />}
-          </button>
-          <button 
-            onClick={() => setActiveTab('history')}
-            className={`pb-3 text-xs font-bold uppercase tracking-wider transition-all relative ${activeTab === 'history' ? 'text-emerald-700' : 'text-gray-400'}`}
-          >
-            Riwayat
-            {activeTab === 'history' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-emerald-500 rounded-full animate-in slide-in-from-right-2" />}
-          </button>
+        <div className="px-4 pb-4">
+          <div className="flex bg-gray-100/80 backdrop-blur-sm rounded-2xl p-1.5 gap-1.5 border border-gray-200/50 shadow-inner">
+            <button 
+              onClick={() => setActiveTab('summary')}
+              className={cn(
+                "flex-1 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-95",
+                activeTab === 'summary' 
+                  ? "bg-emerald-600 text-white shadow-lg shadow-emerald-200 ring-1 ring-emerald-500/20" 
+                  : "text-gray-400 hover:text-gray-600"
+              )}
+            >
+              <TrendingUp className={cn("w-4 h-4", activeTab === 'summary' ? "text-white" : "text-gray-300")} />
+              <span>Ringkasan</span>
+            </button>
+            <button 
+              onClick={() => setActiveTab('history')}
+              className={cn(
+                "flex-1 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-95",
+                activeTab === 'history' 
+                  ? "bg-emerald-600 text-white shadow-lg shadow-emerald-200 ring-1 ring-emerald-500/20" 
+                  : "text-gray-400 hover:text-gray-600"
+              )}
+            >
+              <Clock className={cn("w-4 h-4", activeTab === 'history' ? "text-white" : "text-gray-300")} />
+              <span>Riwayat</span>
+            </button>
+          </div>
         </div>
       </div>
 

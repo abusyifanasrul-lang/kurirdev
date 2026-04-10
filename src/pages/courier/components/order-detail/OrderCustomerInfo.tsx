@@ -86,7 +86,7 @@ export const OrderCustomerInfo: React.FC<OrderCustomerInfoProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 mb-6">
+    <div className="bg-white rounded-3xl px-4 py-6 shadow-sm border border-gray-100 mb-6 font-mobile relative overflow-hidden">
       <div className="flex items-center justify-between mb-5 px-1">
         <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Customer Info</h2>
         {!isLocked && !editCustomer && (
@@ -137,7 +137,7 @@ export const OrderCustomerInfo: React.FC<OrderCustomerInfoProps> = ({
                   const isApplied = editAddress === a.address;
 
                   return (
-                  <div key={a.id} className={`flex flex-col gap-1 p-3 bg-white rounded-xl shadow-sm border ${isApplied ? 'border-emerald-500 ring-1 ring-emerald-500 bg-emerald-50/10' : (isPending ? 'border-amber-200 bg-amber-50/30' : 'border-gray-100')} group transition-all relative overflow-hidden`}>
+                  <div key={a.id} className={`flex flex-col gap-1.5 p-3.5 bg-white rounded-xl shadow-sm border ${isApplied ? 'border-emerald-500 ring-1 ring-emerald-500 bg-emerald-50/10' : (isPending ? 'border-amber-200 bg-amber-50/30' : 'border-gray-100')} group transition-all relative overflow-hidden`}>
                     {isApplied && (
                       <div className="absolute top-0 right-0 bg-emerald-500 text-white px-2 py-1 rounded-bl-lg animate-in slide-in-from-top-full duration-300">
                         <Check className="h-3 w-3" />
@@ -149,30 +149,29 @@ export const OrderCustomerInfo: React.FC<OrderCustomerInfoProps> = ({
                         {pendingEdit && <span className="text-[9px] font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-md flex items-center gap-1"><Clock className="w-3 h-3"/> MENUNGGU UBAH</span>}
                         {pendingDelete && <span className="text-[9px] font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-md flex items-center gap-1"><Clock className="w-3 h-3"/> MENUNGGU HAPUS</span>}
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex items-center gap-0.5 -mr-2">
                         <button 
                           onClick={() => {
                             setCourierInlineEditId(a.id);
                             setCourierInlineEditValue(a.address);
                           }}
-                          className="text-gray-400 hover:text-emerald-600 transition-colors p-1"
+                          className="text-gray-400 hover:text-emerald-600 transition-colors h-11 w-11 flex items-center justify-center shrink-0 active:scale-90"
                         >
-                          <Pencil className="h-3.5 w-3.5" />
+                          <Pencil className="h-4 w-4" />
                         </button>
                         <button 
                           onClick={() => onDeleteAddress(a.id)}
-                          className="text-gray-400 hover:text-red-600 transition-colors p-1"
+                          className="text-gray-400 hover:text-red-600 transition-colors h-11 w-11 flex items-center justify-center shrink-0 active:scale-90"
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
                     </div>
                     
-                    {courierInlineEditId === a.id ? (
-                      <div className="flex gap-2 mt-1">
+                      <div className="flex items-center gap-1.5 mt-1 overflow-hidden">
                         <input
                           autoFocus
-                          className="flex-1 text-xs border border-emerald-200 rounded-lg px-2 py-1.5 focus:ring-1 focus:ring-emerald-500 outline-none"
+                          className="flex-1 min-w-0 text-xs border border-emerald-200 rounded-lg px-2.5 py-2.5 focus:ring-1 focus:ring-emerald-500 outline-none font-bold placeholder:font-normal"
                           value={courierInlineEditValue}
                           onChange={(e) => setCourierInlineEditValue(e.target.value)}
                         />
@@ -181,15 +180,15 @@ export const OrderCustomerInfo: React.FC<OrderCustomerInfoProps> = ({
                             onUpdateAddress(a.id, courierInlineEditValue);
                             setCourierInlineEditId(null);
                           }}
-                          className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg"
+                          className="h-11 w-11 flex items-center justify-center text-emerald-600 hover:bg-emerald-50 rounded-lg shrink-0 active:scale-90"
                         >
-                          <Check className="h-4 w-4" />
+                          <Check className="h-5 w-5" />
                         </button>
                         <button 
                           onClick={() => setCourierInlineEditId(null)}
-                          className="p-1.5 text-gray-400 hover:bg-gray-100 rounded-lg"
+                          className="h-11 w-11 flex items-center justify-center text-gray-400 hover:bg-gray-100 rounded-lg shrink-0 active:scale-90"
                         >
-                          <X className="h-4 w-4" />
+                          <X className="h-5 w-5" />
                         </button>
                       </div>
                     ) : (
@@ -200,7 +199,7 @@ export const OrderCustomerInfo: React.FC<OrderCustomerInfoProps> = ({
                     
                     <button 
                       onClick={() => onSetAppliedAddress(a.address)}
-                      className="mt-2 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg self-start hover:bg-emerald-600 hover:text-white transition-all shadow-sm shadow-emerald-50"
+                      className="mt-2 text-[10px] font-black text-emerald-700 bg-emerald-50 px-4 py-2.5 rounded-xl self-start hover:bg-emerald-600 hover:text-white transition-all shadow-sm shadow-emerald-50 active:scale-95 border border-emerald-100 uppercase tracking-widest"
                     >
                       GUNAKAN ALAMAT INI
                     </button>
@@ -235,13 +234,12 @@ export const OrderCustomerInfo: React.FC<OrderCustomerInfoProps> = ({
                   );
                 })}
                 
-                {courierInlineAddingNew ? (
-                  <div className="p-3 bg-white rounded-xl shadow-sm border border-emerald-200 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <div className="p-3.5 bg-white rounded-xl shadow-sm border border-emerald-200 animate-in fade-in slide-in-from-top-1 duration-200">
                     <p className="text-[10px] font-bold text-emerald-600 uppercase mb-2">Tambah Alamat Baru:</p>
-                    <div className="flex gap-2">
+                    <div className="flex items-center gap-1.5 overflow-hidden">
                       <input
                         autoFocus
-                        className="flex-1 text-xs border border-emerald-200 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 outline-none"
+                        className="flex-1 min-w-0 text-xs border border-emerald-200 rounded-lg px-3 py-3 focus:ring-1 focus:ring-emerald-500 outline-none font-bold placeholder:font-normal"
                         placeholder="Ketik alamat baru..."
                         value={courierInlineNewValue}
                         onChange={(e) => setCourierInlineNewValue(e.target.value)}
@@ -252,15 +250,15 @@ export const OrderCustomerInfo: React.FC<OrderCustomerInfoProps> = ({
                           setCourierInlineAddingNew(false);
                           setCourierInlineNewValue('');
                         }}
-                        className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg shrink-0"
+                        className="h-11 w-11 flex items-center justify-center text-emerald-600 hover:bg-emerald-50 rounded-lg shrink-0 active:scale-90"
                       >
-                        <Check className="h-4 w-4" />
+                        <Check className="h-5 w-5" />
                       </button>
                       <button 
                         onClick={() => setCourierInlineAddingNew(false)}
-                        className="p-2 text-gray-400 hover:bg-gray-100 rounded-lg shrink-0"
+                        className="h-11 w-11 flex items-center justify-center text-gray-400 hover:bg-gray-100 rounded-lg shrink-0 active:scale-90"
                       >
-                        <X className="h-4 w-4" />
+                        <X className="h-5 w-5" />
                       </button>
                     </div>
                   </div>
@@ -276,16 +274,16 @@ export const OrderCustomerInfo: React.FC<OrderCustomerInfoProps> = ({
             </div>
           )}
 
-          <div className="flex gap-3 mt-4">
+          <div className="flex gap-3 mt-8">
             <button
               onClick={() => setEditCustomer(false)}
-              className="flex-1 bg-gray-100 text-gray-600 rounded-2xl py-4 text-sm font-bold active:scale-[0.98] transition-all hover:bg-gray-200 uppercase tracking-widest"
+              className="flex-1 bg-gray-100 text-gray-600 rounded-2xl py-4.5 text-xs font-black active:scale-[0.98] transition-all hover:bg-gray-200 uppercase tracking-widest"
             >
               BATAL
             </button>
             <button
               onClick={handleSimpanCustomer}
-              className="flex-[2] bg-emerald-600 text-white rounded-2xl py-4 text-sm font-bold shadow-lg shadow-emerald-200 active:scale-[0.98] transition-all hover:bg-emerald-700 uppercase tracking-widest"
+              className="flex-[2] bg-emerald-600 text-white rounded-2xl py-4.5 text-xs font-black shadow-xl shadow-emerald-200 active:scale-[0.98] transition-all hover:bg-emerald-700 uppercase tracking-widest"
             >
               SIMPAN
             </button>
