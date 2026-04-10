@@ -7,14 +7,7 @@ import { useNotificationStore } from '@/stores/useNotificationStore'
 import { useCustomerStore } from '@/stores/useCustomerStore'
 import { supabase } from '@/lib/supabaseClient'
 
-import {
-  isInitialSyncCompleted,
-  syncAllFinalOrders,
-  needsDeltaSync,
-  deltaSyncYesterday,
-  checkIntegrity,
-  pruneOldCache
-} from '@/lib/orderCache'
+// orderCache functions are now dynamically imported inside effects to defer Dexie loading
 
 
 export const AppListeners = () => {
@@ -24,21 +17,41 @@ export const AppListeners = () => {
   const resyncAllLock = useRef<Promise<void> | null>(null);
   const watchdogTimer = useRef<NodeJS.Timeout | null>(null);
 
-  // 1. Settings listeners (Global)
+  // 1. Settings listeners (Global) - Deferred to avoid hydration block
   useEffect(() => {
-    if (user) {
+    if (!user) return
+
+    let cleanup: (() => void) | undefined
+    const task = () => {
       fetchSettings()
-      const cleanup = subscribeSettings()
-      return () => { cleanup() }
+      cleanup = subscribeSettings()
     }
+
+    if ('requestIdleCallback' in window) {
+      (window as any).requestIdleCallback(() => setTimeout(task, 1200), { timeout: 10000 })
+    } else {
+      setTimeout(task, 2000)
+    }
+
+    return () => { if (cleanup) cleanup() }
   }, [user?.id, fetchSettings, subscribeSettings])
 
-    // 1.b Profile specific listener (Force logout if suspended + Real-time sync)
+    // 1.b Profile specific listener (Real-time sync) - Staggered
     useEffect(() => {
-      if (user) {
-        const cleanup = useUserStore.getState().subscribeProfile(user.id)
-        return () => { cleanup() }
+      if (!user) return
+      
+      let cleanup: (() => void) | undefined
+      const task = () => {
+        cleanup = useUserStore.getState().subscribeProfile(user.id)
       }
+
+      if ('requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(() => setTimeout(task, 1500), { timeout: 10000 })
+      } else {
+        setTimeout(task, 2500)
+      }
+
+      return () => { if (cleanup) cleanup() }
     }, [user?.id])
 
     // 1.c Watch store for suspension status (Security Gate)
@@ -175,6 +188,16 @@ export const AppListeners = () => {
         const scheduleSync = () => {
           const syncTask = async () => {
             try {
+              // Dynamically import heavy sync logic to defer Dexie evaluation
+              const { 
+                isInitialSyncCompleted, 
+                syncAllFinalOrders, 
+                needsDeltaSync, 
+                deltaSyncYesterday, 
+                checkIntegrity, 
+                pruneOldCache 
+              } = await import('@/lib/orderCache')
+
               if (!isInitialSyncCompleted(userId)) {
                 console.log(`[Sync] 🔄 Initial sync for ${user.role} (${userId})...`)
                 await syncAllFinalOrders(fetchFn, userId)

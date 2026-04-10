@@ -4,15 +4,7 @@ import { RealtimeChannel } from '@supabase/supabase-js'
 import { withRetry } from '@/utils/retry'
 import { useToastStore } from '@/stores/useToastStore'
 import { Order, OrderStatus, OrderStatusHistory } from '@/types'
-import { 
-  moveToLocalDB, 
-  removeFromLocalDB, 
-  getOrdersForWeek, 
-  getOrdersByCourierFromLocal, 
-  markAsPaidInLocalDB,
-  needsWeeklySync,
-  saveWeeklySyncTime
-} from '@/lib/orderCache'
+// orderCache functions are now dynamically imported inside methods to defer Dexie loading
 import { useSettingsStore } from '@/stores/useSettingsStore'
 import { logger } from '@/lib/logger'
 
@@ -202,8 +194,13 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
 
   fetchInitialOrders: async (filter) => {
     const { courierId } = filter || {}
-    set({ isLoading: true })
-    
+    const { 
+      getOrdersByCourierFromLocal, 
+      getOrdersForWeek, 
+      needsWeeklySync,
+      saveWeeklySyncTime
+    } = await import('@/lib/orderCache')
+
     // 1. LATEST MIRROR LOAD (Optimistic - Instant UI) - Start immediately
     if (courierId) {
       const cached = await getOrdersByCourierFromLocal(courierId)
@@ -326,6 +323,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
               
               if (isFinal) {
                 console.info(`[useOrderStore] Realtime ${eventType} mirroring to localDB: ${newRec.id}`)
+                const { moveToLocalDB } = await import('@/lib/orderCache')
                 await moveToLocalDB(newRec as Order, eventType === 'UPDATE')
               }
             }
@@ -386,7 +384,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
               } else if (eventType === 'DELETE') {
                 updatedActive = updatedActive.filter(o => o.id !== oldRec.id)
                 updatedHistory = updatedHistory.filter(o => o.id !== oldRec.id)
-                removeFromLocalDB(oldRec.id)
+                import('@/lib/orderCache').then(({ removeFromLocalDB }) => removeFromLocalDB(oldRec.id))
               }
 
               return { 
@@ -598,6 +596,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
           }))
 
           console.info(`[useOrderStore] Manual delivered mirroring to localDB: ${orderId}`)
+          const { moveToLocalDB } = await import('@/lib/orderCache')
           await moveToLocalDB(updatedOrder as Order).catch(err => console.error('Mirror write error:', err))
         } else {
           const updates: Partial<Order> = {
@@ -628,6 +627,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
 
           if (status === 'cancelled') {
             console.info(`[useOrderStore] Manual cancelled mirroring to localDB: ${orderId}`)
+            const { moveToLocalDB } = await import('@/lib/orderCache')
             await moveToLocalDB(updatedOrder as Order).catch(err => console.error('Mirror write error:', err))
           }
 
@@ -688,6 +688,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
         }))
         const order = get().orders.find(o => o.id === orderId)
         if (order) {
+          const { moveToLocalDB } = await import('@/lib/orderCache')
           moveToLocalDB({
             ...order,
             status: 'assigned',
@@ -733,7 +734,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
         if (Object.keys(restUpdates).length > 0) {
            await (supabase.from('orders') as any).update({ ...restUpdates, updated_at: new Date().toISOString() }).eq('id', orderId)
         }
-        markAsPaidInLocalDB(orderId).catch(err => console.error('Confirm payment error:', err))
+        import('@/lib/orderCache').then(({ markAsPaidInLocalDB }) => markAsPaidInLocalDB(orderId).catch(err => console.error('Confirm payment error:', err)))
     } else {
        await (supabase.from('orders') as any).update({
          ...updates,

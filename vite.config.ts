@@ -93,10 +93,9 @@ export default defineConfig({
     }),
   ],
   build: {
-    // Disable automatic modulePreload to prevent heavy vendor chunks
-    // (vendor-pdf ~130KB, vendor-charts ~143KB) from loading on pages
-    // that don't need them. Lazy-loaded chunks will still load on demand.
-    modulePreload: { polyfill: false },
+    // Completely disable modulePreload to stop Vite from pre-fetching 
+    // heavy lazy-loaded chunks (PDF/Charts) unless they are actually required.
+    modulePreload: false,
     rollupOptions: {
       output: {
         manualChunks(id) {
@@ -106,8 +105,12 @@ export default defineConfig({
           if (id.includes('firebase/app') || id.includes('firebase/auth') || id.includes('firebase/firestore')) {
             return 'vendor-firebase';
           }
-          // React core
-          if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
+          // React DOM isolated for better scheduling
+          if (id.includes('react-dom')) {
+            return 'vendor-react-dom';
+          }
+          // React core & Router
+          if (id.includes('react') || id.includes('react-router-dom')) {
             return 'vendor-react';
           }
           // State management
