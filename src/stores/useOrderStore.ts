@@ -753,13 +753,39 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
        await (supabase.from('orders') as any).update(finalUpdates).eq('id', orderId)
     }
     set(state => ({
-      orders: state.orders.map(o => o.id === orderId ? { ...o, ...updates } : o)
+      orders: state.orders.map(o => o.id === orderId ? { ...o, ...updates } : o),
+      activeOrdersByCourier: state.activeOrdersByCourier.map(o => o.id === orderId ? { ...o, ...updates } : o),
+      currentOrder: state.currentOrder?.id === orderId ? { ...state.currentOrder, ...updates } : state.currentOrder
     }))
   },
-  
   updateBiayaTambahan: async (orderId, titik, beban) => {
     const total_biaya_titik = titik * 3000;
     const total_biaya_beban = beban.reduce((sum: number, b: any) => sum + b.biaya, 0);
+
+    set(state => ({
+      orders: state.orders.map(o => o.id === orderId ? { 
+        ...o, 
+        titik, 
+        total_biaya_titik, 
+        beban, 
+        total_biaya_beban 
+      } : o),
+      activeOrdersByCourier: state.activeOrdersByCourier.map(o => o.id === orderId ? { 
+        ...o, 
+        titik, 
+        total_biaya_titik, 
+        beban, 
+        total_biaya_beban 
+      } : o),
+      currentOrder: state.currentOrder?.id === orderId ? { 
+        ...state.currentOrder, 
+        titik, 
+        total_biaya_titik, 
+        beban, 
+        total_biaya_beban 
+      } : state.currentOrder
+    }));
+
     await (supabase.from('orders') as any).update({
       titik,
       total_biaya_titik,
@@ -770,6 +796,12 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   },
 
   updateItemBarang: async (orderId, itemName, itemPrice) => {
+    set(state => ({
+      orders: state.orders.map(o => o.id === orderId ? { ...o, item_name: itemName, item_price: itemPrice } : o),
+      activeOrdersByCourier: state.activeOrdersByCourier.map(o => o.id === orderId ? { ...o, item_name: itemName, item_price: itemPrice } : o),
+      currentOrder: state.currentOrder?.id === orderId ? { ...state.currentOrder, item_name: itemName, item_price: itemPrice } : state.currentOrder
+    }));
+
     await (supabase.from('orders') as any).update({
       item_name: itemName,
       item_price: itemPrice,
@@ -778,10 +810,22 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   },
 
   updateOrderField: async (orderId: string, field: string, value: any) => {
+    set(state => ({
+      orders: state.orders.map(o => o.id === orderId ? { ...o, [field]: value } : o),
+      activeOrdersByCourier: state.activeOrdersByCourier.map(o => o.id === orderId ? { ...o, [field]: value } : o),
+      currentOrder: state.currentOrder?.id === orderId ? { ...state.currentOrder, [field]: value } : state.currentOrder
+    }));
+
     await (supabase.from('orders') as any).update({ [field]: value, updated_at: new Date().toISOString() }).eq('id', orderId)
   },
 
   updateItems: async (orderId, items) => {
+    set(state => ({
+      orders: state.orders.map(o => o.id === orderId ? { ...o, items } : o),
+      activeOrdersByCourier: state.activeOrdersByCourier.map(o => o.id === orderId ? { ...o, items } : o),
+      currentOrder: state.currentOrder?.id === orderId ? { ...state.currentOrder, items } : state.currentOrder
+    }));
+
     await (supabase.from('orders') as any).update({
       items,
       updated_at: new Date().toISOString()
@@ -789,6 +833,12 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   },
 
   updateOngkir: async (orderId, totalFee) => {
+    set(state => ({
+      orders: state.orders.map(o => o.id === orderId ? { ...o, total_fee: totalFee } : o),
+      activeOrdersByCourier: state.activeOrdersByCourier.map(o => o.id === orderId ? { ...o, total_fee: totalFee } : o),
+      currentOrder: state.currentOrder?.id === orderId ? { ...state.currentOrder, total_fee: totalFee } : state.currentOrder
+    }));
+
     await (supabase.from('orders') as any).update({
       total_fee: totalFee,
       updated_at: new Date().toISOString()
@@ -796,6 +846,12 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   },
 
   updateOrderWaiting: async (orderId, isWaiting) => {
+    set(state => ({
+      orders: state.orders.map(o => o.id === orderId ? { ...o, is_waiting: isWaiting } : o),
+      activeOrdersByCourier: state.activeOrdersByCourier.map(o => o.id === orderId ? { ...o, is_waiting: isWaiting } : o),
+      currentOrder: state.currentOrder?.id === orderId ? { ...state.currentOrder, is_waiting: isWaiting } : state.currentOrder
+    }));
+
     await (supabase.from('orders') as any).update({
       is_waiting: isWaiting,
       updated_at: new Date().toISOString()
