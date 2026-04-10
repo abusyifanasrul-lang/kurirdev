@@ -168,6 +168,7 @@ export const OrderCustomerInfo: React.FC<OrderCustomerInfoProps> = ({
                       </div>
                     </div>
                     
+                    {courierInlineEditId === a.id ? (
                       <div className="flex items-center gap-1.5 mt-1 overflow-hidden">
                         <input
                           autoFocus
@@ -234,6 +235,7 @@ export const OrderCustomerInfo: React.FC<OrderCustomerInfoProps> = ({
                   );
                 })}
                 
+                {courierInlineAddingNew ? (
                   <div className="p-3.5 bg-white rounded-xl shadow-sm border border-emerald-200 animate-in fade-in slide-in-from-top-1 duration-200">
                     <p className="text-[10px] font-bold text-emerald-600 uppercase mb-2">Tambah Alamat Baru:</p>
                     <div className="flex items-center gap-1.5 overflow-hidden">
