@@ -315,6 +315,16 @@ export async function deltaSyncYesterday(
   return finalOrders.length
 }
 
+// Debounce helper for event dispatching
+let syncEventTimeout: any = null;
+function dispatchSyncEvent() {
+  if (syncEventTimeout) clearTimeout(syncEventTimeout);
+  syncEventTimeout = setTimeout(() => {
+    window.dispatchEvent(new CustomEvent('indexeddb-synced'));
+    syncEventTimeout = null;
+  }, 200); // 200ms debounce
+}
+
 // Simpan satu order final ke IndexedDB, mendukung merging jika ini adalah update
 export async function moveToLocalDB(
   order: import('@/types').Order,
@@ -349,7 +359,7 @@ export async function moveToLocalDB(
         console.groupCollapsed(`[MirrorDB] Partial Update (Final): ${order.order_number || order.id}`)
         console.info('New Status:', order.status)
         console.groupEnd()
-        window.dispatchEvent(new CustomEvent('indexeddb-synced'))
+        dispatchSyncEvent()
         return
       }
     }
@@ -361,13 +371,53 @@ export async function moveToLocalDB(
     }
     await localDB.orders.put(fullOrder)
     console.info(`[MirrorDB] Finalized Write: ${fullOrder.order_number || fullOrder.id} status=${fullOrder.status}`)
-    window.dispatchEvent(new CustomEvent('indexeddb-synced'))
+    dispatchSyncEvent()
     
     const total = await localDB.orders.count()
     saveMeta({ total_records: total })
   } catch (err) {
     console.error('[MirrorDB] Write failed:', err, order)
     throw err
+  }
+}
+
+/**
+ * Simpan banyak order final ke IndexedDB secara massal (Efisiensi Tinggi)
+ */
+export async function bulkMoveToLocalDB(
+  orders: import('@/types').Order[]
+): Promise<void> {
+  const FINAL_STATUSES = ['delivered', 'cancelled']
+  
+  // 1. Filter hanya order yang statusnya final
+  const toPut = orders
+    .filter(o => FINAL_STATUSES.includes(o.status))
+    .map(o => ({
+      ...o,
+      _date: getLocalDateStr(o.created_at || new Date().toISOString())
+    }))
+
+  const toDelete = orders
+    .filter(o => !FINAL_STATUSES.includes(o.status))
+    .map(o => o.id)
+
+  try {
+    if (toDelete.length > 0) {
+      await localDB.orders.bulkDelete(toDelete)
+    }
+    
+    if (toPut.length > 0) {
+      await localDB.orders.bulkPut(toPut)
+    }
+
+    if (toPut.length > 0 || toDelete.length > 0) {
+      console.info(`[MirrorDB] Bulk Operation: ${toPut.length} puts, ${toDelete.length} deletes.`)
+      dispatchSyncEvent()
+      const total = await localDB.orders.count()
+      saveMeta({ total_records: total })
+    }
+  } catch (err) {
+    console.error('[MirrorDB] Bulk Write failed:', err)
   }
 }
 
@@ -513,6 +563,28 @@ export async function getOrdersByCourierFromLocal(
       new Date(b.created_at).getTime() -
       new Date(a.created_at).getTime()
     )
+}
+
+/**
+ * Ambil statistik hari ini untuk kurir secara efisien (direct from IDB index)
+ */
+export async function getCourierTodayStats(
+  courierId: string,
+  earningSettings: { commission_rate: number; commission_threshold: number }
+): Promise<{ count: number; earnings: number }> {
+  const today = getLocalDateStr(new Date().toISOString())
+  
+  const todayOrders = await localDB.orders
+    .where('_date').equals(today)
+    .and(o => o.courier_id === courierId && o.status === 'delivered')
+    .toArray()
+
+  const earnings = todayOrders.reduce((sum, o) => sum + calcCourierEarning(o, earningSettings), 0)
+  
+  return {
+    count: todayOrders.length,
+    earnings
+  }
 }
 
 // Ambil semua order aktif milik kurir tertentu dari IndexedDB

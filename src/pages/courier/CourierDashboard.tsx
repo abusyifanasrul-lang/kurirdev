@@ -37,31 +37,12 @@ export function CourierDashboard() {
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   const courierStatus = (liveUser as any)?.courier_status ?? (isOnline ? 'on' : 'off');
-  const [courierOrders, setCourierOrders] = useState<Order[]>([]);
-
-  const loadFromLocalDB = useCallback(async () => {
-    if (!user?.id) return;
-    try {
-      const orders = await getOrdersByCourierFromLocal(user.id);
-      setCourierOrders(orders);
-    } catch (err) {
-      console.error('CourierDashboard load error:', err);
-    }
-  }, [user?.id]);
-
-  useEffect(() => { loadFromLocalDB(); }, [loadFromLocalDB]);
 
   useEffect(() => {
     if (!user?.id) return;
     const unsubscribe = subscribeProfile(user.id);
     return () => unsubscribe();
   }, [user?.id, subscribeProfile]);
-
-  useEffect(() => {
-    const handler = () => loadFromLocalDB();
-    window.addEventListener('indexeddb-synced', handler);
-    return () => window.removeEventListener('indexeddb-synced', handler);
-  }, [loadFromLocalDB]);
 
   const OFF_REASONS = [
     { value: 'Makan', label: '🍽️ Makan' },
@@ -75,57 +56,57 @@ export function CourierDashboard() {
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
 
-  const completedToday = useMemo(() => {
-    const today = startOfDay(new Date());
-    const todayEnd = endOfDay(new Date());
-    return courierOrders.filter((o: Order) => {
-      if (o.status !== 'delivered') return false;
-      const deliveryDate = o.actual_delivery_time ? parseISO(o.actual_delivery_time) : parseISO(o.created_at);
-      return isWithinInterval(deliveryDate, { start: today, end: todayEnd });
-    }).length;
-  }, [courierOrders]);
+  const [todayStats, setTodayStats] = useState({ count: 0, earnings: 0 });
+  const [unpaidStats, setUnpaidStats] = useState({ count: 0, earnings: 0 });
+  const [isStatsLoading, setIsStatsLoading] = useState(true);
 
-  const todayEarnings = useMemo(() => {
-    const today = startOfDay(new Date());
-    const todayEnd = endOfDay(new Date());
-    const earningSettings = { commission_rate, commission_threshold };
+  // Load all dashboard stats in one efficient pass
+  const loadDashboardStats = useCallback(async () => {
+    if (!user?.id) return;
     
-    return courierOrders
-      .filter((o: Order) => {
-        if (o.status !== 'delivered') return false;
-        const deliveryDate = o.actual_delivery_time ? parseISO(o.actual_delivery_time) : parseISO(o.created_at);
-        return isWithinInterval(deliveryDate, { start: today, end: todayEnd });
-      })
-      .reduce((sum: number, o: Order) => sum + calcCourierEarning(o, earningSettings), 0);
-  }, [courierOrders, commission_rate, commission_threshold]);
+    try {
+      const stats = await import('@/lib/orderCache');
+      
+      // 1. Today's Stats (Delivered only)
+      const today = await stats.getCourierTodayStats(user.id, { commission_rate, commission_threshold });
+      setTodayStats(today);
 
-  const [unpaidDeliveredOrdersCount, setUnpaidDeliveredOrdersCount] = useState(0)
-  const [unpaidTotalEarnings, setUnpaidTotalEarnings] = useState(0)
-  const [warningLoading, setWarningLoading] = useState(true)
-
-  useEffect(() => {
-    if (!user?.id) return
-    getUnpaidOrdersByCourier(user.id).then(unpaidFromDB => {
-      const map = new Map<string, Order>()
-      unpaidFromDB.forEach((o: Order) => map.set(o.id, o))
-      courierOrders
-        .filter(o => o.status === 'delivered' && o.payment_status === 'unpaid')
-        .forEach(o => map.set(o.id, o))
-
-      const unpaidOrders = Array.from(map.values())
-      setUnpaidDeliveredOrdersCount(unpaidOrders.length)
-
-      const total = unpaidOrders.reduce((sum, o) => {
+      // 2. Unpaid Warnings (Optimized)
+      const unpaid = await stats.getUnpaidOrdersByCourier(user.id);
+      const unpaidEarnings = unpaid.reduce((sum, o) => {
         const rate = o.applied_commission_rate ?? commission_rate
         const threshold = o.applied_commission_threshold ?? commission_threshold
-        return sum + calcAdminEarning(
-          o, { commission_rate: rate, commission_threshold: threshold }
-        )
-      }, 0)
-      setUnpaidTotalEarnings(total)
-      setWarningLoading(false)
-    })
-  }, [user?.id, courierOrders, commission_rate, commission_threshold])
+        return sum + calcAdminEarning(o, { commission_rate: rate, commission_threshold: threshold })
+      }, 0);
+      
+      setUnpaidStats({ count: unpaid.length, earnings: unpaidEarnings });
+      setIsStatsLoading(false);
+    } catch (err) {
+      console.error('Failed to load dashboard stats:', err);
+    }
+  }, [user?.id, commission_rate, commission_threshold]);
+
+  // Initial load
+  useEffect(() => {
+    loadDashboardStats();
+  }, [loadDashboardStats]);
+
+  // Debounced listener for sync events
+  useEffect(() => {
+    let timeoutId: any = null;
+    const handler = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        loadDashboardStats();
+      }, 1000); // Wait 1s after last sync event before refreshing stats
+    };
+
+    window.addEventListener('indexeddb-synced', handler);
+    return () => {
+      window.removeEventListener('indexeddb-synced', handler);
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [loadDashboardStats]);
 
   const handleSetOn = async () => {
     if (!user?.id || isSuspended || isUpdatingStatus) return;
@@ -170,7 +151,7 @@ export function CourierDashboard() {
     <div className="space-y-6 p-1">
 
       {/* Unpaid Warning Card — If any */}
-      {!warningLoading && unpaidDeliveredOrdersCount > 0 && (
+      {!isStatsLoading && unpaidStats.count > 0 && (
         <div
           onClick={() => navigate('/courier/earnings', { state: { activeTab: 'history' } })}
           className="flex items-center justify-between gap-3 bg-orange-50 border border-orange-200 rounded-3xl px-5 py-4 cursor-pointer active:scale-[0.98] transition-all shadow-sm"
@@ -181,10 +162,10 @@ export function CourierDashboard() {
             </div>
             <div className="min-w-0">
               <p className="text-sm font-black text-orange-900 leading-tight mb-0.5">
-                {unpaidDeliveredOrdersCount} Pesanan
+                {unpaidStats.count} Pesanan
               </p>
               <p className="text-[11px] font-bold text-orange-600 uppercase tracking-tight">
-                {formatCurrency(unpaidTotalEarnings)} Belum Disetor
+                {formatCurrency(unpaidStats.earnings)} Belum Disetor
               </p>
             </div>
           </div>
@@ -258,8 +239,8 @@ export function CourierDashboard() {
       {/* Stats Cards */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: 'Setoran', val: formatShortCurrency(todayEarnings), icon: DollarSign, color: 'emerald' },
-          { label: 'Selesai', val: completedToday, icon: CheckCircle, color: 'blue' },
+          { label: 'Setoran', val: formatShortCurrency(todayStats.earnings), icon: DollarSign, color: 'emerald' },
+          { label: 'Selesai', val: todayStats.count, icon: CheckCircle, color: 'blue' },
           { label: 'Jalan', val: activeOrders.length, icon: Clock, color: 'orange' }
         ].map((stat) => (
           <div key={stat.label} className="bg-white rounded-3xl p-4 shadow-sm border border-gray-100/50 text-center flex flex-col items-center justify-between min-h-[115px]">

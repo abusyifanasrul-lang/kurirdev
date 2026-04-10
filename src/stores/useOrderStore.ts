@@ -254,9 +254,8 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
       const fetchedFinal = (finalData as Order[]) || []
 
       // 3. Mirror finalized orders to local DB
-      for (const order of fetchedFinal) {
-        await moveToLocalDB(order)
-      }
+      const { bulkMoveToLocalDB } = await import('@/lib/orderCache')
+      await bulkMoveToLocalDB(fetchedFinal)
 
       // 4. Update Weekly Sync Metadata
       if (isWeeklyNeeded) {

@@ -123,21 +123,24 @@ export const AppListeners = () => {
     }
   }, [user?.id, user?.role])
 
-  // 2.e Support Stores Loading (Customers & Profiles)
+  // 2.e Support Stores Loading (Customers & Profiles) - Staggered/Delayed
   useEffect(() => {
     if (user) {
-       // Only perform initial load/sync once
-       const userStore = useUserStore.getState()
-       if (!userStore.isLoaded) {
-         userStore.loadFromLocal().then(() => {
+       const initStores = async () => {
+         // Stagger 1: User Profile (Immediate)
+         const userStore = useUserStore.getState()
+         if (!userStore.isLoaded) {
+           await userStore.loadFromLocal()
            userStore.syncFromServer()
-         })
-       }
+         }
 
-       const customerStore = useCustomerStore.getState()
-       customerStore.loadFromLocal().then(() => {
+         // Stagger 2: Customers (1.5s delay)
+         await new Promise(r => setTimeout(r, 1500))
+         const customerStore = useCustomerStore.getState()
+         await customerStore.loadFromLocal()
          customerStore.syncFromServer()
-       })
+       }
+       initStores()
     }
   }, [user?.id])
 
@@ -152,22 +155,34 @@ export const AppListeners = () => {
         const fetchFn = (start: Date, end: Date) => 
           orderStore.fetchOrdersByDateRange(start, end, user.role === 'courier' ? user.id : undefined)
 
-        // Delay background sync to prioritize initial render and real-time connections
-        setTimeout(async () => {
-          try {
-            if (!isInitialSyncCompleted(userId)) {
-              console.log(`[Sync] 🔄 Initial sync for ${user.role} (${userId})...`)
-              await syncAllFinalOrders(fetchFn, userId)
-            } else if (needsDeltaSync(userId)) {
-              console.log(`[Sync] 🔄 Incremental delta sync for ${userId}...`)
-              await deltaSyncYesterday(fetchFn, userId)
+        // Use requestIdleCallback or longer timeout for non-critical work
+        const scheduleSync = () => {
+          const syncTask = async () => {
+            try {
+              if (!isInitialSyncCompleted(userId)) {
+                console.log(`[Sync] 🔄 Initial sync for ${user.role} (${userId})...`)
+                await syncAllFinalOrders(fetchFn, userId)
+              } else if (needsDeltaSync(userId)) {
+                console.log(`[Sync] 🔄 Incremental delta sync for ${userId}...`)
+                await deltaSyncYesterday(fetchFn, userId)
+              }
+              await checkIntegrity()
+              await pruneOldCache()
+            } catch (err) {
+              console.error('[Sync] ❌ Sync failed:', err)
             }
-            await checkIntegrity()
-            await pruneOldCache()
-          } catch (err) {
-            console.error('[Sync] ❌ Sync failed:', err)
           }
-        }, 3000) // 3s delay for heavy background work
+
+          if ('requestIdleCallback' in window) {
+            (window as any).requestIdleCallback(() => {
+              setTimeout(syncTask, 2000) // Delay even when idle to be safe
+            }, { timeout: 10000 })
+          } else {
+            setTimeout(syncTask, 5000)
+          }
+        }
+        
+        scheduleSync()
       }
       runSync()
     }
