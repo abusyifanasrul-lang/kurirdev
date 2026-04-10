@@ -62,8 +62,9 @@ export function Orders() {
   const updateOrder = useOrderStore(state => state.updateOrder);
   const { rotateQueue } = useCourierStore();
   const { users } = useUserStore();
-  const { user } = useAuth(); // Current admin user
+  const { user } = useAuth();
   const { commission_rate, commission_threshold, courier_instructions } = useSettingsStore();
+  const { customers, upsertCustomer, addAddress, updateAddress, deleteAddress, findByPhone } = useCustomerStore();
 
   const isOpsAdmin = user?.role === 'admin_kurir' || user?.role === 'admin';
   const isFinance = user?.role === 'finance' || user?.role === 'admin';
@@ -124,6 +125,7 @@ export function Orders() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchCategory, setSearchCategory] = useState('all');
   const [statusFilter, setStatusFilter] = useState<string>('');
+  
   const now = getWIBNow();
   const oneMonthAgo = new Date(now);
   oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
@@ -137,6 +139,20 @@ export function Orders() {
     field: 'created_at',
     order: 'desc',
   });
+
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [inlineEditAddrId, setInlineEditAddrId] = useState<string | null>(null);
+  const [inlineEditValue, setInlineEditValue] = useState('');
+  const [inlineAddingNew, setInlineAddingNew] = useState(false);
+  const [inlineNewAddr, setInlineNewAddr] = useState('');
+  const [isAssigning, setIsAssigning] = useState(false);
 
   const filteredOrders = useMemo(() => {
     return allOrders
@@ -231,16 +247,7 @@ export function Orders() {
     }
   }, [fetchInitialOrders])
 
-  // Modal States
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
-  const [cancelReason, setCancelReason] = useState('');
-
   // Create Order Form State
-  const [isCreating, setIsCreating] = useState(false);
-  const [formError, setFormError] = useState('');
   const [newOrder, setNewOrder] = useState<Partial<Order>>({
     customer_name: '',
     customer_phone: '',
@@ -269,16 +276,7 @@ export function Orders() {
     setInlineAddingNew(false);
   };
 
-  const { customers, upsertCustomer, addAddress, updateAddress, deleteAddress, findByPhone } = useCustomerStore();
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-
   // Inline Address Editing State (for AddOrderModal)
-  const [inlineEditAddrId, setInlineEditAddrId] = useState<string | null>(null);
-  const [inlineEditValue, setInlineEditValue] = useState('');
-  const [inlineAddingNew, setInlineAddingNew] = useState(false);
-  const [inlineNewAddr, setInlineNewAddr] = useState('');
-
-  // Handlers
   const handleCreateOrder = async () => {
     const missing = [];
     if (!newOrder.customer_name?.trim())
