@@ -62,7 +62,7 @@ function saveMeta(meta: Partial<DBMeta>) {
   )
 }
 
-function getUserSyncStatus(
+export function getUserSyncStatus(
   userId: string
 ): UserSyncStatus {
   const meta = getMeta()

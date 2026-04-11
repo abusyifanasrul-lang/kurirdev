@@ -5,6 +5,7 @@ import { useUserStore } from '@/stores/useUserStore';
 import { useAuth } from '@/context/AuthContext';
 import { useCourierStore } from '@/stores/useCourierStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import {
   clearAllCache,
   getCacheMeta,
@@ -78,6 +79,32 @@ export function Settings() {
   const [cacheMeta, setCacheMeta] = useState<any>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState('');
+
+  // ── Modal State ──────────────────────────────────────────
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant: 'danger' | 'warning' | 'info' | 'primary';
+    onConfirm: () => void | Promise<void>;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    variant: 'primary',
+    onConfirm: () => {},
+  });
+
+  const showConfirm = (
+    title: string,
+    message: string,
+    onConfirm: () => void | Promise<void>,
+    variant: 'danger' | 'warning' | 'info' | 'primary' = 'primary'
+  ) => {
+    setConfirmModal({ isOpen: true, title, message, onConfirm, variant });
+  };
+
+  const closeConfirm = () => setConfirmModal(prev => ({ ...prev, isOpen: false }));
 
   const showMessage = (type: 'success' | 'error', text: string) => {
     setMessage({ type, text });
@@ -158,30 +185,27 @@ export function Settings() {
   const handleResync = async () => {
     if (isSyncing) return;
 
-    const confirmMessage = 
-      "⚠️ PERINGATAN KRITIS: Reset & Sinkronisasi Ulang\n\n" +
-      "Tindakan ini akan:\n" +
-      "1. Menghapus SELURUH database lokal (IndexedDB) di perangkat ini.\n" +
-      "2. Mengakhiri sesi login Anda saat ini (Logout otomatis).\n" +
-      "3. Mengunduh ulang semua data dari server Supabase pada login berikutnya.\n\n" +
-      "Gunakan ini HANYA jika Anda mengalami masalah sinkronisasi data yang parah.\n\n" +
-      "Apakah Anda yakin ingin melanjutkan?";
-
-    if (!window.confirm(confirmMessage)) return;
-
-    setIsSyncing(true);
-    setSyncMessage('Menghapus cache lokal...');
-    try {
-      await clearAllCache();
-      setSyncMessage('Cache dihapus. Logout...');
-      setTimeout(async () => {
-        await logout();
-        navigate('/');
-      }, 1000);
-    } catch (error) {
-      setSyncMessage('Gagal mereset cache.');
-      setIsSyncing(false);
-    }
+    showConfirm(
+      'Reset & Sinkronisasi Ulang',
+      "⚠️ PERINGATAN KRITIS\n\nTindakan ini akan:\n1. Menghapus database lokal (IndexedDB).\n2. Logout otomatis.\n3. Mengunduh ulang data pada login berikutnya.\n\nGunakan hanya jika terjadi masalah sinkronisasi parah.",
+      async () => {
+        setIsSyncing(true);
+        setSyncMessage('Menghapus cache lokal...');
+        try {
+          await clearAllCache();
+          setSyncMessage('Cache dihapus. Logout...');
+          setTimeout(async () => {
+            await logout();
+            navigate('/');
+          }, 1000);
+        } catch (error) {
+          setSyncMessage('Gagal mereset cache.');
+          setIsSyncing(false);
+        }
+        closeConfirm();
+      },
+      'danger'
+    );
   };
 
   const tabs = ALL_TABS.filter((tab) => {
@@ -355,6 +379,15 @@ export function Settings() {
           </main>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        variant={confirmModal.variant}
+        onConfirm={confirmModal.onConfirm}
+        onClose={closeConfirm}
+      />
     </div>
   );
 }

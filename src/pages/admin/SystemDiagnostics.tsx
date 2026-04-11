@@ -3,16 +3,20 @@ import {
   ShieldAlert, Activity, Database, RefreshCw, Terminal,
   AlertTriangle, CheckCircle, XCircle, Search, Eye,
   Zap, Clock, Users, Package, Trash2, RotateCcw,
+  ShieldCheck, Info,
 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import {
-  clearAllCache, getCacheMeta, checkIntegrity, DBMeta
+  clearAllCache, getCacheMeta, checkIntegrity, DBMeta,
+  getUserSyncStatus, syncAllFinalOrders, UserSyncStatus
 } from '@/lib/orderCache';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -43,11 +47,39 @@ export function SystemDiagnostics() {
 
   const [activeTab, setActiveTab] = useState<PanelTab>('health');
 
+  // ── Modal State ──────────────────────────────────────────
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant: 'danger' | 'warning' | 'info' | 'primary';
+    onConfirm: () => void | Promise<void>;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    variant: 'primary',
+    onConfirm: () => {},
+  });
+
+  const showConfirm = (
+    title: string,
+    message: string,
+    onConfirm: () => void | Promise<void>,
+    variant: 'danger' | 'warning' | 'info' | 'primary' = 'primary'
+  ) => {
+    setConfirmModal({ isOpen: true, title, message, onConfirm, variant });
+  };
+
+  const closeConfirm = () => setConfirmModal(prev => ({ ...prev, isOpen: false }));
+
   // ── System Health ────────────────────────────────────────
   const [supabaseOk, setSupabaseOk] = useState<boolean | null>(null);
   const [integrity, setIntegrity] = useState<{ ok: boolean; localCount: number; metaCount: number } | null>(null);
   const [swVersion, setSWVersion] = useState<string>('-');
   const [cacheMeta, setCacheMeta] = useState<DBMeta>(getCacheMeta);
+  const [userSync, setUserSync] = useState<UserSyncStatus | null>(null);
+  const [syncLoading, setSyncLoading] = useState(false);
 
   const checkSystemHealth = useCallback(async () => {
     // Supabase ping
@@ -65,6 +97,9 @@ export function SystemDiagnostics() {
 
     // Refresh cache meta
     setCacheMeta(getCacheMeta());
+    if (user?.id) {
+      setUserSync(getUserSyncStatus(user.id));
+    }
 
     if ('serviceWorker' in navigator) {
       const reg = await navigator.serviceWorker.getRegistration();
@@ -164,14 +199,40 @@ export function SystemDiagnostics() {
 
   const handleForceUpdate = async () => {
     if (!forceOrderId.trim()) { setForceMsg('❌ Order ID wajib diisi.'); return; }
-    const confirm = window.confirm(
-      `⚠️ Force update order "${forceOrderId}" → "${STATUS_LABELS[forceStatus]}"?\n\nAksi ini tidak bisa dibatalkan.`
+
+    showConfirm(
+      'Force Update Order Status',
+      `Force update order "${forceOrderId}" → "${STATUS_LABELS[forceStatus]}"?\n\nAksi ini mengubah database secara langsung dan tidak bisa dibatalkan.`,
+      performForceUpdate,
+      'warning'
     );
-    if (!confirm) return;
+  };
+
+  const performForceUpdate = async () => {
+    closeConfirm();
 
     setForceLoading(true);
     setForceMsg('');
     try {
+      const searchId = forceOrderId.trim();
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(searchId);
+      
+      let targetId = searchId;
+      
+      // If not UUID, resolve it from order_number first
+      if (!isUUID) {
+        const { data, error: fetchError } = await supabase
+          .from('orders')
+          .select('id')
+          .eq('order_number', searchId)
+          .maybeSingle();
+        
+        if (fetchError || !data) {
+          throw new Error(`Order Number "${searchId}" tidak ditemukan.`);
+        }
+        targetId = data.id;
+      }
+
       const updateData: any = {
         status: forceStatus,
         updated_at: new Date().toISOString(),
@@ -188,7 +249,7 @@ export function SystemDiagnostics() {
         updateData.cancelled_at = new Date().toISOString();
       }
 
-      const { error } = await (supabase.from('orders') as any).update(updateData).eq('id', forceOrderId.trim());
+      const { error } = await (supabase.from('orders') as any).update(updateData).eq('id', targetId);
       
       if (error) throw error;
       setForceMsg(`✅ Status order berhasil diubah → ${STATUS_LABELS[forceStatus]}`);
@@ -232,18 +293,38 @@ export function SystemDiagnostics() {
   const [cacheResetting, setCacheResetting] = useState(false);
 
   const handleResetCache = async () => {
-    const confirm = window.confirm(
-      'Reset semua data lokal (IndexedDB)? Anda akan di-logout otomatis.'
+    showConfirm(
+      'Reset Local Cache',
+      'Yakin ingin menghapus semua data lokal (IndexedDB)? Anda akan di-logout otomatis dan data akan diunduh ulang pada login berikutnya.',
+      async () => {
+        setCacheResetting(true);
+        try {
+          await clearAllCache();
+          await logout();
+          navigate('/');
+        } catch (e) {
+          console.error(e);
+          setCacheResetting(false);
+        }
+      },
+      'danger'
     );
-    if (!confirm) return;
-    setCacheResetting(true);
+  };
+
+  const handleManualSync = async () => {
+    if (!user) return;
+    setSyncLoading(true);
     try {
-      await clearAllCache();
-      await logout();
-      navigate('/');
-    } catch (e) {
-      console.error(e);
-      setCacheResetting(false);
+      const fetchFn = (start: Date, end: Date) =>
+        useOrderStore.getState().fetchOrdersByDateRange(start, end, user.role === 'courier' ? user.id : undefined);
+      
+      await syncAllFinalOrders(fetchFn, user.id);
+      await checkSystemHealth();
+      setForceMsg('✅ Sinkronisasi riwayat selesai!');
+    } catch (e: any) {
+      setForceMsg(`❌ Sync gagal: ${e.message}`);
+    } finally {
+      setSyncLoading(false);
     }
   };
 
@@ -512,11 +593,18 @@ export function SystemDiagnostics() {
                 variant="outline"
                 className="border-red-200 text-red-600 hover:bg-red-50"
                 onClick={async () => {
-                  if (!window.confirm('Bersihkan order dummy (tanpa ongkir) yang lama?')) return;
-                  const { cleanupDummyOrders } = await import('@/scripts/cleanupOrders');
-                  const result = await cleanupDummyOrders();
-                  alert(`✅ Cleanup selesai!\n- Delivered: ${result.delivered}\n- Cancelled: ${result.cancelled}\n- Total: ${result.count}`);
-                  checkSystemHealth();
+                  showConfirm(
+                    'Cleanup Dummy Orders',
+                    'Bersihkan order dummy (tanpa ongkir) yang lama dari database testing?',
+                    async () => {
+                      const { cleanupDummyOrders } = await import('@/scripts/cleanupOrders');
+                      const result = await cleanupDummyOrders();
+                      setForceMsg(`✅ Cleanup selesai! Total: ${result.count} (Delivered: ${result.delivered}, Cancelled: ${result.cancelled})`);
+                      checkSystemHealth();
+                      closeConfirm();
+                    },
+                    'danger'
+                  );
                 }}
                 leftIcon={<Trash2 className="h-4 w-4" />}
               >
@@ -578,9 +666,14 @@ export function SystemDiagnostics() {
             <div className="space-y-4">
               {[
                 { label: 'Total Cached Records', value: `${cacheMeta.total_records} orders` },
-                { label: 'Sync Completed', value: cacheMeta.sync_completed ? '✅ Yes' : '❌ No' },
-                { label: 'Last Full Sync', value: cacheMeta.last_sync ? format(new Date(cacheMeta.last_sync), 'dd MMM yyyy HH:mm') : 'Never' },
-                { label: 'Last Delta Sync', value: cacheMeta.last_delta_sync ? format(new Date(cacheMeta.last_delta_sync), 'dd MMM yyyy HH:mm') : 'Never' },
+                { 
+                  label: 'History Sync (Initial)', 
+                  value: userSync?.sync_completed 
+                    ? <span className="text-teal-600 font-medium">✅ Completed</span> 
+                    : <span className="text-amber-600 font-medium">❌ Not Completed</span> 
+                },
+                { label: 'Last History Sync', value: userSync?.last_sync ? format(new Date(userSync.last_sync), 'dd MMM yyyy HH:mm') : 'Never' },
+                { label: 'Last Delta Sync', value: userSync?.last_delta_sync ? format(new Date(userSync.last_delta_sync), 'dd MMM yyyy HH:mm') : 'Never' },
               ].map(item => (
                 <div key={item.label} className="flex justify-between items-center p-4 bg-gray-50 rounded-xl border border-gray-100">
                   <span className="text-sm text-gray-600">{item.label}</span>
@@ -588,23 +681,45 @@ export function SystemDiagnostics() {
                 </div>
               ))}
             </div>
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <p className="text-sm text-gray-500 mb-4">
-                Reset cache akan menghapus semua data IndexedDB dan me-logout sesi saat ini.
-                User perlu login ulang untuk memulai fresh sync.
-              </p>
+
+            <div className="mt-6 pt-6 border-t border-gray-200 space-y-4">
               <Button
-                onClick={handleResetCache}
-                isLoading={cacheResetting}
-                className="bg-red-600 hover:bg-red-700 text-white"
-                leftIcon={<RotateCcw className="h-4 w-4" />}
+                onClick={handleManualSync}
+                isLoading={syncLoading}
+                variant="outline"
+                className="w-full border-teal-200 text-teal-700 hover:bg-teal-50"
+                leftIcon={<RefreshCw className="h-4 w-4" />}
               >
-                Reset & Resync All Cache
+                Sync History Now
               </Button>
+
+              <div className="pt-2">
+                <p className="text-sm text-gray-500 mb-4">
+                  Reset cache akan menghapus semua data IndexedDB dan me-logout sesi saat ini.
+                  User perlu login ulang untuk memulai fresh sync.
+                </p>
+                <Button
+                  onClick={handleResetCache}
+                  isLoading={cacheResetting}
+                  className="bg-red-600 hover:bg-red-700 text-white w-full"
+                  leftIcon={<RotateCcw className="h-4 w-4" />}
+                >
+                  Reset & Resync All Cache
+                </Button>
+              </div>
             </div>
           </Card>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        variant={confirmModal.variant}
+        onConfirm={confirmModal.onConfirm}
+        onClose={closeConfirm}
+      />
     </div>
   );
 }

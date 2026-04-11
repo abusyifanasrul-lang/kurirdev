@@ -4,7 +4,9 @@ import { supabase } from '@/lib/supabaseClient';
 import { useCustomerStore } from '@/stores/useCustomerStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { useOrderStore } from '@/stores/useOrderStore';
+import { useToastStore } from '@/stores/useToastStore';
 import { localDB } from '@/lib/orderCache';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { getCleanupStats, cleanupDummyOrders, type CleanupResult } from '@/scripts/cleanupOrders';
 import type { User as UserType, Order } from '@/types';
 
@@ -64,6 +66,33 @@ export function StorageTab({
     stats: null,
     challenge: ''
   });
+
+  const { addToast } = useToastStore();
+
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant: 'danger' | 'warning' | 'info' | 'primary';
+    onConfirm: () => void | Promise<void>;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    variant: 'primary',
+    onConfirm: () => {},
+  });
+
+  const showConfirm = (
+    title: string,
+    message: string,
+    onConfirm: () => void | Promise<void>,
+    variant: 'danger' | 'warning' | 'info' | 'primary' = 'primary'
+  ) => {
+    setConfirmModal({ isOpen: true, title, message, onConfirm, variant });
+  };
+
+  const closeConfirm = () => setConfirmModal(prev => ({ ...prev, isOpen: false }));
 
   const refreshStats = async () => {
     // Local counts
@@ -154,11 +183,17 @@ export function StorageTab({
     const activeIds = users.filter(u => u.role === 'courier').map(u => u.id);
     const orphans = await getOrphanedOrdersLocal(activeIds);
     if (orphans.length === 0) {
-      alert('✅ Tidak ditemukan order yatim. Semua data sinkron!');
+      addToast('Tidak ditemukan order yatim. Semua data sinkron!', 'success');
     } else {
-      if (window.confirm(`⚠️ Ditemukan ${orphans.length} order yatim!\n\nTindakan ini akan memindai database lokal untuk mencari order yang tidak memiliki pemilik (kurir sudah dihapus).\n\nApa Anda ingin melihat detailnya di halaman Penagihan?`)) {
-        window.location.href = '/finance/penagihan';
-      }
+      showConfirm(
+        'Order Yatim Terdeteksi',
+        `⚠️ Ditemukan ${orphans.length} order yatim!\n\nTindakan ini akan memindai database lokal untuk mencari order yang tidak memiliki pemilik (kurir sudah dihapus).\n\nApa Anda ingin melihat detailnya di halaman Penagihan?`,
+        () => {
+          window.location.href = '/finance/penagihan';
+          closeConfirm();
+        },
+        'warning'
+      );
     }
   };
 
@@ -172,7 +207,7 @@ export function StorageTab({
     } catch (err) {
       console.error('Analysis failed:', err);
       setMaintModal(prev => ({ ...prev, isOpen: false }));
-      alert('Gagal menganalisis database.');
+      addToast('Gagal menganalisis database.', 'error');
     }
   };
 
@@ -187,7 +222,7 @@ export function StorageTab({
       await refreshStats();
     } catch (err) {
       console.error('Cleanup failed:', err);
-      alert('Cleanup gagal dieksekusi.');
+      addToast('Cleanup gagal dieksekusi.', 'error');
       setMaintModal(prev => ({ ...prev, isOpen: false }));
     }
   };
@@ -672,6 +707,15 @@ export function StorageTab({
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        variant={confirmModal.variant}
+        onConfirm={confirmModal.onConfirm}
+        onClose={closeConfirm}
+      />
     </div>
   );
 }

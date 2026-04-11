@@ -7,6 +7,7 @@ import { Users, Check, X, Clock, Phone, MapPin, Plus, Trash2, Edit2, Save, Packa
 import { Customer } from '@/types';
 import { Modal } from '@/components/ui/Modal';
 import { Header } from '@/components/layout/Header';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 
 export const Customers: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -169,6 +170,31 @@ const DetailModal: React.FC<DetailModalProps> = ({ isOpen, onClose, customer }) 
   const [rejectNotes, setRejectNotes] = useState<Record<string, string>>({});
   const [editedAddresses, setEditedAddresses] = useState<Record<string, string>>({});
 
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant: 'danger' | 'warning' | 'info' | 'primary';
+    onConfirm: () => void | Promise<void>;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    variant: 'primary',
+    onConfirm: () => {},
+  });
+
+  const showConfirm = (
+    title: string,
+    message: string,
+    onConfirm: () => void | Promise<void>,
+    variant: 'danger' | 'warning' | 'info' | 'primary' = 'primary'
+  ) => {
+    setConfirmModal({ isOpen: true, title, message, onConfirm, variant });
+  };
+
+  const closeConfirm = () => setConfirmModal(prev => ({ ...prev, isOpen: false }));
+
   const { upsertCustomer, addAddress, updateAddress, deleteAddress, changeRequests, approveRequest, rejectRequest } = useCustomerStore();
   const { user } = useAuth();
   const { addToast } = useToastStore();
@@ -258,13 +284,20 @@ const DetailModal: React.FC<DetailModalProps> = ({ isOpen, onClose, customer }) 
   };
 
   const handleDeleteAddress = async (addrId: string) => {
-    if (!window.confirm('Yakin ingin menghapus alamat ini?')) return;
-    try {
-      await deleteAddress(customer.id, addrId);
-      addToast('Alamat berhasil dihapus', 'success');
-    } catch (err: any) {
-      addToast(err.message || 'Gagal menghapus alamat', 'error');
-    }
+    showConfirm(
+      'Hapus Alamat',
+      'Yakin ingin menghapus alamat ini? Tindakan ini tidak dapat dibatalkan.',
+      async () => {
+        try {
+          await deleteAddress(customer.id, addrId);
+          addToast('Alamat berhasil dihapus', 'success');
+        } catch (err: any) {
+          addToast(err.message || 'Gagal menghapus alamat', 'error');
+        }
+        closeConfirm();
+      },
+      'danger'
+    );
   };
 
   const handleUpdateAddress = async (addrId: string) => {
@@ -278,14 +311,21 @@ const DetailModal: React.FC<DetailModalProps> = ({ isOpen, onClose, customer }) 
   };
 
   const handleApprove = async (reqId: string, modifiedAddress?: string) => {
-    if (!window.confirm('Yakin ingin menyetujui perubahan data ini?')) return;
-    try {
-      if (user) await approveRequest(reqId, user.id, modifiedAddress);
-      addToast('Perubahan berhasil disetujui', 'success');
-      setEditedAddresses(prev => { const next = { ...prev }; delete next[reqId]; return next; });
-    } catch (err: any) {
-      addToast(err.message || 'Gagal menyetujui perubahan', 'error');
-    }
+    showConfirm(
+      'Setujui Perubahan',
+      'Yakin ingin menyetujui perubahan data alamat ini?',
+      async () => {
+        try {
+          if (user) await approveRequest(reqId, user.id, modifiedAddress);
+          addToast('Perubahan berhasil disetujui', 'success');
+          setEditedAddresses(prev => { const next = { ...prev }; delete next[reqId]; return next; });
+        } catch (err: any) {
+          addToast(err.message || 'Gagal menyetujui perubahan', 'error');
+        }
+        closeConfirm();
+      },
+      'primary'
+    );
   };
 
   const handleReject = async (reqId: string) => {
@@ -294,15 +334,22 @@ const DetailModal: React.FC<DetailModalProps> = ({ isOpen, onClose, customer }) 
       addToast('Mohon isi alasan penolakan terlebih dahulu', 'error');
       return;
     }
-    if (!window.confirm('Yakin ingin menolak perubahan data ini?')) return;
-    try {
-      if (user) await rejectRequest(reqId, user.id, notes);
-      addToast('Perubahan berhasil ditolak', 'success');
-      setRejectNotes(prev => ({ ...prev, [reqId]: '' }));
-      setRejectingId(null);
-    } catch (err: any) {
-      addToast(err.message || 'Gagal menolak perubahan', 'error');
-    }
+    showConfirm(
+      'Tolak Perubahan',
+      'Yakin ingin menolak perubahan data ini?',
+      async () => {
+        try {
+          if (user) await rejectRequest(reqId, user.id, notes);
+          addToast('Perubahan berhasil ditolak', 'success');
+          setRejectNotes(prev => ({ ...prev, [reqId]: '' }));
+          setRejectingId(null);
+        } catch (err: any) {
+          addToast(err.message || 'Gagal menolak perubahan', 'error');
+        }
+        closeConfirm();
+      },
+      'danger'
+    );
   };
 
   return (
@@ -638,6 +685,15 @@ const DetailModal: React.FC<DetailModalProps> = ({ isOpen, onClose, customer }) 
           </div>
         </section>
       </div>
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        variant={confirmModal.variant}
+        onConfirm={confirmModal.onConfirm}
+        onClose={closeConfirm}
+      />
     </Modal>
   );
 };
