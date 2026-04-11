@@ -14,9 +14,13 @@ export function CourierOrders() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<string>('all');
 
-  const myOrders = [...activeOrdersByCourier].sort(
-    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-  );
+  const myOrders = [...activeOrdersByCourier].sort((a, b) => {
+    // Prioritize orders that are in waiting/pending state
+    if (a.is_waiting !== b.is_waiting) {
+      return a.is_waiting ? -1 : 1;
+    }
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
 
   if (isLoading && myOrders.length === 0) {
     return (
@@ -105,6 +109,11 @@ export function CourierOrders() {
                     <Badge variant={getStatusBadgeVariant(order.status)} className="font-black text-[9px] uppercase tracking-widest h-5">
                       {getStatusLabel(order.status, 'courier')}
                     </Badge>
+                    {order.is_waiting && (
+                      <Badge variant="warning" className="font-black text-[9px] uppercase tracking-widest h-5 border-none bg-amber-400 text-amber-950 shadow-sm">
+                        Pending
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-lg font-black text-gray-900 mb-1 tracking-tight">{order.customer_name}</p>
                   <p className="text-xs font-medium text-gray-500 line-clamp-1 flex items-center gap-1.5">

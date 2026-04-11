@@ -50,9 +50,13 @@ export function CourierDashboard() {
     { value: 'Lainnya', label: '📝 Lainnya' },
   ];
 
-  const activeOrders = [...activeOrdersByCourier].sort(
-    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-  );
+  const activeOrders = [...activeOrdersByCourier].sort((a, b) => {
+    // Prioritize orders that are in waiting/pending state
+    if (a.is_waiting !== b.is_waiting) {
+      return a.is_waiting ? -1 : 1;
+    }
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
 
   const [todayStats, setTodayStats] = useState({ count: 0, earnings: 0 });
   const [unpaidStats, setUnpaidStats] = useState({ count: 0, earnings: 0 });
@@ -292,6 +296,11 @@ export function CourierDashboard() {
                       <Badge variant={getStatusBadgeVariant(order.status)} className="font-black text-[9px] uppercase tracking-widest h-5">
                         {getStatusLabel(order.status, 'courier')}
                       </Badge>
+                      {order.is_waiting && (
+                        <Badge variant="warning" className="font-black text-[9px] uppercase tracking-widest h-5 border-none bg-amber-400 text-amber-950 shadow-sm">
+                          Pending
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-lg font-black text-gray-900 mb-1 tracking-tight">{order.customer_name}</p>
                     <div className="flex items-center gap-2 mb-4">
