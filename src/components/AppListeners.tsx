@@ -5,229 +5,191 @@ import { useOrderStore } from '@/stores/useOrderStore'
 import { useSettingsStore } from '@/stores/useSettingsStore'
 import { useNotificationStore } from '@/stores/useNotificationStore'
 import { useCustomerStore } from '@/stores/useCustomerStore'
-import { supabase } from '@/lib/supabaseClient'
 
-// orderCache functions are now dynamically imported inside effects to defer Dexie loading
-
+// =============================================================
+// AppListeners — Versi Final
+//
+// Filosofi:
+// 1. Realtime channel adalah sumber kebenaran utama (postgres_changes)
+// 2. Saat channel aktif & JWT valid → semua update masuk otomatis
+// 3. Saat tab kembali aktif → isi "gap" dengan delta fetch (bukan full refetch)
+// 4. Saat channel benar-benar mati → re-subscribe (bukan reload halaman)
+// 5. JWT refresh → update auth realtime saja (tidak trigger resync)
+// =============================================================
 
 export const AppListeners = () => {
   const { user, logout } = useAuth()
   const { fetchSettings, subscribeSettings } = useSettingsStore()
-  const sessionCheckPromise = useRef<Promise<boolean> | null>(null);
-  const resyncAllLock = useRef<Promise<void> | null>(null);
-  const watchdogTimer = useRef<NodeJS.Timeout | null>(null);
 
-  // 1. Settings listeners (Global) - Deferred to avoid hydration block
+  // Waktu terakhir tab kita aktif & berhasil fetch data
+  // Digunakan untuk delta/gap fill — "fetch semua yang berubah sejak saya pergi"
+  const lastActiveRef = useRef<number>(Date.now())
+  const gapFillLock = useRef<boolean>(false)
+  const resyncLock = useRef<Promise<void> | null>(null)
+
+  // ----------------------------------------------------------------
+  // 1. Settings
+  // ----------------------------------------------------------------
   useEffect(() => {
     if (!user) return
-
     let cleanup: (() => void) | undefined
     const task = () => {
       fetchSettings()
       cleanup = subscribeSettings()
     }
-
     if ('requestIdleCallback' in window) {
       (window as any).requestIdleCallback(() => setTimeout(task, 1200), { timeout: 10000 })
     } else {
       setTimeout(task, 2000)
     }
-
     return () => { if (cleanup) cleanup() }
   }, [user?.id, fetchSettings, subscribeSettings])
 
-    // 1.b Profile specific listener (Real-time sync) - Staggered
-    useEffect(() => {
-      if (!user) return
-      
-      let cleanup: (() => void) | undefined
-      const task = () => {
-        cleanup = useUserStore.getState().subscribeProfile(user.id)
-      }
+  // ----------------------------------------------------------------
+  // 1.b Profile realtime
+  // ----------------------------------------------------------------
+  useEffect(() => {
+    if (!user) return
+    let cleanup: (() => void) | undefined
+    const task = () => { cleanup = useUserStore.getState().subscribeProfile(user.id) }
+    if ('requestIdleCallback' in window) {
+      (window as any).requestIdleCallback(() => setTimeout(task, 1500), { timeout: 10000 })
+    } else {
+      setTimeout(task, 2500)
+    }
+    return () => { if (cleanup) cleanup() }
+  }, [user?.id])
 
-      if ('requestIdleCallback' in window) {
-        (window as any).requestIdleCallback(() => setTimeout(task, 1500), { timeout: 10000 })
-      } else {
-        setTimeout(task, 2500)
-      }
+  // ----------------------------------------------------------------
+  // 1.c Suspension gate
+  // ----------------------------------------------------------------
+  const liveUser = useUserStore((state) => state.users.find(u => u.id === user?.id))
+  useEffect(() => {
+    if (liveUser && liveUser.is_active === false) {
+      console.warn('⚠️ Akun disuspend. Logout otomatis...')
+      logout()
+    }
+  }, [liveUser?.is_active, logout])
 
-      return () => { if (cleanup) cleanup() }
-    }, [user?.id])
-
-    // 1.c Watch store for suspension status (Security Gate)
-    const liveUser = useUserStore((state) => state.users.find(u => u.id === user?.id));
-    useEffect(() => {
-      if (liveUser && liveUser.is_active === false) {
-        console.warn('⚠️ Akun disuspend oleh admin. Melakukan logout otomatis...')
-        logout()
-      }
-    }, [liveUser?.is_active, logout])
-  // 2. Orders & FCM Sync (The "oneSnapshot" paradigm)
+  // ----------------------------------------------------------------
+  // 2. Orders, Notifs, FCM
+  // ----------------------------------------------------------------
   useEffect(() => {
     if (!user) return
 
-    // Memoize filter options to prevent redundant effect runs
     const filter = {
       courierId: user.role === 'courier' ? user.id : undefined,
       activeOnly: user.role === 'courier'
     }
 
-    // 2.a Initial Load (Cache-first then background fetch) - Delayed for boot efficiency
     const orderStore = useOrderStore.getState()
     const task = () => orderStore.fetchInitialOrders(filter)
-    
     if ('requestIdleCallback' in window) {
       (window as any).requestIdleCallback(() => setTimeout(task, 500), { timeout: 5000 })
     } else {
       setTimeout(task, 1000)
     }
 
-    // 2.b Real-time Subscription
     const unsubOrders = orderStore.subscribeOrders(filter)
-
-    // 2.c Notifications Subscription
     const notifStore = useNotificationStore.getState()
     const unsubNotifs = user.role === 'courier'
       ? notifStore.subscribeNotifications(user.id)
       : notifStore.subscribeAllNotifications()
 
-    // 2.d Integration with FCM for Token Refresh & Foreground Refresh
     let fcmCleanup: { unsubscribe?: any } = {}
     let fcmRefreshInterval: any = null
 
     if (user.role === 'courier') {
-       // Only load and initialize FCM for courier role
-       import('@/lib/fcm').then(({ refreshFCMToken, onForegroundMessage }) => {
-         // Initial check
-         refreshFCMToken(user.id).catch(console.error)
-
-         // Periodic check (every 7 days)
-         const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
-         fcmRefreshInterval = setInterval(() => {
-           refreshFCMToken(user.id).catch(console.error)
-         }, SEVEN_DAYS_MS)
-
-         fcmCleanup.unsubscribe = onForegroundMessage((payload) => {
-           console.log('🔔 Foreground FCM caught:', payload)
-           
-           // A. Refresh Order Store
-           orderStore.fetchActiveOrdersByCourier(user.id)
-
-           // B. Show Browser Notification (if permission granted)
-           const notifData = payload.notification || payload.data || {}
-           const title = notifData.title
-           const body = notifData.body
-           if (title && Notification.permission === 'granted') {
-             const notif = new Notification(title, {
-               body: body || '',
-               icon: '/icons/android/android-launchericon-192-192.png',
-               tag: payload.data?.orderId || 'kurirdev-foreground',
-             })
-             notif.onclick = () => window.focus()
-           }
-         })
-       }).catch(err => console.error('[FCM] Dynamic import failed:', err))
+      import('@/lib/fcm').then(({ refreshFCMToken, onForegroundMessage }) => {
+        refreshFCMToken(user.id).catch(console.error)
+        fcmRefreshInterval = setInterval(() => {
+          refreshFCMToken(user.id).catch(console.error)
+        }, 7 * 24 * 60 * 60 * 1000)
+        fcmCleanup.unsubscribe = onForegroundMessage((payload) => {
+          orderStore.fetchActiveOrdersByCourier(user.id)
+          const notifData = payload.notification || payload.data || {}
+          if (notifData.title && Notification.permission === 'granted') {
+            const notif = new Notification(notifData.title, {
+              body: notifData.body || '',
+              icon: '/icons/android/android-launchericon-192-192.png',
+              tag: payload.data?.orderId || 'kurirdev-foreground',
+            })
+            notif.onclick = () => window.focus()
+          }
+        })
+      }).catch(err => console.error('[FCM] import failed:', err))
     }
 
     return () => {
       unsubOrders()
       unsubNotifs()
       if (fcmRefreshInterval) clearInterval(fcmRefreshInterval)
-      if (fcmCleanup.unsubscribe) {
-        const u = fcmCleanup.unsubscribe
-        if (typeof u === 'function') {
-          u()
-        }
+      if (fcmCleanup.unsubscribe && typeof fcmCleanup.unsubscribe === 'function') {
+        fcmCleanup.unsubscribe()
       }
     }
   }, [user?.id, user?.role])
 
-  // 2.e Support Stores Loading (Customers & Profiles) - Staggered/Delayed
+  // ----------------------------------------------------------------
+  // 2.e Support stores
+  // ----------------------------------------------------------------
   useEffect(() => {
-    if (user) {
-       const initStores = async () => {
-         // Delay all store inits to let React finish hydration/initial render
-         await new Promise(r => setTimeout(r, 800))
-
-         // Stagger 1: User Profile
-         const userStore = useUserStore.getState()
-         if (!userStore.isLoaded) {
-           await userStore.loadFromLocal()
-           userStore.syncFromServer()
-         }
-
-         // Stagger 2: Customers (Deeper delay and idle-based)
-         const loadCustomers = async () => {
-           const customerStore = useCustomerStore.getState()
-           await customerStore.loadFromLocal()
-           customerStore.syncFromServer()
-         }
-
-         if ('requestIdleCallback' in window) {
-           (window as any).requestIdleCallback(() => setTimeout(loadCustomers, 2000), { timeout: 10000 })
-         } else {
-           setTimeout(loadCustomers, 3000)
-         }
-       }
-       initStores()
-    }
+    if (!user) return
+    ;(async () => {
+      await new Promise(r => setTimeout(r, 800))
+      const userStore = useUserStore.getState()
+      if (!userStore.isLoaded) {
+        await userStore.loadFromLocal()
+        userStore.syncFromServer()
+      }
+      const loadCustomers = async () => {
+        const customerStore = useCustomerStore.getState()
+        await customerStore.loadFromLocal()
+        customerStore.syncFromServer()
+      }
+      if ('requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(() => setTimeout(loadCustomers, 2000), { timeout: 10000 })
+      } else {
+        setTimeout(loadCustomers, 3000)
+      }
+    })()
   }, [user?.id])
 
-  // 3. Background Sync & Integrity (All Roles Mirroring)
+  // ----------------------------------------------------------------
+  // 3. Background sync (cache)
+  // ----------------------------------------------------------------
   useEffect(() => {
-    if (user) {
-      const runSync = async () => {
-        const userId = user.id
-        const orderStore = useOrderStore.getState()
-        
-        // Define a filtered fetch function for background mirroring
-        const fetchFn = (start: Date, end: Date) => 
-          orderStore.fetchOrdersByDateRange(start, end, user.role === 'courier' ? user.id : undefined)
+    if (!user) return
+    const userId = user.id
+    const orderStore = useOrderStore.getState()
+    const fetchFn = (start: Date, end: Date) =>
+      orderStore.fetchOrdersByDateRange(start, end, user.role === 'courier' ? user.id : undefined)
 
-        // Use requestIdleCallback or longer timeout for non-critical work
-        const scheduleSync = () => {
-          const syncTask = async () => {
-            try {
-              // Dynamically import heavy sync logic to defer Dexie evaluation
-              const { 
-                isInitialSyncCompleted, 
-                syncAllFinalOrders, 
-                needsDeltaSync, 
-                deltaSyncYesterday, 
-                checkIntegrity, 
-                pruneOldCache 
-              } = await import('@/lib/orderCache')
-
-              if (!isInitialSyncCompleted(userId)) {
-                console.log(`[Sync] 🔄 Initial sync for ${user.role} (${userId})...`)
-                await syncAllFinalOrders(fetchFn, userId)
-              } else if (needsDeltaSync(userId)) {
-                console.log(`[Sync] 🔄 Incremental delta sync for ${userId}...`)
-                await deltaSyncYesterday(fetchFn, userId)
-              }
-              await checkIntegrity()
-              await pruneOldCache()
-            } catch (err) {
-              console.error('[Sync] ❌ Sync failed:', err)
-            }
-          }
-
-          if ('requestIdleCallback' in window) {
-            (window as any).requestIdleCallback(() => {
-              setTimeout(syncTask, 2000) // Delay even when idle to be safe
-            }, { timeout: 10000 })
-          } else {
-            setTimeout(syncTask, 5000)
-          }
+    const syncTask = async () => {
+      try {
+        const { isInitialSyncCompleted, syncAllFinalOrders, needsDeltaSync, deltaSyncYesterday, checkIntegrity, pruneOldCache } = await import('@/lib/orderCache')
+        if (!isInitialSyncCompleted(userId)) {
+          await syncAllFinalOrders(fetchFn, userId)
+        } else if (needsDeltaSync(userId)) {
+          await deltaSyncYesterday(fetchFn, userId)
         }
-        
-        scheduleSync()
+        await checkIntegrity()
+        await pruneOldCache()
+      } catch (err) {
+        console.error('[Sync] failed:', err)
       }
-      runSync()
+    }
+
+    if ('requestIdleCallback' in window) {
+      (window as any).requestIdleCallback(() => setTimeout(syncTask, 2000), { timeout: 10000 })
+    } else {
+      setTimeout(syncTask, 5000)
     }
   }, [user?.id, user?.role])
 
-  // 4. Admin-wide Users subscription
+  // ----------------------------------------------------------------
+  // 4. Admin users subscription
+  // ----------------------------------------------------------------
   useEffect(() => {
     if (user && user.role !== 'courier') {
       const cleanup = useUserStore.getState().subscribeUsers()
@@ -235,245 +197,182 @@ export const AppListeners = () => {
     }
   }, [user?.id, user?.role])
 
-  // 5. Visibility / Online / Window Focus Sync (Self-Healing with Auth Check)
+  // ----------------------------------------------------------------
+  // 5. INTI PERBAIKAN: Gap fill + Channel recovery
+  // ----------------------------------------------------------------
   useEffect(() => {
     if (!user) return
 
-    let timeoutId: any = null
-    let lastSyncTime = 0
+    // ---
+    // Gap fill: isi data yang missed selama tab tidak aktif
+    // Hanya fetch record yang BERUBAH sejak kita pergi (updated_at > since)
+    // Jauh lebih ringan dari full refetch
+    // ---
+    const fillDataGap = async () => {
+      if (gapFillLock.current) return
+      gapFillLock.current = true
 
-    const ensureValidSession = async (): Promise<boolean> => {
-      // 1. If a check is already in flight, reuse its promise
-      if (sessionCheckPromise.current) {
-        console.log('⏳ Session check already in progress, awaiting...');
-        return sessionCheckPromise.current;
+      const since = new Date(lastActiveRef.current).toISOString()
+      const filter = {
+        courierId: user.role === 'courier' ? user.id : undefined,
+        activeOnly: user.role === 'courier'
       }
 
-      // 2. Wrap the session check in a persistent promise
-      sessionCheckPromise.current = (async () => {
-        try {
-          const { data: { session }, error } = await supabase.auth.getSession()
-          if (error || !session) {
-            console.warn('⚠️ No valid session, attempting refresh...')
-            const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession()
-            if (refreshError || !refreshed.session) {
-              console.error('❌ Session refresh failed:', refreshError)
-              return false
-            }
-          }
-          console.log('✅ Session validated')
-          // ENSURE REALTIME AUTH SYNC
-          if (session && session.access_token) {
-            console.log('🔑 Syncing realtime auth token...')
-            supabase.realtime.setAuth(session.access_token)
-          }
-          return true
-        } catch (err: any) {
-          if (err?.name === 'AbortError') {
-             console.warn('⚠️ Lock broken by another tab/process. Recovering gracefully.');
-             return true; // Assume valid or allow retry later
-          }
-          console.error('❌ ensureValidSession error:', err)
-          return false
-        } finally {
-          // Clear reference after completion (success or fail)
-          sessionCheckPromise.current = null;
-        }
-      })();
+      console.log(`📥 Filling data gap since ${since}...`)
 
-      return sessionCheckPromise.current;
+      try {
+        await Promise.allSettled([
+          // Hanya orders yang berubah sejak kita offline
+          useOrderStore.getState().fetchRecentlyUpdated?.(since, filter),
+
+          // Hanya notifikasi baru
+          user.role === 'courier'
+            ? useNotificationStore.getState().fetchRecentNotifications?.(user.id, since)
+            : useNotificationStore.getState().fetchRecentNotifications?.(undefined, since),
+        ])
+
+        lastActiveRef.current = Date.now()
+        console.log('✅ Data gap filled.')
+      } catch (err) {
+        console.error('❌ Gap fill failed:', err)
+      } finally {
+        gapFillLock.current = false
+      }
     }
 
-    const resyncAll = async (force: boolean = false) => {
-      // 1. Operation Lock: Prevent multiple staggered resync waves
-      if (resyncAllLock.current) {
-        console.log('⏳ Global resync already in flight, queuing for next trigger.');
-        return resyncAllLock.current;
-      }
+    // ---
+    // Channel recovery: re-subscribe jika channel benar-benar mati
+    // Dipanggil hanya saat ada status 'errored' atau 'closed' yang eksplisit
+    // ---
+    const recoverDeadChannels = async () => {
+      if (resyncLock.current) return resyncLock.current
 
-      resyncAllLock.current = (async () => {
+      resyncLock.current = (async () => {
         try {
-          // Throttle by 5 seconds to avoid firing multiple times (unless forced)
-          const now = Date.now();
-          if (!force && (now - lastSyncTime < 5000)) {
-            console.log('⏳ Skipping resyncAll (cooldown active)');
-            return;
-          }
-          
-          if (timeoutId) return;
-          timeoutId = setTimeout(() => { timeoutId = null }, 2000);
-          lastSyncTime = now;
-
-          console.log(`🔄 Triggering staggered ${force ? 'FORCED ' : ''}realtime resync...`);
-          
           const filter = {
             courierId: user.role === 'courier' ? user.id : undefined,
             activeOnly: user.role === 'courier'
           }
 
-          // Step 1: Orders (Highest Priority)
-          await useOrderStore.getState().resyncRealtime(filter, { force })
-          
-          // Step 2: Stagger (300ms)
-          await new Promise(r => setTimeout(r, 300))
+          // Stagger 2 detik — tidak rush ke server bersamaan
+          const stores = [
+            { name: 'Orders', fn: () => useOrderStore.getState().resyncRealtime(filter) },
+            { name: 'Users', fn: () => user.role === 'courier'
+              ? useUserStore.getState().resyncRealtime(user.id)
+              : useUserStore.getState().resyncRealtime(undefined)
+            },
+            { name: 'Notifs', fn: () => user.role === 'courier'
+              ? useNotificationStore.getState().resyncRealtime(user.id)
+              : useNotificationStore.getState().resyncRealtime(undefined)
+            },
+            { name: 'Customers', fn: () => useCustomerStore.getState().resyncRealtime() },
+            { name: 'Settings', fn: () => useSettingsStore.getState().resyncRealtime() },
+          ]
 
-          // Step 3: Users/Profile
-          if (user.role === 'courier') {
-            await useUserStore.getState().resyncRealtime(user.id, { force })
-          } else {
-            await useUserStore.getState().resyncRealtime(undefined, { force })
+          for (const store of stores) {
+            try {
+              await store.fn()
+              await new Promise(r => setTimeout(r, 2000))
+            } catch (err) {
+              console.error(`Channel recovery failed for ${store.name}:`, err)
+            }
           }
-
-          // Step 4: Stagger (300ms)
-          await new Promise(r => setTimeout(r, 300))
-
-          // Step 5: Notifications
-          if (user.role === 'courier') {
-            await useNotificationStore.getState().resyncRealtime(user.id, { force })
-          } else {
-            await useNotificationStore.getState().resyncRealtime(undefined, { force })
-          }
-
-          // Step 6: Stagger (300ms)
-          await new Promise(r => setTimeout(r, 300))
-
-          // Step 7: Customers
-          await useCustomerStore.getState().resyncRealtime({ force })
-
-          // Step 8: Stagger (300ms)
-          await new Promise(r => setTimeout(r, 300))
-
-          // Step 9: Settings
-          await useSettingsStore.getState().resyncRealtime({ force })
-
-          console.log(`✅ Staggered ${force ? 'FORCED ' : ''}resync completed`);
         } finally {
-          resyncAllLock.current = null;
+          resyncLock.current = null
         }
-      })();
+      })()
 
-      return resyncAllLock.current;
+      return resyncLock.current
     }
 
-    const handleSyncTrigger = async (source: string) => {
-      // Delay slightly to bundle rapid visibility/focus events
-      await new Promise(r => setTimeout(r, 100));
-
-      const now = Date.now();
-      if (now - lastSyncTime < 5000) {
-        console.log(`📡 [${source}] Sync skipped (cooldown active)`);
-        return;
-      }
-
-      console.log(`📡 [${source}] Triggered. Pre-flight auth check...`)
-      
-      // 1. START WATCHDOG (15s limit for recover)
-      if (watchdogTimer.current) clearTimeout(watchdogTimer.current);
-      watchdogTimer.current = setTimeout(() => {
-        console.warn(`🚨 [Watchdog] Resync from ${source} stuck > 15s. Forcing hard reload.`);
-        window.location.reload();
-      }, 15000);
-
-      try {
-        const isValid = await ensureValidSession()
-        if (isValid) {
-          // AppListeners resyncs are ALWAYS forced to bypass store throttles, 
-          // since AppListeners itself implements a 5s throttle.
-          await resyncAll(true)
-        } else {
-          console.warn(`⚠️ [${source}] Session invalid. Resync aborted.`)
-        }
-      } finally {
-        // 2. CLEAR WATCHDOG
-        if (watchdogTimer.current) {
-          clearTimeout(watchdogTimer.current);
-          watchdogTimer.current = null;
-          console.log(`✅ [Watchdog] Resync from ${source} completed. Timer cleared.`);
-        }
-      }
+    // ---
+    // Cek apakah ada channel yang benar-benar mati
+    // ---
+    const hasDeadChannels = (): boolean => {
+      const stores = [
+        useOrderStore.getState(),
+        useNotificationStore.getState(),
+        useUserStore.getState(),
+        useSettingsStore.getState(),
+        useCustomerStore.getState(),
+      ]
+      return stores.some(store =>
+        Object.values(store.realtimeStatus).some(s => s === 'errored' || s === 'closed')
+      )
     }
+
+    // ---
+    // Handler utama saat tab kembali aktif
+    // Logika: gap fill DULU (data freshness), channel recovery HANYA jika perlu
+    // ---
+    let visibilityDebounce: ReturnType<typeof setTimeout> | null = null
 
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        handleSyncTrigger('Visibility')
+      if (document.visibilityState !== 'visible') {
+        // Tab pergi — catat waktu terakhir aktif
+        lastActiveRef.current = Date.now()
+        return
+      }
+
+      // Debounce 500ms untuk hindari double-fire
+      if (visibilityDebounce) clearTimeout(visibilityDebounce)
+      visibilityDebounce = setTimeout(async () => {
+        if (!navigator.onLine) return
+
+        // Step 1: Isi data gap terlebih dahulu
+        await fillDataGap()
+
+        // Step 2: Hanya recover channel jika memang mati
+        if (hasDeadChannels()) {
+          console.warn('⚠️ Dead channels found. Recovering...')
+          await recoverDeadChannels()
+        }
+      }, 500)
+    }
+
+    // Saat kembali online setelah offline
+    const handleOnline = async () => {
+      console.log('🌐 Back online.')
+      await fillDataGap()
+      if (hasDeadChannels()) {
+        await recoverDeadChannels()
       }
     }
 
-    const handleFocus = () => {
-      handleSyncTrigger('Focus')
+    // Window focus — lebih ringan, hanya gap fill jika ada gap signifikan (>2 menit)
+    let lastFocusTime = Date.now()
+    const handleFocus = async () => {
+      const now = Date.now()
+      // Hanya gap fill jika sudah lebih dari 2 menit sejak focus terakhir
+      if (now - lastFocusTime < 2 * 60 * 1000) return
+      lastFocusTime = now
+      await fillDataGap()
     }
 
-    const handleOnline = () => {
-      handleSyncTrigger('Online')
-    }
-
-    const handleRealtimeAuthSync = () => {
-      handleSyncTrigger('AuthSync')
-    }
-
+    document.addEventListener('visibilitychange', handleVisibilityChange)
     window.addEventListener('online', handleOnline)
     window.addEventListener('focus', handleFocus)
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    window.addEventListener('supabase-realtime-auth-synced', handleRealtimeAuthSync)
 
-    // 5.b PERIODIC DEEP HEALTH CHECK (TIC-TOC) - Every 3 minutes
-    const deepHealthCheck = async () => {
-      if (!user || !navigator.onLine) return;
-
-      console.log('📡 [DeepHealth] Running periodic granular check...');
-      
-      // ACTIVE POKE: Send broadcast pings to critical stores
-      try {
-        await Promise.allSettled([
-          useOrderStore.getState().pingRealtime(),
-          useNotificationStore.getState().pingRealtime(),
-          useUserStore.getState().pingRealtime()
-        ]);
-      } catch (err) {
-        console.warn('📡 [DeepHealth] Ping failed:', err);
-      }
-
-      // Wait 5 seconds for loopback "PONG" to update statuses
-      await new Promise(r => setTimeout(r, 5000));
-
-      const stores = [
-        { name: 'Orders', store: useOrderStore.getState() },
-        { name: 'Notifications', store: useNotificationStore.getState() },
-        { name: 'Users', store: useUserStore.getState() },
-        { name: 'Settings', store: useSettingsStore.getState() },
-        { name: 'Customers', store: useCustomerStore.getState() }
-      ];
-
-      let anyDead = false;
-      for (const item of stores) {
-        const statuses = Object.values(item.store.realtimeStatus);
-        const hasDead = statuses.length > 0 && statuses.some(s => s !== 'joined');
-        const hasNone = statuses.length === 0; // Possibly not subscribed yet but should be
-        
-        if (hasDead || hasNone) {
-          console.warn(`📡 [DeepHealth] ${item.name} channel(s) detected as dead or missing. Statuses:`, item.store.realtimeStatus);
-          anyDead = true;
-          break;
-        }
-      }
-
-      if (anyDead) {
-        console.log('📡 [DeepHealth] Dead channels detected. Triggering auth sync and global resync...');
-        await handleSyncTrigger('DeepHealth');
-      } else {
-        console.log('✅ [DeepHealth] All channels healthy.');
+    // ---
+    // Periodic health check: setiap 3 menit
+    // Hanya recover jika ada yang mati — tidak trigger gap fill
+    // ---
+    const healthCheck = async () => {
+      if (!navigator.onLine) return
+      if (hasDeadChannels()) {
+        console.warn('📡 [Health] Dead channels detected. Recovering...')
+        await recoverDeadChannels()
       }
     }
 
-    const healthInterval = setInterval(deepHealthCheck, 45000); // 45 seconds (Match Heartbeat responsiveness)
+    const healthInterval = setInterval(healthCheck, 3 * 60 * 1000)
 
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('online', handleOnline)
       window.removeEventListener('focus', handleFocus)
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-      window.removeEventListener('supabase-realtime-auth-synced', handleRealtimeAuthSync)
       clearInterval(healthInterval)
-      if (timeoutId) clearTimeout(timeoutId)
+      if (visibilityDebounce) clearTimeout(visibilityDebounce)
     }
   }, [user?.id, user?.role])
 

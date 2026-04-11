@@ -23,6 +23,7 @@ export interface OrderState {
   historicalOrders: Order[]
   isFetchingHistory: boolean
   fetchOrdersByDateRange: (start: Date, end: Date, courierId?: string) => Promise<Order[]>
+  fetchRecentlyUpdated: (since: string, filter?: { courierId?: string; activeOnly?: boolean }) => Promise<void>
   activeOrdersByCourier: Order[]
   isSyncing: boolean
   currentOrder: Order | null
@@ -191,6 +192,64 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
 
     set({ _resyncLock: resyncPromise })
     return resyncPromise
+  },
+
+  fetchRecentlyUpdated: async (since, filter) => {
+    try {
+      let query = supabase
+        .from('orders')
+        .select('*')
+        .gt('updated_at', since)
+        .order('updated_at', { ascending: false })
+        .limit(50)
+
+      if (filter?.courierId) {
+        query = query.eq('courier_id', filter.courierId)
+      }
+
+      const { data, error } = await query
+      if (error || !data || data.length === 0) return
+
+      console.log(`📥 [OrderStore] Gap fill: ${data.length} orders updated since ${since}`)
+
+      // Merge into state and local DB
+      set((state) => {
+        const updatedOrders = [...state.orders]
+        const updatedActive = [...state.activeOrdersByCourier]
+
+        for (const order of data as Order[]) {
+          const isActive = !['delivered', 'cancelled'].includes(order.status)
+          
+          if (isActive) {
+            const idx = updatedActive.findIndex(o => o.id === order.id)
+            if (idx !== -1) updatedActive[idx] = order
+            else updatedActive.unshift(order)
+          } else {
+            // Remove from active if it was there
+            const activeIdx = updatedActive.findIndex(o => o.id === order.id)
+            if (activeIdx !== -1) updatedActive.splice(activeIdx, 1)
+
+            const idx = updatedOrders.findIndex(o => o.id === order.id)
+            if (idx !== -1) updatedOrders[idx] = order
+            else updatedOrders.unshift(order)
+          }
+        }
+
+        return {
+          orders: updatedOrders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
+          activeOrdersByCourier: updatedActive
+        }
+      })
+
+      // Mirror finalized orders to local DB
+      const finalized = (data as Order[]).filter(o => ['delivered', 'cancelled'].includes(o.status))
+      if (finalized.length > 0) {
+        const { bulkMoveToLocalDB } = await import('@/lib/orderCache')
+        await bulkMoveToLocalDB(finalized)
+      }
+    } catch (err) {
+      console.error('fetchRecentlyUpdated error:', err)
+    }
   },
 
   fetchInitialOrders: async (filter) => {

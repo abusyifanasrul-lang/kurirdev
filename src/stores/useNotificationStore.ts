@@ -11,21 +11,27 @@ const notifStates = new Map<string, string>()
 interface NotificationState {
   notifications: Notification[]
   isLoading: boolean
-
   subscribeNotifications: (userId: string) => (() => void)
   subscribeAllNotifications: () => (() => void)
   resyncRealtime: (userId?: string, options?: { force?: boolean }) => Promise<void>
+  fetchRecentNotifications: (userId: string | undefined, since: string) => Promise<void>
   addNotification: (notification: Omit<Notification, 'id' | 'sent_at' | 'is_read'>) => Promise<void>
   markAsRead: (id: string) => Promise<void>
   markAllAsRead: (userId: string) => Promise<void>
   getNotificationsByUser: (userId: string) => Notification[]
   reset: () => void
-  
-  // Internal lock for resync operations (helps with HMR stability)
   _resyncLock: Promise<void> | null
-  // Real-time Subscriptions Status
   realtimeStatus: Record<string, string>
   pingRealtime: () => Promise<void>
+}
+
+// PERBAIKAN UTAMA: Fungsi snapshot yang hanya fetch data, 
+// tidak memanggil resyncRealtime() sehingga tidak memicu kaskade
+const fetchSnapshot = async (userId?: string) => {
+  let query = supabase.from('notifications').select('*')
+  if (userId) query = query.eq('user_id', userId)
+  const { data } = await query.order('sent_at', { ascending: false }).limit(50)
+  return data as Notification[] | null
 }
 
 export const useNotificationStore = create<NotificationState>()((set, get) => ({
@@ -35,14 +41,10 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
   _resyncLock: null,
 
   subscribeNotifications: (userId: string) => {
-    // 1. Initial Load from Local Cache (Mirroring)
     getCachedNotifications(userId).then(cached => {
-      if (cached.length > 0) {
-        set({ notifications: cached, isLoading: false })
-      }
+      if (cached.length > 0) set({ notifications: cached, isLoading: false })
     })
 
-    // 2. Fetch Latest from Supabase
     supabase.from('notifications')
       .select('*')
       .eq('user_id', userId)
@@ -50,34 +52,27 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
       .limit(50)
       .then(({ data }) => {
         if (data) {
-          const fetched = data as Notification[]
-          set({ notifications: fetched, isLoading: false })
-          cacheNotifications(fetched)
+          set({ notifications: data as Notification[], isLoading: false })
+          cacheNotifications(data as Notification[])
         }
       })
 
     const channelId = `notifications:user:${userId}`
-    
-    // 3. FAST DEDUPLICATION
     const existing = notifChannels.get(channelId)
     if (existing && (notifStates.get(channelId) === 'joined' || notifStates.get(channelId) === 'joining')) {
-      return () => {} // Already active or connecting
+      return () => {}
     }
 
-    // 4. INTERNAL ASYNC INIT
-    (async () => {
+    ;(async () => {
       if (existing) {
-        console.log(`♻️ Cleaning up existing notification channel for ${userId}...`)
         await supabase.removeChannel(existing)
         notifChannels.delete(channelId)
       }
 
-      console.log(`📡 Initializing stable notifications for ${userId}...`)
       notifStates.set(channelId, 'joining')
 
       const channel = supabase.channel(channelId)
-        .on(
-          'postgres_changes',
+        .on('postgres_changes',
           { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
           (payload) => {
             const { eventType, new: newRec, old: oldRec } = payload
@@ -98,45 +93,50 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
                 const idx = updated.findIndex(n => n.id === (oldRec as any).id)
                 if (idx !== -1) updated.splice(idx, 1)
               }
-              
-              return { 
-                notifications: updated.sort((a,b) => new Date(b.sent_at || 0).getTime() - new Date(a.sent_at || 0).getTime()) 
+              return {
+                notifications: updated.sort((a, b) =>
+                  new Date(b.sent_at || 0).getTime() - new Date(a.sent_at || 0).getTime()
+                )
               }
             })
           }
         )
-        .on(
-          'broadcast',
-          { event: 'ping' },
-          () => {
-            console.log(`📡 [NotificationStore] Loopback PONG received for ${channelId}`);
-            set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }));
-          }
-        )
+        .on('broadcast', { event: 'ping' }, () => {
+          set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
+        })
 
       notifChannels.set(channelId, channel)
 
-      channel.subscribe((status, err) => {
+      channel.subscribe(async (status, err) => {
         if (status === 'SUBSCRIBED') {
-          console.log(`✅ Realtime notifications active for ${channelId}`)
+          console.log(`✅ Notif channel active: ${channelId}`)
           notifStates.set(channelId, 'joined')
           set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
 
-          // SNAPSHOT REPLACEMENT: Fetch fresh baseline on connect
-          console.log(`📡 [NotificationStore] Snapshot replacement for ${userId}...`)
-          get().resyncRealtime(userId, { force: true }).catch(err => console.error('Notif snapshot error:', err))
+          // PERBAIKAN: Gunakan fetchSnapshot() bukan resyncRealtime(force: true)
+          // fetchSnapshot hanya mengambil data terbaru tanpa memicu re-subscribe
+          try {
+            const data = await fetchSnapshot(userId)
+            if (data) {
+              set({ notifications: data, isLoading: false })
+              cacheNotifications(data)
+            }
+          } catch (e) {
+            console.error('[NotifStore] Snapshot fetch failed:', e)
+          }
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-          console.warn(`❌ Realtime notifications ${channelId} ${status}:`, err)
+          console.warn(`❌ Notif channel ${channelId} ${status}:`, err)
           const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
           notifStates.set(channelId, finalStatus)
           set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
-          // Clean up singleton Map to allow recovery
           notifChannels.delete(channelId)
+          // Recovery diserahkan ke AppListeners health check (setiap 3 menit)
+          // Tidak langsung re-subscribe agar tidak memicu kaskade
         }
       })
     })()
 
-    return () => { 
+    return () => {
       const current = notifChannels.get(channelId)
       if (current) {
         supabase.removeChannel(current).catch(() => {})
@@ -147,7 +147,6 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
   },
 
   subscribeAllNotifications: () => {
-    // Admins usually see everything
     supabase.from('notifications')
       .select('*')
       .order('sent_at', { ascending: false })
@@ -156,69 +155,66 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
       })
 
     const channelId = 'notifications:all'
-    
-    // 1. FAST DEDUPLICATION
     const existing = notifChannels.get(channelId)
     if (existing && (notifStates.get(channelId) === 'joined' || notifStates.get(channelId) === 'joining')) {
-      return () => {} // Already active or connecting
+      return () => {}
     }
 
-    // 2. INTERNAL ASYNC INIT
-    (async () => {
+    ;(async () => {
       if (existing) {
-        console.log(`♻️ Cleaning up existing admin notification channel...`)
         await supabase.removeChannel(existing)
         notifChannels.delete(channelId)
       }
 
-      console.log(`📡 Initializing stable admin notifications...`)
       notifStates.set(channelId, 'joining')
-
       const channel = supabase.channel(channelId)
 
-      channel.on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'notifications' },
-          (payload) => {
-            const { eventType, new: newRec, old: oldRec } = payload
-            set((state) => {
-              const updated = [...state.notifications]
-              if (eventType === 'INSERT') {
-                if (!updated.some(n => n.id === (newRec as any).id)) {
-                  updated.unshift(newRec as Notification)
-                  cacheNotifications([newRec as Notification])
-                }
-              } else if (eventType === 'UPDATE') {
-                const idx = updated.findIndex(n => n.id === (newRec as any).id)
-                if (idx !== -1) {
-                  updated[idx] = { ...updated[idx], ...newRec }
-                  cacheNotifications([updated[idx]])
-                }
-              } else if (eventType === 'DELETE') {
-                const idx = updated.findIndex(n => n.id === (oldRec as any).id)
-                if (idx !== -1) updated.splice(idx, 1)
+      channel.on('postgres_changes',
+        { event: '*', schema: 'public', table: 'notifications' },
+        (payload) => {
+          const { eventType, new: newRec, old: oldRec } = payload
+          set((state) => {
+            const updated = [...state.notifications]
+            if (eventType === 'INSERT') {
+              if (!updated.some(n => n.id === (newRec as any).id)) {
+                updated.unshift(newRec as Notification)
+                cacheNotifications([newRec as Notification])
               }
-              
-              return { 
-                notifications: updated.sort((a,b) => new Date(b.sent_at || 0).getTime() - new Date(a.sent_at || 0).getTime()) 
+            } else if (eventType === 'UPDATE') {
+              const idx = updated.findIndex(n => n.id === (newRec as any).id)
+              if (idx !== -1) {
+                updated[idx] = { ...updated[idx], ...newRec }
+                cacheNotifications([updated[idx]])
               }
-            })
-          }
-        )
+            } else if (eventType === 'DELETE') {
+              const idx = updated.findIndex(n => n.id === (oldRec as any).id)
+              if (idx !== -1) updated.splice(idx, 1)
+            }
+            return {
+              notifications: updated.sort((a, b) =>
+                new Date(b.sent_at || 0).getTime() - new Date(a.sent_at || 0).getTime()
+              )
+            }
+          })
+        }
+      )
 
       notifChannels.set(channelId, channel)
 
-      channel.subscribe((status, err) => {
+      channel.subscribe(async (status, err) => {
         if (status === 'SUBSCRIBED') {
-          console.log(`✅ Admin notifications active: ${channelId}`)
+          console.log(`✅ Admin notif channel active: ${channelId}`)
           notifStates.set(channelId, 'joined')
           set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
-
-          // SNAPSHOT REPLACEMENT: Fetch fresh baseline on connect
-          console.log(`📡 [NotificationStore] Admin snapshot replacement...`)
-          get().resyncRealtime(undefined, { force: true }).catch(err => console.error('Admin notif snapshot error:', err))
+          // PERBAIKAN: fetchSnapshot() bukan resyncRealtime(force: true)
+          try {
+            const data = await fetchSnapshot()
+            if (data) set({ notifications: data, isLoading: false })
+          } catch (e) {
+            console.error('[NotifStore] Admin snapshot failed:', e)
+          }
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-          console.warn(`❌ Admin notifications ${channelId} ${status}:`, err)
+          console.warn(`❌ Admin notif ${channelId} ${status}:`, err)
           const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
           notifStates.set(channelId, finalStatus)
           set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
@@ -227,7 +223,7 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
       })
     })()
 
-    return () => { 
+    return () => {
       const current = notifChannels.get(channelId)
       if (current) {
         supabase.removeChannel(current).catch(() => {})
@@ -238,49 +234,33 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
   },
 
   resyncRealtime: async (userId, options) => {
-    // 1. Operation Lock: Prevent parallel resyncs (HMR friendly)
     if (get()._resyncLock) {
-      console.log('⏳ Notification store resync already in progress, skipping duplicate call.')
       return get()._resyncLock as Promise<void>
     }
 
     const resyncPromise = (async () => {
       try {
         const now = Date.now()
-        if (!options?.force && (now - notifResyncTime < 30000)) {
-          console.log('⏳ Skipping notification resync (cooldown active)')
+        // Throttle 30 detik kecuali force=true
+        if (!options?.force && (now - notifResyncTime < 30_000)) {
+          console.log('⏳ Skipping notif resync (cooldown)')
           return
         }
         notifResyncTime = now
 
-        if (options?.force) {
-          console.log('🔄 Forced notifications resync triggered...')
-        } else {
-          console.log('🔄 Resyncing notifications...')
-        }
-        
-        // 1. Data Gap Fill
-        let query = supabase.from('notifications').select('*')
-        if (userId) {
-          query = query.eq('user_id', userId)
-        }
-        
-        const { data } = await query.order('sent_at', { ascending: false }).limit(50)
-        
+        const data = await fetchSnapshot(userId)
         if (data) {
-          const fetched = data as Notification[]
-          set({ notifications: fetched })
-          if (userId) cacheNotifications(fetched)
+          set({ notifications: data })
+          if (userId) cacheNotifications(data)
         }
 
-        // 2. WebSocket Recovery
         const channelId = userId ? `notifications:user:${userId}` : 'notifications:all'
         const channelState = notifStates.get(channelId)
-        
+
         if (channelState === 'closed' || channelState === 'errored' || !notifChannels.has(channelId)) {
-          console.warn(`⚠️ [NotificationStore] Connection dead (${channelState}). Re-subscribing...`)
-          if (userId) await get().subscribeNotifications(userId)
-          else await get().subscribeAllNotifications()
+          console.warn(`⚠️ [NotifStore] Re-subscribing dead channel: ${channelId}`)
+          if (userId) get().subscribeNotifications(userId)
+          else get().subscribeAllNotifications()
         }
       } finally {
         set({ _resyncLock: null })
@@ -291,59 +271,76 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
     return resyncPromise
   },
 
-  addNotification: async (data: Omit<Notification, 'id' | 'sent_at' | 'is_read'>) => {
-    const newNotification: any = {
+  fetchRecentNotifications: async (userId: string | undefined, since: string) => {
+    try {
+      let query = supabase
+        .from('notifications')
+        .select('*')
+        .gt('sent_at', since)
+        .order('sent_at', { ascending: false })
+        .limit(20)
+
+      if (userId) query = query.eq('user_id', userId)
+
+      const { data, error } = await query
+      if (error || !data || data.length === 0) return
+
+      console.log(`📥 [NotifStore] Gap fill: ${data.length} new notifications since ${since}`)
+
+      set((state) => {
+        const updated = [...state.notifications]
+        for (const n of data as Notification[]) {
+          if (!updated.some(existing => existing.id === n.id)) {
+            updated.unshift(n)
+          }
+        }
+        
+        const sorted = updated.sort((a, b) =>
+          new Date(b.sent_at || 0).getTime() - new Date(a.sent_at || 0).getTime()
+        )
+
+        // Cache the new notifications
+        cacheNotifications(data as Notification[])
+        
+        return { notifications: sorted }
+      })
+    } catch (err) {
+      console.error('fetchRecentNotifications error:', err)
+    }
+  },
+
+  addNotification: async (data) => {
+    await (supabase.from('notifications') as any).insert({
       ...data,
       is_read: false,
       sent_at: new Date().toISOString(),
       type: data.type || 'manual_alert',
       fcm_status: data.fcm_status || 'pending'
-    }
-    
-    await supabase.from('notifications').insert(newNotification)
+    })
   },
 
   markAsRead: async (id) => {
-    // 1. Local IndexedDB Cache
     markNotificationReadLocal(id)
-    
-    // 2. Optimistic Zustand State
     set((state) => ({
       notifications: state.notifications.map(n => n.id === id ? { ...n, is_read: true } : n)
     }))
-
-    // 3. Remote Sync
     await (supabase.from('notifications') as any).update({ is_read: true }).eq('id', id)
   },
 
   markAllAsRead: async (userId) => {
-    // 1. Optimistic Zustand State
     set((state) => ({
       notifications: state.notifications.map(n => n.user_id === userId ? { ...n, is_read: true } : n)
     }))
-
-    // 2. Remote Sync
     await (supabase.from('notifications') as any).update({ is_read: true }).eq('user_id', userId).eq('is_read', false)
   },
 
-  getNotificationsByUser: (userId) => {
-    return get().notifications.filter(n => n.user_id === userId)
-  },
+  getNotificationsByUser: (userId) => get().notifications.filter(n => n.user_id === userId),
+
   reset: () => set({ notifications: [], isLoading: false }),
 
   pingRealtime: async () => {
-    const channels = Array.from(notifChannels.values());
-    if (channels.length === 0) return;
-    
-    console.log(`📡 [NotificationStore] Sending broadcast ping to ${channels.length} channels...`);
-    await Promise.all(
-      channels.map(ch => 
-        ch.send({
-          type: 'broadcast',
-          event: 'ping',
-          payload: {}
-        })
-      )
-    );
+    const channels = Array.from(notifChannels.values())
+    if (channels.length === 0) return
+    await Promise.all(channels.map(ch => ch.send({ type: 'broadcast', event: 'ping', payload: {} })))
   }
 }))

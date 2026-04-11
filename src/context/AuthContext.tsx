@@ -134,12 +134,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // CRITICAL: Synchronize Realtime engine with the current JWT
         // This ensures WebSocket connections are correctly authorized for RLS-protected tables
         try {
-          console.log('🔄 Syncing Realtime auth with new token');
+          console.log('🔑 Realtime JWT synced.');
           supabase.realtime.setAuth(session.access_token);
           lastTokenRef.current = session.access_token;
-          
-          // Notify the system that realtime auth has changed
-          window.dispatchEvent(new CustomEvent('supabase-realtime-auth-synced'));
         } catch (e) {
           console.error('Failed to sync Realtime auth:', e);
         }

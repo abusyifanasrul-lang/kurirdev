@@ -3,7 +3,6 @@ import { create } from 'zustand'
 import { supabase } from '@/lib/supabaseClient'
 import { RealtimeChannel } from '@supabase/supabase-js'
 import { CourierInstruction } from '@/types'
-// import { logger } from '@/lib/logger'
 
 let settingsResyncTime = 0
 const settingsChannels = new Map<string, RealtimeChannel>()
@@ -27,10 +26,7 @@ interface SettingsStore extends BusinessSettings {
   subscribeSettings: () => (() => void)
   resyncRealtime: (options?: { force?: boolean }) => Promise<void>
   reset: () => void
-  
-  // Internal lock for resync operations (helps with HMR stability)
   _resyncLock: Promise<void> | null
-  // Real-time Subscriptions Status
   realtimeStatus: Record<string, string>
 }
 
@@ -50,22 +46,27 @@ export const useSettingsStore = create<SettingsStore>()(
       courier_instructions: DEFAULT_INSTRUCTIONS,
       realtimeStatus: {},
       _resyncLock: null,
-      updateSettings: (data: Partial<BusinessSettings>) => set((state: SettingsStore) => ({ ...state, ...data })),
-      addCourierInstruction: (instruction: Omit<CourierInstruction, 'id'>) => set((state: SettingsStore) => ({
+
+      updateSettings: (data) => set((state) => ({ ...state, ...data })),
+
+      addCourierInstruction: (instruction) => set((state) => ({
         courier_instructions: [...state.courier_instructions, { ...instruction, id: crypto.randomUUID() }]
       })),
-      updateCourierInstruction: (id: string, instruction: Partial<CourierInstruction>) => set((state: SettingsStore) => ({
+
+      updateCourierInstruction: (id, instruction) => set((state) => ({
         courier_instructions: state.courier_instructions.map(item =>
           item.id === id ? { ...item, ...instruction } : item
         )
       })),
-      deleteCourierInstruction: (id: string) => set((state: SettingsStore) => ({
+
+      deleteCourierInstruction: (id) => set((state) => ({
         courier_instructions: state.courier_instructions.filter(item => item.id !== id)
       })),
+
       fetchSettings: async () => {
         const { data, error } = await supabase.from('settings').select('*').single() as { data: any, error: any }
         if (error || !data) return
-        set((state: SettingsStore) => ({
+        set((state) => ({
           ...state,
           commission_rate: data.commission_rate,
           commission_threshold: data.commission_threshold,
@@ -73,19 +74,16 @@ export const useSettingsStore = create<SettingsStore>()(
           courier_instructions: data.courier_instructions || DEFAULT_INSTRUCTIONS
         }))
       },
+
       subscribeSettings: () => {
         const channelId = 'public:settings'
-        
-        // 1. FAST DEDUPLICATION
         const existing = settingsChannels.get(channelId)
         if (existing && (settingsStates.get(channelId) === 'joined' || settingsStates.get(channelId) === 'joining')) {
-          return () => {} // Already active or connecting
+          return () => {}
         }
 
-        // 2. INTERNAL ASYNC INIT
-        (async () => {
+        ;(async () => {
           if (existing) {
-            console.log(`♻️ Cleaning up existing settings channel...`)
             await supabase.removeChannel(existing)
             settingsChannels.delete(channelId)
           }
@@ -93,28 +91,32 @@ export const useSettingsStore = create<SettingsStore>()(
           const channel = supabase.channel(channelId)
 
           channel
-            .on(
-              'postgres_changes',
+            .on('postgres_changes',
               { event: '*', schema: 'public', table: 'settings' },
               () => {
-                (useSettingsStore.getState() as any).fetchSettings()
+                // Settings berubah — fetch langsung, ini adalah perubahan nyata
+                useSettingsStore.getState().fetchSettings()
               }
             )
-            .subscribe((status, err) => {
+            .subscribe(async (status, err) => {
               if (status === 'SUBSCRIBED') {
-                 console.log(`✅ Settings realtime active: ${channelId}`)
-                 settingsStates.set(channelId, 'joined')
-                 set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
+                console.log(`✅ Settings channel active: ${channelId}`)
+                settingsStates.set(channelId, 'joined')
+                set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
 
-                 // SNAPSHOT REPLACEMENT: Always fetch fresh data on (re)connect
-                 console.log(`📡 [SettingsStore] Snapshot replacement...`)
-                 get().fetchSettings().catch(err => console.error('Settings snapshot error:', err))
+                // PERBAIKAN: Langsung fetchSettings() bukan resyncRealtime(force: true)
+                // Ini hanya mengambil data terbaru tanpa memicu siklus resync
+                try {
+                  await get().fetchSettings()
+                } catch (e) {
+                  console.error('[SettingsStore] Snapshot fetch failed:', e)
+                }
               } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-                 console.warn(`❌ Settings realtime ${channelId} ${status}:`, err)
-                 const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
-                 settingsStates.set(channelId, finalStatus)
-                 set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
-                 settingsChannels.delete(channelId)
+                console.warn(`❌ Settings channel ${channelId} ${status}:`, err)
+                const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
+                settingsStates.set(channelId, finalStatus)
+                set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
+                settingsChannels.delete(channelId)
               }
             })
 
@@ -130,32 +132,25 @@ export const useSettingsStore = create<SettingsStore>()(
           }
         }
       },
+
       resyncRealtime: async (options) => {
-        // 1. Operation Lock: Prevent parallel resyncs (HMR friendly)
         if (get()._resyncLock) {
-          console.log('⏳ Settings store resync already in progress, skipping duplicate call.')
           return get()._resyncLock as Promise<void>
         }
 
         const resyncPromise = (async () => {
           try {
             const now = Date.now()
-            if (!options?.force && (now - settingsResyncTime < 30000)) return
+            if (!options?.force && (now - settingsResyncTime < 30_000)) return
             settingsResyncTime = now
-
-            if (options?.force) {
-              console.log('🔄 Forced settings resync triggered...')
-            } else {
-              console.log('🔄 Throttled settings resync triggered...')
-            }
 
             await get().fetchSettings()
 
             const channelId = 'public:settings'
             const channelState = settingsStates.get(channelId)
             if (channelState === 'closed' || channelState === 'errored' || !settingsChannels.has(channelId)) {
-              console.warn(`⚠️ [SettingsStore] Connection dead (${channelState}). Re-subscribing...`)
-              await get().subscribeSettings()
+              console.warn(`⚠️ [SettingsStore] Re-subscribing dead channel`)
+              get().subscribeSettings()
             }
           } finally {
             set({ _resyncLock: null })
@@ -165,7 +160,8 @@ export const useSettingsStore = create<SettingsStore>()(
         set({ _resyncLock: resyncPromise })
         return resyncPromise
       },
-      reset: () => set((state: SettingsStore) => ({
+
+      reset: () => set((state) => ({
         ...state,
         commission_rate: 80,
         commission_threshold: 5000,
@@ -184,7 +180,6 @@ export const useSettingsStore = create<SettingsStore>()(
           'Clock': '⏰', 'AlertTriangle': '⚠️', 'MessageCircle': '💬',
           'Phone': '📞', 'Navigation': '🧭', 'X': '❌',
         }
-
         if (version < 4) {
           const instructions = persistedState.courier_instructions
           if (Array.isArray(instructions) && instructions.length > 0) {
