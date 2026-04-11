@@ -7,6 +7,7 @@ import { CourierInstruction } from '@/types'
 let settingsResyncTime = 0
 const settingsChannels = new Map<string, RealtimeChannel>()
 const settingsStates = new Map<string, string>()
+const settingsRefs = new Map<string, number>()
 
 export type { CourierInstruction }
 
@@ -24,6 +25,7 @@ interface SettingsStore extends BusinessSettings {
   deleteCourierInstruction: (id: string) => void
   fetchSettings: () => Promise<void>
   subscribeSettings: () => (() => void)
+  unsubscribeSettings: () => void
   resyncRealtime: (options?: { force?: boolean }) => Promise<void>
   reset: () => void
   _resyncLock: Promise<void> | null
@@ -77,16 +79,30 @@ export const useSettingsStore = create<SettingsStore>()(
 
       subscribeSettings: () => {
         const channelId = 'public:settings'
+        
+        // 1. ATOMIC INCREMENT & SYNC GUARD
+        const currentRef = settingsRefs.get(channelId) || 0
+        settingsRefs.set(channelId, currentRef + 1)
+
         const existing = settingsChannels.get(channelId)
+        // Synchronously check both joined and joining
         if (existing && (settingsStates.get(channelId) === 'joined' || settingsStates.get(channelId) === 'joining')) {
-          return () => {}
+          return () => get().unsubscribeSettings()
         }
 
+        // 2. SYNCHRONOUS JOIN STATE
+        settingsStates.set(channelId, 'joining')
+
+        // 3. INTERNAL ASYNC INIT
         ;(async () => {
           if (existing) {
+            console.log(`♻️ Cleaning up existing channel for ${channelId}...`)
             await supabase.removeChannel(existing)
             settingsChannels.delete(channelId)
           }
+
+          // Safeguard: Check if we are still supposed to be joining
+          if (settingsStates.get(channelId) !== 'joining') return;
 
           const channel = supabase.channel(channelId)
 
@@ -105,7 +121,6 @@ export const useSettingsStore = create<SettingsStore>()(
                 set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
 
                 // PERBAIKAN: Langsung fetchSettings() bukan resyncRealtime(force: true)
-                // Ini hanya mengambil data terbaru tanpa memicu siklus resync
                 try {
                   await get().fetchSettings()
                 } catch (e) {
@@ -123,13 +138,22 @@ export const useSettingsStore = create<SettingsStore>()(
           settingsChannels.set(channelId, channel)
         })()
 
-        return () => {
-          const current = settingsChannels.get(channelId)
-          if (current) {
-            supabase.removeChannel(current).catch(() => {})
+        return () => get().unsubscribeSettings()
+      },
+
+      unsubscribeSettings: () => {
+        const channelId = 'public:settings'
+        const currentRef = settingsRefs.get(channelId) || 0
+        if (currentRef <= 1) {
+          const channel = settingsChannels.get(channelId)
+          if (channel) {
+            supabase.removeChannel(channel).catch(() => {})
             settingsChannels.delete(channelId)
             settingsStates.delete(channelId)
           }
+          settingsRefs.set(channelId, 0)
+        } else {
+          settingsRefs.set(channelId, currentRef - 1)
         }
       },
 

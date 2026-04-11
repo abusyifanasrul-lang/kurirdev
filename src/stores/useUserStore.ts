@@ -7,6 +7,7 @@ import { cacheProfiles, getCachedProfiles, saveProfileSyncTime } from '@/lib/ord
 let userResyncTime = 0
 const userChannels = new Map<string, RealtimeChannel>()
 const userStates = new Map<string, string>()
+const userRefs = new Map<string, number>()
 
 interface UserState {
   users: User[]
@@ -20,6 +21,8 @@ interface UserState {
   resyncRealtime: (id?: string, options?: { force?: boolean }) => Promise<void>
   subscribeUsers: () => (() => void)
   subscribeProfile: (id: string) => (() => void)
+  unsubscribeUsers: () => void
+  unsubscribeProfile: (id: string) => void
   addUser: (data: CreateUserInput) => Promise<{ success: boolean; error?: string }>
   updateUser: (id: string, data: Partial<User>) => Promise<{ success: boolean; error?: string }>
   removeUser: (id: string) => Promise<void>
@@ -170,22 +173,29 @@ export const useUserStore = create<UserState>()((set, get) => ({
   subscribeUsers: () => {
     const channelId = 'users:list'
     
-    // 1. FAST DEDUPLICATION
+    // 1. ATOMIC INCREMENT & SYNC GUARD
+    const currentRef = userRefs.get(channelId) || 0
+    userRefs.set(channelId, currentRef + 1)
+
     const existing = userChannels.get(channelId)
+    // Synchronously check both joined and joining
     if (existing && (userStates.get(channelId) === 'joined' || userStates.get(channelId) === 'joining')) {
-      return () => {} // Already active or connecting
+      return () => get().unsubscribeUsers()
     }
 
-    // 2. INTERNAL ASYNC INIT
-    (async () => {
+    // 2. SYNCHRONOUS JOIN STATE
+    userStates.set(channelId, 'joining')
+
+    // 3. INTERNAL ASYNC INIT
+    ;(async () => {
       if (existing) {
         console.log(`♻️ Cleaning up existing channel for ${channelId}...`)
         await supabase.removeChannel(existing)
         userChannels.delete(channelId)
       }
 
-      console.log(`📡 Initializing stable realtime for ${channelId}...`)
-      userStates.set(channelId, 'joining')
+      // Safeguard: Check if we are still supposed to be joining
+      if (userStates.get(channelId) !== 'joining') return;
 
       const channel = supabase.channel(channelId)
       
@@ -240,35 +250,51 @@ export const useUserStore = create<UserState>()((set, get) => ({
       })
     })()
       
-    return () => {
-      const current = userChannels.get(channelId)
-      if (current) {
-        supabase.removeChannel(current).catch(() => {})
+    return () => get().unsubscribeUsers()
+  },
+
+  unsubscribeUsers: () => {
+    const channelId = 'users:list'
+    const currentRef = userRefs.get(channelId) || 0
+    if (currentRef <= 1) {
+      const channel = userChannels.get(channelId)
+      if (channel) {
+        supabase.removeChannel(channel).catch(() => {})
         userChannels.delete(channelId)
         userStates.delete(channelId)
       }
+      userRefs.set(channelId, 0)
+    } else {
+      userRefs.set(channelId, currentRef - 1)
     }
   },
 
   subscribeProfile: (id: string) => {
     const channelId = `profile:single:${id}`
     
-    // 1. FAST DEDUPLICATION
+    // 1. ATOMIC INCREMENT & SYNC GUARD
+    const currentRef = userRefs.get(channelId) || 0
+    userRefs.set(channelId, currentRef + 1)
+
     const existing = userChannels.get(channelId)
+    // Synchronously check both joined and joining
     if (existing && (userStates.get(channelId) === 'joined' || userStates.get(channelId) === 'joining')) {
-      return () => {} // Already active or connecting
+      return () => get().unsubscribeProfile(id)
     }
 
-    // 2. INTERNAL ASYNC INIT
-    (async () => {
+    // 2. SYNCHRONOUS JOIN STATE
+    userStates.set(channelId, 'joining')
+
+    // 3. INTERNAL ASYNC INIT
+    ;(async () => {
       if (existing) {
         console.log(`♻️ Cleaning up existing channel for ${channelId}...`)
         await supabase.removeChannel(existing)
         userChannels.delete(channelId)
       }
 
-      console.log(`📡 Initializing stable profile realtime for ${id}...`)
-      userStates.set(channelId, 'joining')
+      // Safeguard: Check if we are still supposed to be joining
+      if (userStates.get(channelId) !== 'joining') return;
 
       const channel = supabase.channel(channelId)
       
@@ -319,13 +345,22 @@ export const useUserStore = create<UserState>()((set, get) => ({
       })
     })()
       
-    return () => {
-      const current = userChannels.get(channelId)
-      if (current) {
-        supabase.removeChannel(current).catch(() => {})
+    return () => get().unsubscribeProfile(id)
+  },
+
+  unsubscribeProfile: (id: string) => {
+    const channelId = `profile:single:${id}`
+    const currentRef = userRefs.get(channelId) || 0
+    if (currentRef <= 1) {
+      const channel = userChannels.get(channelId)
+      if (channel) {
+        supabase.removeChannel(channel).catch(() => {})
         userChannels.delete(channelId)
         userStates.delete(channelId)
       }
+      userRefs.set(channelId, 0)
+    } else {
+      userRefs.set(channelId, currentRef - 1)
     }
   },
 

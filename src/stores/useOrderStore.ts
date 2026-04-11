@@ -11,6 +11,7 @@ import { useSettingsStore } from '@/stores/useSettingsStore'
 let orderResyncTime = 0
 const orderChannels = new Map<string, RealtimeChannel>()
 const orderStates = new Map<string, string>()
+const orderRefs = new Map<string, number>()
 
 export interface OrderState {
   orders: Order[]
@@ -40,6 +41,8 @@ export interface OrderState {
   fetchInitialOrders: (filter?: { courierId?: string; activeOnly?: boolean }) => Promise<void>
   subscribeOrders: (filter?: { courierId?: string; activeOnly?: boolean }) => () => void
   subscribeOrderById: (orderId: string) => () => void
+  unsubscribeOrders: (channelId: string) => void
+  unsubscribeOrderById: (orderId: string) => void
   
   addOrder: (order: Order) => Promise<void>
   updateOrderStatus: (orderId: string, status: OrderStatus, userId: string, userName: string, notes?: string) => Promise<void>
@@ -348,22 +351,29 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     const channelId = courierId ? `orders:courier:${courierId}` : 'orders:global'
     const filterStr = courierId ? `courier_id=eq.${courierId}` : undefined
 
-    // 1. FAST DEDUPLICATION
+    // 1. ATOMIC INCREMENT & SYNC GUARD
+    const currentRef = orderRefs.get(channelId) || 0
+    orderRefs.set(channelId, currentRef + 1)
+
     const existing = orderChannels.get(channelId)
+    // Synchronously check both joined and joining
     if (existing && (orderStates.get(channelId) === 'joined' || orderStates.get(channelId) === 'joining')) {
-      return () => {} // Already active or connecting
+      return () => get().unsubscribeOrders(channelId)
     }
 
-    // 2. INTERNAL ASYNC INIT
-    (async () => {
+    // 2. SYNCHRONOUS JOIN STATE
+    orderStates.set(channelId, 'joining')
+
+    // 3. INTERNAL ASYNC INIT
+    ;(async () => {
       if (existing) {
         console.log(`♻️ Cleaning up existing channel for ${channelId}...`)
         await supabase.removeChannel(existing)
         orderChannels.delete(channelId)
       }
 
-      console.log(`📡 Initializing stable realtime for ${channelId}...`)
-      orderStates.set(channelId, 'joining')
+      // Safeguard: Check if we are still supposed to be joining
+      if (orderStates.get(channelId) !== 'joining') return;
 
       const channelConfig: any = { event: '*', schema: 'public', table: 'orders' }
       if (filterStr) channelConfig.filter = filterStr
@@ -486,13 +496,21 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
       })
     })()
 
-    return () => {
-      const current = orderChannels.get(channelId)
-      if (current) {
-        supabase.removeChannel(current).catch(() => {})
+    return () => get().unsubscribeOrders(channelId)
+  },
+
+  unsubscribeOrders: (channelId: string) => {
+    const currentRef = orderRefs.get(channelId) || 0
+    if (currentRef <= 1) {
+      const channel = orderChannels.get(channelId)
+      if (channel) {
+        supabase.removeChannel(channel).catch(() => {})
         orderChannels.delete(channelId)
         orderStates.delete(channelId)
       }
+      orderRefs.set(channelId, 0)
+    } else {
+      orderRefs.set(channelId, currentRef - 1)
     }
   },
 
@@ -506,26 +524,28 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
 
     const channelId = `order:single:${orderId}`
 
-    // 2. FAST DEDUPLICATION
+    // 1. ATOMIC INCREMENT & SYNC GUARD
+    const currentRef = orderRefs.get(channelId) || 0
+    orderRefs.set(channelId, currentRef + 1)
+
     const existing = orderChannels.get(channelId)
     if (existing && (orderStates.get(channelId) === 'joined' || orderStates.get(channelId) === 'joining')) {
-      return () => {
-        // Since we don't have reference counting here yet, we just return a no-op 
-        // IF it's already being handled. But for simplicity, we provide a cleanup 
-        // that only removes if it's the one we found.
-      }
+      return () => get().unsubscribeOrderById(orderId)
     }
 
+    // 2. SYNCHRONOUS JOIN STATE
+    orderStates.set(channelId, 'joining')
+
     // 3. INTERNAL ASYNC INIT
-    (async () => {
+    ;(async () => {
       if (existing) {
         console.log(`♻️ Cleaning up existing channel for ${channelId}...`)
         await supabase.removeChannel(existing)
         orderChannels.delete(channelId)
       }
 
-      console.log(`📡 Initializing stable order realtime for ${orderId}...`)
-      orderStates.set(channelId, 'joining')
+      // Safeguard: Check if we are still supposed to be joining
+      if (orderStates.get(channelId) !== 'joining') return;
 
       const channel = supabase.channel(channelId)
       
@@ -567,13 +587,22 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
       orderChannels.set(channelId, channel)
     })()
 
-    return () => {
-      const current = orderChannels.get(channelId)
-      if (current) {
-        supabase.removeChannel(current).catch(() => {})
+    return () => get().unsubscribeOrderById(orderId)
+  },
+
+  unsubscribeOrderById: (orderId: string) => {
+    const channelId = `order:single:${orderId}`
+    const currentRef = orderRefs.get(channelId) || 0
+    if (currentRef <= 1) {
+      const channel = orderChannels.get(channelId)
+      if (channel) {
+        supabase.removeChannel(channel).catch(() => {})
         orderChannels.delete(channelId)
         orderStates.delete(channelId)
       }
+      orderRefs.set(channelId, 0)
+    } else {
+      orderRefs.set(channelId, currentRef - 1)
     }
   },
 

@@ -7,12 +7,15 @@ import { cacheNotifications, getCachedNotifications, markNotificationReadLocal }
 let notifResyncTime = 0
 const notifChannels = new Map<string, RealtimeChannel>()
 const notifStates = new Map<string, string>()
+const notifRefs = new Map<string, number>()
 
 interface NotificationState {
   notifications: Notification[]
   isLoading: boolean
   subscribeNotifications: (userId: string) => (() => void)
   subscribeAllNotifications: () => (() => void)
+  unsubscribeNotifications: (userId: string) => void
+  unsubscribeAllNotifications: () => void
   resyncRealtime: (userId?: string, options?: { force?: boolean }) => Promise<void>
   fetchRecentNotifications: (userId: string | undefined, since: string) => Promise<void>
   addNotification: (notification: Omit<Notification, 'id' | 'sent_at' | 'is_read'>) => Promise<void>
@@ -58,18 +61,30 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
       })
 
     const channelId = `notifications:user:${userId}`
+    
+    // 1. ATOMIC INCREMENT & SYNC GUARD
+    const currentRef = notifRefs.get(channelId) || 0
+    notifRefs.set(channelId, currentRef + 1)
+
     const existing = notifChannels.get(channelId)
+    // Synchronously check both joined and joining
     if (existing && (notifStates.get(channelId) === 'joined' || notifStates.get(channelId) === 'joining')) {
-      return () => {}
+      return () => get().unsubscribeNotifications(userId)
     }
 
+    // 2. SYNCHRONOUS JOIN STATE
+    notifStates.set(channelId, 'joining')
+
+    // 3. INTERNAL ASYNC INIT
     ;(async () => {
       if (existing) {
+        console.log(`♻️ Cleaning up existing channel for ${channelId}...`)
         await supabase.removeChannel(existing)
         notifChannels.delete(channelId)
       }
 
-      notifStates.set(channelId, 'joining')
+      // Safeguard: Check if we are still supposed to be joining
+      if (notifStates.get(channelId) !== 'joining') return;
 
       const channel = supabase.channel(channelId)
         .on('postgres_changes',
@@ -114,7 +129,6 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
           set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
 
           // PERBAIKAN: Gunakan fetchSnapshot() bukan resyncRealtime(force: true)
-          // fetchSnapshot hanya mengambil data terbaru tanpa memicu re-subscribe
           try {
             const data = await fetchSnapshot(userId)
             if (data) {
@@ -130,19 +144,26 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
           notifStates.set(channelId, finalStatus)
           set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
           notifChannels.delete(channelId)
-          // Recovery diserahkan ke AppListeners health check (setiap 3 menit)
-          // Tidak langsung re-subscribe agar tidak memicu kaskade
         }
       })
     })()
 
-    return () => {
-      const current = notifChannels.get(channelId)
-      if (current) {
-        supabase.removeChannel(current).catch(() => {})
+    return () => get().unsubscribeNotifications(userId)
+  },
+
+  unsubscribeNotifications: (userId: string) => {
+    const channelId = `notifications:user:${userId}`
+    const currentRef = notifRefs.get(channelId) || 0
+    if (currentRef <= 1) {
+      const channel = notifChannels.get(channelId)
+      if (channel) {
+        supabase.removeChannel(channel).catch(() => {})
         notifChannels.delete(channelId)
         notifStates.delete(channelId)
       }
+      notifRefs.set(channelId, 0)
+    } else {
+      notifRefs.set(channelId, currentRef - 1)
     }
   },
 
@@ -155,18 +176,31 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
       })
 
     const channelId = 'notifications:all'
+    
+    // 1. ATOMIC INCREMENT & SYNC GUARD
+    const currentRef = notifRefs.get(channelId) || 0
+    notifRefs.set(channelId, currentRef + 1)
+
     const existing = notifChannels.get(channelId)
+    // Synchronously check both joined and joining
     if (existing && (notifStates.get(channelId) === 'joined' || notifStates.get(channelId) === 'joining')) {
-      return () => {}
+      return () => get().unsubscribeAllNotifications()
     }
 
+    // 2. SYNCHRONOUS JOIN STATE
+    notifStates.set(channelId, 'joining')
+
+    // 3. INTERNAL ASYNC INIT
     ;(async () => {
       if (existing) {
+        console.log(`♻️ Cleaning up existing channel for ${channelId}...`)
         await supabase.removeChannel(existing)
         notifChannels.delete(channelId)
       }
 
-      notifStates.set(channelId, 'joining')
+      // Safeguard: Check if we are still supposed to be joining
+      if (notifStates.get(channelId) !== 'joining') return;
+
       const channel = supabase.channel(channelId)
 
       channel.on('postgres_changes',
@@ -206,7 +240,6 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
           console.log(`✅ Admin notif channel active: ${channelId}`)
           notifStates.set(channelId, 'joined')
           set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
-          // PERBAIKAN: fetchSnapshot() bukan resyncRealtime(force: true)
           try {
             const data = await fetchSnapshot()
             if (data) set({ notifications: data, isLoading: false })
@@ -223,13 +256,22 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
       })
     })()
 
-    return () => {
-      const current = notifChannels.get(channelId)
-      if (current) {
-        supabase.removeChannel(current).catch(() => {})
+    return () => get().unsubscribeAllNotifications()
+  },
+
+  unsubscribeAllNotifications: () => {
+    const channelId = 'notifications:all'
+    const currentRef = notifRefs.get(channelId) || 0
+    if (currentRef <= 1) {
+      const channel = notifChannels.get(channelId)
+      if (channel) {
+        supabase.removeChannel(channel).catch(() => {})
         notifChannels.delete(channelId)
         notifStates.delete(channelId)
       }
+      notifRefs.set(channelId, 0)
+    } else {
+      notifRefs.set(channelId, currentRef - 1)
     }
   },
 

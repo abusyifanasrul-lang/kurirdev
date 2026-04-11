@@ -327,24 +327,28 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
   subscribeToRequests: () => {
     const channelId = 'customer_requests_all'
     
+    // 1. ATOMIC INCREMENT & SYNC GUARD
     const currentRef = customerRefs.get(channelId) || 0
     customerRefs.set(channelId, currentRef + 1)
 
     const existing = customerChannels.get(channelId)
-    if (existing && customerStates.get(channelId) === 'joined') {
+    if (existing && (customerStates.get(channelId) === 'joined' || customerStates.get(channelId) === 'joining')) {
       return () => get().unsubscribeFromRequests()
     }
 
-    // INTERNAL ASYNC INIT
-    (async () => {
+    // 2. SYNCHRONOUS JOIN STATE
+    customerStates.set(channelId, 'joining')
+
+    // 3. INTERNAL ASYNC INIT
+    ;(async () => {
       if (existing) {
         console.log(`♻️ Cleaning up existing customer requests channel...`)
         await supabase.removeChannel(existing)
         customerChannels.delete(channelId)
       }
 
-      console.log(`📡 Joining customer requests channel: ${channelId}`)
-      customerStates.set(channelId, 'joining')
+      // Safeguard: Check if we are still supposed to be joining
+      if (customerStates.get(channelId) !== 'joining') return;
 
       const channel = supabase
         .channel(channelId)
@@ -413,24 +417,28 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
   subscribeToCustomers: () => {
     const channelId = 'customers_all'
     
+    // 1. ATOMIC INCREMENT & SYNC GUARD
     const currentRef = customerRefs.get(channelId) || 0
     customerRefs.set(channelId, currentRef + 1)
 
     const existing = customerChannels.get(channelId)
-    if (existing && customerStates.get(channelId) === 'joined') {
+    if (existing && (customerStates.get(channelId) === 'joined' || customerStates.get(channelId) === 'joining')) {
       return () => get().unsubscribeFromCustomers()
     }
 
-    // INTERNAL ASYNC INIT
-    (async () => {
+    // 2. SYNCHRONOUS JOIN STATE
+    customerStates.set(channelId, 'joining')
+
+    // 3. INTERNAL ASYNC INIT
+    ;(async () => {
       if (existing) {
         console.log(`♻️ Cleaning up existing customers channel...`)
         await supabase.removeChannel(existing)
         customerChannels.delete(channelId)
       }
 
-      console.log(`📡 Joining customers channel: ${channelId}`)
-      customerStates.set(channelId, 'joining')
+      // Safeguard: Check if we are still supposed to be joining
+      if (customerStates.get(channelId) !== 'joining') return;
 
       const channel = supabase
         .channel(channelId)
