@@ -73,14 +73,17 @@ export function StorageTab({
     const nCount = await localDB.notifications.count();
     
     const metaRaw = localStorage.getItem('kurirdev_db_meta');
-    const meta = metaRaw ? JSON.parse(metaRaw) : {};
+    const meta = metaRaw ? JSON.parse(metaRaw) : { users: {} };
+    
+    // Per-user sync status helper
+    const userSync = (user?.id && meta.users?.[user.id]) || {};
 
     setStats({
       orders: oCount,
       customers: cCount,
       profiles: pCount,
       notifications: nCount,
-      lastSync: meta.last_sync || 'Never',
+      lastSync: userSync.last_sync || meta.last_sync || 'Never',
       lastCustomerSync: meta.last_customer_sync || 'Never',
       lastProfileSync: meta.last_profile_sync || 'Never'
     });
@@ -389,30 +392,35 @@ export function StorageTab({
           )}
 
           {/* Sync Status Card */}
-          {cacheMeta && (
-            <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100/50 flex flex-col justify-between h-full">
-              <div>
-                <div className="flex justify-between items-start mb-2">
-                  <span className="text-sm font-semibold text-emerald-800">Status Sinkronisasi</span>
-                  <div className={`w-2.5 h-2.5 rounded-full mt-1 ${cacheMeta.sync_completed ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+          {cacheMeta && (() => {
+            const userSync = (user?.id && cacheMeta.users?.[user.id]) || {};
+            const isSynced = userSync.sync_completed || cacheMeta.sync_completed;
+
+            return (
+              <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100/50 flex flex-col justify-between h-full">
+                <div>
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="text-sm font-semibold text-emerald-800">Status Sinkronisasi</span>
+                    <div className={`w-2.5 h-2.5 rounded-full mt-1 ${isSynced ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <p className="text-xl font-bold text-emerald-950">
+                      {isSynced ? 'Terhubung' : 'Terbatas'}
+                    </p>
+                    <p className="text-[10px] text-emerald-600 font-medium leading-relaxed">
+                      Aplikasi siap digunakan {isSynced ? 'dalam mode offline penuh.' : 'namun perlu sinkronisasi manual.'}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex flex-col gap-1">
-                  <p className="text-xl font-bold text-emerald-950">
-                    {cacheMeta.sync_completed ? 'Terhubung' : 'Terbatas'}
-                  </p>
-                  <p className="text-[10px] text-emerald-600 font-medium leading-relaxed">
-                    Aplikasi siap digunakan {cacheMeta.sync_completed ? 'dalam mode offline penuh.' : 'namun perlu sinkronisasi manual.'}
-                  </p>
+                <div className="mt-4 pt-3 border-t border-emerald-100/50 flex items-center gap-2">
+                  <div className="h-1 flex-1 bg-emerald-100 rounded-full overflow-hidden">
+                     <div className={`h-full ${isSynced ? 'w-full' : 'w-1/2'} bg-emerald-500`} />
+                  </div>
+                  <span className="text-[10px] font-bold text-emerald-700 uppercase">{isSynced ? '100%' : '50%'}</span>
                 </div>
               </div>
-              <div className="mt-4 pt-3 border-t border-emerald-100/50 flex items-center gap-2">
-                <div className="h-1 flex-1 bg-emerald-100 rounded-full overflow-hidden">
-                   <div className={`h-full ${cacheMeta.sync_completed ? 'w-full' : 'w-1/2'} bg-emerald-500`} />
-                </div>
-                <span className="text-[10px] font-bold text-emerald-700 uppercase">{cacheMeta.sync_completed ? '100%' : '50%'}</span>
-              </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Reset & Resync Card */}
           <div className="p-4 bg-rose-50/50 rounded-2xl border border-rose-100/50 flex flex-col justify-between h-full">

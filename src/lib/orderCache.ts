@@ -85,8 +85,17 @@ function saveUserSyncStatus(
     last_sync: '',
     last_weekly_sync: ''
   }
-  meta.users[userId] = { ...current, ...status }
-  saveMeta({ users: meta.users })
+  
+  const updatedUserStatus = { ...current, ...status }
+  meta.users[userId] = updatedUserStatus
+  
+  // Backward compatibility: Update top-level legacy fields
+  // Using the latest user's status as a global reference
+  saveMeta({ 
+    users: meta.users,
+    last_sync: updatedUserStatus.last_sync || meta.last_sync,
+    sync_completed: updatedUserStatus.sync_completed || meta.sync_completed
+  })
 }
 
 class KurirDevDB extends Dexie {

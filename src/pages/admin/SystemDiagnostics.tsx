@@ -47,7 +47,7 @@ export function SystemDiagnostics() {
   const [supabaseOk, setSupabaseOk] = useState<boolean | null>(null);
   const [integrity, setIntegrity] = useState<{ ok: boolean; localCount: number; metaCount: number } | null>(null);
   const [swVersion, setSWVersion] = useState<string>('-');
-  const [cacheMeta] = useState<DBMeta>(getCacheMeta);
+  const [cacheMeta, setCacheMeta] = useState<DBMeta>(getCacheMeta);
 
   const checkSystemHealth = useCallback(async () => {
     // Supabase ping
@@ -63,7 +63,9 @@ export function SystemDiagnostics() {
     const result = await checkIntegrity();
     setIntegrity(result);
 
-    // SW version
+    // Refresh cache meta
+    setCacheMeta(getCacheMeta());
+
     if ('serviceWorker' in navigator) {
       const reg = await navigator.serviceWorker.getRegistration();
       setSWVersion(reg ? 'Active' : 'No SW');
@@ -77,16 +79,27 @@ export function SystemDiagnostics() {
   }, [activeTab, checkSystemHealth]);
 
   // ── Data Inspector ───────────────────────────────────────
-  const [inspectType, setInspectType] = useState<'order' | 'user'>('order');
+  const [inspectType, setInspectType] = useState<'order' | 'user' | 'customer' | 'log'>('order');
   const [inspectId, setInspectId] = useState('');
   const [inspectResult, setInspectResult] = useState<object | null>(null);
   const [inspectError, setInspectError] = useState('');
 
   const handleInspect = async () => {
+    if (!inspectId.trim()) {
+      setInspectError('Please enter a Record ID.');
+      return;
+    }
     setInspectResult(null);
     setInspectError('');
     try {
-      const collectionName = inspectType === 'order' ? 'orders' : 'profiles';
+      let collectionName = '';
+      switch (inspectType) {
+        case 'order': collectionName = 'orders'; break;
+        case 'user': collectionName = 'profiles'; break;
+        case 'customer': collectionName = 'customers'; break;
+        case 'log': collectionName = 'tracking_logs'; break;
+      }
+      
       const { data, error } = await supabase.from(collectionName).select('*').eq('id', inspectId.trim()).single();
       
       if (error || !data) {
@@ -115,13 +128,29 @@ export function SystemDiagnostics() {
     setForceLoading(true);
     setForceMsg('');
     try {
-      const { error } = await (supabase.from('orders') as any).update({
+      const updateData: any = {
         status: forceStatus,
         updated_at: new Date().toISOString(),
-      }).eq('id', forceOrderId.trim());
+      };
+
+      // Auto-timestamp for specific statuses
+      if (forceStatus === 'delivered') {
+        updateData.actual_delivery_time = new Date().toISOString();
+      } else if (forceStatus === 'picked_up') {
+        updateData.actual_pickup_time = new Date().toISOString();
+      } else if (forceStatus === 'assigned') {
+        updateData.assigned_at = new Date().toISOString();
+      } else if (forceStatus === 'cancelled') {
+        updateData.cancelled_at = new Date().toISOString();
+      }
+
+      const { error } = await (supabase.from('orders') as any).update(updateData).eq('id', forceOrderId.trim());
       
       if (error) throw error;
       setForceMsg(`✅ Status order berhasil diubah → ${STATUS_LABELS[forceStatus]}`);
+      
+      // Refresh local stats if possible
+      checkSystemHealth();
     } catch (e: any) {
       setForceMsg(`❌ Gagal: ${e.message}`);
     } finally {
@@ -284,8 +313,10 @@ export function SystemDiagnostics() {
                 },
                 {
                   label: 'Last Full Sync',
-                  status: cacheMeta.sync_completed ? true : false,
-                  ok: cacheMeta.last_sync
+                  status: (user?.id && cacheMeta.users?.[user.id]?.sync_completed) || cacheMeta.sync_completed ? true : false,
+                  ok: (user?.id && cacheMeta.users?.[user.id]?.last_sync) 
+                    ? `Completed at ${format(new Date(cacheMeta.users[user.id].last_sync), 'dd MMM yyyy HH:mm')}`
+                    : cacheMeta.last_sync
                     ? `Completed at ${format(new Date(cacheMeta.last_sync), 'dd MMM yyyy HH:mm')}`
                     : 'Sync Completed',
                   fail: 'Never synced on this device',
@@ -325,13 +356,13 @@ export function SystemDiagnostics() {
             <h3 className="text-lg font-semibold text-gray-900 mb-6">Supabase Record Inspector</h3>
             <div className="flex gap-3 mb-6 flex-wrap">
               <div className="flex gap-2">
-                {(['order', 'user'] as const).map(t => (
+                {(['order', 'user', 'customer', 'log'] as const).map(t => (
                   <button
                     key={t}
                     onClick={() => { setInspectType(t); setInspectResult(null); setInspectError(''); }}
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${inspectType === t ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                   >
-                    {t === 'order' ? 'Order' : 'User'}
+                    {t.charAt(0).toUpperCase() + t.slice(1)}
                   </button>
                 ))}
               </div>
@@ -432,9 +463,11 @@ export function SystemDiagnostics() {
                 variant="outline"
                 className="border-red-200 text-red-600 hover:bg-red-50"
                 onClick={async () => {
+                  if (!window.confirm('Bersihkan order dummy (tanpa ongkir) yang lama?')) return;
                   const { cleanupDummyOrders } = await import('@/scripts/cleanupOrders');
-                  await cleanupDummyOrders();
-                  alert('✅ Cleanup selesai!');
+                  const result = await cleanupDummyOrders();
+                  alert(`✅ Cleanup selesai!\n- Delivered: ${result.delivered}\n- Cancelled: ${result.cancelled}\n- Total: ${result.count}`);
+                  checkSystemHealth();
                 }}
                 leftIcon={<Trash2 className="h-4 w-4" />}
               >
