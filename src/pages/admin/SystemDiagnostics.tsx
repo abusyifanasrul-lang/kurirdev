@@ -95,7 +95,7 @@ export function SystemDiagnostics() {
     try {
       let collectionName = '';
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(searchId);
-      let query = supabase.from('' as any).select('*');
+      let query: any;
       
       switch (inspectType) {
         case 'order':
@@ -133,6 +133,8 @@ export function SystemDiagnostics() {
           break;
       }
       
+      if (!query) throw new Error('Query failed to initialize.');
+
       const { data, error } = await query.maybeSingle();
       
       if (error || !data) {
