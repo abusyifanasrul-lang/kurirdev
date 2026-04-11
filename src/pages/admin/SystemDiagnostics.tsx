@@ -85,25 +85,58 @@ export function SystemDiagnostics() {
   const [inspectError, setInspectError] = useState('');
 
   const handleInspect = async () => {
-    if (!inspectId.trim()) {
-      setInspectError('Please enter a Record ID.');
+    const searchId = inspectId.trim();
+    if (!searchId) {
+      setInspectError('Please enter a Record ID or reference.');
       return;
     }
     setInspectResult(null);
     setInspectError('');
     try {
       let collectionName = '';
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(searchId);
+      let query = supabase.from('' as any).select('*');
+      
       switch (inspectType) {
-        case 'order': collectionName = 'orders'; break;
-        case 'user': collectionName = 'profiles'; break;
-        case 'customer': collectionName = 'customers'; break;
-        case 'log': collectionName = 'tracking_logs'; break;
+        case 'order':
+          collectionName = 'orders';
+          query = supabase.from('orders').select('*');
+          if (isUUID) {
+            query = query.eq('id', searchId);
+          } else {
+            query = query.eq('order_number', searchId);
+          }
+          break;
+        case 'user':
+          collectionName = 'profiles';
+          query = supabase.from('profiles').select('*');
+          if (isUUID) {
+            query = query.eq('id', searchId);
+          } else if (searchId.includes('@')) {
+            query = query.eq('email', searchId);
+          } else {
+            query = query.eq('phone', searchId);
+          }
+          break;
+        case 'customer':
+          collectionName = 'customers';
+          query = supabase.from('customers').select('*');
+          if (isUUID) {
+            query = query.eq('id', searchId);
+          } else {
+            query = query.eq('phone', searchId);
+          }
+          break;
+        case 'log':
+          collectionName = 'tracking_logs';
+          query = supabase.from('tracking_logs').select('*').eq('id', searchId);
+          break;
       }
       
-      const { data, error } = await supabase.from(collectionName).select('*').eq('id', inspectId.trim()).single();
+      const { data, error } = await query.maybeSingle();
       
       if (error || !data) {
-        setInspectError(`Record "${inspectId}" not found in ${collectionName}.`);
+        setInspectError(`Record "${searchId}" not found in ${collectionName}.`);
       } else {
         setInspectResult(data);
       }
@@ -372,8 +405,13 @@ export function SystemDiagnostics() {
                   value={inspectId}
                   onChange={e => setInspectId(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleInspect()}
-                  placeholder={`Enter ${inspectType} ID...`}
-                  aria-label={`Record ID to inspect (${inspectType})`}
+                  placeholder={
+                    inspectType === 'order' ? "Enter Order ID or Number (YYMMDD-XXXX)..." :
+                    inspectType === 'user' ? "Enter User ID, Email, or Phone..." :
+                    inspectType === 'customer' ? "Enter Customer ID or Phone..." :
+                    "Enter Record ID (UUID)..."
+                  }
+                  aria-label={`Record reference to inspect (${inspectType})`}
                   className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 font-mono"
                 />
                 <Button onClick={handleInspect} leftIcon={<Search className="h-4 w-4" />}>
