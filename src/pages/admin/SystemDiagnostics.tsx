@@ -114,8 +114,10 @@ export function SystemDiagnostics() {
             query = query.eq('id', searchId);
           } else if (searchId.includes('@')) {
             query = query.eq('email', searchId);
-          } else {
+          } else if (/^\d+$/.test(searchId)) {
             query = query.eq('phone', searchId);
+          } else {
+            query = query.ilike('name', `%${searchId}%`).order('created_at', { ascending: false }).limit(1);
           }
           break;
         case 'customer':
@@ -123,13 +125,20 @@ export function SystemDiagnostics() {
           query = supabase.from('customers').select('*');
           if (isUUID) {
             query = query.eq('id', searchId);
-          } else {
+          } else if (/^\d+$/.test(searchId)) {
             query = query.eq('phone', searchId);
+          } else {
+            query = query.ilike('name', `%${searchId}%`).order('created_at', { ascending: false }).limit(1);
           }
           break;
         case 'log':
           collectionName = 'tracking_logs';
-          query = supabase.from('tracking_logs').select('*').eq('id', searchId);
+          query = supabase.from('tracking_logs').select('*');
+          if (isUUID) {
+            query = query.eq('id', searchId);
+          } else {
+            query = query.ilike('changed_by_name', `%${searchId}%`).order('changed_at', { ascending: false }).limit(1);
+          }
           break;
       }
       
