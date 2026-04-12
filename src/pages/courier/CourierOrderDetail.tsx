@@ -41,6 +41,8 @@ export function CourierOrderDetail() {
     subscribeToCustomers
   } = useCustomerStore();
   const invoiceRef = useRef<HTMLDivElement>(null);
+  const customerSectionRef = useRef<HTMLDivElement>(null);
+  const itemsSectionRef = useRef<HTMLDivElement>(null);
 
   // Stabilize order reference with useMemo to prevent TDZ issues in minified builds
   const order = useMemo(() => {
@@ -127,6 +129,28 @@ export function CourierOrderDetail() {
       setCourierInlineAddingNew(false);
     }
   }, [order, showItemForm, editCustomer]);
+
+  // Auto-scroll logic for Customer Info
+  const wasEditingCustomer = useRef(false);
+  useEffect(() => {
+    if (wasEditingCustomer.current && !editCustomer) {
+      setTimeout(() => {
+        customerSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+    }
+    wasEditingCustomer.current = editCustomer;
+  }, [editCustomer]);
+
+  // Auto-scroll logic for Items List
+  const wasEditingItems = useRef(false);
+  useEffect(() => {
+    if (wasEditingItems.current && !showItemForm) {
+      setTimeout(() => {
+        itemsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+    }
+    wasEditingItems.current = showItemForm;
+  }, [showItemForm]);
 
   if (!order) return <div className="p-8 text-center bg-white min-h-screen pt-20">Order not found</div>;
 
@@ -428,7 +452,8 @@ export function CourierOrderDetail() {
             </div>
           )}
 
-          <OrderCustomerInfo 
+          <div ref={customerSectionRef}>
+            <OrderCustomerInfo 
             order={order}
             isLocked={isLocked}
             editCustomer={editCustomer}
@@ -478,7 +503,9 @@ export function CourierOrderDetail() {
                useToastStore.getState().addToast('Alamat diterapkan pada order ini', 'success');
             }}
           />
+          </div>
 
+          <div ref={itemsSectionRef}>
           <OrderItemsList 
             order={order}
             isLocked={isLocked}
@@ -494,6 +521,7 @@ export function CourierOrderDetail() {
             handleSimpanItems={handleSimpanItems}
             formatRupiah={formatRupiah}
           />
+          </div>
 
           <OrderPricingSummary 
             order={order}
