@@ -230,7 +230,7 @@ export function FinancePenagihan() {
                 c.unpaidOrders.some(o => differenceInDaysWIB(getWIBNow(), o.created_at) > 7)
               ).length} kurir
             </p>
-            <p className="text-xs text-red-600 mt-1">Ada pengantaran yang sudah lewat seminggu</p>
+            <p className="text-xs text-red-600 mt-1">Ada setoran yang sudah lewat seminggu</p>
           </div>
           <div className="bg-green-50 border border-green-200 rounded-xl p-4 col-span-2 lg:col-span-1">
             <div className="flex items-center gap-2 mb-2">
