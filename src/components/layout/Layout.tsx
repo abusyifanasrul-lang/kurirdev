@@ -43,7 +43,7 @@ const roleNavItems: Record<string, NavItem[]> = {
   ],
   // Owner: Business Pilot - analytics & financial insight, no operational menus
   owner: [
-    { path: '/admin/overview', label: 'Overview', icon: BarChart3, end: true },
+    { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true },
     { path: '/admin/finance', label: 'Keuangan', icon: DollarSign },
     { path: '/admin/reports', label: 'Reports', icon: FileText },
     { path: '/admin/settings', label: 'Settings', icon: Settings },

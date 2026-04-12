@@ -5,27 +5,71 @@ import { useOrderStore } from '@/stores/useOrderStore'
 import { useSettingsStore } from '@/stores/useSettingsStore'
 import { useNotificationStore } from '@/stores/useNotificationStore'
 import { useCustomerStore } from '@/stores/useCustomerStore'
+import { supabase } from '@/lib/supabaseClient'
 
 // =============================================================
-// AppListeners — Versi Final
+// MODULE-LEVEL state — persists across component remounts
 //
-// Filosofi:
-// 1. Realtime channel adalah sumber kebenaran utama (postgres_changes)
-// 2. Saat channel aktif & JWT valid → semua update masuk otomatis
-// 3. Saat tab kembali aktif → isi "gap" dengan delta fetch (bukan full refetch)
-// 4. Saat channel benar-benar mati → re-subscribe (bukan reload halaman)
-// 5. JWT refresh → update auth realtime saja (tidak trigger resync)
+// PERBAIKAN UTAMA: Sebelumnya resyncLock adalah useRef di dalam
+// komponen. Saat komponen unmount+remount (karena SIGNED_IN loop),
+// ref baru dibuat dengan nilai null → lock tidak efektif →
+// recovery dipanggil puluhan kali dalam detik yang sama.
+//
+// Dengan memindahkan ke module level, lock tetap ada bahkan
+// saat komponen remount. Satu instance recovery untuk seluruh
+// siklus hidup aplikasi.
 // =============================================================
+
+// Lock untuk recoverDeadChannels — module-level agar persist lintas remount
+let _recoveryLock: Promise<void> | null = null;
+// Timestamp recovery terakhir — cooldown eksplisit 60 detik
+let _lastRecoveryTime = 0;
+// Lock untuk gap fill
+let _gapFillLock = false;
+
+// Timestamp channel pertama kali masuk status dead
+// Digunakan untuk grace period — jangan langsung recover saat baru CLOSED
+const _channelDeadSince = new Map<string, number>();
+
+// Cek apakah ada channel yang SUDAH mati > grace period
+// Grace period 8 detik: channel yang baru CLOSED mungkin sedang reconnect
+// otomatis oleh Supabase client. Jangan interrupt proses itu.
+const hasDeadChannelsPastGrace = (gracePeriodMs = 8000): boolean => {
+  const stores = [
+    useOrderStore.getState(),
+    useNotificationStore.getState(),
+    useUserStore.getState(),
+    useSettingsStore.getState(),
+    useCustomerStore.getState(),
+  ];
+
+  const now = Date.now();
+  let anyDead = false;
+
+  for (const store of stores) {
+    for (const [channelId, status] of Object.entries(store.realtimeStatus)) {
+      if (status === 'errored' || status === 'closed') {
+        if (!_channelDeadSince.has(channelId)) {
+          // Pertama kali terdeteksi mati — mulai timer grace period
+          _channelDeadSince.set(channelId, now);
+        } else if (now - (_channelDeadSince.get(channelId)!) > gracePeriodMs) {
+          // Sudah mati lebih dari grace period → benar-benar perlu recovery
+          anyDead = true;
+        }
+      } else {
+        // Channel kembali sehat — hapus dari tracking
+        _channelDeadSince.delete(channelId);
+      }
+    }
+  }
+
+  return anyDead;
+};
 
 export const AppListeners = () => {
   const { user, logout } = useAuth()
   const { fetchSettings, subscribeSettings } = useSettingsStore()
-
-  // Waktu terakhir tab kita aktif & berhasil fetch data
-  // Digunakan untuk delta/gap fill — "fetch semua yang berubah sejak saya pergi"
   const lastActiveRef = useRef<number>(Date.now())
-  const gapFillLock = useRef<boolean>(false)
-  const resyncLock = useRef<Promise<void> | null>(null)
 
   // ----------------------------------------------------------------
   // 1. Settings
@@ -156,7 +200,7 @@ export const AppListeners = () => {
   }, [user?.id])
 
   // ----------------------------------------------------------------
-  // 3. Background sync (cache)
+  // 3. Background sync
   // ----------------------------------------------------------------
   useEffect(() => {
     if (!user) return
@@ -179,7 +223,6 @@ export const AppListeners = () => {
         console.error('[Sync] failed:', err)
       }
     }
-
     if ('requestIdleCallback' in window) {
       (window as any).requestIdleCallback(() => setTimeout(syncTask, 2000), { timeout: 10000 })
     } else {
@@ -198,71 +241,82 @@ export const AppListeners = () => {
   }, [user?.id, user?.role])
 
   // ----------------------------------------------------------------
-  // 5. INTI PERBAIKAN: Gap fill + Channel recovery
+  // 5. Gap fill + Channel recovery
   // ----------------------------------------------------------------
   useEffect(() => {
     if (!user) return
 
+    // Closure untuk user yang stabil — tidak berubah saat useEffect ini aktif
+    const userId = user.id
+    const userRole = user.role
+
     // ---
-    // Gap fill: isi data yang missed selama tab tidak aktif
-    // Hanya fetch record yang BERUBAH sejak kita pergi (updated_at > since)
-    // Jauh lebih ringan dari full refetch
+    // Gap fill: delta fetch hanya record yang berubah sejak tab pergi
     // ---
     const fillDataGap = async () => {
-      if (gapFillLock.current) return
-      gapFillLock.current = true
+      if (_gapFillLock) return
+      _gapFillLock = true
 
       const since = new Date(lastActiveRef.current).toISOString()
       const filter = {
-        courierId: user.role === 'courier' ? user.id : undefined,
-        activeOnly: user.role === 'courier'
+        courierId: userRole === 'courier' ? userId : undefined,
+        activeOnly: userRole === 'courier'
       }
 
       console.log(`📥 Filling data gap since ${since}...`)
 
       try {
         await Promise.allSettled([
-          // Hanya orders yang berubah sejak kita offline
           useOrderStore.getState().fetchRecentlyUpdated?.(since, filter),
-
-          // Hanya notifikasi baru
-          user.role === 'courier'
-            ? useNotificationStore.getState().fetchRecentNotifications?.(user.id, since)
+          userRole === 'courier'
+            ? useNotificationStore.getState().fetchRecentNotifications?.(userId, since)
             : useNotificationStore.getState().fetchRecentNotifications?.(undefined, since),
         ])
-
         lastActiveRef.current = Date.now()
         console.log('✅ Data gap filled.')
       } catch (err) {
         console.error('❌ Gap fill failed:', err)
       } finally {
-        gapFillLock.current = false
+        _gapFillLock = false
       }
     }
 
     // ---
-    // Channel recovery: re-subscribe jika channel benar-benar mati
-    // Dipanggil hanya saat ada status 'errored' atau 'closed' yang eksplisit
+    // Channel recovery: re-subscribe channel yang benar-benar mati
+    // Menggunakan module-level lock dan cooldown eksplisit
     // ---
     const recoverDeadChannels = async () => {
-      if (resyncLock.current) return resyncLock.current
+      // Lock level 1: Promise lock — cegah concurrent calls
+      if (_recoveryLock) {
+        return _recoveryLock
+      }
 
-      resyncLock.current = (async () => {
+      // Lock level 2: Cooldown timestamp — cegah spam recovery
+      // Bahkan jika lock entah bagaimana terlewat, cooldown ini menghentikannya
+      const now = Date.now()
+      if (now - _lastRecoveryTime < 60_000) {
+        console.log('⏳ Recovery cooldown active, skipping.')
+        return
+      }
+      _lastRecoveryTime = now
+
+      _recoveryLock = (async () => {
+        console.log('🔄 Recovering dead channels...')
         try {
           const filter = {
-            courierId: user.role === 'courier' ? user.id : undefined,
-            activeOnly: user.role === 'courier'
+            courierId: userRole === 'courier' ? userId : undefined,
+            activeOnly: userRole === 'courier'
           }
 
-          // Stagger 2 detik — tidak rush ke server bersamaan
+          // Stagger 2 detik antar store
           const stores = [
             { name: 'Orders', fn: () => useOrderStore.getState().resyncRealtime(filter) },
-            { name: 'Users', fn: () => user.role === 'courier'
-              ? useUserStore.getState().resyncRealtime(user.id)
+            { name: 'Users', fn: () => userRole === 'courier'
+              ? useUserStore.getState().resyncRealtime(userId)
               : useUserStore.getState().resyncRealtime(undefined)
             },
-            { name: 'Notifs', fn: () => user.role === 'courier'
-              ? useNotificationStore.getState().resyncRealtime(user.id)
+            { name: 'Notifs', fn: () => userRole === 'courier'
+              ? useNotificationStore.getState().resyncRealtime(userId)
               : useNotificationStore.getState().resyncRealtime(undefined)
             },
             { name: 'Customers', fn: () => useCustomerStore.getState().resyncRealtime() },
@@ -272,80 +326,68 @@ export const AppListeners = () => {
           for (const store of stores) {
             try {
               await store.fn()
+              // Jeda 2 detik — beri server waktu untuk memproses koneksi baru
               await new Promise(r => setTimeout(r, 2000))
             } catch (err) {
-              console.error(`Channel recovery failed for ${store.name}:`, err)
+              console.error(`Recovery failed for ${store.name}:`, err)
             }
           }
+          console.log('✅ Channel recovery complete.')
         } finally {
-          resyncLock.current = null
+          _recoveryLock = null
+          // Reset grace period tracker setelah recovery selesai
+          _channelDeadSince.clear()
         }
       })()
 
-      return resyncLock.current
+      return _recoveryLock
     }
 
     // ---
-    // Cek apakah ada channel yang benar-benar mati
-    // ---
-    const hasDeadChannels = (): boolean => {
-      const stores = [
-        useOrderStore.getState(),
-        useNotificationStore.getState(),
-        useUserStore.getState(),
-        useSettingsStore.getState(),
-        useCustomerStore.getState(),
-      ]
-      return stores.some(store =>
-        Object.values(store.realtimeStatus).some(s => s === 'errored' || s === 'closed')
-      )
-    }
-
-    // ---
-    // Handler utama saat tab kembali aktif
-    // Logika: gap fill DULU (data freshness), channel recovery HANYA jika perlu
+    // Handler visibilitychange: gap fill + kondisional recovery
     // ---
     let visibilityDebounce: ReturnType<typeof setTimeout> | null = null
 
     const handleVisibilityChange = () => {
       if (document.visibilityState !== 'visible') {
-        // Tab pergi — catat waktu terakhir aktif
         lastActiveRef.current = Date.now()
         return
       }
-
-      // Debounce 500ms untuk hindari double-fire
       if (visibilityDebounce) clearTimeout(visibilityDebounce)
       visibilityDebounce = setTimeout(async () => {
         if (!navigator.onLine) return
-
-        // Step 1: Isi data gap terlebih dahulu
+        // Gap fill selalu dilakukan saat tab kembali aktif
         await fillDataGap()
-
-        // Step 2: Hanya recover channel jika memang mati
-        if (hasDeadChannels()) {
-          console.warn('⚠️ Dead channels found. Recovering...')
+        // Recovery hanya jika ada channel mati melewati grace period
+        if (hasDeadChannelsPastGrace()) {
+          console.warn('⚠️ Dead channels found after grace period. Recovering...')
           await recoverDeadChannels()
         }
-      }, 500)
+      }, 800) // Debounce 800ms untuk menghindari double-fire
     }
 
-    // Saat kembali online setelah offline
+    // ---
+    // Handler online: gap fill + recovery jika perlu
+    // ---
     const handleOnline = async () => {
       console.log('🌐 Back online.')
       await fillDataGap()
-      if (hasDeadChannels()) {
+      if (hasDeadChannelsPastGrace()) {
         await recoverDeadChannels()
       }
     }
 
-    // Window focus — lebih ringan, hanya gap fill jika ada gap signifikan (>2 menit)
+    // ---
+    // Handler focus: hanya gap fill jika sudah lama tidak aktif (>5 menit)
+    // TIDAK trigger recovery — visibility sudah menangani itu
+    // ---
+    const FOCUS_GAP_THRESHOLD_MS = 5 * 60 * 1000
     let lastFocusTime = Date.now()
     const handleFocus = async () => {
       const now = Date.now()
-      // Hanya gap fill jika sudah lebih dari 2 menit sejak focus terakhir
-      if (now - lastFocusTime < 2 * 60 * 1000) return
+      if (now - lastFocusTime < FOCUS_GAP_THRESHOLD_MS) return
       lastFocusTime = now
+      if (!navigator.onLine) return
       await fillDataGap()
     }
 
@@ -354,14 +396,16 @@ export const AppListeners = () => {
     window.addEventListener('focus', handleFocus)
 
     // ---
-    // Periodic health check: setiap 3 menit
-    // Hanya recover jika ada yang mati — tidak trigger gap fill
+    // Health check: setiap 3 menit, HANYA recovery (bukan gap fill)
+    // Gap fill diurus oleh visibility/focus handler
     // ---
     const healthCheck = async () => {
       if (!navigator.onLine) return
-      if (hasDeadChannels()) {
+      if (hasDeadChannelsPastGrace()) {
         console.warn('📡 [Health] Dead channels detected. Recovering...')
         await recoverDeadChannels()
+      } else {
+        console.log('✅ [Health] All channels OK.')
       }
     }
 

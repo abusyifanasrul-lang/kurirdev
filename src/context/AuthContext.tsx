@@ -19,12 +19,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const storeLogin = useSessionStore(state => state.login);
   const storeLogout = useSessionStore(state => state.logout);
   const storeUpdateUser = useSessionStore(state => state.updateUser);
-  
+
   const [state, setState] = useState<AuthState>({
     user: cachedUser,
     token: null,
     isAuthenticated: !!cachedUser,
     isLoading: !cachedUser,
+  });
+
+  // ─── PERBAIKAN UTAMA ──────────────────────────────────────────
+  // Simpan cachedUser dalam ref agar TIDAK masuk ke dependency array
+  // useCallback. Tanpa ini: storeLogin() → cachedUser berubah →
+  // fetchProfile direkrasi → useEffect re-run → onAuthStateChange
+  // re-register → Supabase fires SIGNED_IN lagi → infinite loop.
+  // ─────────────────────────────────────────────────────────────
+  const cachedUserRef = useRef(cachedUser);
+  useEffect(() => {
+    cachedUserRef.current = cachedUser;
   });
 
   const fetchInProgress = useRef(false);
@@ -36,6 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     currentUserIdRef.current = state.user?.id || null;
   }, [state.user?.id]);
 
+  // fetchProfile TIDAK lagi bergantung pada cachedUser (hanya storeLogin yang stabil)
   const fetchProfile = useCallback(async (userId: string, email: string, isSilent: boolean = false) => {
     if (fetchInProgress.current) return;
     if (Date.now() - lastFetchTime.current < 2000) return;
@@ -46,9 +58,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!isSilent) {
       setState(prev => ({ ...prev, isLoading: true }));
     }
-    
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+    const timeoutId = setTimeout(() => {
+      fetchInProgress.current = false;
+    }, 15000);
 
     try {
       const { data: profile, error } = await supabase
@@ -56,9 +69,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .select('*')
         .eq('id', userId)
         .single();
-        
+
       if (error) throw error;
-      
+
       if (profile) {
         if (profile.is_active === false) {
           await supabase.auth.signOut();
@@ -99,24 +112,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       fetchInProgress.current = false;
       setState(prev => ({ ...prev, isLoading: false }));
     }
-  }, [storeLogin, cachedUser]);
+  // ─── PERBAIKAN: cachedUser DIHAPUS dari deps ──────────────────
+  // Sebelumnya: [storeLogin, cachedUser] → loop
+  // Sekarang:   [storeLogin, storeLogout] → stabil selamanya
+  // cachedUser dibaca via cachedUserRef.current saat dibutuhkan
+  // ─────────────────────────────────────────────────────────────
+  }, [storeLogin, storeLogout]);
 
   useEffect(() => {
+    // checkSession hanya dijalankan sekali saat mount
     const checkSession = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) throw error;
-        
+
         if (session?.user) {
-          // If we already have a cached user, we can do a silent refresh
-          await fetchProfile(session.user.id, session.user.email || '', !!cachedUser);
+          // Gunakan cachedUserRef.current (bukan cachedUser langsung)
+          // agar tidak menciptakan dependency yang menyebabkan re-run
+          const hasCached = !!cachedUserRef.current;
+          await fetchProfile(session.user.id, session.user.email || '', hasCached);
         } else {
           setState(prev => ({ ...prev, isLoading: false }));
         }
       } catch (error) {
         console.error('Supabase session error:', error);
-        // If we have a cached user, don't kill the session immediately on network error
-        if (!cachedUser) {
+        if (!cachedUserRef.current) {
           storeLogout();
           setState({ user: null, token: null, isAuthenticated: false, isLoading: false });
         } else {
@@ -129,14 +149,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Supabase Auth Event:', event);
-      
+
+      // JWT refresh — hanya sync token, TIDAK trigger fetchProfile atau custom event
       if (session?.access_token && session.access_token !== lastTokenRef.current) {
-        // CRITICAL: Synchronize Realtime engine with the current JWT
-        // This ensures WebSocket connections are correctly authorized for RLS-protected tables
         try {
-          console.log('🔑 Realtime JWT synced.');
           supabase.realtime.setAuth(session.access_token);
           lastTokenRef.current = session.access_token;
+          console.log('🔑 Realtime JWT synced.');
+          // ─── PERBAIKAN: HAPUS custom event dispatch ───────────────
+          // window.dispatchEvent(new CustomEvent('supabase-realtime-auth-synced'))
+          // Event ini menyebabkan AppListeners trigger fillDataGap/recovery
+          // setiap kali token di-refresh (setiap jam), yang tidak perlu.
+          // setAuth() sudah cukup — WebSocket otomatis menggunakan token baru.
+          // ─────────────────────────────────────────────────────────
         } catch (e) {
           console.error('Failed to sync Realtime auth:', e);
         }
@@ -145,29 +170,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (event === 'SIGNED_OUT') {
         storeLogout();
         setState({ user: null, token: null, isAuthenticated: false, isLoading: false });
-        // Force fully close any pending realtime channels
         supabase.removeAllChannels();
         return;
       }
 
+      // SIGNED_IN untuk user yang sama — skip fetchProfile sepenuhnya
+      // Ini mencegah loop: fetchProfile → storeLogin → re-render → re-register listener
+      if (event === 'SIGNED_IN' && currentUserIdRef.current === session?.user?.id) {
+        console.log('Session already active for user:', session?.user?.id, '— skipping refetch.');
+        return;
+      }
+
+      // TOKEN_REFRESHED — token sudah di-sync di atas, tidak perlu fetchProfile
+      if (event === 'TOKEN_REFRESHED') {
+        return;
+      }
+
       if (session?.user) {
-        // Re-fetch profile if context is fresh or token was refreshed
-        if (currentUserIdRef.current === session.user.id && event === 'SIGNED_IN') {
-          console.log('Session already active for user:', session.user.id);
-          return;
-        }
-        
-        // TOKEN_REFRESHED should always be silent
-        const isSilent = event === 'TOKEN_REFRESHED' || !!currentUserIdRef.current;
+        const isSilent = !!currentUserIdRef.current;
         await fetchProfile(session.user.id, session.user.email || '', isSilent);
       }
     });
 
+    // Listener ini hanya didaftarkan SEKALI (deps array kosong)
+    // Karena fetchProfile sekarang stabil (tidak bergantung cachedUser)
     return () => {
       if (subscription && typeof subscription.unsubscribe === 'function') {
         subscription.unsubscribe();
       }
     };
+  // ─── PERBAIKAN: deps array minimal dan stabil ─────────────────
+  // fetchProfile stabil → useEffect ini TIDAK pernah re-run
+  // = onAuthStateChange hanya didaftarkan SATU kali seumur hidup app
+  // ─────────────────────────────────────────────────────────────
   }, [fetchProfile, storeLogout]);
 
   const logout = useCallback(async () => {
@@ -177,36 +212,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       console.error('Error during Supabase sign out:', err);
     }
-    
-    // Safety delay to let Supabase finish
+
     setTimeout(async () => {
-      // Reset all global stores manually and carefully
       try { useSessionStore.getState().reset(); } catch(e) {}
       try { useUserStore.getState().reset(); } catch(e) {}
       try { useOrderStore.getState().reset(); } catch(e) {}
       try { useNotificationStore.getState().reset(); } catch(e) {}
       try { useSettingsStore.getState().reset(); } catch(e) {}
-      
+
       try {
         const { useCourierStore } = await import('@/stores/useCourierStore');
         useCourierStore.getState().reset();
       } catch(e) {}
-      
-      // 2. Selective LocalStorage Cleanup (Secure)
-      const keysToRemove = [
-        'session-storage',
-        'business-settings',
-        'kurirdev_db_meta',
-        'courier-storage'
-      ];
+
+      const keysToRemove = ['session-storage', 'business-settings', 'kurirdev_db_meta', 'courier-storage'];
       keysToRemove.forEach(key => localStorage.removeItem(key));
-      
-      // 3. Clear IndexedDB Cache (Mirroring)
+
       try {
         const { clearAllCache } = await import('@/lib/orderCache');
         await clearAllCache();
       } catch(e) {}
-      
+
       setState({ user: null, token: null, isAuthenticated: false, isLoading: false });
       console.log('Logout cleanup complete.');
     }, 100);

@@ -486,11 +486,16 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
           console.log(`📡 [OrderStore] Snapshot replacement for ${channelId}...`)
           get().fetchInitialOrders(filter).catch(err => console.error('Snapshot fetch error:', err))
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-          console.warn(`❌ Realtime ${channelId} ${status}:`, err)
+          // status === 'CLOSED' with no error is often a manual or server-side clean disconnect
+          if (status === 'CLOSED' && !err) {
+             console.info(`ℹ️ Realtime ${channelId} closed gracefully (likely superseded or cleaned up).`)
+          } else {
+             console.warn(`❌ Realtime ${channelId} ${status}:`, err || 'No error message')
+          }
+          
           const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
           orderStates.set(channelId, finalStatus)
           set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
-          // MANDATORY: Remove from Map to allow re-subscription attempt
           orderChannels.delete(channelId)
         }
       })
@@ -576,7 +581,11 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
             console.log(`📡 [OrderStore] Single order snapshot replacement: ${orderId}...`)
             fetchCurrent().catch(err => console.error('Single snapshot fetch error:', err))
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-            console.warn(`❌ Realtime ${channelId} ${status}:`, err)
+            if (status === 'CLOSED' && !err) {
+              console.info(`ℹ️ Realtime ${channelId} closed gracefully.`)
+            } else {
+              console.warn(`❌ Realtime ${channelId} ${status}:`, err || 'No error message')
+            }
             const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
             orderStates.set(channelId, finalStatus)
             set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))

@@ -61,7 +61,7 @@ const FinancePenagihan = lazy(() => fetchWithRetry(() => import('@/pages/finance
 const FinanceAnalisa = lazy(() => fetchWithRetry(() => import('@/pages/finance/FinanceAnalisa').then(m => ({ default: m.FinanceAnalisa }))));
 
 // Owner Pages
-const OwnerOverview = lazy(() => fetchWithRetry(() => import('@/pages/owner/OwnerOverview').then(m => ({ default: m.OwnerOverview }))));
+// Combined with Dashboard
 
 // Super Admin Only
 const SystemDiagnostics = lazy(() => fetchWithRetry(() => import('@/pages/admin/SystemDiagnostics').then(m => ({ default: m.SystemDiagnostics }))));
@@ -107,7 +107,7 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
     // Redirect based on role
     if (user.role === 'courier') return <Navigate to="/courier" replace />;
     if (user.role === 'finance') return <Navigate to="/admin/finance" replace />;
-    if (user.role === 'owner') return <Navigate to="/admin/overview" replace />;
+    if (user.role === 'owner') return <Navigate to="/admin/dashboard" replace />;
     // admin_kurir, admin
     return <Navigate to="/admin/dashboard" replace />;
   }
@@ -256,18 +256,8 @@ export function App() {
                     </ErrorBoundary>
                   }
                 >
-                  {/* Dashboard - Admin Kurir focused */}
+                  {/* Dashboard - Admin Kurir & Owner focused */}
                   <Route path="dashboard" element={<Dashboard />} />
-
-                  {/* Owner Overview */}
-                  <Route 
-                    path="overview" 
-                    element={
-                      <ProtectedRoute allowedRoles={['owner', 'admin']}>
-                        <OwnerOverview />
-                      </ProtectedRoute>
-                    } 
-                  />
 
                   {/* Orders - Admin Kurir full, others read-only */}
                   <Route path="orders" element={<Orders />} />
@@ -393,7 +383,7 @@ function AdminRedirect() {
     case 'finance':
       return <Navigate to="/admin/finance" replace />;
     case 'owner':
-      return <Navigate to="/admin/overview" replace />;
+      return <Navigate to="/admin/dashboard" replace />;
     default:
       return <Navigate to="/admin/dashboard" replace />;
   }

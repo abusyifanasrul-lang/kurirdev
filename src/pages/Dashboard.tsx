@@ -3,7 +3,10 @@ import {
   Package,
   DollarSign,
   Clock,
-  TrendingUp
+  TrendingUp,
+  Award,
+  BarChart3,
+  ShoppingBag
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
@@ -11,10 +14,11 @@ import { Header } from '@/components/layout/Header';
 import { Card, StatCard } from '@/components/ui/Card';
 import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
 import { subDays, startOfDay, endOfDay } from 'date-fns';
-import { formatWIB, isWIBToday, getWIBTodayRange } from '@/utils/date';
+import { formatWIB, getWIBTodayRange } from '@/utils/date';
 
 // Cache
-import { getOrdersForWeek } from '@/lib/orderCache';
+import { getOrdersForWeek, getTopCustomers, getTopCouriers } from '@/lib/orderCache';
+import { formatCurrency } from '@/utils/formatter';
 
 // Stores
 import { useOrderStore } from '@/stores/useOrderStore';
@@ -53,6 +57,8 @@ export function Dashboard() {
 
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [cachedHistorical, setCachedHistorical] = useState<Order[]>([]);
+  const [topCustomers, setTopCustomers] = useState<{ name: string; order_count: number; total_fee: number }[]>([]);
+  const [topCouriersLocal, setTopCouriersLocal] = useState<{ id: string; name: string; delivery_count: number; total_fee: number }[]>([]);
 
   useEffect(() => {
     fetchPendingRequests();
@@ -63,14 +69,24 @@ export function Dashboard() {
   }, [fetchPendingRequests])
 
   useEffect(() => {
-    const loadWeekOrders = async () => {
-      const weekOrders = await getOrdersForWeek()
-      if (weekOrders.length > 0) {
-        setCachedHistorical(weekOrders)
-      }
+    const loadData = async () => {
+      const [weekOrders, customers, couriersLocal] = await Promise.all([
+        getOrdersForWeek(),
+        getTopCustomers(5),
+        getTopCouriers(5, users.reduce((acc, u) => {
+          if (u.role === 'courier') acc[u.id] = u.name;
+          return acc;
+        }, {} as Record<string, string>))
+      ]);
+      
+      if (weekOrders.length > 0) setCachedHistorical(weekOrders);
+      setTopCustomers(customers);
+      setTopCouriersLocal(couriersLocal);
     }
-    loadWeekOrders()
-  }, [])
+    loadData();
+    window.addEventListener('indexeddb-synced', loadData);
+    return () => window.removeEventListener('indexeddb-synced', loadData);
+  }, [users]);
 
   const allOrders = useMemo(() => {
     const map = new Map<string, Order>()
@@ -90,35 +106,38 @@ export function Dashboard() {
     setLastUpdated(new Date());
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-    }).format(value);
-  };
+
+  const [timeRange, setTimeRange] = useState<'today' | '7days' | '30days'>('today');
 
   // --- Derived Analytics ---
   const analytics = useMemo(() => {
-    const todayOrders = (allOrders || []).filter(o => isWIBToday(o.created_at));
+    const rangeStart = timeRange === 'today' ? getWIBTodayRange().start :
+                       timeRange === '7days' ? subDays(getWIBTodayRange().start, 6) :
+                       subDays(getWIBTodayRange().start, 29);
+
+    const filteredOrders = (allOrders || []).filter(o => {
+      const orderTime = new Date(o.created_at).getTime();
+      return orderTime >= rangeStart.getTime();
+    });
+
     const pendingOrders = activeOrdersByCourier.filter(o => o.status === 'pending');
 
-    // Revenue: Sum of total_fee for 'delivered' orders today
-    const revenueToday = todayOrders
+    // Revenue: Sum of total_fee for 'delivered' orders in range
+    const revenueInRange = filteredOrders
       .filter(o => o.status === 'delivered')
       .reduce((sum, o) => sum + (o.total_fee || 0), 0);
 
     const activeCouriersCount = (users || []).filter(u => u.role === 'courier' && u.is_active && u.is_online).length;
-    const netRevenueToday = todayOrders
+    const netRevenueInRange = filteredOrders
       .filter(o => o.status === 'delivered')
       .reduce((sum, o) => sum + calcAdminEarning(o, earningSettings), 0);
 
-    const belowThresholdToday = todayOrders
+    const belowThresholdInRange = filteredOrders
       .filter(o => o.status === 'delivered' && (o.total_fee || 0) <= commission_threshold)
       .reduce((sum, o) => sum + (o.total_fee || 0), 0);
 
     // Pie Chart Data
-    const statusCounts = allOrders.reduce((acc, order) => {
+    const statusCounts = filteredOrders.reduce((acc, order) => {
       acc[order.status] = (acc[order.status] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
@@ -128,23 +147,31 @@ export function Dashboard() {
       count
     }));
 
+    const successRate = filteredOrders.length > 0
+      ? (filteredOrders.filter(o => o.status === 'delivered').length / filteredOrders.length * 100)
+      : 0;
+
+    const deliveredInRange = filteredOrders.filter(o => o.status === 'delivered');
+
     return {
-      total_orders_today: todayOrders.length,
-      total_revenue_today: revenueToday,
-      net_revenue_today: netRevenueToday,
-      below_threshold_today: belowThresholdToday,
+      total_orders: filteredOrders.length,
+      total_delivered: deliveredInRange.length,
+      total_revenue: revenueInRange,
+      net_revenue: netRevenueInRange,
+      below_threshold: belowThresholdInRange,
       active_couriers: activeCouriersCount,
       pending_orders: pendingOrders.length,
       orders_by_status: pieData,
+      success_rate: successRate,
     };
-  }, [allOrders, users, activeOrdersByCourier]);
+  }, [allOrders, users, activeOrdersByCourier, timeRange, earningSettings, commission_threshold]);
 
   const revenueChartData = useMemo(() => {
-    // Last 7 days in WIB
     const data = [];
     const { start: todayStart } = getWIBTodayRange();
+    const days = timeRange === '30days' ? 30 : 7;
     
-    for (let i = 6; i >= 0; i--) {
+    for (let i = days - 1; i >= 0; i--) {
       const date = subDays(todayStart, i);
       const start = startOfDay(date);
       const end = endOfDay(date);
@@ -165,7 +192,7 @@ export function Dashboard() {
       });
     }
     return data;
-  }, [allOrders]);
+  }, [allOrders, timeRange]);
 
   const recentOrders = [...allOrders]
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
@@ -236,11 +263,32 @@ export function Dashboard() {
           );
         })()}
 
+        {/* Filter Tabs */}
+        <div className="flex items-center gap-1.5 p-1 bg-gray-100/80 rounded-xl w-fit backdrop-blur-sm border border-gray-200">
+          {[
+            { id: 'today', label: 'Hari Ini' },
+            { id: '7days', label: '7 Hari' },
+            { id: '30days', label: '1 Bulan' },
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setTimeRange(tab.id as any)}
+              className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                timeRange === tab.id
+                  ? 'bg-white text-teal-700 shadow-sm border border-gray-200'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
         {/* Stats Grid - Linked to Pages */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-6">
           <StatCard
-            title="Orders Today"
-            value={analytics.total_orders_today}
+            title={timeRange === 'today' ? "Orders Today" : "Orders"}
+            value={analytics.total_orders}
             icon={<Package className="h-6 w-6" />}
             trend={{ value: 12, isPositive: true }}
             to="/admin/orders"
@@ -249,16 +297,16 @@ export function Dashboard() {
             <>
               <StatCard
                 title="Net Revenue Admin"
-                value={formatCurrency(analytics.net_revenue_today)}
+                value={formatCurrency(analytics.net_revenue)}
                 icon={<DollarSign className="h-6 w-6" />}
-                subtitle="Hari ini · setelah komisi & threshold"
+                subtitle={timeRange === 'today' ? "Hari ini · setelah komisi" : "Data periode terpilih"}
                 to="/admin/reports"
               />
               <StatCard
                 title="Fee Bebas Komisi"
-                value={formatCurrency(analytics.below_threshold_today)}
+                value={formatCurrency(analytics.below_threshold)}
                 icon={<TrendingUp className="h-6 w-6" />}
-                subtitle={`Hari ini · order ≤ Rp ${commission_threshold.toLocaleString('id-ID')}`}
+                subtitle={timeRange === 'today' ? `Hari ini · order ≤ Rp ${commission_threshold.toLocaleString('id-ID')}` : "Data periode terpilih"}
                 to="/admin/reports"
               />
             </>
@@ -272,10 +320,10 @@ export function Dashboard() {
                 to="/admin/orders"
               />
               <StatCard
-                title="Terkirim Hari Ini"
-                value={allOrders.filter(o => o.status === 'delivered' && isWIBToday(o.actual_delivery_time || o.created_at)).length}
+                title={timeRange === 'today' ? "Terkirim Hari Ini" : "Total Terkirim"}
+                value={analytics.total_delivered}
                 icon={<Package className="h-6 w-6" />}
-                subtitle="Sudah sampai"
+                subtitle={timeRange === 'today' ? "Sudah sampai" : "Periode terpilih"}
                 to="/admin/orders"
               />
             </>
@@ -287,6 +335,14 @@ export function Dashboard() {
             subtitle="Awaiting assignment"
             to="/admin/orders"
           />
+          {user?.role === 'owner' && (
+            <StatCard
+              title="Success Rate"
+              value={`${analytics.success_rate.toFixed(1)}%`}
+              icon={<BarChart3 className="h-6 w-6" />}
+              subtitle={timeRange === 'today' ? 'Hari ini' : 'Periode terpilih'}
+            />
+          )}
         </div>
 
         {/* Core Content Grid */}
@@ -433,7 +489,9 @@ export function Dashboard() {
             <Card>
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-semibold text-gray-900">Status Overview</h2>
-                <span className="text-xs text-gray-400">7 hari terakhir</span>
+                <span className="text-xs text-gray-400">
+                  {timeRange === 'today' ? 'Hari ini' : timeRange === '7days' ? '7 hari terakhir' : '30 hari terakhir'}
+                </span>
               </div>
               <Suspense fallback={<ChartSkeleton height={200} />}>
                 <StatusPieChart 
@@ -455,9 +513,69 @@ export function Dashboard() {
                 ))}
               </div>
             </Card>
-          </div>
 
+            {/* Top Kurir widget (Analytical) */}
+            <Card>
+              <div className="flex items-center gap-2 mb-4">
+                <Award className="h-5 w-5 text-emerald-600" />
+                <h3 className="text-lg font-semibold text-gray-900">Top Kurir</h3>
+              </div>
+              {topCouriersLocal.length > 0 ? (
+                <div className="space-y-3">
+                  {topCouriersLocal.map((c, i) => (
+                    <div key={c.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                      <div className="flex items-center gap-3 text-left">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${
+                          i === 0 ? 'bg-yellow-100 text-yellow-700' :
+                          i === 1 ? 'bg-gray-200 text-gray-600' :
+                          i === 2 ? 'bg-orange-100 text-orange-700' :
+                          'bg-gray-100 text-gray-500'
+                        }`}>
+                          {i + 1}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-medium text-gray-900 text-xs truncate">{c.name}</p>
+                          <p className="text-[10px] text-gray-500 uppercase font-bold tracking-tight">{c.delivery_count} delivery</p>
+                        </div>
+                      </div>
+                      <p className="font-bold text-gray-900 text-xs whitespace-nowrap">{formatCurrency(c.total_fee)}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-400 text-sm">Belum ada data</div>
+              )}
+            </Card>
+          </div>
         </div>
+
+        {/* Top Customers (Full Width on Bottom) */}
+        <Card>
+          <div className="flex items-center gap-2 mb-4">
+            <ShoppingBag className="h-5 w-5 text-blue-600" />
+            <h3 className="text-lg font-semibold text-gray-900">Top Pelanggan</h3>
+          </div>
+          {topCustomers.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+              {topCustomers.map((c, i) => (
+                <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                  <div className="flex items-center gap-3 text-left min-w-0">
+                    <div className="w-8 h-8 shrink-0 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs">
+                      {i + 1}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-gray-900 text-xs truncate">{c.name}</p>
+                      <p className="text-[10px] text-gray-500 font-bold uppercase tracking-tight">{c.order_count} order</p>
+                    </div>
+                  </div>
+                  <p className="font-bold text-gray-900 text-xs whitespace-nowrap ml-2">{formatCurrency(c.total_fee)}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-6 text-gray-400 text-sm">Belum ada data</div>
+          )}
+        </Card>
       </div>
     </div>
   );
