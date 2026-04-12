@@ -113,6 +113,9 @@ export function CourierOrderDetail() {
     if (order && !showItemForm) {
       if (order.items) setItemList(order.items);
       if (order.total_fee) setOngkirValue(formatRupiah(String(order.total_fee)));
+      // Reset input form saat form ditutup
+      setNamaItem('');
+      setHargaItem('');
     }
     if (order && !editCustomer) {
       setEditName(order.customer_name || '');
@@ -226,7 +229,22 @@ export function CourierOrderDetail() {
   };
 
   const handleSimpanItems = async () => {
-    await updateItems(order.id, itemList);
+    let finalItems = [...itemList];
+    
+    // Otomatis tambahkan item yang sedang diketik jika valid
+    const cleanHarga = Number(hargaItem.replace(/\D/g, ''));
+    if (namaItem.trim() && !isNaN(cleanHarga) && cleanHarga > 0) {
+      finalItems = [...finalItems, { 
+        nama: namaItem.trim(), 
+        harga: cleanHarga 
+      }];
+    }
+
+    await updateItems(order.id, finalItems);
+    
+    // Pastikan form dibersihkan dan ditutup
+    setNamaItem('');
+    setHargaItem('');
     setShowItemForm(false);
   };
 
