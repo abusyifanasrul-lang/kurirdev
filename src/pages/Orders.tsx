@@ -6,8 +6,7 @@ import {
   getCachedOrdersByRange,
   cacheOrdersByDate,
   getOrdersByDateRange,
-  getUnpaidOrdersByCourier,
-  markAsPaidInLocalDB
+  getUnpaidOrdersByCourier
 } from '@/lib/orderCache';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/Button';
@@ -61,6 +60,7 @@ export function Orders() {
   const assignCourier = useOrderStore(state => state.assignCourier);
   const cancelOrder = useOrderStore(state => state.cancelOrder);
   const updateOrder = useOrderStore(state => state.updateOrder);
+  const settleOrder = useOrderStore(state => state.settleOrder);
   const { rotateQueue } = useCourierStore();
   const { users } = useUserStore();
   const { user } = useAuth();
@@ -83,8 +83,14 @@ export function Orders() {
   // Local DB State for weekly orders
   const [localDBOrders, setLocalDBOrders] = useState<Order[]>([])
 
-  const getCourierName = (courierId?: string) => {
-    if (!courierId) return null;
+  const getCourierName = (courierId?: string | null) => {
+    if (!courierId) return '';
+    const courier = users.find(u => u.id === courierId);
+    return courier ? courier.name : '── Kurir Terhapus ──';
+  };
+
+  const renderCourierCell = (courierId?: string) => {
+    if (!courierId) return <span className="text-gray-400 italic">Unassigned</span>;
     const courier = users.find(u => u.id === courierId);
     if (!courier) return <span className="text-gray-400">── Kurir Terhapus ──</span>;
     return (
@@ -798,7 +804,7 @@ export function Orders() {
             onSort={handleSort}
             sortField={sortConfig.field}
             sortOrder={sortConfig.order}
-            getCourierName={getCourierName}
+            getCourierName={renderCourierCell}
             isFinance={isFinance}
             onBulkSettle={async (order) => {
               const courierName = users.find(u => u.id === order.courier_id)?.name || 'Kurir'
@@ -853,7 +859,7 @@ export function Orders() {
         handleCancel={() => setIsCancelModalOpen(true)}
         availableCouriers={availableCouriers as any}
         courierWaitingOrder={courierWaitingOrder}
-        getCourierName={getCourierName as any}
+        getCourierName={getCourierName}
         customers={customers}
         updateAddress={updateAddress}
         deleteAddress={deleteAddress}
@@ -874,8 +880,9 @@ export function Orders() {
         onClose={() => setShowBulkSettle(false)}
         courierName={bulkSettleCourierName}
         unpaidOrders={bulkUnpaidOrders}
-        updateOrder={updateOrder}
-        markAsPaidInLocalDB={markAsPaidInLocalDB}
+        settleOrder={settleOrder}
+        userId={user?.id || ''}
+        userName={user?.name || ''}
         getInitialOrders={() => {
           const start = formatWIB(oneMonthAgo, 'yyyy-MM-dd')
           const end = formatWIB(now, 'yyyy-MM-dd')

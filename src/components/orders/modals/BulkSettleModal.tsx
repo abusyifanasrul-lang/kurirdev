@@ -10,8 +10,9 @@ interface BulkSettleModalProps {
   onClose: () => void;
   courierName: string;
   unpaidOrders: Order[];
-  updateOrder: (id: string, data: Partial<Order>) => Promise<void>;
-  markAsPaidInLocalDB: (id: string) => Promise<void>;
+  settleOrder: (orderId: string, userId: string, userName: string) => Promise<void>;
+  userId: string;
+  userName: string;
   getInitialOrders: () => Promise<Order[]>;
   setLocalDBOrders: (orders: Order[]) => void;
   calcPlatformFee: (order: Order) => number;
@@ -22,8 +23,9 @@ export const BulkSettleModal: React.FC<BulkSettleModalProps> = ({
   onClose,
   courierName,
   unpaidOrders,
-  updateOrder,
-  markAsPaidInLocalDB,
+  settleOrder,
+  userId,
+  userName,
   getInitialOrders,
   setLocalDBOrders,
   calcPlatformFee
@@ -37,10 +39,8 @@ export const BulkSettleModal: React.FC<BulkSettleModalProps> = ({
     setIsProcessing(true);
     try {
       for (const order of unpaidOrders) {
-        // 1. Update Supabase
-        await updateOrder(order.id, { payment_status: 'paid' });
-        // 2. Update LocalDB
-        await markAsPaidInLocalDB(order.id);
+        // 1. Update Supabase with tracking
+        await settleOrder(order.id, userId, userName);
       }
       // 3. Refresh LocalDB state
       const updated = await getInitialOrders();

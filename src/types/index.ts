@@ -121,6 +121,9 @@ export interface Order {
   applied_commission_rate?: number;
   applied_commission_threshold?: number;
   cancel_reason_type?: 'customer' | 'item_unavailable' | 'other';
+  assigned_by?: string;
+  payment_confirmed_by?: string;
+  cancelled_by?: string;
 }
 
 export interface OrderStatusHistory {

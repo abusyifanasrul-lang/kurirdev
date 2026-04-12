@@ -55,6 +55,7 @@ export interface OrderState {
   updateOngkir: (orderId: string, totalFee: number) => Promise<void>
   updateOrderWaiting: (orderId: string, isWaiting: boolean) => Promise<void>
   updateOrderField: (orderId: string, field: string, value: any) => Promise<void>
+  settleOrder: (orderId: string, userId: string, userName: string) => Promise<void>
   
   getOrdersByCourier: (courierId: string) => Order[]
   getRecentOrders: (limit?: number) => Order[]
@@ -716,6 +717,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
             updates.is_waiting = false
             updates.cancelled_at = new Date().toISOString()
             updates.cancellation_reason = notes || ''
+            updates.cancelled_by = userId
           }
 
           const { error: updateError } = await (supabase.from('orders') as any).update(updates).eq('id', orderId)
@@ -773,7 +775,8 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
             status: 'assigned', 
             courier_id: courierId,
             assigned_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
+            assigned_by: userId
           })
           .eq('id', orderId)
         if (error) throw error
@@ -789,7 +792,8 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
             ...o, 
             status: 'assigned', 
             courier_id: courierId,
-            assigned_at: new Date().toISOString()
+            assigned_at: new Date().toISOString(),
+            assigned_by: userId
           } : o)
         }))
         const order = get().orders.find(o => o.id === orderId)
@@ -841,7 +845,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
         if (Object.keys(restUpdates).length > 0) {
            await (supabase.from('orders') as any).update({ ...restUpdates, updated_at: new Date().toISOString() }).eq('id', orderId)
         }
-        import('@/lib/orderCache').then(({ markAsPaidInLocalDB }) => markAsPaidInLocalDB(orderId).catch(err => console.error('Confirm payment error:', err)))
+        import('@/lib/orderCache').then(({ markAsPaidInLocalDB }) => markAsPaidInLocalDB(orderId, '').catch(err => console.error('Confirm payment error:', err)))
      } else {
        const finalUpdates = { ...updates, updated_at: new Date().toISOString() };
        if (updates.status === 'cancelled' || updates.status === 'delivered') {
@@ -914,6 +918,32 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     }));
 
     await (supabase.from('orders') as any).update({ [field]: value, updated_at: new Date().toISOString() }).eq('id', orderId)
+  },
+
+  settleOrder: async (orderId, userId, userName) => {
+    const { error } = await (supabase.from('orders') as any).update({
+      payment_status: 'paid',
+      payment_confirmed_by: userId,
+      updated_at: new Date().toISOString()
+    }).eq('id', orderId)
+
+    if (error) throw error
+
+    await (supabase.from('tracking_logs') as any).insert({
+      order_id: orderId,
+      status: 'delivered',
+      changed_by: userId,
+      changed_by_name: userName,
+      notes: `Setoran dikonfirmasi oleh ${userName}`
+    })
+
+    set(state => ({
+      orders: state.orders.map(o => o.id === orderId ? { ...o, payment_status: 'paid', payment_confirmed_by: userId } : o),
+      currentOrder: state.currentOrder?.id === orderId ? { ...state.currentOrder, payment_status: 'paid', payment_confirmed_by: userId } : state.currentOrder
+    }))
+
+    const { markAsPaidInLocalDB } = await import('@/lib/orderCache')
+    await markAsPaidInLocalDB(orderId, userId)
   },
 
   updateItems: async (orderId, items) => {

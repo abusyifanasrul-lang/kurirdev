@@ -16,6 +16,7 @@ import {
 import { Input } from '@/components/ui/Input';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useUserStore } from '@/stores/useUserStore';
+import { useAuth } from '@/context/AuthContext';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { calcAdminEarning } from '@/lib/calcEarning';
 import { getOrdersForWeek, getAllUnpaidOrdersLocal, markAsPaidInLocalDB } from '@/lib/orderCache';
@@ -25,7 +26,8 @@ import type { Order } from '@/types';
 type FilterType = 'unpaid' | 'paid' | 'all';
 
 export function FinancePenagihan() {
-  const { orders, updateOrder } = useOrderStore();
+  const { user } = useAuth();
+  const { orders, settleOrder } = useOrderStore();
   const { users } = useUserStore();
   const { commission_rate, commission_threshold } = useSettingsStore();
   const earningSettings = { commission_rate, commission_threshold };
@@ -169,9 +171,10 @@ export function FinancePenagihan() {
     setConfirmError(null);
 
     try {
+      if (!user) throw new Error('Anda harus login untuk melakukan konfirmasi setoran');
+
       for (const order of confirmCourier.orders) {
-        await updateOrder(order.id, { payment_status: 'paid' });
-        await markAsPaidInLocalDB(order.id);
+        await settleOrder(order.id, user.id, user.name);
       }
       setSelectedOrders(prev => {
         const next = new Set(prev);

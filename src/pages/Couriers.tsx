@@ -33,7 +33,7 @@ export function Couriers() {
   const { addCourier, updateCourier } = useCourierStore();
   const { users } = useUserStore();
   const couriers = users.filter(u => u.role === 'courier') as Courier[];
-  const { orders, activeOrdersByCourier, getOrdersByCourier, updateOrder, fetchInitialOrders } = useOrderStore();
+  const { orders, activeOrdersByCourier, getOrdersByCourier, updateOrder, settleOrder, fetchInitialOrders } = useOrderStore();
   const { commission_rate, commission_threshold } = useSettingsStore();
   const earningSettings = { commission_rate, commission_threshold };
   const { user } = useAuth();
@@ -656,9 +656,8 @@ export function Couriers() {
                   onClick={async () => {
                     await Promise.all(
                       unpaidOrders.map(async o => {
-                        await updateOrder(o.id,
-                          { payment_status: 'paid' })
-                        await markAsPaidInLocalDB(o.id)
+                        if (!user) throw new Error('Anda harus login untuk melakukan konfirmasi setoran');
+                        await settleOrder(o.id, user.id, user.name);
                       })
                     )
                     setCourierUnpaidOrders([])
