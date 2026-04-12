@@ -161,10 +161,10 @@ export function FinanceDashboard() {
         {/* Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
           <StatCard
-            title="Tagihan Belum Lunas"
+            title="Total Belum Setor"
             value={formatCurrency(totalUnpaid)}
             icon={<AlertTriangle className="h-5 w-5" />}
-            subtitle={`${totalUnpaidCount} order dari ${unpaidByCourier.length} kurir`}
+            subtitle={`Menunggu setoran dari ${unpaidByCourier.length} kurir (${totalUnpaidCount} order)`}
             to="/admin/finance/penagihan"
           />
           <StatCard

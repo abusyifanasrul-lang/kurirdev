@@ -215,32 +215,32 @@ export function FinancePenagihan() {
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
             <div className="flex items-center gap-2 mb-2">
               <AlertTriangle className="h-5 w-5 text-amber-600" />
-              <span className="text-sm font-medium text-amber-800">Total Tagihan</span>
+              <span className="text-sm font-medium text-amber-800">Total Belum Setor</span>
             </div>
             <p className="text-xl font-bold text-amber-900">{formatCurrency(totalUnpaid)}</p>
-            <p className="text-xs text-amber-600 mt-1">{totalUnpaidOrders} order dari {courierSummary.length} kurir</p>
+            <p className="text-xs text-amber-600 mt-1">Total piutang {totalUnpaidOrders} order dari {courierSummary.length} kurir</p>
           </div>
           <div className="bg-red-50 border border-red-200 rounded-xl p-4">
             <div className="flex items-center gap-2 mb-2">
               <Clock className="h-5 w-5 text-red-600" />
-              <span className="text-sm font-medium text-red-800">Tagihan Menunggak</span>
+              <span className="text-sm font-medium text-red-800">Tunggakan > 7 Hari</span>
             </div>
             <p className="text-xl font-bold text-red-900">
               {courierSummary.filter(c =>
                 c.unpaidOrders.some(o => differenceInDaysWIB(getWIBNow(), o.created_at) > 7)
               ).length} kurir
             </p>
-            <p className="text-xs text-red-600 mt-1">Order delivered &gt; 7 hari</p>
+            <p className="text-xs text-red-600 mt-1">Ada pengantaran yang sudah lewat seminggu</p>
           </div>
           <div className="bg-green-50 border border-green-200 rounded-xl p-4 col-span-2 lg:col-span-1">
             <div className="flex items-center gap-2 mb-2">
               <CheckCircle className="h-5 w-5 text-green-600" />
-              <span className="text-sm font-medium text-green-800">Sudah Lunas</span>
+              <span className="text-sm font-medium text-green-800">Setoran Selesai</span>
             </div>
             <p className="text-xl font-bold text-green-900">
               {couriers.length - courierSummary.filter(c => c.unpaidOrders.length > 0).length}/{couriers.length}
             </p>
-            <p className="text-xs text-green-600 mt-1">Kurir tanpa tagihan</p>
+            <p className="text-xs text-green-600 mt-1">Kurir yang sudah melunasi semua tagihan</p>
           </div>
         </div>
 
