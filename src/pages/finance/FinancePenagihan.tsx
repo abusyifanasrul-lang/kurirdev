@@ -46,6 +46,12 @@ export function FinancePenagihan() {
   const [confirmSuccess, setConfirmSuccess] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
 
+  const getUserName = (id?: string | null) => {
+    if (!id) return 'Unknown';
+    const u = users.find(x => x.id === id);
+    return u ? u.name : 'Staf Terhapus';
+  };
+
   const loadLocalOrders = useCallback(async () => {
     const [recentOrders, unpaidOrders] = await Promise.all([
       getOrdersForWeek(),
@@ -445,9 +451,16 @@ export function FinancePenagihan() {
                               <div key={order.id} className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
                                 <div>
                                   <p className="text-sm font-medium text-gray-900">{order.order_number}</p>
-                                  <p className="text-xs text-gray-500">
-                                    {formatWIB(order.updated_at, 'dd MMM yyyy, HH:mm')}
-                                  </p>
+                                  <div className="flex flex-col gap-0.5 mt-0.5">
+                                    <p className="text-[10px] text-gray-500">
+                                      {formatWIB(order.updated_at, 'dd MMM yyyy, HH:mm')}
+                                    </p>
+                                    {order.payment_confirmed_by && (
+                                      <p className="text-[10px] text-green-600 font-medium italic">
+                                        Verified by: {getUserName(order.payment_confirmed_by)}
+                                      </p>
+                                    )}
+                                  </div>
                                 </div>
                                 <div className="text-right">
                                   <p className="text-sm font-medium text-green-700">

@@ -89,6 +89,12 @@ export function Orders() {
     return courier ? courier.name : '── Kurir Terhapus ──';
   };
 
+  const getUserName = (userId?: string | null) => {
+    if (!userId) return 'Unknown';
+    const u = users.find(x => x.id === userId);
+    return u ? u.name : 'User Terhapus';
+  };
+
   const renderCourierCell = (courierId?: string) => {
     if (!courierId) return <span className="text-gray-400 italic">Unassigned</span>;
     const courier = users.find(u => u.id === courierId);
@@ -865,6 +871,7 @@ export function Orders() {
         deleteAddress={deleteAddress}
         addAddress={addAddress}
         courierInstructions={courier_instructions}
+        getUserName={getUserName}
       />
       <CancelOrderModal
         isOpen={isCancelModalOpen}

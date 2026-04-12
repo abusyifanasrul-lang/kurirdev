@@ -45,6 +45,7 @@ interface OrderModalProps {
   deleteAddress: (customerId: string, addressId: string) => Promise<void>;
   addAddress: (customerId: string, data: any) => Promise<void>;
   courierInstructions: CourierInstruction[];
+  getUserName: (id: string | null | undefined) => string;
 }
 
 export const OrderModal: React.FC<OrderModalProps> = ({
@@ -63,7 +64,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   updateAddress,
   deleteAddress,
   addAddress,
-  courierInstructions
+  courierInstructions,
+  getUserName
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [assignCourierId, setAssignCourierId] = useState('');
@@ -518,6 +520,12 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                       <span className="text-xs text-teal-600 font-medium">Ongkos Kirim</span>
                       <span className="text-lg font-black text-teal-700">{formatCurrency(order.total_fee || 0)}</span>
                     </div>
+                    {order.payment_status === 'paid' && order.payment_confirmed_by && (
+                      <div className="mt-2 pt-2 border-t border-teal-200/30 flex items-center justify-between text-[10px]">
+                        <span className="text-teal-600/70 italic">Settle diverifikasi oleh:</span>
+                        <span className="font-bold text-teal-700">{getUserName(order.payment_confirmed_by)}</span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -537,7 +545,12 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                           )}
                         </div>
                         {order.assigned_at && (
-                          <p className="text-[10px] text-gray-400">Ditugaskan pada {formatWIB(order.assigned_at)}</p>
+                          <div className="mt-0.5 space-y-0.5 text-[10px] text-gray-400">
+                            <p>Ditugaskan pada {formatWIB(order.assigned_at)}</p>
+                            {order.assigned_by && (
+                              <p className="font-medium text-teal-600/70">Oleh: {getUserName(order.assigned_by)}</p>
+                            )}
+                          </div>
                         )}
                       </div>
                     </div>
