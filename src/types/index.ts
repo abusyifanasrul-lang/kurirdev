@@ -124,6 +124,16 @@ export interface Order {
   assigned_by?: string;
   payment_confirmed_by?: string;
   cancelled_by?: string;
+  courier?: {
+    name: string;
+    vehicle_type?: 'motorcycle' | 'car' | 'bicycle' | 'van';
+    plate_number?: string;
+  };
+  assigner?: {
+    name: string;
+  };
+  assigner_name?: string;
+  courier_name?: string;
 }
 
 export interface OrderStatusHistory {

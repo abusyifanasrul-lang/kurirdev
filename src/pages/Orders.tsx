@@ -1,6 +1,7 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Plus, Download } from 'lucide-react';
 import { formatWIB, getWIBNow } from '@/utils/date';
+import html2canvas from 'html2canvas';
 
 import {
   getCachedOrdersByRange,
@@ -44,6 +45,7 @@ import { useCourierStore } from '@/stores/useCourierStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { useCustomerStore } from '@/stores/useCustomerStore';
+import { InvoiceTemplate } from '@/components/orders/InvoiceTemplate';
 import { useAuth } from '@/context/AuthContext';
 import type { Order, Customer } from '@/types';
 import { calcAdminEarning } from '@/lib/calcEarning';
@@ -168,9 +170,10 @@ export function Orders() {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [inlineEditAddrId, setInlineEditAddrId] = useState<string | null>(null);
   const [inlineEditValue, setInlineEditValue] = useState('');
-  const [inlineAddingNew, setInlineAddingNew] = useState(false);
   const [inlineNewAddr, setInlineNewAddr] = useState('');
+  const [inlineAddingNew, setInlineAddingNew] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
+  const invoiceRef = useRef<HTMLDivElement>(null);
 
   const filteredOrders = useMemo(() => {
     return allOrders
@@ -366,6 +369,7 @@ export function Orders() {
         created_at: getWIBNow().toISOString(),
         updated_at: getWIBNow().toISOString(),
         created_by: user?.id || "1",
+        assigner_name: user?.name || 'Admin',
       };
 
       await addOrder(orderData);
@@ -491,131 +495,32 @@ export function Orders() {
     link.click();
   };
 
-  const handlePrintInvoice = (order: Order) => {
-    const titik = order.titik ?? 0;
-    const beban = order.beban ?? [];
-    const totalBiayaTitik = order.total_biaya_titik ?? 0;
-    const totalBiayaBeban = order.total_biaya_beban ?? 0;
-    const totalOngkir = (order.total_fee || 0) + totalBiayaTitik + totalBiayaBeban;
-        const courierName = getCourierName(order.courier_id) || '-';
-
-    const totalBelanja = (order.items && order.items.length > 0)
-    ? order.items.reduce((s, i) => s + i.harga, 0)
-    : (order.item_price ?? 0);
-
-  const keteranganSection = (order.items && order.items.length > 0)
-    ? `<div class="section">
-        <div class="section-label">Daftar Belanja</div>
-        ${order.items.map(item => `
-          <div class="row">
-            <span>${item.nama}</span>
-            <span style="font-weight:600;">Rp ${item.harga.toLocaleString('id-ID')}</span>
-          </div>
-        `).join('')}
-        <div class="row bold">
-          <span>Total Belanja</span>
-          <span>Rp ${totalBelanja.toLocaleString('id-ID')}</span>
-        </div>
-      </div>`
-    : order.item_name
-    ? `<div class="section">
-        <div class="section-label">Barang</div>
-        <div class="row">
-          <span>${order.item_name}</span>
-          ${order.item_price ? `<span style="font-weight:600;">Rp ${order.item_price.toLocaleString('id-ID')}</span>` : ''}
-        </div>
-      </div>`
-    : '';
-
-    const titikRows = titik > 0
-      ? `<div style="padding:2px 0 2px 12px;color:#6b7280;font-size:12px;display:flex;justify-content:space-between;">
-          <span>Titik Tambahan (${titik}x)</span><span>Rp ${totalBiayaTitik.toLocaleString('id-ID')}</span>
-         </div>`
-      : '';
-
-    const bebanRows = beban.map(b =>
-      `<div style="padding:2px 0 2px 12px;color:#6b7280;font-size:12px;display:flex;justify-content:space-between;">
-        <span>• ${b.nama}</span><span>Rp ${b.biaya.toLocaleString('id-ID')}</span>
-       </div>`
-    ).join('');
-
-    const printWindow = window.open('', '_blank', 'width=420,height=700');
-    if (!printWindow) return;
-
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8" />
-        <title>Invoice ${order.order_number}</title>
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: Arial, sans-serif; background: #fff; color: #111; }
-          .invoice { width: 360px; margin: 0 auto; padding: 24px; }
-          .header { text-align: center; padding-bottom: 12px; border-bottom: 2px solid #111; margin-bottom: 14px; }
-          .brand { font-size: 22px; font-weight: 800; color: #0d9488; }
-          .brand-sub { font-size: 10px; color: #6b7280; letter-spacing: 0.1em; text-transform: uppercase; margin-top: 2px; }
-          .order-number { font-size: 15px; font-weight: 700; margin-top: 10px; }
-          .order-meta { font-size: 11px; color: #6b7280; margin-top: 2px; }
-          .section { margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px dashed #d1d5db; }
-          .section-label { font-size: 9px; font-weight: 700; letter-spacing: 0.1em; color: #6b7280; text-transform: uppercase; margin-bottom: 8px; }
-          .row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; color: #374151; }
-          .row.sub { padding-left: 10px; color: #9ca3af; }
-          .row.bold { font-weight: 700; font-size: 13px; color: #111; padding-top: 6px; margin-top: 4px; border-top: 1px solid #e5e7eb; margin-bottom: 0; }
-          .total-box { background: #fef3c7; border-radius: 8px; padding: 10px 12px; margin-bottom: 16px; }
-          .total-box .total-row { display: flex; justify-content: space-between; font-size: 15px; font-weight: 800; color: #92400e; }
-          .total-box .total-sub { font-size: 9px; color: #b45309; margin-top: 3px; }
-          .footer { text-align: center; font-size: 11px; color: #9ca3af; padding-top: 12px; border-top: 1px dashed #e5e7eb; }
-          @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
-        </style>
-      </head>
-      <body>
-        <div class="invoice">
-
-          <div class="header">
-            <div class="brand">🛵 KurirDev</div>
-            <div class="brand-sub">Invoice Pengiriman</div>
-            <div class="order-number">${order.order_number}</div>
-            <div class="order-meta">${formatWIB(order.created_at, 'dd MMM yyyy, HH:mm')}</div>
-            <div class="order-meta">Kurir: ${courierName}</div>
-          </div>
-
-          <div class="section">
-            <div class="section-label">Kepada</div>
-            <div style="font-weight:700;font-size:13px;margin-bottom:4px;">${order.customer_name}</div>
-            <div style="color:#4b5563;font-size:12px;margin-bottom:2px;">${order.customer_address}</div>
-            <div style="color:#4b5563;font-size:12px;">${order.customer_phone}</div>
-          </div>
-
-          ${keteranganSection}
-
-          <div class="section">
-            <div class="section-label">Biaya Pengiriman</div>
-            <div class="row"><span>Ongkir</span><span>Rp ${(order.total_fee || 0).toLocaleString('id-ID')}</span></div>
-            ${titikRows}
-            ${bebanRows}
-            <div class="row bold"><span>Total Ongkir</span><span>Rp ${totalOngkir.toLocaleString('id-ID')}</span></div>
-          </div>
-
-          ${totalBelanja > 0
-            ? `<div class="total-box">
-                <div class="total-row">
-                  <span>TOTAL DIBAYAR</span>
-                  <span>Rp ${(totalOngkir + totalBelanja).toLocaleString('id-ID')}</span>
-                </div>
-                <div class="total-sub">Ongkir + ${order.items && order.items.length > 0 ? 'Total Belanja' : 'Harga Barang'}</div>
-              </div>`
-            : ''
-          }
-
-          <div class="footer">Terima kasih telah menggunakan layanan KurirDev 🙏</div>
-
-        </div>
-        <script>window.onload = () => { window.print(); window.onafterprint = () => window.close(); }<\/script>
-      </body>
-      </html>
-    `);
-    printWindow.document.close();
+  const handlePrintInvoice = async (order: Order) => {
+    if (!invoiceRef.current) return;
+    
+    // Set selected order to ensure template renders the correct one
+    setSelectedOrder(order);
+    
+    // Wait briefly for React to update the hidden template
+    setTimeout(async () => {
+      try {
+        const canvas = await html2canvas(invoiceRef.current!, {
+          backgroundColor: '#ffffff',
+          scale: 2, // Higher resolution
+          logging: false,
+          useCORS: true
+        });
+        
+        const image = canvas.toDataURL("image/png");
+        const link = document.createElement('a');
+        link.download = `Invoice-${order.order_number}.png`;
+        link.href = image;
+        link.click();
+      } catch (err) {
+        console.error("Failed to generate invoice image:", err);
+        alert("Gagal membuat gambar invoice.");
+      }
+    }, 100);
   };
 
   const handleDateFilterChange = async (
@@ -898,6 +803,11 @@ export function Orders() {
         setLocalDBOrders={setLocalDBOrders}
         calcPlatformFee={calcPlatformFee}
       />
+
+      {/* Hidden container for centralized html2canvas capture */}
+      {selectedOrder && (
+        <InvoiceTemplate order={selectedOrder} invoiceRef={invoiceRef} />
+      )}
     </div>
   );
 }

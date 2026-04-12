@@ -98,7 +98,11 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
       
       const { data: allOrders, error } = await supabase
         .from('orders')
-        .select('*')
+        .select(`
+          *,
+          courier:profiles!courier_id(name, vehicle_type, plate_number),
+          assigner:profiles!assigned_by(name)
+        `)
         .eq('courier_id', courierId)
         .in('status', ['delivered', 'cancelled'])
         .gte('created_at', sevenDaysAgo.toISOString())
@@ -118,7 +122,11 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     try {
       let query = supabase
         .from('orders')
-        .select('*')
+        .select(`
+          *,
+          courier:profiles!courier_id(name, vehicle_type, plate_number),
+          assigner:profiles!assigned_by(name)
+        `)
         .gte('created_at', start.toISOString())
         .lte('created_at', end.toISOString())
 
@@ -144,7 +152,11 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     try {
       const { data: activeOrdersByCourier, error } = await supabase
         .from('orders')
-        .select('*')
+        .select(`
+          *,
+          courier:profiles!courier_id(name, vehicle_type, plate_number),
+          assigner:profiles!assigned_by(name)
+        `)
         .eq('courier_id', courierId)
         .in('status', ['assigned', 'picked_up', 'in_transit'])
         
@@ -202,7 +214,11 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     try {
       let query = supabase
         .from('orders')
-        .select('*')
+        .select(`
+          *,
+          courier:profiles!courier_id(name, vehicle_type, plate_number),
+          assigner:profiles!assigned_by(name)
+        `)
         .gt('updated_at', since)
         .order('updated_at', { ascending: false })
         .limit(50)
@@ -286,7 +302,11 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     try {
       // 2.a ACTIVE ORDERS FETCH
       const activeStatuses = ['pending', 'assigned', 'picked_up', 'in_transit']
-      let activeQuery = supabase.from('orders').select('*').in('status', activeStatuses)
+      let activeQuery = supabase.from('orders').select(`
+        *,
+        courier:profiles!courier_id(name, vehicle_type, plate_number),
+        assigner:profiles!assigned_by(name)
+      `).in('status', activeStatuses)
       if (courierId) activeQuery = activeQuery.eq('courier_id', courierId)
 
       const { data: activeData, error: activeError } = await activeQuery.order('created_at', { ascending: false })
@@ -306,7 +326,11 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
       console.log(`[Sync] Fetching finalized orders since ${fetchStart.toISOString()} (Weekly: ${isWeeklyNeeded})`)
 
       let finalQuery = supabase.from('orders')
-        .select('*')
+        .select(`
+          *,
+          courier:profiles!courier_id(name, vehicle_type, plate_number),
+          assigner:profiles!assigned_by(name)
+        `)
         .in('status', ['delivered', 'cancelled'])
         .gte('created_at', fetchStart.toISOString())
 
@@ -523,7 +547,11 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   subscribeOrderById: (orderId: string) => {
     // 1. Initial Load
     const fetchCurrent = async () => {
-      const { data } = await supabase.from('orders').select('*').eq('id', orderId).single()
+      const { data } = await supabase.from('orders').select(`
+        *,
+        courier:profiles!courier_id(name, vehicle_type, plate_number),
+        assigner:profiles!assigned_by(name)
+      `).eq('id', orderId).single()
       if (data) set({ currentOrder: data as Order })
     }
     fetchCurrent()
@@ -627,7 +655,8 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
         if (rpcError) throw rpcError
         const finalOrderData = {
           ...orderData,
-          order_number: orderNumber
+          order_number: orderNumber,
+          assigner_name: (orderData as any).assigner_name // Caller should pass this
         }
         const { data, error } = await (supabase.from('orders') as any)
           .insert(finalOrderData)
@@ -776,7 +805,9 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
             courier_id: courierId,
             assigned_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-            assigned_by: userId
+            assigned_by: userId,
+            assigner_name: userName,
+            courier_name: courierName
           })
           .eq('id', orderId)
         if (error) throw error
@@ -793,7 +824,9 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
             status: 'assigned', 
             courier_id: courierId,
             assigned_at: new Date().toISOString(),
-            assigned_by: userId
+            assigned_by: userId,
+            assigner_name: userName,
+            courier_name: courierName
           } : o)
         }))
         const order = get().orders.find(o => o.id === orderId)

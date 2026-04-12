@@ -11,6 +11,7 @@ import { Order } from '@/types';
 import { Badge } from '@/components/ui/Badge';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { formatCurrency, formatShortCurrency } from '@/utils/formatter';
+import { InvoiceTemplate } from '@/components/orders/InvoiceTemplate';
 
 type Period = 'daily' | 'weekly';
 type Tab = 'summary' | 'history';
@@ -462,75 +463,15 @@ export function CourierEarnings() {
               </button>
             </div>
             <div className="p-6 max-h-[60vh] overflow-y-auto">
-              <div className="bg-white p-4 border border-gray-200 rounded-xl">
-                {/* Header */}
-                <div style={{ textAlign: 'center', paddingBottom: '12px', borderBottom: '2px solid #111827', marginBottom: '14px' }}>
-                  <div style={{ fontSize: '18px', fontWeight: '700', color: '#047857' }}>🛵 KurirDev</div>
-                  <div style={{ fontSize: '9px', color: '#6b7280', letterSpacing: '0.05em', textTransform: 'uppercase', marginTop: '2px', fontWeight: '700' }}>Invoice Pengiriman</div>
-                  <div style={{ fontSize: '13px', fontWeight: '700', color: '#111827', marginTop: '10px' }}>{selectedOrder.order_number}</div>
-                  <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '2px' }}>{selectedOrder.created_at ? new Date(selectedOrder.created_at).toLocaleString('id-ID', {day:'2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit'}) : new Date().toLocaleString('id-ID')}</div>
-                </div>
-
-                {/* Kepada */}
-                <div style={{ paddingBottom: '12px', borderBottom: '1px dashed #d1d5db', marginBottom: '14px' }}>
-                  <div style={{ fontSize: '8px', fontWeight: '700', letterSpacing: '0.05em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '6px' }}>Kepada</div>
-                  <div style={{ fontWeight: '700', fontSize: '12px', color: '#111827' }}>{selectedOrder.customer_name}</div>
-                  <div style={{ color: '#4b5563', marginTop: '2px', fontSize: '11px', lineHeight: '1.4' }}>{selectedOrder.customer_address}</div>
-                  <div style={{ color: '#4b5563', marginTop: '2px', fontSize: '11px' }}>{selectedOrder.customer_phone}</div>
-                </div>
-
-                {/* Daftar Belanja */}
-                {(selectedOrder.items && selectedOrder.items.length > 0) && (
-                  <div style={{ paddingBottom: '12px', borderBottom: '1px dashed #d1d5db', marginBottom: '14px' }}>
-                    <div style={{ fontSize: '8px', fontWeight: '700', letterSpacing: '0.05em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '8px' }}>Daftar Belanja</div>
-                    {selectedOrder.items.map((item, i) => (
-                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '11px' }}>
-                        <span style={{ color: '#374151', flex: 1, paddingRight: '8px' }}>{item.nama}</span>
-                        <span style={{ color: '#111827', fontWeight: '600' }}>Rp {item.harga.toLocaleString('id-ID')}</span>
-                      </div>
-                    ))}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '6px', marginTop: '6px', borderTop: '1px solid #e5e7eb', fontWeight: '700', fontSize: '11px' }}>
-                      <span style={{ color: '#374151' }}>Total Belanja</span>
-                      <span style={{ color: '#111827' }}>Rp {selectedOrder.items.reduce((s, i) => s + i.harga, 0).toLocaleString('id-ID')}</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Biaya Pengiriman */}
-                <div style={{ marginBottom: '14px' }}>
-                  <div style={{ fontSize: '8px', fontWeight: '700', letterSpacing: '0.05em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '8px' }}>Biaya Pengiriman</div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '11px' }}>
-                    <span style={{ color: '#374151' }}>Ongkir</span>
-                    <span>Rp {(selectedOrder.total_fee || 0).toLocaleString('id-ID')}</span>
-                  </div>
-                  {(selectedOrder.titik ?? 0) > 0 && Array.from({ length: selectedOrder.titik! }).map((_, i) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', paddingLeft: '8px', fontSize: '10px' }}>
-                      <span style={{ color: '#9ca3af' }}>• Titik {i + 1}</span>
-                      <span>Rp 3.000</span>
-                    </div>
-                  ))}
-                  {(selectedOrder.beban ?? []).map((b, i) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', paddingLeft: '8px', fontSize: '10px' }}>
-                      <span style={{ color: '#9ca3af' }}>• {b.nama}</span>
-                      <span>Rp {b.biaya.toLocaleString('id-ID')}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Total Dibayar */}
-                <div style={{ background: '#fef3c7', borderRadius: '8px', padding: '10px 12px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '800', fontSize: '13px', color: '#92400e' }}>
-                    <span>TOTAL DIBAYAR</span>
-                    <span>Rp {(
-                      (selectedOrder.total_fee || 0) + 
-                      (selectedOrder.total_biaya_titik ?? 0) + 
-                      (selectedOrder.total_biaya_beban ?? 0) + 
-                      (selectedOrder.items?.reduce((s, i) => s + i.harga, 0) || (selectedOrder.item_price ?? 0))
-                    ).toLocaleString('id-ID')}</span>
-                  </div>
-                </div>
+              {/* Use the same template for visual consistency, but within the modal's scroll area */}
+              <div className="flex justify-center border border-gray-100 rounded-2xl overflow-hidden shadow-inner bg-gray-50/50 p-4">
+                 <div className="scale-90 origin-top">
+                    {/* We can't use the same ref here as it's for the capture container below */}
+                    <InvoiceTemplate order={selectedOrder} />
+                 </div>
               </div>
             </div>
+
             <div className="p-6 pt-0">
               <button
                 onClick={handleBagikanInvoice}
@@ -543,97 +484,11 @@ export function CourierEarnings() {
         </div>
       )}
 
-      {/* Hidden container for html2canvas consistency */}
+      {/* Hidden container for centralized html2canvas capture */}
       {selectedOrder && (
-        <div className="absolute opacity-0 pointer-events-none appearance-none h-0 overflow-hidden" aria-hidden="true" style={{ top: '-4000px', width: '500px' }}>
-          <div ref={invoiceRef} style={{ background: '#ffffff', padding: '24px', width: '320px', fontFamily: 'Arial, sans-serif', fontSize: '12px', color: '#111827' }}>
-            {/* Header */}
-            <div style={{ textAlign: 'center', paddingBottom: '12px', borderBottom: '2px solid #111827', marginBottom: '14px' }}>
-              <div style={{ fontSize: '20px', fontWeight: '700', color: '#047857' }}>🛵 KurirDev</div>
-              <div style={{ fontSize: '10px', color: '#6b7280', letterSpacing: '0.05em', textTransform: 'uppercase', marginTop: '2px', fontWeight: '700' }}>Invoice Pengiriman</div>
-              <div style={{ fontSize: '14px', fontWeight: '700', color: '#111827', marginTop: '10px' }}>{selectedOrder.order_number}</div>
-              <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>{selectedOrder.created_at ? new Date(selectedOrder.created_at).toLocaleString('id-ID', {day:'2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit'}) : new Date().toLocaleString('id-ID')}</div>
-              <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '1px' }}>Kurir: {user?.name}</div>
-            </div>
+        <InvoiceTemplate order={selectedOrder} invoiceRef={invoiceRef} />
+      )}
 
-            {/* Kepada */}
-            <div style={{ paddingBottom: '12px', borderBottom: '1px dashed #d1d5db', marginBottom: '14px' }}>
-              <div style={{ fontSize: '9px', fontWeight: '700', letterSpacing: '0.1em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '6px' }}>Kepada</div>
-              <div style={{ fontWeight: '700', fontSize: '13px', color: '#111827' }}>{selectedOrder.customer_name}</div>
-              <div style={{ color: '#4b5563', marginTop: '2px', lineHeight: '1.5' }}>{selectedOrder.customer_address}</div>
-              <div style={{ color: '#4b5563', marginTop: '2px' }}>{selectedOrder.customer_phone}</div>
-            </div>
-
-            {/* Daftar Belanja */}
-            {(selectedOrder.items && selectedOrder.items.length > 0) && (
-              <div style={{ paddingBottom: '12px', borderBottom: '1px dashed #d1d5db', marginBottom: '14px' }}>
-                <div style={{ fontSize: '9px', fontWeight: '700', letterSpacing: '0.1em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '8px' }}>Daftar Belanja</div>
-                {selectedOrder.items.map((item, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                    <span style={{ color: '#374151', flex: 1, paddingRight: '8px' }}>{item.nama}</span>
-                    <span style={{ color: '#111827', fontWeight: '600', whiteSpace: 'nowrap' }}>Rp {item.harga.toLocaleString('id-ID')}</span>
-                  </div>
-                ))}
-                <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '6px', marginTop: '6px', borderTop: '1px solid #e5e7eb', fontWeight: '700' }}>
-                  <span style={{ color: '#374151' }}>Total Belanja</span>
-                  <span style={{ color: '#111827' }}>Rp {selectedOrder.items.reduce((s, i) => s + i.harga, 0).toLocaleString('id-ID')}</span>
-                </div>
-              </div>
-            )}
-
-            {/* fallback barang */}
-            {(!selectedOrder.items || selectedOrder.items.length === 0) && selectedOrder.item_name && (
-              <div style={{ paddingBottom: '12px', borderBottom: '1px dashed #d1d5db', marginBottom: '14px' }}>
-                <div style={{ fontSize: '9px', fontWeight: '700', letterSpacing: '0.1em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '6px' }}>Barang</div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#374151' }}>{selectedOrder.item_name}</span>
-                  {((selectedOrder.item_price ?? 0) > 0) && (
-                    <span style={{ fontWeight: '600', color: '#111827' }}>Rp {(selectedOrder.item_price ?? 0).toLocaleString('id-ID')}</span>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Biaya Pengiriman */}
-            <div style={{ marginBottom: '14px' }}>
-              <div style={{ fontSize: '9px', fontWeight: '700', letterSpacing: '0.1em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '8px' }}>Biaya Pengiriman</div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                <span style={{ color: '#374151' }}>Ongkir</span>
-                <span>Rp {(selectedOrder.total_fee || 0).toLocaleString('id-ID')}</span>
-              </div>
-              {(selectedOrder.titik ?? 0) > 0 && Array.from({ length: selectedOrder.titik! }).map((_, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', paddingLeft: '8px' }}>
-                  <span style={{ color: '#9ca3af' }}>• Titik {i + 1}</span>
-                  <span>Rp 3.000</span>
-                </div>
-              ))}
-              {(selectedOrder.beban ?? []).map((b, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', paddingLeft: '8px' }}>
-                  <span style={{ color: '#9ca3af' }}>• {b.nama}</span>
-                  <span>Rp {b.biaya.toLocaleString('id-ID')}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Total Dibayar */}
-            <div style={{ background: '#fef3c7', borderRadius: '8px', padding: '10px 12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '800', fontSize: '14px', color: '#92400e' }}>
-                <span>TOTAL DIBAYAR</span>
-                <span>Rp {(
-                  (selectedOrder.total_fee || 0) + 
-                  (selectedOrder.total_biaya_titik ?? 0) + 
-                  (selectedOrder.total_biaya_beban ?? 0) + 
-                  (selectedOrder.items?.reduce((s, i) => s + i.harga, 0) || (selectedOrder.item_price ?? 0))
-                ).toLocaleString('id-ID')}</span>
-              </div>
-              <div style={{ fontSize: '9px', color: '#b45309', margin: '3px 0 0 0' }}>Ongkir + Total Belanja/Barang</div>
-            </div>
-            
-            <div style={{ textAlign: 'center', color: '#9ca3af', fontSize: '10px', paddingTop: '12px', marginTop: '8px', borderTop: '1px dashed #e5e7eb' }}>
-              Terima kasih telah menggunakan layanan KurirDev 🙏
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );
