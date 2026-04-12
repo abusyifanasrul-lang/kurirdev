@@ -19,7 +19,7 @@ interface OrderTableProps {
   onSort: (field: any) => void;
   sortField: string;
   sortOrder: 'asc' | 'desc';
-  getCourierName: (id?: string) => string | null;
+  getCourierName: (id?: string) => React.ReactNode;
   isFinance: boolean;
   onBulkSettle: (order: Order) => void;
 }

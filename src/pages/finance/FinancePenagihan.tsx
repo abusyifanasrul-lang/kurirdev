@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import {
-  Search, CheckCircle, AlertTriangle, Clock,
-  ChevronDown, ChevronUp
+import { 
+  Search, CheckCircle, AlertTriangle, Clock, 
+  ChevronDown, ChevronUp 
 } from 'lucide-react';
 import { formatWIB, getWIBNow, differenceInDaysWIB } from '@/utils/date';
 import { Header } from '@/components/layout/Header';
@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Badge } from '@/components/ui/Badge';
+import { CourierBadge } from '@/components/couriers/CourierBadge';
 import {
   Table, TableHead, TableBody, TableRow, TableHeader, TableCell
 } from '@/components/ui/Table';
@@ -77,6 +78,7 @@ export function FinancePenagihan() {
     const result: Array<{
       courierId: string;
       courierName: string;
+      courierVehicle?: any;
       totalEarning: number;
       unpaidOrders: Order[];
       paidOrders: Order[];
@@ -104,6 +106,7 @@ export function FinancePenagihan() {
       result.push({
         courierId: courier.id,
         courierName: courier.name,
+        courierVehicle: courier.vehicle_type,
         totalEarning,
         unpaidOrders: unpaid.sort((a, b) =>
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -306,7 +309,12 @@ export function FinancePenagihan() {
                         {courier.courierName.charAt(0)}
                       </div>
                       <div>
-                        <p className="font-semibold text-gray-900">{courier.courierName}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-gray-900">{courier.courierName}</p>
+                          {courier.courierId !== 'unknown_legacy' && (
+                            <CourierBadge type={courier.courierVehicle} showLabel={false} />
+                          )}
+                        </div>
                         <div className="flex items-center gap-2 mt-1">
                           {hasUnpaid ? (
                             <Badge className="bg-amber-100 text-amber-700">

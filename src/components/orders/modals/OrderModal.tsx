@@ -21,6 +21,7 @@ import {
 import { formatCurrency } from '@/utils/formatter';
 import { formatWIB } from '@/utils/date';
 import { Order, User, Customer, CourierInstruction } from '@/types';
+import { CourierBadge } from '@/components/couriers/CourierBadge';
 
 
 interface OrderModalProps {
@@ -526,7 +527,15 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                         {(getCourierName(order.courier_id || null) || '?').charAt(0)}
                       </div>
                       <div className="flex-1">
-                        <p className="text-sm font-bold text-gray-900">{getCourierName(order.courier_id || null) || 'Belum Ditentukan'}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-bold text-gray-900">{getCourierName(order.courier_id || null) || 'Belum Ditentukan'}</p>
+                          {order.courier_id && (
+                            <CourierBadge 
+                              type={availableCouriers.find(c => c.id === order.courier_id)?.vehicle_type} 
+                              showLabel={false} 
+                            />
+                          )}
+                        </div>
                         {order.assigned_at && (
                           <p className="text-[10px] text-gray-400">Ditugaskan pada {formatWIB(order.assigned_at)}</p>
                         )}

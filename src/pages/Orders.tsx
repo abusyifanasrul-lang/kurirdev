@@ -23,6 +23,7 @@ import { AddOrderModal } from '@/components/orders/modals/AddOrderModal';
 import { OrderModal } from '@/components/orders/modals/OrderModal';
 import { BulkSettleModal } from '@/components/orders/modals/BulkSettleModal';
 import { CancelOrderModal } from '@/components/orders/modals/CancelOrderModal';
+import { CourierBadge } from '@/components/couriers/CourierBadge';
 
 function OrdersLoading() {
   return (
@@ -85,8 +86,13 @@ export function Orders() {
   const getCourierName = (courierId?: string) => {
     if (!courierId) return null;
     const courier = users.find(u => u.id === courierId);
-    if (!courier) return '── Kurir Terhapus ──';
-    return courier.name;
+    if (!courier) return <span className="text-gray-400">── Kurir Terhapus ──</span>;
+    return (
+      <div className="flex items-center gap-2">
+        <span>{courier.name}</span>
+        <CourierBadge type={courier.vehicle_type} showLabel={false} className="border-none bg-transparent p-0" />
+      </div>
+    );
   };
 
 

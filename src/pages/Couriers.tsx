@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Plus, Eye, EyeOff, ToggleLeft, ToggleRight, TrendingUp, Package, DollarSign, Phone, Mail, Award, Truck, Hash } from 'lucide-react';
+import { Plus, Eye, EyeOff, ToggleLeft, ToggleRight, TrendingUp, Package, DollarSign, Phone, Mail, Award, Hash } from 'lucide-react';
 import { format } from 'date-fns';
 import { Header } from '@/components/layout/Header';
 import { Card, StatCard } from '@/components/ui/Card';
@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Modal } from '@/components/ui/Modal';
 import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
+import { CourierBadge } from '@/components/couriers/CourierBadge';
 import {
   Table,
   TableHead,
@@ -308,7 +309,10 @@ export function Couriers() {
                           {courier.name.charAt(0)}
                         </div>
                         <div className="flex flex-col">
-                          <span className="font-medium text-gray-900">{courier.name}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-gray-900">{courier.name}</span>
+                            <CourierBadge type={courier.vehicle_type} showLabel={false} className="border-none bg-transparent p-0" />
+                          </div>
                           <span className="text-xs text-gray-500 hidden lg:inline">{courier.email}</span>
                         </div>
                       </div>
@@ -494,9 +498,7 @@ export function Couriers() {
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
                     <span className="flex items-center gap-1"><Mail className="w-3 h-3" /> {selectedCourier.email}</span>
                     <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {selectedCourier.phone}</span>
-                    {selectedCourier.vehicle_type && (
-                      <span className="flex items-center gap-1 capitalize"><Truck className="w-3 h-3" /> {getVehicleLabel(selectedCourier.vehicle_type)}</span>
-                    )}
+                    <CourierBadge type={selectedCourier.vehicle_type} />
                     {selectedCourier.plate_number && (
                       <span className="flex items-center gap-1 uppercase"><Hash className="w-3 h-3" /> {selectedCourier.plate_number}</span>
                     )}

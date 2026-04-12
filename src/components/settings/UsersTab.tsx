@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Select';
 import type { User as UserType, UserRole, Courier } from '@/types';
+import { CourierBadge } from '@/components/couriers/CourierBadge';
 
 interface UsersTabProps {
   currentUser: UserType | null;
@@ -216,10 +217,18 @@ export function UsersTab({
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="font-medium">{u.name}</p>
+                  {u.role === 'courier' && (
+                    <CourierBadge type={(u as Courier).vehicle_type} showLabel={false} className="border-none bg-transparent p-0" />
+                  )}
                   {u.id === currentUser?.id && <Badge variant="info" size="sm">You</Badge>}
                   {!u.is_active && <Badge variant="danger" size="sm" className="bg-red-100 text-red-700 animate-pulse">NON-AKTIF</Badge>}
                 </div>
-                <p className="text-sm text-gray-500">{u.email}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm text-gray-500">{u.email}</p>
+                  {u.role === 'courier' && (u as Courier).plate_number && (
+                    <span className="text-[10px] text-gray-400 font-mono">[{ (u as Courier).plate_number }]</span>
+                  )}
+                </div>
               </div>
             </div>
 

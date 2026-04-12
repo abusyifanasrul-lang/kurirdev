@@ -10,7 +10,6 @@ import {
   AlertCircle,
   Bell,
   User as UserIcon,
-  Truck,
   Hash
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
@@ -19,6 +18,7 @@ import { useUserStore } from '@/stores/useUserStore';
 import { useSessionStore } from '@/stores/useSessionStore';
 import { useCourierStore } from '@/stores/useCourierStore';
 import { supabase } from '@/lib/supabaseClient';
+import { CourierBadge } from '@/components/couriers/CourierBadge';
 
 export function CourierProfile() {
   const navigate = useNavigate();
@@ -141,17 +141,18 @@ export function CourierProfile() {
               </div>
           </div>
 
-          {courierData?.vehicle_type && (
-            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-              <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
-                <Truck className="h-5 w-5 text-gray-400" />
-              </div>
-              <div>
-                <p className="text-[10px] uppercase tracking-mobile font-bold text-gray-400">Tipe Kendaraan</p>
-                <p className="text-sm font-medium text-gray-900 capitalize">{courierData.vehicle_type}</p>
+          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
+              <CourierBadge type={courierData?.vehicle_type} showLabel={false} className="border-none bg-transparent p-0" />
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-mobile font-bold text-gray-400">Tipe Kendaraan</p>
+              <div className="flex items-center gap-1.5">
+                <p className="text-sm font-medium text-gray-900 capitalize">{courierData?.vehicle_type || 'Belum Diatur'}</p>
+                <CourierBadge type={courierData?.vehicle_type} showLabel={false} />
               </div>
             </div>
-          )}
+          </div>
 
           {courierData?.plate_number && (
             <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
