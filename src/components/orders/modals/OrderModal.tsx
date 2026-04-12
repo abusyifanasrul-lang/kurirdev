@@ -481,6 +481,25 @@ export const OrderModal: React.FC<OrderModalProps> = ({
         ) : (
           /* Read-only View (Detailed) */
           <div className="space-y-6 animate-in fade-in duration-200">
+            {/* Move banner above main grid for better visibility */}
+            {order.status === 'cancelled' && (
+              <div className="mx-2 p-4 bg-red-50 border-2 border-red-100 rounded-2xl mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 rounded-full bg-red-500" />
+                  <p className="text-xs font-black text-red-700 uppercase tracking-widest">Pesanan Dibatalkan</p>
+                </div>
+                <p className="text-sm text-red-700 leading-relaxed font-semibold bg-white/50 p-2 rounded-lg border border-red-200/50">
+                  {order.cancellation_reason || 'Tidak ada alasan pembatalan.'}
+                </p>
+                {order.cancelled_by && (
+                  <div className="mt-3 pt-3 border-t border-red-200/50 flex items-center justify-between text-[11px]">
+                    <span className="text-red-500 font-medium italic">Dibatalkan oleh:</span>
+                    <span className="font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded-full">{getUserName(order.cancelled_by)}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Main Info Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 px-2">
               {/* Customer Column */}
@@ -555,6 +574,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                       </div>
                     </div>
                   </div>
+
+
                 </div>
               </div>
             </div>
