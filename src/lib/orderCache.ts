@@ -269,7 +269,7 @@ export async function syncAllFinalOrders(
   )
 
   if (finalOrders.length > 0) {
-    const tagged = finalOrders.map(o => ({
+    const tagged = (finalOrders as unknown as Order[]).map(o => ({
       ...o,
       _date: getLocalDateStr(o.created_at)
     }))
@@ -308,7 +308,7 @@ export async function deltaSyncYesterday(
   )
 
   if (finalOrders.length > 0) {
-    const tagged = finalOrders.map(o => ({
+    const tagged = (finalOrders as unknown as Order[]).map(o => ({
       ...o,
       _date: getLocalDateStr(o.created_at)
     }))
@@ -377,7 +377,7 @@ export async function moveToLocalDB(
     const fullOrder = {
       ...order,
       _date: getLocalDateStr(order.created_at || new Date().toISOString())
-    }
+    } as unknown as Order & { _date: string }
     await localDB.orders.put(fullOrder)
     console.info(`[MirrorDB] Finalized Write: ${fullOrder.order_number || fullOrder.id} status=${fullOrder.status}`)
     dispatchSyncEvent()
@@ -399,12 +399,12 @@ export async function bulkMoveToLocalDB(
   const FINAL_STATUSES = ['delivered', 'cancelled']
   
   // 1. Filter hanya order yang statusnya final
-  const toPut = orders
-    .filter(o => FINAL_STATUSES.includes(o.status))
-    .map(o => ({
-      ...o,
-      _date: getLocalDateStr(o.created_at || new Date().toISOString())
-    }))
+    const toPut = orders
+      .filter(o => FINAL_STATUSES.includes(o.status))
+      .map(o => ({
+        ...o,
+        _date: getLocalDateStr(o.created_at || new Date().toISOString())
+      })) as unknown as (Order & { _date: string })[]
 
   const toDelete = orders
     .filter(o => !FINAL_STATUSES.includes(o.status))

@@ -371,7 +371,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               </div>
 
               <div className="space-y-1.5 overflow-y-auto px-1">
-                {editItems.map((item, i) => (
+                {editItems.map((item: any, i: number) => (
                   <div key={i} className="flex items-center justify-between px-3 py-1.5 rounded-lg border border-gray-200 hover:border-teal-300 transition-colors bg-white group">
                     <div className="flex items-center gap-2">
                       <div className="w-1.5 h-1.5 rounded-full bg-teal-400" />
@@ -454,7 +454,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               {editItems.length > 0 && (
                 <div className="flex justify-between px-3 py-2 font-bold text-gray-900 bg-teal-50 rounded-lg mt-2 border border-teal-100/50">
                   <span className="text-xs uppercase tracking-tighter text-teal-600">Total Belanja</span>
-                  <span className="text-sm">{formatCurrency(editItems.reduce((sum, item) => sum + item.harga, 0))}</span>
+                  <span className="text-sm">{formatCurrency(editItems.reduce((sum: number, item: any) => sum + item.harga, 0))}</span>
                 </div>
               )}
 
@@ -589,7 +589,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 <div className="bg-gray-50 border border-gray-100 rounded-2xl overflow-hidden">
                   <div className="p-4 space-y-2.5">
                     {order.items && order.items.length > 0 ? (
-                      order.items.map((item, i) => (
+                      order.items.map((item: any, i: number) => (
                         <div key={i} className="flex justify-between text-sm items-center">
                           <div className="flex items-center gap-2">
                             <div className="w-1.5 h-1.5 rounded-full bg-teal-400" />
@@ -612,7 +612,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     <div className="bg-white border-t border-gray-100 p-4 flex justify-between items-center">
                       <span className="text-sm font-bold text-gray-500">Total Belanja</span>
                       <span className="text-lg font-black text-gray-900">
-                        {formatCurrency(order.items.reduce((sum, item) => sum + item.harga, 0))}
+                        {formatCurrency(order.items.reduce((sum: number, item: any) => sum + item.harga, 0))}
                       </span>
                     </div>
                   )}

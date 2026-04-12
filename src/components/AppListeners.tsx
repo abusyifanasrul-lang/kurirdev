@@ -5,7 +5,6 @@ import { useOrderStore } from '@/stores/useOrderStore'
 import { useSettingsStore } from '@/stores/useSettingsStore'
 import { useNotificationStore } from '@/stores/useNotificationStore'
 import { useCustomerStore } from '@/stores/useCustomerStore'
-import { supabase } from '@/lib/supabaseClient'
 
 // =============================================================
 // MODULE-LEVEL state — persists across component remounts

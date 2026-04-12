@@ -50,7 +50,7 @@ export const OrderItemsList: React.FC<OrderItemsListProps> = ({
       {showItemForm ? (
         <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
           <div className="space-y-3">
-            {itemList.map((item, idx) => (
+            {itemList.map((item: any, idx: number) => (
               <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                 <div>
                   <p className="text-sm font-semibold text-gray-900 leading-snug">{item.nama}</p>
@@ -97,7 +97,7 @@ export const OrderItemsList: React.FC<OrderItemsListProps> = ({
       ) : (
         <div className="space-y-3">
           {order.items && order.items.length > 0 ? (
-            order.items.map((item, idx) => (
+            (order.items as any[]).map((item: any, idx: number) => (
               <div key={idx} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-transparent hover:border-emerald-100 transition-all">
                 <div className="flex items-center gap-3">
                   <div className="h-8 w-8 bg-white rounded-lg border border-gray-100 flex items-center justify-center shadow-sm">

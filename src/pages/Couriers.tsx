@@ -27,13 +27,13 @@ import { useAuth } from '@/context/AuthContext';
 import { Courier, Order } from '@/types';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { calcCourierEarning, calcAdminEarning } from '@/lib/calcEarning';
-import { markAsPaidInLocalDB, getUnpaidOrdersByCourier, getOrdersForWeek } from '@/lib/orderCache';
+import { getUnpaidOrdersByCourier, getOrdersForWeek } from '@/lib/orderCache';
 
 export function Couriers() {
   const { addCourier, updateCourier } = useCourierStore();
   const { users } = useUserStore();
   const couriers = users.filter(u => u.role === 'courier') as Courier[];
-  const { orders, activeOrdersByCourier, getOrdersByCourier, updateOrder, settleOrder, fetchInitialOrders } = useOrderStore();
+  const { orders, activeOrdersByCourier, getOrdersByCourier, settleOrder, fetchInitialOrders } = useOrderStore();
   const { commission_rate, commission_threshold } = useSettingsStore();
   const earningSettings = { commission_rate, commission_threshold };
   const { user } = useAuth();
@@ -90,15 +90,6 @@ export function Couriers() {
     loadAll()
   }, [couriers.length, orders])
 
-  const getVehicleLabel = (type?: string) => {
-    const map: Record<string, string> = {
-      motorcycle: 'Motor',
-      car: 'Mobil',
-      bicycle: 'Sepeda',
-      van: 'Van/Pick Up'
-    }
-    return map[type ?? ''] ?? type ?? '-'
-  }
 
   const courierUnpaidCount = (courierId: string) => {
     return allUnpaidCounts[courierId] ?? 0

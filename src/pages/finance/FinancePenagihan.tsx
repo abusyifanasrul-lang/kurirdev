@@ -19,7 +19,7 @@ import { useUserStore } from '@/stores/useUserStore';
 import { useAuth } from '@/context/AuthContext';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { calcAdminEarning } from '@/lib/calcEarning';
-import { getOrdersForWeek, getAllUnpaidOrdersLocal, markAsPaidInLocalDB } from '@/lib/orderCache';
+import { getOrdersForWeek, getAllUnpaidOrdersLocal } from '@/lib/orderCache';
 import { cn } from '@/utils/cn';
 import type { Order } from '@/types';
 

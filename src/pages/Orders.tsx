@@ -57,12 +57,12 @@ export function Orders() {
   const orders = useOrderStore((state: OrderState) => state.orders);
   const activeOrdersByCourier = useOrderStore((state: OrderState) => state.activeOrdersByCourier);
   const fetchInitialOrders = useOrderStore((state: OrderState) => state.fetchInitialOrders);
-  const fetchOrdersByDateRange = useOrderStore(state => state.fetchOrdersByDateRange);
-  const addOrder = useOrderStore(state => state.addOrder);
-  const assignCourier = useOrderStore(state => state.assignCourier);
-  const cancelOrder = useOrderStore(state => state.cancelOrder);
-  const updateOrder = useOrderStore(state => state.updateOrder);
-  const settleOrder = useOrderStore(state => state.settleOrder);
+  const fetchOrdersByDateRange = useOrderStore((state: OrderState) => state.fetchOrdersByDateRange);
+  const addOrder = useOrderStore((state: OrderState) => state.addOrder);
+  const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);
+  const cancelOrder = useOrderStore((state: OrderState) => state.cancelOrder);
+  const updateOrder = useOrderStore((state: OrderState) => state.updateOrder);
+  const settleOrder = useOrderStore((state: OrderState) => state.settleOrder);
   const { rotateQueue } = useCourierStore();
   const { users } = useUserStore();
   const { user } = useAuth();
@@ -449,11 +449,11 @@ export function Orders() {
       const totalBiayaBeban = o.total_biaya_beban ?? 0;
       const totalOngkir = (o.total_fee || 0) + totalBiayaTitik + totalBiayaBeban;
 
-      const namaBarang = o.items && o.items.length > 0
-        ? o.items.map(i => `${i.nama} (Rp ${i.harga.toLocaleString('id-ID')})`).join(' | ')
+      const namaBarang = o.items && (o.items as any[]).length > 0
+        ? (o.items as any[]).map((i: any) => `${i.nama} (Rp ${i.harga.toLocaleString('id-ID')})`).join(' | ')
         : o.item_name || '';
-      const totalBelanja = o.items && o.items.length > 0
-        ? o.items.reduce((s, i) => s + i.harga, 0)
+      const totalBelanja = o.items && (o.items as any[]).length > 0
+        ? (o.items as any[]).reduce((s: number, i: any) => s + i.harga, 0)
         : (o.item_price ?? 0);
       const totalDibayar = totalOngkir + totalBelanja;
 

@@ -108,7 +108,7 @@ export interface Order {
   cancellation_reason?: string;
   titik?: number;
   total_biaya_titik?: number;
-  beban?: { nama: string; biaya: number }[];
+  beban?: any;
   total_biaya_beban?: number;
   created_at: string;
   updated_at: string;
@@ -116,7 +116,7 @@ export interface Order {
   notes?: string;
   item_name?: string;
   item_price?: number;
-  items?: { nama: string; harga: number }[];
+  items?: any;
   is_waiting?: boolean;
   applied_commission_rate?: number;
   applied_commission_threshold?: number;
@@ -124,14 +124,8 @@ export interface Order {
   assigned_by?: string;
   payment_confirmed_by?: string;
   cancelled_by?: string;
-  courier?: {
-    name: string;
-    vehicle_type?: 'motorcycle' | 'car' | 'bicycle' | 'van';
-    plate_number?: string;
-  };
-  assigner?: {
-    name: string;
-  };
+  courier?: any;
+  assigner?: any;
   assigner_name?: string;
   courier_name?: string;
 }

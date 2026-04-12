@@ -230,7 +230,7 @@ export function CourierOrderDetail() {
   };
 
   const handleHapusBeban = async (index: number) => {
-    const newBeban = beban.filter((_, i) => i !== index);
+    const newBeban = (beban as any[]).filter((_: any, i: number) => i !== index);
     await updateBiayaTambahan(order.id, titik, newBeban);
   };
 

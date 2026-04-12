@@ -309,14 +309,14 @@ export const AddOrderModal: React.FC<AddOrderModalProps> = ({
           <p className="text-sm font-medium text-gray-700">Daftar Barang (opsional)</p>
           {(newOrder.items || []).length > 0 && (
             <div className="space-y-1">
-              {(newOrder.items || []).map((item, i) => (
+              {(newOrder.items || []).map((item: any, i: number) => (
                 <div key={i} className="flex items-center justify-between bg-gray-50 px-3 py-1.5 rounded-lg text-sm">
                   <span className="text-gray-800">{item.nama}</span>
                   <div className="flex items-center gap-2">
                     <span className="text-gray-600">Rp {item.harga.toLocaleString('id-ID')}</span>
                     <button
                       type="button"
-                      onClick={() => setNewOrder({ ...newOrder, items: (newOrder.items || []).filter((_, idx) => idx !== i) })}
+                      onClick={() => setNewOrder({ ...newOrder, items: (newOrder.items || []).filter((_: any, idx: number) => idx !== i) })}
                       className="text-gray-400 hover:text-red-500"
                     >✕</button>
                   </div>

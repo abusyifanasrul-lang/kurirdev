@@ -1,18 +1,21 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Order } from '@/types';
 import { format } from 'date-fns';
 import { useUserStore } from '@/stores/useUserStore';
 
 interface InvoiceTemplateProps {
   order: Order;
-  invoiceRef: React.RefObject<HTMLDivElement>;
+  invoiceRef: React.RefObject<HTMLDivElement | null>;
 }
 
 export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ order, invoiceRef }) => {
   const { users } = useUserStore();
   
   const items = order.items || [];
-  const itemTotal = items.reduce((sum, item) => sum + item.harga, 0) || (order.item_price ?? 0);
+  const itemTotal = useMemo(() => {
+    return items.reduce((sum: number, item: any) => sum + (item.harga || 0), 0) || (order.item_price ?? 0);
+  }, [items, order.item_price]);
+  
   const totalPaid = (order.total_fee || 0) + (order.total_biaya_titik ?? 0) + (order.total_biaya_beban ?? 0) + itemTotal;
 
   // Robust Name Resolution
@@ -67,7 +70,7 @@ export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ order, invoice
             <div style={{ fontSize: '9px', fontWeight: '700', letterSpacing: '0.1em', color: '#9ca3af', textTransform: 'uppercase', marginBottom: '10px' }}>
               Daftar Pesanan
             </div>
-            {items.map((item, i) => (
+            {items.map((item: any, i: number) => (
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                 <span style={{ color: '#374151', flex: 1, paddingRight: '12px' }}>{item.nama}</span>
                 <span style={{ color: '#111827', fontWeight: '700', whiteSpace: 'nowrap' }}>
@@ -111,7 +114,7 @@ export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ order, invoice
               <span style={{ color: '#6b7280' }}>Rp {(order.total_biaya_titik || 0).toLocaleString('id-ID')}</span>
             </div>
           )}
-          {(order.beban ?? []).map((b, i) => (
+          {(order.beban ?? []).map((b: any, i: number) => (
             <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', paddingLeft: '8px' }}>
               <span style={{ color: '#6b7280' }}>• {b.nama}</span>
               <span style={{ color: '#6b7280' }}>Rp {b.biaya.toLocaleString('id-ID')}</span>

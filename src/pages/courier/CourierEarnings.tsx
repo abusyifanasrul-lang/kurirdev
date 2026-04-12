@@ -463,11 +463,9 @@ export function CourierEarnings() {
               </button>
             </div>
             <div className="p-6 max-h-[60vh] overflow-y-auto">
-              {/* Use the same template for visual consistency, but within the modal's scroll area */}
               <div className="flex justify-center border border-gray-100 rounded-2xl overflow-hidden shadow-inner bg-gray-50/50 p-4">
                  <div className="scale-90 origin-top">
-                    {/* We can't use the same ref here as it's for the capture container below */}
-                    <InvoiceTemplate order={selectedOrder} />
+                    <InvoiceTemplate order={selectedOrder} invoiceRef={{ current: null }} />
                  </div>
               </div>
             </div>
@@ -489,7 +487,6 @@ export function CourierEarnings() {
         <InvoiceTemplate order={selectedOrder} invoiceRef={invoiceRef} />
       )}
 
-      )}
     </div>
   );
 }

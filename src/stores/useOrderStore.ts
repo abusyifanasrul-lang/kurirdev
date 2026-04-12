@@ -110,7 +110,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
 
       if (error) throw error
 
-      set({ courierOrders: allOrders as Order[], isFetchingCourierOrders: false })
+      set({ courierOrders: allOrders as unknown as Order[], isFetchingCourierOrders: false })
     } catch (error) {
       console.error('fetchOrdersByCourier error:', error)
       set({ isFetchingCourierOrders: false })
@@ -139,7 +139,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
 
       if (error) throw error
       set({ historicalOrders: historicalOrders as Order[], isFetchingHistory: false })
-      return (historicalOrders as Order[]) || []
+      return (historicalOrders as unknown as Order[]) || []
     } catch (error) {
       console.error('fetchOrdersByDateRange error:', error)
       set({ isFetchingHistory: false })
@@ -161,7 +161,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
         .in('status', ['assigned', 'picked_up', 'in_transit'])
         
       if (error) throw error
-      set({ activeOrdersByCourier: activeOrdersByCourier as Order[] })
+      set({ activeOrdersByCourier: activeOrdersByCourier as unknown as Order[] })
     } catch (error) {
       console.error('fetchActiveOrdersByCourier error:', error)
     } finally {
@@ -237,7 +237,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
         const updatedOrders = [...state.orders]
         const updatedActive = [...state.activeOrdersByCourier]
 
-        for (const order of data as Order[]) {
+        for (const order of data as unknown as Order[]) {
           const isActive = !['delivered', 'cancelled'].includes(order.status)
           
           if (isActive) {
@@ -311,7 +311,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
 
       const { data: activeData, error: activeError } = await activeQuery.order('created_at', { ascending: false })
       if (activeError) throw activeError
-      const fetchedActive = (activeData as Order[]) || []
+      const fetchedActive = (activeData as unknown as Order[]) || []
 
       // 2.b INTELLIGENT GAP-FILL (Finalized Orders: Delivered/Cancelled)
       const isWeeklyNeeded = needsWeeklySync(courierId);
@@ -338,7 +338,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
 
       const { data: finalData, error: finalError } = await finalQuery.order('created_at', { ascending: false })
       if (finalError) throw finalError
-      const fetchedFinal = (finalData as Order[]) || []
+      const fetchedFinal = (finalData as unknown as Order[]) || []
 
       // 3. Mirror finalized orders to local DB
       const { bulkMoveToLocalDB } = await import('@/lib/orderCache')
@@ -354,7 +354,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
          const newOrders = [...state.orders];
          fetchedFinal.forEach(o => {
            if (!newOrders.some(existing => existing.id === o.id)) {
-             newOrders.push(o as Order);
+             newOrders.push(o as unknown as Order);
            }
          });
          return {
@@ -419,7 +419,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
               if (isFinal) {
                 console.info(`[useOrderStore] Realtime ${eventType} mirroring to localDB: ${newRec.id}`)
                 const { moveToLocalDB } = await import('@/lib/orderCache')
-                await moveToLocalDB(newRec as Order, eventType === 'UPDATE')
+                await moveToLocalDB(newRec as unknown as Order, eventType === 'UPDATE')
               }
             }
 
@@ -428,7 +428,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
               let updatedHistory = [...state.orders]
 
               if (eventType === 'INSERT') {
-                const order = newRec as Order
+                const order = newRec as unknown as Order
                 const isNowActive = !['delivered', 'cancelled'].includes(order.status)
                 if (isNowActive) {
                   // Prevent duplicate inserts if already in state
@@ -455,7 +455,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
                     if (newRec[k] !== undefined && newRec[k] !== null) (mergedOrder as any)[k] = newRec[k] 
                   })
                 } else {
-                  mergedOrder = newRec as Order
+                  mergedOrder = newRec as unknown as Order
                 }
 
                 const wasActive = updatedActive.some(o => o.id === mergedOrder.id)
@@ -552,7 +552,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
         courier:profiles!courier_id(name, vehicle_type, plate_number),
         assigner:profiles!assigned_by(name)
       `).eq('id', orderId).single()
-      if (data) set({ currentOrder: data as Order })
+      if (data) set({ currentOrder: data as unknown as Order })
     }
     fetchCurrent()
 
@@ -594,7 +594,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
                Object.keys(payload.new).forEach(k => { if (payload.new[k] !== undefined) (merged as any)[k] = payload.new[k] })
                set({ currentOrder: merged as Order })
              } else {
-               set({ currentOrder: payload.new as Order })
+               set({ currentOrder: payload.new as unknown as Order })
              }
           } else {
              set({ currentOrder: payload.new as Order })
@@ -663,7 +663,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
           .select()
           .single()
         if (error) throw error
-        const newOrder = data as Order
+        const newOrder = data as unknown as Order
         set(state => ({ orders: [newOrder, ...state.orders] }))
       }, {
         onRetry: (attempt) => {
