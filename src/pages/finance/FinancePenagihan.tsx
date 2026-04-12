@@ -223,7 +223,7 @@ export function FinancePenagihan() {
           <div className="bg-red-50 border border-red-200 rounded-xl p-4">
             <div className="flex items-center gap-2 mb-2">
               <Clock className="h-5 w-5 text-red-600" />
-              <span className="text-sm font-medium text-red-800">Tunggakan > 7 Hari</span>
+              <span className="text-sm font-medium text-red-800">Tunggakan &gt; 7 Hari</span>
             </div>
             <p className="text-xl font-bold text-red-900">
               {courierSummary.filter(c =>
