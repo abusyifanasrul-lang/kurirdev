@@ -107,8 +107,24 @@ export function FinanceDashboard() {
       }
     }
 
+    // Add Orphaned Orders (Courier missing)
+    const activeIds = couriers.map(c => c.id);
+    const orphans = deliveredOrders.filter(o => o.courier_id && !activeIds.includes(o.courier_id) && o.payment_status === 'unpaid');
+    
+    if (orphans.length > 0) {
+      const totalAmount = orphans.reduce((sum, o) =>
+        sum + calcAdminEarning(o, earningSettings), 0
+      );
+      result.push({
+        courierId: 'unknown_legacy',
+        courierName: '📦 Kurir Terhapus / Unknown',
+        totalAmount,
+        orderCount: orphans.length,
+      });
+    }
+
     return result.sort((a, b) => b.totalAmount - a.totalAmount);
-  }, [deliveredOrders, couriers]);
+  }, [deliveredOrders, couriers, earningSettings]);
 
   // Paid today
   const paidToday = useMemo(() => {

@@ -218,19 +218,19 @@ export function FinancePenagihan() {
               <span className="text-sm font-medium text-amber-800">Total Tagihan</span>
             </div>
             <p className="text-xl font-bold text-amber-900">{formatCurrency(totalUnpaid)}</p>
-            <p className="text-xs text-amber-600 mt-1">{totalUnpaidOrders} order</p>
+            <p className="text-xs text-amber-600 mt-1">{totalUnpaidOrders} order dari {courierSummary.length} kurir</p>
           </div>
           <div className="bg-red-50 border border-red-200 rounded-xl p-4">
             <div className="flex items-center gap-2 mb-2">
               <Clock className="h-5 w-5 text-red-600" />
-              <span className="text-sm font-medium text-red-800">Perlu Ditagih</span>
+              <span className="text-sm font-medium text-red-800">Tagihan Menunggak</span>
             </div>
             <p className="text-xl font-bold text-red-900">
               {courierSummary.filter(c =>
                 c.unpaidOrders.some(o => differenceInDaysWIB(getWIBNow(), o.created_at) > 7)
               ).length} kurir
             </p>
-            <p className="text-xs text-red-600 mt-1">Piutang &gt; 7 hari</p>
+            <p className="text-xs text-red-600 mt-1">Order delivered &gt; 7 hari</p>
           </div>
           <div className="bg-green-50 border border-green-200 rounded-xl p-4 col-span-2 lg:col-span-1">
             <div className="flex items-center gap-2 mb-2">
