@@ -19,6 +19,7 @@ import { Card, StatCard } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { Input } from '@/components/ui/Input';
+import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell, TableEmpty } from '@/components/ui/Table';
 import { calcAdminEarning, calcCourierEarning } from '@/lib/calcEarning';
 import { formatCurrency, formatShortCurrency } from '@/utils/formatter';
 
@@ -572,44 +573,40 @@ export function Reports() {
         {/* Top Couriers Table */}
         <Card>
           <h3 className="text-lg font-semibold text-gray-900 mb-6">Top Performing Couriers (This Period)</h3>
-          <div className="overflow-x-auto">
-            <table className="min-w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  {['Rank', 'Courier', 'Orders Delivered', 'Revenue Generated'].map((header) => (
-                    <th key={header} className="px-6 py-3 text-left">
-                      <span className="text-xs font-bold text-gray-600 uppercase tracking-mobile">
-                        {header}
+          <Table>
+            <TableHead>
+              <TableRow>
+                {['Rank', 'Courier', 'Orders Delivered', 'Revenue Generated'].map((header) => (
+                  <TableHeader key={header}>
+                    <span className="text-xs font-bold text-gray-600 uppercase tracking-mobile">
+                      {header}
+                    </span>
+                  </TableHeader>
+                ))}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {analytics.couriersList.length > 0 ? (
+                analytics.couriersList.map((c, index) => (
+                  <TableRow key={index}>
+                    <TableCell>
+                      <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-sm font-medium ${index === 0 ? 'bg-yellow-100 text-yellow-800' :
+                        index === 1 ? 'bg-gray-100 text-gray-800' :
+                          index === 2 ? 'bg-orange-100 text-orange-800' : 'bg-gray-50 text-gray-600'
+                        }`}>
+                        {index + 1}
                       </span>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {analytics.couriersList.length > 0 ? (
-                  analytics.couriersList.map((c, index) => (
-                    <tr key={index}>
-                      <td className="py-3">
-                        <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-sm font-medium ${index === 0 ? 'bg-yellow-100 text-yellow-800' :
-                          index === 1 ? 'bg-gray-100 text-gray-800' :
-                            index === 2 ? 'bg-orange-100 text-orange-800' : 'bg-gray-50 text-gray-600'
-                          }`}>
-                          {index + 1}
-                        </span>
-                      </td>
-                      <td className="py-3 font-medium">{c.name}</td>
-                      <td className="py-3">{c.count}</td>
-                      <td className="py-3">{formatCurrency(c.earnings)}</td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={4} className="py-4 text-center text-gray-500">No courier data for this period</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                    </TableCell>
+                    <TableCell className="font-medium text-gray-900">{c.name}</TableCell>
+                    <TableCell className="text-gray-700">{c.count}</TableCell>
+                    <TableCell className="text-gray-700 font-medium">{formatCurrency(c.earnings)}</TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableEmpty colSpan={4} message="No courier data for this period" />
+              )}
+            </TableBody>
+          </Table>
         </Card>
       </div>
     </div>

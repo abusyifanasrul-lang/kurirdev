@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/Badge';
 import {
   Table, TableHead, TableBody, TableRow, TableHeader, TableCell
 } from '@/components/ui/Table';
+import { Input } from '@/components/ui/Input';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
@@ -262,16 +263,13 @@ export function FinancePenagihan() {
               </button>
             ))}
           </div>
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari nama kurir..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-            />
-          </div>
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Cari nama kurir..."
+            leftIcon={<Search className="h-4 w-4" />}
+            className="flex-1 focus:border-amber-500 focus:ring-amber-500 rounded-lg"
+          />
         </div>
 
         {/* Courier Cards */}
