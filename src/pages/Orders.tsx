@@ -436,11 +436,11 @@ export function Orders() {
 
     const headers = [
       'Order ID', 'Tanggal', 'Customer', 'Telepon', 'Alamat',
-      'Status', 'Kurir', 'Ongkir',
+      'Status', 'Kurir (Snapshot)', 'Ongkir',
       'Titik', 'Total Biaya Beban', 'Total Ongkir',
       'Nama Barang', 'Total Belanja', 'Total Dibayar Customer',
-      'Status Bayar', 'Instruksi Admin',
-      'Jenis Cancel', 'Alasan Cancel',
+      'Status Bayar', 'Dibuat Oleh', 'Ditugaskan Oleh', 'Diverifikasi Oleh',
+      'Jenis Cancel', 'Alasan Cancel', 'Dibatalkan Oleh',
       'Waktu Selesai', 'Waktu Cancel'
     ];
 
@@ -469,7 +469,7 @@ export function Orders() {
         q(o.customer_phone),
         q(o.customer_address),
         q(getStatusLabel(o.status)),
-        q(getCourierName(o.courier_id) || 'Belum Assign'),
+        q(o.courier_name || getCourierName(o.courier_id) || 'Belum Assign'),
         o.total_fee || 0,
         o.titik ?? 0,
         totalBiayaBeban,
@@ -478,9 +478,12 @@ export function Orders() {
         totalBelanja > 0 ? totalBelanja : '',
         totalBelanja > 0 ? totalDibayar : totalOngkir,
         q(o.payment_status === 'paid' ? 'Sudah Setor' : 'Belum Setor'),
-        q(o.notes || ''),
+        q(o.creator_name || '-'),
+        q(o.assigner_name || '-'),
+        q(o.payment_confirmed_by_name || '-'),
         q(cancelTypeLabel),
         q(o.cancellation_reason || ''),
+        q(o.canceller_name || '-'),
         q(o.actual_delivery_time ? formatWIB(o.actual_delivery_time, 'dd/MM/yyyy HH:mm') : ''),
         q(o.cancelled_at ? formatWIB(o.cancelled_at, 'dd/MM/yyyy HH:mm') : ''),
       ];

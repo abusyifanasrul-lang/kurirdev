@@ -528,7 +528,8 @@ export async function getAllUnpaidOrdersLocal(): Promise<import('@/types').Order
 // saat order dikonfirmasi setor
 export async function markAsPaidInLocalDB(
   orderId: string,
-  userId?: string
+  userId?: string,
+  userName?: string
 ): Promise<void> {
   const order = await localDB.orders
     .get(orderId)
@@ -536,7 +537,8 @@ export async function markAsPaidInLocalDB(
     await localDB.orders.put({
       ...order,
       payment_status: 'paid',
-      ...(userId && { payment_confirmed_by: userId })
+      ...(userId && { payment_confirmed_by: userId }),
+      ...(userName && { payment_confirmed_by_name: userName })
     })
   }
 }

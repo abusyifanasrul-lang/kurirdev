@@ -972,12 +972,12 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     })
 
     set(state => ({
-      orders: state.orders.map(o => o.id === orderId ? { ...o, payment_status: 'paid', payment_confirmed_by: userId } : o),
-      currentOrder: state.currentOrder?.id === orderId ? { ...state.currentOrder, payment_status: 'paid', payment_confirmed_by: userId } : state.currentOrder
+      orders: state.orders.map(o => o.id === orderId ? { ...o, payment_status: 'paid', payment_confirmed_by: userId, payment_confirmed_by_name: userName } : o),
+      currentOrder: state.currentOrder?.id === orderId ? { ...state.currentOrder, payment_status: 'paid', payment_confirmed_by: userId, payment_confirmed_by_name: userName } : state.currentOrder
     }))
 
     const { markAsPaidInLocalDB } = await import('@/lib/orderCache')
-    await markAsPaidInLocalDB(orderId, userId)
+    await markAsPaidInLocalDB(orderId, userId, userName)
   },
 
   updateItems: async (orderId, items) => {

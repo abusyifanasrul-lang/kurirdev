@@ -45,9 +45,9 @@ export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ order, invoice
 
         {/* Banner with solid Emerald-700 */}
         <div style={{ background: '#047857', width: '100%', padding: '0 24px 48px 24px', boxSizing: 'border-box' }}>
-           <div style={{ color: '#d1fae5', fontSize: '12px', fontWeight: '800', letterSpacing: '0.15em', textTransform: 'uppercase' }}>
-             Invoice Resmi Pengiriman
-           </div>
+          <div style={{ color: '#d1fae5', fontSize: '12px', fontWeight: '800', letterSpacing: '0.15em', textTransform: 'uppercase' }}>
+             Invoice Bukti Pengiriman
+          </div>
         </div>
 
         {/* Floating Card - Order Num & Status */}
@@ -181,11 +181,27 @@ export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ order, invoice
                      </div>
                   </div>
                   
-                  {/* Admin */}
+                  {/* Creator */}
+                  {order.creator_name && (
+                    <div>
+                       <div style={{ fontSize: '10px', fontWeight: '800', color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '4px' }}>Dibuat Oleh</div>
+                       <div style={{ fontWeight: '700', color: '#111827', fontSize: '14px' }}>{order.creator_name}</div>
+                    </div>
+                  )}
+
+                  {/* Admin Assignment */}
                   <div>
-                     <div style={{ color: '#9ca3af', fontSize: '9px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '2px' }}>Diproses Oleh Sistem</div>
+                     <div style={{ color: '#9ca3af', fontSize: '9px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '2px' }}>Admin Operasional</div>
                      <div style={{ fontWeight: '700', color: '#6b7280', fontSize: '12px' }}>{resolvedAssigner}</div>
                   </div>
+
+                  {/* Finance / Payment Verifier */}
+                  {order.payment_confirmed_by_name && (
+                    <div>
+                       <div style={{ fontSize: '9px', fontWeight: '800', color: '#059669', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '2px' }}>Diverifikasi Oleh</div>
+                       <div style={{ fontWeight: '700', color: '#047857', fontSize: '11px' }}>{order.payment_confirmed_by_name}</div>
+                    </div>
+                  )}
                </div>
             </div>
             
