@@ -36,32 +36,33 @@ export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ order, invoice
     <div className="absolute opacity-0 pointer-events-none appearance-none h-0 overflow-hidden" aria-hidden="true" style={{ top: '-4000px', width: '500px' }}>
       <div ref={invoiceRef} style={{ background: '#ffffff', boxSizing: 'border-box', padding: '0', width: '400px', fontFamily: '"Inter", system-ui, sans-serif', color: '#111827', margin: '0' }}>
         
-        {/* Header - Top Logo */}
-        <div style={{ padding: '28px 24px 20px 24px', display: 'flex', alignItems: 'center', background: '#047857' }}>
-          <div style={{ fontSize: '30px', fontWeight: '900', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '10px', letterSpacing: '-0.02em' }}>
-            <span style={{ fontSize: '36px' }}>🛵</span> KurirDev
+        <div style={{ padding: '32px 24px 48px 24px', background: '#047857', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
+            <img 
+              src="/icons/android/ikonfix.png" 
+              style={{ height: '72px', width: 'auto', display: 'block', marginBottom: '-4px' }} 
+              alt="Logo" 
+            />
+            <span style={{ fontSize: '28px', fontWeight: '900', color: '#ffffff', letterSpacing: '-0.02em', lineHeight: '1', display: 'block', marginBottom: '8px' }}>KurirDev</span>
           </div>
-        </div>
-
-        {/* Banner with solid Emerald-700 */}
-        <div style={{ background: '#047857', width: '100%', padding: '0 24px 48px 24px', boxSizing: 'border-box' }}>
-          <div style={{ color: '#d1fae5', fontSize: '12px', fontWeight: '800', letterSpacing: '0.15em', textTransform: 'uppercase' }}>
-             Invoice Bukti Pengiriman
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', alignItems: 'flex-end', height: '32px' }}>
+            <div style={{ color: '#a7f3d0', fontSize: '11px', fontWeight: '800', letterSpacing: '0.15em', textTransform: 'uppercase', lineHeight: '1' }}>Invoice</div>
+            <div style={{ color: '#ffffff', fontSize: '14px', fontWeight: '700', lineHeight: '1' }}>Bukti Pengiriman</div>
           </div>
         </div>
 
         {/* Floating Card - Order Num & Status */}
-        <div style={{ padding: '0 24px', marginTop: '-32px', position: 'relative', zIndex: 10, boxSizing: 'border-box' }}>
-           <div style={{ boxSizing: 'border-box', background: '#ffffff', borderRadius: '12px', padding: '16px 20px', boxShadow: '0 4px 16px rgba(0,0,0,0.06)', border: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ padding: '0 24px', marginTop: '-28px', position: 'relative', zIndex: 10, boxSizing: 'border-box' }}>
+           <div style={{ background: '#ffffff', borderRadius: '12px', padding: '16px 20px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', border: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div style={{ fontSize: '10px', fontWeight: '800', color: '#6b7280', letterSpacing: '0.05em', marginBottom: '4px', textTransform: 'uppercase' }}>Nomor Pesanan</div>
-                <div style={{ fontSize: '22px', fontWeight: '900', color: '#111827', letterSpacing: '-0.03em', lineHeight: '1.1' }}>#{order.order_number}</div>
+                <div style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', letterSpacing: '0.05em', marginBottom: '4px', textTransform: 'uppercase' }}>Nomor Pesanan</div>
+                <div style={{ fontSize: '20px', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.02em' }}>#{order.order_number}</div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ display: 'inline-block', background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', padding: '5px 12px', borderRadius: '6px', fontSize: '10px', fontWeight: '900', letterSpacing: '0.08em', marginBottom: '6px' }}>
+                <div style={{ display: 'inline-block', background: '#f0fdf4', color: '#15803d', padding: '4px 10px', borderRadius: '6px', fontSize: '10px', fontWeight: '800', letterSpacing: '0.05em', border: '1px solid #bbf7d0', marginBottom: '6px' }}>
                   LUNAS
                 </div>
-                <div style={{ fontSize: '11px', color: '#4b5563', fontWeight: '700' }}>
+                <div style={{ fontSize: '11px', color: '#475569', fontWeight: '600' }}>
                   {order.created_at ? format(new Date(order.created_at), 'dd MMM yyyy, HH:mm') : format(new Date(), 'dd MMM yyyy, HH:mm')}
                 </div>
               </div>
@@ -69,146 +70,115 @@ export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ order, invoice
         </div>
 
         {/* Body content */}
-        <div style={{ padding: '24px 24px 16px 24px', boxSizing: 'border-box' }}>
+        <div style={{ padding: '20px 24px 16px 24px', boxSizing: 'border-box' }}>
             
-            {/* Ditujukan Kepada */}
-             <div style={{ background: '#f9fafb', padding: '20px', borderRadius: '10px', border: '1px solid #e5e7eb', marginBottom: '28px' }}>
-               <div style={{ fontSize: '10px', fontWeight: '800', color: '#4b5563', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Informasi Penerima</div>
-               <div style={{ fontSize: '18px', fontWeight: '900', color: '#000000', letterSpacing: '-0.02em', lineHeight: '1.2', textTransform: 'capitalize' }}>{order.customer_name}</div>
-               <div style={{ fontSize: '13px', color: '#374151', marginTop: '8px', lineHeight: '1.6', fontWeight: '500', textTransform: 'capitalize' }}>{order.customer_address}</div>
-               <div style={{ fontSize: '13px', color: '#111827', marginTop: '6px', fontWeight: '800' }}>{order.customer_phone}</div>
-             </div>
-
-            {/* RINCIAN BELANJA KONSUMEN */}
-            <div style={{ marginBottom: '28px' }}>
-               <div style={{ fontSize: '11px', fontWeight: '900', color: '#111827', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '16px', borderBottom: '2px solid #111827', paddingBottom: '8px' }}>
-                 Detail Item
-               </div>
-               {items.length > 0 ? (
-                 <>
-                   {items.map((item: any, i: number) => (
-                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #f3f4f6', fontSize: '13px' }}>
-                         <div style={{ display: 'flex', gap: '10px', flex: 1, paddingRight: '12px' }}>
-                            <span style={{ color: '#6b7280', width: '16px', fontWeight: '700' }}>{i + 1}.</span>
-                            <span style={{ color: '#111827', fontWeight: '600', lineHeight: '1.5', textTransform: 'capitalize' }}>{item.nama}</span>
-                         </div>
-                         <div style={{ color: '#000000', fontWeight: '900', fontVariantNumeric: 'tabular-nums' }}>Rp {item.harga.toLocaleString('id-ID')}</div>
-                      </div>
-                   ))}
-                 </>
-               ) : order.item_name ? (
-                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #f3f4f6', fontSize: '13px' }}>
-                    <div style={{ display: 'flex', gap: '10px', flex: 1, paddingRight: '12px' }}>
-                       <span style={{ color: '#6b7280', width: '16px', fontWeight: '700' }}>1.</span>
-                       <span style={{ color: '#111827', fontWeight: '600', lineHeight: '1.5', textTransform: 'capitalize' }}>{order.item_name}</span>
-                    </div>
-                    {itemTotal > 0 && <span style={{ color: '#000000', fontWeight: '900', fontVariantNumeric: 'tabular-nums' }}>Rp {itemTotal.toLocaleString('id-ID')}</span>}
+            {/* Informasi Penerima (Clean) */}
+             <div style={{ marginBottom: '24px' }}>
+               <div style={{ fontSize: '10px', fontWeight: '800', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Ditujukan Kepada</div>
+               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', background: '#f8fafc', padding: '16px', borderRadius: '8px' }}>
+                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                   <div style={{ fontSize: '16px', fontWeight: '800', color: '#0f172a', lineHeight: '1.2', textTransform: 'capitalize' }}>{order.customer_name}</div>
+                   <div style={{ fontSize: '14px', color: '#0f172a', fontWeight: '800', lineHeight: '1.2' }}>{order.customer_phone}</div>
                  </div>
-               ) : (
-                 <div style={{ fontSize: '12px', color: '#6b7280', fontStyle: 'italic', padding: '10px 0' }}>Tidak ada pembelian barang via kurir.</div>
-               )}
+                 <div style={{ fontSize: '14px', color: '#475569', lineHeight: '1.4', textTransform: 'capitalize' }}>{order.customer_address}</div>
+               </div>
+             </div>
+            {/* RINCIAN PESANAN (Structured) */}
+            <div style={{ marginBottom: '24px' }}>
+               <div style={{ fontSize: '10px', fontWeight: '800', color: '#64748b', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '12px' }}>
+                 Rincian Transaksi
+               </div>
                
-               {/* Subtotal Belanja */}
-               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px', fontSize: '13px', background: '#f3f4f6', padding: '12px 16px', borderRadius: '8px' }}>
-                  <span style={{ color: '#4b5563', fontWeight: '800', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Subtotal Belanja</span>
-                  <span style={{ fontWeight: '900', color: '#000000', fontVariantNumeric: 'tabular-nums' }}>Rp {itemTotal.toLocaleString('id-ID')}</span>
+               <div style={{ borderTop: '2px solid #e2e8f0', borderBottom: '2px solid #e2e8f0', padding: '16px 0' }}>
+                 {/* Shopping Items Section */}
+                 <div style={{ fontSize: '11px', fontWeight: '700', color: '#0f172a', marginBottom: '10px' }}>Item Belanja</div>
+                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                   {items.length > 0 ? (
+                     items.map((item: any, i: number) => (
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                           <div style={{ display: 'flex', gap: '12px', flex: 1, paddingRight: '16px' }}>
+                              <span style={{ color: '#94a3b8', fontWeight: 'normal', width: '16px' }}>{i + 1}.</span>
+                              <span style={{ color: '#334155', fontWeight: 'normal', lineHeight: '1.4', textTransform: 'capitalize' }}>{item.nama}</span>
+                           </div>
+                           <div style={{ color: '#0f172a', fontWeight: 'normal', fontVariantNumeric: 'tabular-nums' }}>Rp {item.harga.toLocaleString('id-ID')}</div>
+                        </div>
+                     ))
+                   ) : order.item_name ? (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                        <div style={{ display: 'flex', gap: '12px', flex: 1, paddingRight: '16px' }}>
+                           <span style={{ color: '#94a3b8', fontWeight: 'normal', width: '16px' }}>1.</span>
+                           <span style={{ color: '#334155', fontWeight: 'normal', lineHeight: '1.4', textTransform: 'capitalize' }}>{order.item_name}</span>
+                        </div>
+                        {itemTotal > 0 && <span style={{ color: '#0f172a', fontWeight: 'normal', fontVariantNumeric: 'tabular-nums' }}>Rp {itemTotal.toLocaleString('id-ID')}</span>}
+                      </div>
+                   ) : (
+                      <div style={{ fontSize: '12px', color: '#94a3b8', fontStyle: 'italic' }}>Tidak ada pembelian barang via kurir.</div>
+                   )}
+                 </div>
+
+                 {/* Divider */}
+                 <div style={{ height: '1px', borderTop: '1px dashed #cbd5e1', margin: '16px 0' }}></div>
+
+                 {/* Shipping & Handling Section */}
+                 <div style={{ fontSize: '11px', fontWeight: '700', color: '#0f172a', marginBottom: '10px' }}>Biaya Layanan & Ongkir</div>
+                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                      <span style={{ color: '#334155', fontWeight: 'normal' }}>Ongkos Kirim Dasar</span>
+                      <span style={{ fontWeight: 'normal', color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>Rp {(order.total_fee || 0).toLocaleString('id-ID')}</span>
+                   </div>
+
+                   {(order.titik ?? 0) > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                        <span style={{ color: '#334155', fontWeight: 'normal' }}>Tambahan {order.titik} Titik Alamat</span>
+                        <span style={{ fontWeight: 'normal', color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>Rp {(order.total_biaya_titik || 0).toLocaleString('id-ID')}</span>
+                      </div>
+                   )}
+
+                   {(order.beban ?? []).map((b: any, i: number) => {
+                      const isAntri = typeof b.nama === 'string' && b.nama.toLowerCase() === 'antri';
+                      const label = isAntri ? 'Biaya Antrean' : `Tambahan: ${b.nama}`;
+                      return (
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                          <span style={{ color: '#334155', fontWeight: 'normal', textTransform: 'capitalize' }}>{label}</span>
+                          <span style={{ fontWeight: 'normal', color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>Rp {(b.biaya || 0).toLocaleString('id-ID')}</span>
+                        </div>
+                      );
+                   })}
+                 </div>
                </div>
             </div>
 
-            {/* BIAYA PENGIRIMAN & LAYANAN */}
-            <div style={{ marginBottom: '32px' }}>
-               <div style={{ fontSize: '11px', fontWeight: '900', color: '#111827', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '16px', borderBottom: '2px solid #111827', paddingBottom: '8px' }}>
-                 Detail Layanan & Ongkir
-               </div>
-               
-               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: '13px' }}>
-                  <span style={{ color: '#374151', fontWeight: '600' }}>Ongkos Kirim Dasar</span>
-                  <span style={{ fontWeight: '900', color: '#000000', fontVariantNumeric: 'tabular-nums' }}>Rp {(order.total_fee || 0).toLocaleString('id-ID')}</span>
-               </div>
-
-               {(order.titik ?? 0) > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: '13px' }}>
-                    <span style={{ color: '#374151', fontWeight: '600' }}>Tambahan {order.titik} Titik Alamat</span>
-                    <span style={{ fontWeight: '900', color: '#000000', fontVariantNumeric: 'tabular-nums' }}>Rp {(order.total_biaya_titik || 0).toLocaleString('id-ID')}</span>
-                  </div>
-               )}
-
-               {(order.beban ?? []).map((b: any, i: number) => {
-                  const isAntri = typeof b.nama === 'string' && b.nama.toLowerCase() === 'antri';
-                  const label = isAntri ? 'Biaya Antrean' : `Tambahan: ${b.nama}`;
-                  return (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: '13px' }}>
-                      <span style={{ color: '#374151', fontWeight: '600', textTransform: 'capitalize' }}>{label}</span>
-                      <span style={{ fontWeight: '900', color: '#000000', fontVariantNumeric: 'tabular-nums' }}>Rp {(b.biaya || 0).toLocaleString('id-ID')}</span>
-                    </div>
-                  );
-               })}
-               
-               {/* Subtotal Pengiriman */}
-               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px', fontSize: '13px', background: '#f3f4f6', padding: '12px 16px', borderRadius: '8px' }}>
-                  <span style={{ color: '#4b5563', fontWeight: '800', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Subtotal Layanan</span>
-                  <span style={{ fontWeight: '900', color: '#000000', fontVariantNumeric: 'tabular-nums' }}>Rp {((order.total_fee || 0) + (order.total_biaya_titik ?? 0) + (order.total_biaya_beban ?? 0)).toLocaleString('id-ID')}</span>
-               </div>
+            {/* Grand Total Area */}
+            <div style={{ background: '#f0fdf4', borderRadius: '12px', padding: '16px 20px', border: '1px solid #bbf7d0', marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <div style={{ fontSize: '12px', fontWeight: '800', color: '#166534', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0', padding: '0' }}>Total Tagihan</div>
+              <div style={{ fontSize: '24px', fontWeight: '900', color: '#14532d', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em', margin: '0', padding: '0' }}>
+                Rp {totalPaid.toLocaleString('id-ID')}
+              </div>
             </div>
 
-            {/* Total Akhir */}
-            <div style={{ background: '#ecfdf5', borderRadius: '12px', padding: '20px 24px', border: '2px solid #059669', marginBottom: '36px', boxShadow: '0 4px 12px rgba(5, 150, 105, 0.1)' }}>
-               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                     <div style={{ fontSize: '13px', fontWeight: '900', color: '#047857', letterSpacing: '0.1em', textTransform: 'uppercase' }}>GRAND TOTAL</div>
-                     <div style={{ fontSize: '10px', color: '#059669', marginTop: '4px', fontWeight: '800', letterSpacing: '0.05em' }}>BELANJA + PENGIRIMAN</div>
-                  </div>
-                  <div style={{ fontSize: '28px', fontWeight: '900', color: '#064e3b', letterSpacing: '-0.04em', fontVariantNumeric: 'tabular-nums' }}>
-                     Rp {totalPaid.toLocaleString('id-ID')}
-                  </div>
-               </div>
-            </div>
-
-            {/* Delivery details footer */}
-            <div style={{ marginBottom: '16px' }}>
-               <div style={{ fontSize: '11px', fontWeight: '900', color: '#111827', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '16px', borderBottom: '2px solid #111827', paddingBottom: '8px' }}>
-                 Detail Pengiriman
+            {/* Logistics & Admin Footer */}
+            <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+               {/* Left Column: Courier */}
+               <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Kurir Operasional</div>
+                  <div style={{ fontWeight: '800', color: '#0f172a', fontSize: '13px' }}>{resolvedCourier}</div>
+                  <div style={{ color: '#475569', fontSize: '11px', fontWeight: '500', marginTop: '4px' }}>{vehiclePlate !== '-' ? vehiclePlate : ' '}</div>
                </div>
                
-               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {/* Courier */}
-                  <div>
-                     <div style={{ fontSize: '10px', fontWeight: '800', color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '4px' }}>Kurir Operasional</div>
-                     <div style={{ fontWeight: '900', color: '#000000', fontSize: '16px', letterSpacing: '-0.01em', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        {resolvedCourier} 
-                        <span style={{ color: '#9ca3af', fontWeight: '500' }}>•</span> 
-                        <span style={{ color: '#4b5563', fontSize: '14px', fontWeight: '700' }}>{vehiclePlate}</span>
-                     </div>
+               {/* Right Column: Admin & Creator */}
+               <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'right' }}>
+                  <div style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Admin & Sistem</div>
+                  <div style={{ fontWeight: '800', color: '#0f172a', fontSize: '13px' }}>{resolvedAssigner}</div>
+                  <div style={{ color: '#475569', fontSize: '11px', fontWeight: '500', marginTop: '4px', minHeight: '14px' }}>
+                    {order.creator_name ? `Dibuat oleh: ${order.creator_name}` : (order.payment_confirmed_by_name ? `Verif: ${order.payment_confirmed_by_name}` : ' ')}
                   </div>
-                  
-                  {/* Creator */}
-                  {order.creator_name && (
-                    <div>
-                       <div style={{ fontSize: '10px', fontWeight: '800', color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '4px' }}>Dibuat Oleh</div>
-                       <div style={{ fontWeight: '700', color: '#111827', fontSize: '14px' }}>{order.creator_name}</div>
-                    </div>
-                  )}
-
-                  {/* Admin Assignment */}
-                  <div>
-                     <div style={{ color: '#9ca3af', fontSize: '9px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '2px' }}>Admin Operasional</div>
-                     <div style={{ fontWeight: '700', color: '#6b7280', fontSize: '12px' }}>{resolvedAssigner}</div>
-                  </div>
-
-                  {/* Finance / Payment Verifier */}
-                  {order.payment_confirmed_by_name && (
-                    <div>
-                       <div style={{ fontSize: '9px', fontWeight: '800', color: '#059669', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '2px' }}>Diverifikasi Oleh</div>
-                       <div style={{ fontWeight: '700', color: '#047857', fontSize: '11px' }}>{order.payment_confirmed_by_name}</div>
-                    </div>
-                  )}
                </div>
             </div>
             
-            {/* Simple footer */}
-            <div style={{ textAlign: 'center', marginTop: '48px', opacity: 0.8 }}>
-                <div style={{ fontSize: '11px', fontWeight: '900', color: '#4b5563', letterSpacing: '0.2em' }}>KURIRDEV.COM</div>
-                <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '8px', fontWeight: '600' }}>Terima kasih telah menggunakan layanan kami.</div>
+            {/* Simple footer (Compact) */}
+            <div style={{ textAlign: 'center', marginTop: '24px', opacity: 0.7 }}>
+                <div style={{ fontSize: '10px', fontWeight: '900', color: '#64748b', letterSpacing: '0.15em' }}>KURIRDEV.COM</div>
+                <div style={{ fontSize: '9px', color: '#94a3b8', marginTop: '4px', fontWeight: '600' }}>Bukti transaksi sah sistem KurirDev.</div>
             </div>
         </div>
       </div>
