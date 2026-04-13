@@ -805,8 +805,6 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
             assigned_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
             assigned_by: userId,
-            assigner_name: userName,
-            courier_name: courierName
           })
           .eq('id', orderId)
         if (error) throw error

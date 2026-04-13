@@ -396,7 +396,7 @@ export function Orders() {
         }
 
         // 2. Lakukan assignment
-        await assignCourier(selectedOrder.id, courier.id, courier.name, user?.id || "1", user?.name || 'Admin');
+        await assignCourier(selectedOrder.id, courier.id, courier.name, user?.id || null, user?.name || 'Admin');
         await rotateQueue(courier.id);
 
         setIsOrderModalOpen(false);
