@@ -128,6 +128,9 @@ export interface Order {
   assigner?: any;
   assigner_name?: string;
   courier_name?: string;
+  creator_name?: string;
+  canceller_name?: string;
+  payment_confirmed_by_name?: string;
 }
 
 export interface OrderStatusHistory {

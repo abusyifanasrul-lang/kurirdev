@@ -167,7 +167,7 @@ export function FinanceAnalisa() {
       if (!o.courier_id) return;
       if (!stats[o.courier_id]) {
         const courier = users.find(u => u.id === o.courier_id);
-        stats[o.courier_id] = { name: courier?.name || 'Unknown', orders: 0, gross: 0, earning: 0 };
+        stats[o.courier_id] = { name: o.courier_name || courier?.name || 'Unknown', orders: 0, gross: 0, earning: 0 };
       }
       stats[o.courier_id].orders++;
       stats[o.courier_id].gross += o.total_fee || 0;

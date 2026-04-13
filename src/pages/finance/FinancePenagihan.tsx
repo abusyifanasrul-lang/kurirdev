@@ -457,7 +457,7 @@ export function FinancePenagihan() {
                                     </p>
                                     {order.payment_confirmed_by && (
                                       <p className="text-[10px] text-green-600 font-medium italic">
-                                        Verified by: {getUserName(order.payment_confirmed_by)}
+                                        Verified by: {order.payment_confirmed_by_name || getUserName(order.payment_confirmed_by)}
                                       </p>
                                     )}
                                   </div>

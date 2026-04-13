@@ -746,6 +746,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
             updates.cancelled_at = new Date().toISOString()
             updates.cancellation_reason = notes || ''
             updates.cancelled_by = userId
+            updates.canceller_name = userName
           }
 
           const { error: updateError } = await (supabase.from('orders') as any).update(updates).eq('id', orderId)
@@ -805,6 +806,8 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
             assigned_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
             assigned_by: userId,
+            assigner_name: userName,
+            courier_name: courierName
           })
           .eq('id', orderId)
         if (error) throw error
@@ -954,6 +957,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     const { error } = await (supabase.from('orders') as any).update({
       payment_status: 'paid',
       payment_confirmed_by: userId,
+      payment_confirmed_by_name: userName,
       updated_at: new Date().toISOString()
     }).eq('id', orderId)
 

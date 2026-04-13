@@ -142,7 +142,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               )}
             </div>
             <p className="text-sm text-gray-500">
-              Dibuat pada {formatWIB(order.created_at)}
+              Dibuat pada {formatWIB(order.created_at)} {order.creator_name && `oleh ${order.creator_name}`}
             </p>
           </div>
           <div className="flex flex-col items-end gap-2">
@@ -494,7 +494,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 {order.cancelled_by && (
                   <div className="mt-3 pt-3 border-t border-red-200/50 flex items-center justify-between text-[11px]">
                     <span className="text-red-500 font-medium italic">Dibatalkan oleh:</span>
-                    <span className="font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded-full">{getUserName(order.cancelled_by)}</span>
+                    <span className="font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded-full">{order.canceller_name || getUserName(order.cancelled_by)}</span>
                   </div>
                 )}
               </div>
@@ -542,7 +542,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     {order.payment_status === 'paid' && order.payment_confirmed_by && (
                       <div className="mt-2 pt-2 border-t border-teal-200/30 flex items-center justify-between text-[10px]">
                         <span className="text-teal-600/70 italic">Settle diverifikasi oleh:</span>
-                        <span className="font-bold text-teal-700">{getUserName(order.payment_confirmed_by)}</span>
+                        <span className="font-bold text-teal-700">{order.payment_confirmed_by_name || getUserName(order.payment_confirmed_by)}</span>
                       </div>
                     )}
                   </div>
@@ -555,7 +555,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
-                          <p className="text-sm font-bold text-gray-900">{getCourierName(order.courier_id || null) || 'Belum Ditentukan'}</p>
+                          <p className="text-sm font-bold text-gray-900">{order.courier_name || getCourierName(order.courier_id || null) || 'Belum Ditentukan'}</p>
                           {order.courier_id && (
                             <CourierBadge 
                               type={availableCouriers.find(c => c.id === order.courier_id)?.vehicle_type} 
@@ -567,7 +567,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                           <div className="mt-0.5 space-y-0.5 text-[10px] text-gray-400">
                             <p>Ditugaskan pada {formatWIB(order.assigned_at)}</p>
                             {order.assigned_by && (
-                              <p className="font-medium text-teal-600/70">Oleh: {getUserName(order.assigned_by)}</p>
+                              <p className="font-medium text-teal-600/70">Oleh: {order.assigner_name || getUserName(order.assigned_by)}</p>
                             )}
                           </div>
                         )}
