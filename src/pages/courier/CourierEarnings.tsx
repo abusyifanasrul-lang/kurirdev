@@ -119,8 +119,9 @@ export function CourierEarnings() {
     return courierOrders.filter((order) => {
       const orderDate = parseISO(order.created_at);
       const isWithinLast7Days = isWithinInterval(orderDate, { start: historyPeriodStart, end: historyPeriodEnd });
+      const isUnpaidDelivered = order.payment_status === 'unpaid' && order.status === 'delivered';
       
-      if (!isWithinLast7Days) return false;
+      if (!isWithinLast7Days && !isUnpaidDelivered) return false;
 
       const matchesSearch = searchQuery === '' || 
         order.order_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -402,9 +403,9 @@ export function CourierEarnings() {
                           key={order.id}
                           id={`order-${order.id}`}
                           onClick={() => order.status === 'delivered' ? setSelectedOrder(order) : navigate(`/courier/orders/${order.id}`)}
-                          className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer active:scale-[0.98] transition-all"
+                          className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 cursor-pointer active:scale-[0.98] transition-all"
                         >
-                          <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-start justify-between mb-3">
                             <div className="min-w-0">
                               <p className="font-bold text-gray-900 text-sm tracking-tight truncate">{order.order_number}</p>
                               <div className="flex items-center gap-1.5 mt-0.5 text-gray-400">
@@ -412,8 +413,8 @@ export function CourierEarnings() {
                                 <p className="text-[10px] font-semibold uppercase tracking-mobile">{format(parseISO(order.created_at), 'HH:mm')}</p>
                               </div>
                             </div>
-                            <div className="flex flex-col items-end gap-2">
-                              <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-mobile ${config.bg} ${config.color} border border-current/10 shadow-sm`}>
+                            <div className="flex flex-col items-end gap-1.5">
+                              <div className={`px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-mobile ${config.bg} ${config.color} border border-current/10 shadow-sm`}>
                                 {config.label.split(' — ')[1] || config.label}
                               </div>
                               {order.status === 'delivered' && (
@@ -425,18 +426,18 @@ export function CourierEarnings() {
                               )}
                             </div>
                           </div>
-                          <div className="space-y-1 bg-gray-50/50 p-3 rounded-2xl border border-gray-100/50">
+                          <div className="space-y-1 bg-gray-50/50 p-3 rounded-xl border border-gray-100/50">
                             <p className="text-xs font-bold text-gray-800 uppercase tracking-tight line-clamp-1">{order.customer_name}</p>
-                            <p className="text-[11px] text-gray-500 leading-relaxed line-clamp-2">{order.customer_address}</p>
+                            <p className="text-[10px] text-gray-500 leading-tight line-clamp-2">{order.customer_address}</p>
                           </div>
-                          <div className="flex justify-between items-end mt-4 pt-4 border-t border-gray-50">
+                          <div className="flex justify-between items-end mt-3.5 pt-3.5 border-t border-gray-50">
                             <div className="flex flex-col">
-                              <span className="text-[9px] text-gray-400 font-bold uppercase tracking-mobile mb-1">Standard Fee</span>
+                              <span className="text-[9px] text-gray-400 font-bold uppercase tracking-mobile mb-0.5">Standard Fee</span>
                               <span className="text-xs font-bold text-gray-900">{formatCurrency(order.total_fee)}</span>
                             </div>
                             {courierEarning > 0 && (
                               <div className="text-right flex flex-col items-end">
-                                <span className="text-[9px] text-emerald-500 font-bold uppercase tracking-mobile mb-1">Earning Net</span>
+                                <span className="text-[9px] text-emerald-500 font-bold uppercase tracking-mobile mb-0.5">Earning Net</span>
                                 <span className="text-lg font-bold text-emerald-600 tracking-tight">{formatCurrency(courierEarning)}</span>
                               </div>
                             )}
@@ -465,7 +466,7 @@ export function CourierEarnings() {
             <div className="p-6 max-h-[60vh] overflow-y-auto">
               <div className="flex justify-center border border-gray-100 rounded-2xl overflow-hidden shadow-inner bg-gray-50/50 p-4">
                  <div className="scale-90 origin-top">
-                    <InvoiceTemplate order={selectedOrder} invoiceRef={{ current: null }} />
+                    <InvoiceTemplate order={selectedOrder} invoiceRef={{ current: null } as any} showPreview={true} />
                  </div>
               </div>
             </div>

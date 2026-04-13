@@ -93,8 +93,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   fetchOrdersByCourier: async (courierId: string) => {
     set({ isFetchingCourierOrders: true })
     try {
-      const sevenDaysAgo = new Date()
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+      const sevenDaysAgo = new Date(new Date().setHours(0, 0, 0, 0) - 7 * 24 * 60 * 60 * 1000).toISOString();
       
       const { data: allOrders, error } = await supabase
         .from('orders')
@@ -104,8 +103,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
           assigner:profiles!assigned_by(name)
         `)
         .eq('courier_id', courierId)
-        .in('status', ['delivered', 'cancelled'])
-        .gte('created_at', sevenDaysAgo.toISOString())
+        .or(`and(status.in.(delivered,cancelled),created_at.gte.${sevenDaysAgo}),and(status.eq.delivered,payment_status.eq.unpaid)`)
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -315,15 +313,12 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
 
       // 2.b INTELLIGENT GAP-FILL (Finalized Orders: Delivered/Cancelled)
       const isWeeklyNeeded = needsWeeklySync(courierId);
-      const startOfToday = new Date();
-      startOfToday.setHours(0, 0, 0, 0);
-
-      const sixDaysAgo = new Date();
-      sixDaysAgo.setDate(sixDaysAgo.getDate() - 6);
+      const startOfTodayStr = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
+      const sixDaysAgoStr = new Date(new Date().setHours(0, 0, 0, 0) - 6 * 24 * 60 * 60 * 1000).toISOString();
       
-      const fetchStart = isWeeklyNeeded ? sixDaysAgo : startOfToday;
+      const fetchStart = isWeeklyNeeded ? sixDaysAgoStr : startOfTodayStr;
       
-      console.log(`[Sync] Fetching finalized orders since ${fetchStart.toISOString()} (Weekly: ${isWeeklyNeeded})`)
+      console.log(`[Sync] Fetching finalized orders since ${fetchStart} (Weekly: ${isWeeklyNeeded})`)
 
       let finalQuery = supabase.from('orders')
         .select(`
@@ -331,8 +326,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
           courier:profiles!courier_id(name, vehicle_type, plate_number),
           assigner:profiles!assigned_by(name)
         `)
-        .in('status', ['delivered', 'cancelled'])
-        .gte('created_at', fetchStart.toISOString())
+        .or(`and(status.in.(delivered,cancelled),created_at.gte.${fetchStart}),and(status.eq.delivered,payment_status.eq.unpaid)`)
 
       if (courierId) finalQuery = finalQuery.eq('courier_id', courierId)
 

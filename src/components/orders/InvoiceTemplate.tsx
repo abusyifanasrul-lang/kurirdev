@@ -6,9 +6,10 @@ import { useUserStore } from '@/stores/useUserStore';
 interface InvoiceTemplateProps {
   order: Order;
   invoiceRef: React.RefObject<HTMLDivElement | null>;
+  showPreview?: boolean;
 }
 
-export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ order, invoiceRef }) => {
+export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ order, invoiceRef, showPreview = false }) => {
   const { users } = useUserStore();
   
   const items = order.items || [];
@@ -33,7 +34,11 @@ export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ order, invoice
   const vehiclePlate = courierObj?.plate_number || '-';
 
   return (
-    <div className="absolute opacity-0 pointer-events-none appearance-none h-0 overflow-hidden" aria-hidden="true" style={{ top: '-4000px', width: '500px' }}>
+    <div 
+      className={!showPreview ? "absolute opacity-0 pointer-events-none appearance-none h-0 overflow-hidden" : ""} 
+      aria-hidden={!showPreview} 
+      style={!showPreview ? { top: '-4000px', width: '500px' } : {}}
+    >
       <div ref={invoiceRef} style={{ background: '#ffffff', boxSizing: 'border-box', padding: '0', width: '400px', fontFamily: '"Inter", system-ui, sans-serif', color: '#111827', margin: '0' }}>
         
         <div style={{ padding: '32px 24px 48px 24px', background: '#047857', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
