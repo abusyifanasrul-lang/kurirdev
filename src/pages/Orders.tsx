@@ -369,7 +369,6 @@ export function Orders() {
         created_at: getWIBNow().toISOString(),
         updated_at: getWIBNow().toISOString(),
         created_by: user?.id || null,
-        assigner_name: user?.name || 'Admin',
       };
 
       await addOrder(orderData);

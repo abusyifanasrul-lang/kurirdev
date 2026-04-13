@@ -656,7 +656,6 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
         const finalOrderData = {
           ...orderData,
           order_number: orderNumber,
-          assigner_name: (orderData as any).assigner_name // Caller should pass this
         }
         const { data, error } = await (supabase.from('orders') as any)
           .insert(finalOrderData)
