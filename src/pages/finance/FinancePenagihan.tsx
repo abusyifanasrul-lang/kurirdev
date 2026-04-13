@@ -81,8 +81,8 @@ export function FinancePenagihan() {
     [allOrders]
   );
 
-  // Group by courier
-  const courierSummary = useMemo(() => {
+  // 1. Raw grouping of ALL couriers (Global state for dashboard cards)
+  const rawCourierSummary = useMemo(() => {
     const result: Array<{
       courierId: string;
       courierName: string;
@@ -94,22 +94,15 @@ export function FinancePenagihan() {
     }> = [];
 
     for (const courier of couriers) {
-      const courierDelivered = deliveredOrders.filter(o => o.courier_id === courier.id);
-      const unpaid = courierDelivered.filter(o => o.payment_status === 'unpaid');
-      const paid = courierDelivered.filter(o => o.payment_status === 'paid');
+      const courierOrders = deliveredOrders.filter(o => o.courier_id === courier.id);
+      if (courierOrders.length === 0) continue; // Skip couriers with no delivered orders
+
+      const unpaid = courierOrders.filter(o => o.payment_status === 'unpaid');
+      const paid = courierOrders.filter(o => o.payment_status === 'paid');
 
       const totalEarning = unpaid.reduce((sum, o) =>
         sum + calcAdminEarning(o, earningSettings), 0
       );
-
-      // Filter based on search
-      if (searchQuery && !courier.name.toLowerCase().includes(searchQuery.toLowerCase())) {
-        continue;
-      }
-
-      // Filter based on payment status
-      if (filter === 'unpaid' && unpaid.length === 0) continue;
-      if (filter === 'paid' && (paid.length === 0 || unpaid.length > 0)) continue;
 
       result.push({
         courierId: courier.id,
@@ -126,7 +119,7 @@ export function FinancePenagihan() {
       });
     }
 
-    // Add Orphaned Orders (Courier missing)
+    // Add Orphaned Orders (Courier missing or deleted)
     const activeIds = couriers.map(c => c.id);
     const orphans = deliveredOrders.filter(o => o.courier_id && !activeIds.includes(o.courier_id));
     
@@ -134,15 +127,12 @@ export function FinancePenagihan() {
       const unpaid = orphans.filter(o => o.payment_status === 'unpaid');
       const paid = orphans.filter(o => o.payment_status === 'paid');
       
-      const totalEarning = unpaid.reduce((sum, o) =>
-        sum + calcAdminEarning(o, earningSettings), 0
-      );
+      // Only include orphans if there's actually something to show
+      if (unpaid.length > 0 || paid.length > 0) {
+        const totalEarning = unpaid.reduce((sum, o) =>
+          sum + calcAdminEarning(o, earningSettings), 0
+        );
 
-      // Only show orphans if they match the filter or search (search matches 'Terhapus')
-      const matchesSearch = !searchQuery || 'terhapus'.includes(searchQuery.toLowerCase()) || 'unknown'.includes(searchQuery.toLowerCase());
-      const matchesFilter = filter === 'all' || (filter === 'unpaid' && unpaid.length > 0) || (filter === 'paid' && unpaid.length === 0);
-
-      if (matchesSearch && matchesFilter) {
         result.push({
           courierId: 'unknown_legacy',
           courierName: '📦 Kurir Terhapus / Unknown',
@@ -159,10 +149,27 @@ export function FinancePenagihan() {
     }
 
     return result.sort((a, b) => b.totalEarning - a.totalEarning);
-  }, [deliveredOrders, couriers, filter, searchQuery, earningSettings]);
+  }, [deliveredOrders, couriers, earningSettings]);
 
-  const totalUnpaid = courierSummary.reduce((sum, c) => sum + c.totalEarning, 0);
-  const totalUnpaidOrders = courierSummary.reduce((sum, c) => sum + c.unpaidOrders.length, 0);
+  // 2. Filtered summary for table display
+  const courierSummary = useMemo(() => {
+    return rawCourierSummary.filter(c => {
+      // Filter based on search (Already includes 'Unknown' or 'Terhapus' in the name)
+      if (searchQuery && !c.courierName.toLowerCase().includes(searchQuery.toLowerCase())) {
+        return false;
+      }
+
+      // Filter based on payment status
+      if (filter === 'unpaid' && c.unpaidOrders.length === 0) return false;
+      if (filter === 'paid' && (c.paidOrders.length === 0 || c.unpaidOrders.length > 0)) return false;
+
+      return true;
+    });
+  }, [rawCourierSummary, filter, searchQuery]);
+
+  // Global stats for dashboard cards and header
+  const totalUnpaid = rawCourierSummary.reduce((sum, c) => sum + c.totalEarning, 0);
+  const totalUnpaidOrders = rawCourierSummary.reduce((sum, c) => sum + c.unpaidOrders.length, 0);
 
    const handleConfirmSettlement = (courierId: string, courierName: string, orders: Order[]) => {
     setConfirmCourier({ id: courierId, name: courierName, orders });
@@ -207,7 +214,7 @@ export function FinancePenagihan() {
   const getAgingBadge = (dateStr: string) => {
     const days = differenceInDaysLocal(getLocalNow(), dateStr);
     if (days <= 3) return { label: `${days} hari`, className: 'bg-green-100 text-green-700' };
-    if (days <= 7) return { label: `${days} hari`, className: 'bg-amber-100 text-amber-700' };
+    if (days < 7) return { label: `${days} hari`, className: 'bg-amber-100 text-amber-700' };
     return { label: `${days} hari`, className: 'bg-red-100 text-red-700' };
   };
 
@@ -227,16 +234,16 @@ export function FinancePenagihan() {
               <span className="text-sm font-medium text-amber-800">Total Belum Setor</span>
             </div>
             <p className="text-xl font-bold text-amber-900">{formatCurrency(totalUnpaid)}</p>
-            <p className="text-xs text-amber-600 mt-1">Total piutang {totalUnpaidOrders} order dari {courierSummary.length} kurir</p>
+            <p className="text-xs text-amber-600 mt-1">Total piutang {totalUnpaidOrders} order</p>
           </div>
           <div className="bg-red-50 border border-red-200 rounded-xl p-4">
             <div className="flex items-center gap-2 mb-2">
               <Clock className="h-5 w-5 text-red-600" />
-              <span className="text-sm font-medium text-red-800">Tunggakan &gt; 7 Hari</span>
+              <span className="text-sm font-medium text-red-800">Tunggakan &gt;= 7 Hari</span>
             </div>
             <p className="text-xl font-bold text-red-900">
-              {courierSummary.filter(c =>
-                c.unpaidOrders.some(o => differenceInDaysLocal(getLocalNow(), o.created_at) > 7)
+              {rawCourierSummary.filter(c =>
+                c.unpaidOrders.some(o => differenceInDaysLocal(getLocalNow(), o.created_at) >= 7)
               ).length} kurir
             </p>
             <p className="text-xs text-red-600 mt-1">Ada setoran yang sudah lewat seminggu</p>
@@ -247,9 +254,14 @@ export function FinancePenagihan() {
               <span className="text-sm font-medium text-green-800">Setoran Selesai</span>
             </div>
             <p className="text-xl font-bold text-green-900">
-              {couriers.length - courierSummary.filter(c => c.unpaidOrders.length > 0).length}/{couriers.length}
+              {(() => {
+                const activeWithUnpaid = rawCourierSummary.filter(c => 
+                  c.courierId !== 'unknown_legacy' && c.unpaidOrders.length > 0
+                ).length;
+                return `${couriers.length - activeWithUnpaid}/${couriers.length}`;
+              })()}
             </p>
-            <p className="text-xs text-green-600 mt-1">Kurir yang sudah melunasi semua tagihan</p>
+            <p className="text-xs text-green-600 mt-1">Kurir AKTIF yang sudah melunasi semua tagihan</p>
           </div>
         </div>
 
