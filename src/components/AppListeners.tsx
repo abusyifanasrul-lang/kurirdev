@@ -71,36 +71,34 @@ export const AppListeners = () => {
   const lastActiveRef = useRef<number>(Date.now())
 
   // ----------------------------------------------------------------
-  // 1. Settings
+  // 1. Settings — delay 2000ms (slot 4)
   // ----------------------------------------------------------------
   useEffect(() => {
     if (!user) return
     let cleanup: (() => void) | undefined
-    const task = () => {
+    const timerId = setTimeout(() => {
       fetchSettings()
       cleanup = subscribeSettings()
+    }, 2000)
+    return () => {
+      clearTimeout(timerId)
+      if (cleanup) cleanup()
     }
-    if ('requestIdleCallback' in window) {
-      (window as any).requestIdleCallback(() => setTimeout(task, 1200), { timeout: 10000 })
-    } else {
-      setTimeout(task, 2000)
-    }
-    return () => { if (cleanup) cleanup() }
   }, [user?.id, fetchSettings, subscribeSettings])
 
   // ----------------------------------------------------------------
-  // 1.b Profile realtime
+  // 1.b Profile realtime — delay 2500ms (slot 5)
   // ----------------------------------------------------------------
   useEffect(() => {
     if (!user) return
     let cleanup: (() => void) | undefined
-    const task = () => { cleanup = useUserStore.getState().subscribeProfile(user.id) }
-    if ('requestIdleCallback' in window) {
-      (window as any).requestIdleCallback(() => setTimeout(task, 1500), { timeout: 10000 })
-    } else {
-      setTimeout(task, 2500)
+    const timerId = setTimeout(() => {
+      cleanup = useUserStore.getState().subscribeProfile(user.id)
+    }, 2500)
+    return () => {
+      clearTimeout(timerId)
+      if (cleanup) cleanup()
     }
-    return () => { if (cleanup) cleanup() }
   }, [user?.id])
 
   // ----------------------------------------------------------------
@@ -116,6 +114,17 @@ export const AppListeners = () => {
 
   // ----------------------------------------------------------------
   // 2. Orders, Notifs, FCM
+  //
+  // PERBAIKAN KRITIS: Sebelumnya subscribeOrders dan subscribeNotifications
+  // dipanggil langsung di t=0ms bersamaan dengan subscribeUsers (t=0ms).
+  // Ini menyebabkan 5 channel dibuka sekaligus → Supabase throttle → TIMED_OUT.
+  //
+  // Solusi: Stagger setiap subscribe dengan jeda 600ms antar slot:
+  //   Slot 1 (t=300ms)  → subscribeOrders
+  //   Slot 2 (t=900ms)  → subscribeNotifications
+  //   Slot 3 (t=1500ms) → subscribeUsers (effect 4)
+  //   Slot 4 (t=2000ms) → subscribeSettings (effect 1)
+  //   Slot 5 (t=2500ms) → subscribeProfile  (effect 1.b)
   // ----------------------------------------------------------------
   useEffect(() => {
     if (!user) return
@@ -126,18 +135,26 @@ export const AppListeners = () => {
     }
 
     const orderStore = useOrderStore.getState()
-    const task = () => orderStore.fetchInitialOrders(filter)
-    if ('requestIdleCallback' in window) {
-      (window as any).requestIdleCallback(() => setTimeout(task, 500), { timeout: 5000 })
-    } else {
-      setTimeout(task, 1000)
-    }
-
-    const unsubOrders = orderStore.subscribeOrders(filter)
     const notifStore = useNotificationStore.getState()
-    const unsubNotifs = user.role === 'courier'
-      ? notifStore.subscribeNotifications(user.id)
-      : notifStore.subscribeAllNotifications()
+
+    // Initial data load — bisa langsung, tidak membuka WebSocket
+    const fetchTimerId = setTimeout(() => orderStore.fetchInitialOrders(filter), 500)
+
+    // Slot 1: subscribeOrders — t=300ms
+    let unsubOrders: (() => void) | undefined
+    const ordersTimerId = setTimeout(() => {
+      console.log('📡 [AppListeners] Opening orders channel (slot 1)...')
+      unsubOrders = orderStore.subscribeOrders(filter)
+    }, 300)
+
+    // Slot 2: subscribeNotifications — t=900ms
+    let unsubNotifs: (() => void) | undefined
+    const notifTimerId = setTimeout(() => {
+      console.log('📡 [AppListeners] Opening notifications channel (slot 2)...')
+      unsubNotifs = user.role === 'courier'
+        ? notifStore.subscribeNotifications(user.id)
+        : notifStore.subscribeAllNotifications()
+    }, 900)
 
     let fcmCleanup: { unsubscribe?: any } = {}
     let fcmRefreshInterval: any = null
@@ -164,8 +181,11 @@ export const AppListeners = () => {
     }
 
     return () => {
-      unsubOrders()
-      unsubNotifs()
+      clearTimeout(fetchTimerId)
+      clearTimeout(ordersTimerId)
+      clearTimeout(notifTimerId)
+      if (unsubOrders) unsubOrders()
+      if (unsubNotifs) unsubNotifs()
       if (fcmRefreshInterval) clearInterval(fcmRefreshInterval)
       if (fcmCleanup.unsubscribe && typeof fcmCleanup.unsubscribe === 'function') {
         fcmCleanup.unsubscribe()
@@ -230,12 +250,18 @@ export const AppListeners = () => {
   }, [user?.id, user?.role])
 
   // ----------------------------------------------------------------
-  // 4. Admin users subscription
+  // 4. Admin users subscription — delay 1500ms (slot 3)
   // ----------------------------------------------------------------
   useEffect(() => {
-    if (user && user.role !== 'courier') {
-      const cleanup = useUserStore.getState().subscribeUsers()
-      return () => { cleanup() }
+    if (!user || user.role === 'courier') return
+    let cleanup: (() => void) | undefined
+    const timerId = setTimeout(() => {
+      console.log('📡 [AppListeners] Opening users channel (slot 3)...')
+      cleanup = useUserStore.getState().subscribeUsers()
+    }, 1500)
+    return () => {
+      clearTimeout(timerId)
+      if (cleanup) cleanup()
     }
   }, [user?.id, user?.role])
 
