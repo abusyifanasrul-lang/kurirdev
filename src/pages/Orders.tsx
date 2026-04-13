@@ -360,15 +360,15 @@ export function Orders() {
 
       const orderData: any = {
         ...newOrder,
-        customer_id: customerId,
-        customer_address_id: activeAddressId,
+        customer_id: customerId || null,
+        customer_address_id: activeAddressId || null,
         total_fee: newOrder.total_fee || 0,
         titik: newOrder.titik ?? 0,
         status: 'pending',
         payment_status: newOrder.payment_status || 'unpaid',
         created_at: getWIBNow().toISOString(),
         updated_at: getWIBNow().toISOString(),
-        created_by: user?.id || "1",
+        created_by: user?.id || null,
         assigner_name: user?.name || 'Admin',
       };
 
