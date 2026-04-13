@@ -8,7 +8,7 @@ import {
   eachDayOfInterval, format
 } from 'date-fns';
 import { 
-  getWIBNow, getWIBStartOfMonth
+  getLocalNow, getLocalStartOfMonth
 } from '@/utils/date';
 import { Header } from '@/components/layout/Header';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -46,11 +46,11 @@ export function FinanceAnalisa() {
   const [globalUnpaidOrders, setGlobalUnpaidOrders] = useState<Order[]>([]);
 
   const loadPeriodOrders = useCallback(async () => {
-    const now = getWIBNow();
+    const now = getLocalNow();
     let start: Date;
     if (period === '7days') start = startOfDay(subDays(now, 6));
     else if (period === '30days') start = startOfDay(subDays(now, 29));
-    else start = getWIBStartOfMonth();
+    else start = getLocalStartOfMonth();
     const end = endOfDay(now);
 
     const [dbOrders, dbUnpaid] = await Promise.all([
@@ -76,14 +76,14 @@ export function FinanceAnalisa() {
   }, [periodOrders, globalUnpaidOrders, orders]);
 
   const dateRange = useMemo(() => {
-    const now = getWIBNow();
+    const now = getLocalNow();
     if (period === '7days') {
       return { start: startOfDay(subDays(now, 6)), end: endOfDay(now) };
     }
     if (period === '30days') {
       return { start: startOfDay(subDays(now, 29)), end: endOfDay(now) };
     }
-    return { start: getWIBStartOfMonth(), end: endOfDay(now) };
+    return { start: getLocalStartOfMonth(), end: endOfDay(now) };
   }, [period]);
 
   // Filtered orders in range
@@ -341,7 +341,7 @@ export function FinanceAnalisa() {
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Umur Piutang (Aging Report)</h2>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {(() => {
-              const now = getWIBNow();
+              const now = getLocalNow();
               const unpaid = allOrders.filter(o => o.status === 'delivered' && o.payment_status === 'unpaid');
               const buckets = [
                 { label: '0-3 hari', min: 0, max: 3, color: 'green' },

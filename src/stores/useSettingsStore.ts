@@ -15,6 +15,7 @@ interface BusinessSettings {
   commission_rate: number
   commission_threshold: number
   operational_area: string
+  operational_timezone: string
   courier_instructions: CourierInstruction[]
 }
 
@@ -45,6 +46,7 @@ export const useSettingsStore = create<SettingsStore>()(
       commission_rate: 80,
       commission_threshold: 5000,
       operational_area: 'Sengkang, Wajo',
+      operational_timezone: 'Asia/Jakarta',
       courier_instructions: DEFAULT_INSTRUCTIONS,
       realtimeStatus: {},
       _resyncLock: null,
@@ -73,6 +75,7 @@ export const useSettingsStore = create<SettingsStore>()(
           commission_rate: data.commission_rate,
           commission_threshold: data.commission_threshold,
           operational_area: data.operational_area || 'Sengkang, Wajo',
+          operational_timezone: data.operational_timezone || 'Asia/Jakarta',
           courier_instructions: data.courier_instructions || DEFAULT_INSTRUCTIONS
         }))
       },
@@ -194,6 +197,7 @@ export const useSettingsStore = create<SettingsStore>()(
         commission_rate: 80,
         commission_threshold: 5000,
         operational_area: 'Sengkang, Wajo',
+        operational_timezone: 'Asia/Jakarta',
         courier_instructions: DEFAULT_INSTRUCTIONS,
         realtimeStatus: {},
       }))
@@ -201,7 +205,7 @@ export const useSettingsStore = create<SettingsStore>()(
     {
       name: 'business-settings',
       storage: createJSONStorage(() => localStorage),
-      version: 5,
+      version: 6,
       migrate: (persistedState: any, version: number) => {
         const iconNameToEmoji: Record<string, string> = {
           'CheckCircle': '✅', 'Search': '🔍', 'ShoppingCart': '🛒',
@@ -219,6 +223,9 @@ export const useSettingsStore = create<SettingsStore>()(
           } else {
             persistedState.courier_instructions = DEFAULT_INSTRUCTIONS
           }
+        }
+        if (version < 6) {
+          persistedState.operational_timezone = persistedState.operational_timezone || 'Asia/Jakarta'
         }
         return persistedState
       }

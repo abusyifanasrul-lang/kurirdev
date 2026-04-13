@@ -19,7 +19,7 @@ import {
   ClipboardList
 } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatter';
-import { formatWIB } from '@/utils/date';
+import { formatLocal } from '@/utils/date';
 import { Order, User, Customer, CourierInstruction } from '@/types';
 import { CourierBadge } from '@/components/couriers/CourierBadge';
 
@@ -142,7 +142,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               )}
             </div>
             <p className="text-sm text-gray-500">
-              Dibuat pada {formatWIB(order.created_at)} {order.creator_name && `oleh ${order.creator_name}`}
+              Dibuat pada {formatLocal(order.created_at)} {order.creator_name && `oleh ${order.creator_name}`}
             </p>
           </div>
           <div className="flex flex-col items-end gap-2">
@@ -565,7 +565,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                         </div>
                         {order.assigned_at && (
                           <div className="mt-0.5 space-y-0.5 text-[10px] text-gray-400">
-                            <p>Ditugaskan pada {formatWIB(order.assigned_at)}</p>
+                            <p>Ditugaskan pada {formatLocal(order.assigned_at)}</p>
                             {order.assigned_by && (
                               <p className="font-medium text-teal-600/70">Oleh: {order.assigner_name || getUserName(order.assigned_by)}</p>
                             )}

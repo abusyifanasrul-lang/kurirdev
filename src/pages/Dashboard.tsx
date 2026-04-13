@@ -14,7 +14,7 @@ import { Header } from '@/components/layout/Header';
 import { Card, StatCard } from '@/components/ui/Card';
 import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
 import { subDays, startOfDay, endOfDay } from 'date-fns';
-import { formatWIB, getWIBTodayRange } from '@/utils/date';
+import { formatLocal, getLocalTodayRange } from '@/utils/date';
 
 // Cache
 import { getOrdersForWeek, getTopCustomers, getTopCouriers } from '@/lib/orderCache';
@@ -111,9 +111,9 @@ export function Dashboard() {
 
   // --- Derived Analytics ---
   const analytics = useMemo(() => {
-    const rangeStart = timeRange === 'today' ? getWIBTodayRange().start :
-                       timeRange === '7days' ? subDays(getWIBTodayRange().start, 6) :
-                       subDays(getWIBTodayRange().start, 29);
+    const rangeStart = timeRange === 'today' ? getLocalTodayRange().start :
+                       timeRange === '7days' ? subDays(getLocalTodayRange().start, 6) :
+                       subDays(getLocalTodayRange().start, 29);
 
     const filteredOrders = (allOrders || []).filter(o => {
       const orderTime = new Date(o.created_at).getTime();
@@ -168,7 +168,7 @@ export function Dashboard() {
 
   const revenueChartData = useMemo(() => {
     const data = [];
-    const { start: todayStart } = getWIBTodayRange();
+    const { start: todayStart } = getLocalTodayRange();
     const days = timeRange === '30days' ? 30 : 7;
     
     for (let i = days - 1; i >= 0; i--) {
@@ -206,7 +206,7 @@ export function Dashboard() {
 
       <Header
         title="Dashboard"
-        subtitle={`Last updated: ${formatWIB(lastUpdated, 'HH:mm:ss')}`}
+        subtitle={`Last updated: ${formatLocal(lastUpdated, 'HH:mm:ss')}`}
         onRefresh={handleRefresh}
       />
 

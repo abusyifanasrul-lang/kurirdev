@@ -3,7 +3,7 @@ import {
   Search, CheckCircle, AlertTriangle, Clock, 
   ChevronDown, ChevronUp 
 } from 'lucide-react';
-import { formatWIB, getWIBNow, differenceInDaysWIB } from '@/utils/date';
+import { formatLocal, getLocalNow, differenceInDaysLocal } from '@/utils/date';
 import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -205,7 +205,7 @@ export function FinancePenagihan() {
     new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
 
   const getAgingBadge = (dateStr: string) => {
-    const days = differenceInDaysWIB(getWIBNow(), dateStr);
+    const days = differenceInDaysLocal(getLocalNow(), dateStr);
     if (days <= 3) return { label: `${days} hari`, className: 'bg-green-100 text-green-700' };
     if (days <= 7) return { label: `${days} hari`, className: 'bg-amber-100 text-amber-700' };
     return { label: `${days} hari`, className: 'bg-red-100 text-red-700' };
@@ -236,7 +236,7 @@ export function FinancePenagihan() {
             </div>
             <p className="text-xl font-bold text-red-900">
               {courierSummary.filter(c =>
-                c.unpaidOrders.some(o => differenceInDaysWIB(getWIBNow(), o.created_at) > 7)
+                c.unpaidOrders.some(o => differenceInDaysLocal(getLocalNow(), o.created_at) > 7)
               ).length} kurir
             </p>
             <p className="text-xs text-red-600 mt-1">Ada setoran yang sudah lewat seminggu</p>
@@ -426,7 +426,7 @@ export function FinancePenagihan() {
                                         />
                                       </TableCell>
                                       <TableCell className="font-medium">{order.order_number}</TableCell>
-                                      <TableCell>{formatWIB(order.created_at, 'dd MMM yyyy')}</TableCell>
+                                      <TableCell>{formatLocal(order.created_at, 'dd MMM yyyy')}</TableCell>
                                       <TableCell>{formatCurrency(order.total_fee)}</TableCell>
                                       <TableCell className="font-medium text-amber-700">
                                         {formatCurrency(calcAdminEarning(order, earningSettings))}
@@ -453,7 +453,7 @@ export function FinancePenagihan() {
                                   <p className="text-sm font-medium text-gray-900">{order.order_number}</p>
                                   <div className="flex flex-col gap-0.5 mt-0.5">
                                     <p className="text-[10px] text-gray-500">
-                                      {formatWIB(order.updated_at, 'dd MMM yyyy, HH:mm')}
+                                      {formatLocal(order.updated_at, 'dd MMM yyyy, HH:mm')}
                                     </p>
                                     {order.payment_confirmed_by && (
                                       <p className="text-[10px] text-green-600 font-medium italic">
@@ -521,7 +521,7 @@ export function FinancePenagihan() {
                   <div key={order.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
                     <div>
                       <p className="text-sm font-medium">{order.order_number}</p>
-                      <p className="text-xs text-gray-500">{formatWIB(order.created_at, 'dd MMM')}</p>
+                      <p className="text-xs text-gray-500">{formatLocal(order.created_at, 'dd MMM')}</p>
                     </div>
                     <p className="text-sm font-medium text-amber-700">
                       {formatCurrency(calcAdminEarning(order, earningSettings))}

@@ -63,6 +63,7 @@ export function Settings() {
     commission_rate, 
     commission_threshold, 
     operational_area,
+    operational_timezone,
     courier_instructions,
     updateSettings,
     addCourierInstruction,
@@ -124,6 +125,7 @@ export function Settings() {
           commission_rate: state.commission_rate,
           commission_threshold: state.commission_threshold,
           operational_area: state.operational_area,
+          operational_timezone: state.operational_timezone,
           courier_instructions: state.courier_instructions,
         } as any)
         .eq('id', 'global');
@@ -349,6 +351,7 @@ export function Settings() {
                   {activeTab === 'general_ops' && (
                     <GeneralOpsTab 
                       operational_area={operational_area}
+                      operational_timezone={operational_timezone}
                       onSaveSettings={handleSaveBusinessSettings}
                     />
                   )}

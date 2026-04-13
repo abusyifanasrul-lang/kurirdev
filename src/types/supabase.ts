@@ -414,6 +414,8 @@ export type Database = {
           commission_rate: number
           commission_threshold: number
           courier_instructions: Json | null
+          operational_area: string | null
+          operational_timezone: string | null
           id: string
           updated_at: string | null
         }
@@ -421,6 +423,8 @@ export type Database = {
           commission_rate?: number
           commission_threshold?: number
           courier_instructions?: Json | null
+          operational_area?: string | null
+          operational_timezone?: string | null
           id?: string
           updated_at?: string | null
         }
@@ -428,6 +432,8 @@ export type Database = {
           commission_rate?: number
           commission_threshold?: number
           courier_instructions?: Json | null
+          operational_area?: string | null
+          operational_timezone?: string | null
           id?: string
           updated_at?: string | null
         }

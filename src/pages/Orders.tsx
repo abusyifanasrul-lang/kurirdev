@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { Plus, Download } from 'lucide-react';
-import { formatWIB, getWIBNow } from '@/utils/date';
+import { formatLocal, getLocalNow } from '@/utils/date';
 import html2canvas from 'html2canvas';
 
 import {
@@ -146,13 +146,13 @@ export function Orders() {
   const [searchCategory, setSearchCategory] = useState('all');
   const [statusFilter, setStatusFilter] = useState<string>('');
   
-  const now = getWIBNow();
+  const now = getLocalNow();
   const oneMonthAgo = new Date(now);
   oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
 
   const [dateFilter, setDateFilter] = useState({ 
-    start: formatWIB(oneMonthAgo, 'yyyy-MM-dd'), 
-    end: formatWIB(now, 'yyyy-MM-dd') 
+    start: formatLocal(oneMonthAgo, 'yyyy-MM-dd'), 
+    end: formatLocal(now, 'yyyy-MM-dd') 
   });
 
   const [sortConfig, setSortConfig] = useState<{ field: SortField; order: SortOrder }>({
@@ -181,7 +181,7 @@ export function Orders() {
         const matchesStatus = !statusFilter || order.status === statusFilter;
 
         // Gunakan date string WIB untuk perbandingan
-        const orderLocalDate = (order as any)._date || formatWIB(order.created_at, 'yyyy-MM-dd');
+        const orderLocalDate = (order as any)._date || formatLocal(order.created_at, 'yyyy-MM-dd');
 
         const matchesDateStart = !dateFilter.start ||
           orderLocalDate >= dateFilter.start
@@ -254,8 +254,8 @@ export function Orders() {
   useEffect(() => {
     // 1. Initial Load from IndexedDB (Matching Default Filter)
     const loadInitialOrders = async () => {
-      const start = formatWIB(oneMonthAgo, 'yyyy-MM-dd')
-      const end = formatWIB(now, 'yyyy-MM-dd')
+      const start = formatLocal(oneMonthAgo, 'yyyy-MM-dd')
+      const end = formatLocal(now, 'yyyy-MM-dd')
       const initialOrders = await getOrdersByDateRange(start, end)
       setLocalDBOrders(initialOrders)
     }
@@ -279,7 +279,7 @@ export function Orders() {
     customer_address: '',
     total_fee: 0,
     titik: 0,
-    estimated_delivery_time: formatWIB(getWIBNow(), "yyyy-MM-dd'T'HH:mm"),
+    estimated_delivery_time: formatLocal(getLocalNow(), "yyyy-MM-dd'T'HH:mm"),
     items: [],
     notes: '',
   });
@@ -291,7 +291,7 @@ export function Orders() {
       customer_address: '',
       total_fee: 0,
       titik: 0,
-      estimated_delivery_time: formatWIB(getWIBNow(), "yyyy-MM-dd'T'HH:mm"),
+      estimated_delivery_time: formatLocal(getLocalNow(), "yyyy-MM-dd'T'HH:mm"),
       items: [],
       notes: '',
     });
@@ -366,8 +366,8 @@ export function Orders() {
         titik: newOrder.titik ?? 0,
         status: 'pending',
         payment_status: newOrder.payment_status || 'unpaid',
-        created_at: getWIBNow().toISOString(),
-        updated_at: getWIBNow().toISOString(),
+        created_at: getLocalNow().toISOString(),
+        updated_at: getLocalNow().toISOString(),
         created_by: user?.id || null,
         creator_name: user?.name || 'Admin',
       };
@@ -464,7 +464,7 @@ export function Orders() {
 
       return [
         q(o.order_number),
-        q(formatWIB(o.created_at, 'dd/MM/yyyy HH:mm')),
+        q(formatLocal(o.created_at, 'dd/MM/yyyy HH:mm')),
         q(o.customer_name),
         q(o.customer_phone),
         q(o.customer_address),
@@ -484,8 +484,8 @@ export function Orders() {
         q(cancelTypeLabel),
         q(o.cancellation_reason || ''),
         q(o.canceller_name || '-'),
-        q(o.actual_delivery_time ? formatWIB(o.actual_delivery_time, 'dd/MM/yyyy HH:mm') : ''),
-        q(o.cancelled_at ? formatWIB(o.cancelled_at, 'dd/MM/yyyy HH:mm') : ''),
+        q(o.actual_delivery_time ? formatLocal(o.actual_delivery_time, 'dd/MM/yyyy HH:mm') : ''),
+        q(o.cancelled_at ? formatLocal(o.cancelled_at, 'dd/MM/yyyy HH:mm') : ''),
       ];
     });
 
@@ -494,7 +494,7 @@ export function Orders() {
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `orders_export_${formatWIB(getWIBNow(), 'yyyyMMdd_HHmm')}.csv`;
+    link.download = `orders_export_${formatLocal(getLocalNow(), 'yyyyMMdd_HHmm')}.csv`;
     link.click();
   };
 
@@ -537,7 +537,7 @@ export function Orders() {
       return
     }
 
-    const today = formatWIB(getWIBNow(), 'yyyy-MM-dd');
+    const today = formatLocal(getLocalNow(), 'yyyy-MM-dd');
     if (start === today || !start) {
       setCacheStatus('idle')
       setCachedOrders([])
@@ -799,8 +799,8 @@ export function Orders() {
         userId={user?.id || ''}
         userName={user?.name || ''}
         getInitialOrders={() => {
-          const start = formatWIB(oneMonthAgo, 'yyyy-MM-dd')
-          const end = formatWIB(now, 'yyyy-MM-dd')
+          const start = formatLocal(oneMonthAgo, 'yyyy-MM-dd')
+          const end = formatLocal(now, 'yyyy-MM-dd')
           return getOrdersByDateRange(start, end)
         }}
         setLocalDBOrders={setLocalDBOrders}
