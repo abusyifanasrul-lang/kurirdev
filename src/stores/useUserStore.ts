@@ -154,12 +154,13 @@ export const useUserStore = create<UserState>()((set, get) => ({
 
         // 4. WebSocket recovery
         const channelId = id ? `profile:single:${id}` : 'users:list'
-        const channelState = userStates.get(channelId)
         
-        if (channelState === 'closed' || channelState === 'errored' || !userChannels.has(channelId)) {
-          console.warn(`⚠️ [UserStore] Connection dead (${channelState}). Re-subscribing...`)
+        if (!userChannels.has(channelId)) {
+          console.warn(`⚠️ Channel ${channelId} not found in map — re-subscribing...`)
           if (id) await get().subscribeProfile(id)
           else await get().subscribeUsers()
+        } else {
+          console.log(`ℹ️ Channel ${channelId} exists (state: ${userStates.get(channelId)}) — trusting Supabase auto-reconnect`)
         }
       } finally {
         set({ _resyncLock: null })
@@ -236,19 +237,27 @@ export const useUserStore = create<UserState>()((set, get) => ({
         if (userChannels.get(channelId) !== channel) return
 
         if (status === 'SUBSCRIBED') {
-          console.log(`✅ Realtime enabled for ${channelId}`)
+          const wasReconnect = userStates.get(channelId) === 'closed' || userStates.get(channelId) === 'errored'
+          console.log(`✅ [UserStore] ${channelId} ${wasReconnect ? 'Reconnected' : 'Connected'}`)
           userStates.set(channelId, 'joined')
           set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
           
-          // SNAPSHOT REPLACEMENT: Always fetch fresh data on (re)connect
-          console.log(`📡 [UserStore] Snapshot replacement for ${channelId}...`)
-          get().fetchUsers().catch(err => console.error('Snapshot fetch error:', err))
+          if (wasReconnect) {
+            console.log(`📡 [UserStore] ${channelId} Reconnect detected — skipping list fetch`)
+          } else {
+            console.log(`📡 [UserStore] ${channelId} First connect — fetching users list...`)
+            get().fetchUsers().catch(err => console.error('Snapshot fetch error:', err))
+          }
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-          console.warn(`❌ Realtime ${channelId} ${status}:`, err)
+          if (status === 'CLOSED' && !err) {
+            console.info(`ℹ️ [UserStore] Realtime ${channelId} closed gracefully.`)
+          } else {
+            console.warn(`⚠️ [UserStore] Realtime ${channelId} ${status} — letting Supabase auto-reconnect.`, err || '')
+          }
           const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
           userStates.set(channelId, finalStatus)
           set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
-          userChannels.delete(channelId)
+          // PENTING: Jangan delete channel di sini
         }
       })
     })()
@@ -334,19 +343,27 @@ export const useUserStore = create<UserState>()((set, get) => ({
         if (userChannels.get(channelId) !== channel) return
 
         if (status === 'SUBSCRIBED') {
-          console.log(`✅ Profile realtime active: ${channelId}`)
+          const wasReconnect = userStates.get(channelId) === 'closed' || userStates.get(channelId) === 'errored'
+          console.log(`✅ [UserStore] ${channelId} ${wasReconnect ? 'Reconnected' : 'Connected'}`)
           userStates.set(channelId, 'joined')
           set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
 
-          // SNAPSHOT REPLACEMENT: Always fetch fresh data on (re)connect
-          console.log(`📡 [UserStore] Profile snapshot replacement for ${id}...`)
-          get().fetchProfile(id).catch(err => console.error('Profile snapshot fetch error:', err))
+          if (wasReconnect) {
+            console.log(`📡 [UserStore] ${channelId} Reconnect detected — skipping profile fetch`)
+          } else {
+            console.log(`📡 [UserStore] ${channelId} First connect — fetching profile data...`)
+            get().fetchProfile(id).catch(err => console.error('Profile snapshot fetch error:', err))
+          }
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-          console.warn(`❌ Profile realtime ${channelId} ${status}:`, err)
+          if (status === 'CLOSED' && !err) {
+            console.info(`ℹ️ [UserStore] Realtime ${channelId} closed gracefully.`)
+          } else {
+            console.warn(`⚠️ [UserStore] Realtime ${channelId} ${status} — letting Supabase auto-reconnect.`, err || '')
+          }
           const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
           userStates.set(channelId, finalStatus)
           set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
-          userChannels.delete(channelId)
+          // PENTING: Jangan delete channel di sini
         }
       })
     })()

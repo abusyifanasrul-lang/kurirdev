@@ -191,13 +191,12 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
         await get().fetchInitialOrders(filter)
         
         // 4. WebSocket Recovery
-        const { courierId } = filter || {}
-        const channelId = courierId ? `orders:courier:${courierId}` : 'orders:global'
-        const channelState = orderStates.get(channelId)
-        
-        if (channelState === 'closed' || channelState === 'errored' || !orderChannels.has(channelId)) {
-          console.warn(`⚠️ [OrderStore] Connection dead (${channelState}). Re-subscribing...`)
+        const channelId = `orders:active`
+        if (!orderChannels.has(channelId)) {
+          console.warn(`⚠️ Channel ${channelId} not found in map — re-subscribing...`)
           await get().subscribeOrders(filter)
+        } else {
+          console.log(`ℹ️ Channel ${channelId} exists (state: ${orderStates.get(channelId)}) — trusting Supabase auto-reconnect`)
         }
       } finally {
         set({ _resyncLock: null })
@@ -502,24 +501,28 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
         if (orderChannels.get(channelId) !== channel) return
 
         if (status === 'SUBSCRIBED') {
-          console.log(`✅ Realtime subscription active for ${channelId}`)
+          const wasReconnect = orderStates.get(channelId) === 'closed' || orderStates.get(channelId) === 'errored'
+          console.log(`✅ [OrderStore] ${channelId} ${wasReconnect ? 'Reconnected' : 'Connected'}`)
           orderStates.set(channelId, 'joined')
           set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
 
-          // SNAPSHOT REPLACEMENT: Always fetch fresh data on (re)connect
-          console.log(`📡 [OrderStore] Snapshot replacement for ${channelId}...`)
-          get().fetchInitialOrders(filter).catch(err => console.error('Snapshot fetch error:', err))
+          if (wasReconnect) {
+            console.log(`📡 [OrderStore] ${channelId} Reconnect detected — skipping snapshot (handled by AppListeners gap-fill)`)
+          } else {
+            console.log(`📡 [OrderStore] ${channelId} First connect — fetching initial data...`)
+            get().fetchInitialOrders(filter).catch(err => console.error('Snapshot fetch error:', err))
+          }
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
           if (status === 'CLOSED' && !err) {
-             console.info(`ℹ️ Realtime ${channelId} closed gracefully (likely superseded or cleaned up).`)
+             console.info(`ℹ️ [OrderStore] Realtime ${channelId} closed gracefully (superseded or unmounted).`)
           } else {
-             console.warn(`❌ Realtime ${channelId} ${status}:`, err || 'No error message')
+             console.warn(`⚠️ [OrderStore] Realtime ${channelId} ${status} — letting Supabase auto-reconnect.`, err || '')
           }
           
           const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
           orderStates.set(channelId, finalStatus)
           set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
-          orderChannels.delete(channelId)
+          // PENTING: Jangan delete channel di sini agar auto-reconnect Supabase bekerja
         }
       })
     })()
@@ -607,23 +610,27 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
         if (orderChannels.get(channelId) !== channel) return
 
         if (status === 'SUBSCRIBED') {
-          console.log(`✅ Realtime active: ${channelId}`)
+          const wasReconnect = orderStates.get(channelId) === 'closed' || orderStates.get(channelId) === 'errored'
+          console.log(`✅ [OrderStore] ${channelId} ${wasReconnect ? 'Reconnected' : 'Connected'}`)
           orderStates.set(channelId, 'joined')
           set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
 
-          // SNAPSHOT REPLACEMENT: Always fetch fresh data on (re)connect
-          console.log(`📡 [OrderStore] Single order snapshot replacement: ${orderId}...`)
-          fetchCurrent().catch(err => console.error('Single snapshot fetch error:', err))
+          if (wasReconnect) {
+            console.log(`📡 [OrderStore] ${channelId} Reconnect detected — skipping single fetch`)
+          } else {
+            console.log(`📡 [OrderStore] ${channelId} First connect — fetching order data...`)
+            fetchCurrent().catch(err => console.error('Single snapshot fetch error:', err))
+          }
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
           if (status === 'CLOSED' && !err) {
-            console.info(`ℹ️ Realtime ${channelId} closed gracefully.`)
+            console.info(`ℹ️ [OrderStore] Realtime ${channelId} closed gracefully.`)
           } else {
-            console.warn(`❌ Realtime ${channelId} ${status}:`, err || 'No error message')
+            console.warn(`⚠️ [OrderStore] Realtime ${channelId} ${status} — letting Supabase auto-reconnect.`, err || '')
           }
           const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
           orderStates.set(channelId, finalStatus)
           set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
-          orderChannels.delete(channelId)
+          // PENTING: Jangan delete channel di sini
         }
       })
     })()

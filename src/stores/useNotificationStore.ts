@@ -127,26 +127,35 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
         if (notifChannels.get(channelId) !== channel) return
 
         if (status === 'SUBSCRIBED') {
-          console.log(`✅ Notif channel active: ${channelId}`)
+          const wasReconnect = notifStates.get(channelId) === 'closed' || notifStates.get(channelId) === 'errored'
+          console.log(`✅ [NotifStore] ${channelId} ${wasReconnect ? 'Reconnected' : 'Connected'}`)
           notifStates.set(channelId, 'joined')
           set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
 
-          // PERBAIKAN: Gunakan fetchSnapshot() bukan resyncRealtime(force: true)
-          try {
-            const data = await fetchSnapshot(userId)
-            if (data) {
-              set({ notifications: data, isLoading: false })
-              cacheNotifications(data)
+          if (wasReconnect) {
+            console.log(`📡 [NotifStore] ${channelId} Reconnect detected — skipping snapshot (handled by AppListeners gap-fill)`)
+          } else {
+            console.log(`📡 [NotifStore] ${channelId} First connect — fetching initial data...`)
+            try {
+              const data = await fetchSnapshot(userId)
+              if (data) {
+                set({ notifications: data, isLoading: false })
+                cacheNotifications(data)
+              }
+            } catch (e) {
+              console.error('[NotifStore] Snapshot fetch failed:', e)
             }
-          } catch (e) {
-            console.error('[NotifStore] Snapshot fetch failed:', e)
           }
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-          console.warn(`❌ Notif channel ${channelId} ${status}:`, err)
+          if (status === 'CLOSED' && !err) {
+            console.info(`ℹ️ [NotifStore] Realtime ${channelId} closed gracefully.`)
+          } else {
+            console.warn(`⚠️ [NotifStore] Realtime ${channelId} ${status} — letting Supabase auto-reconnect.`, err || '')
+          }
           const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
           notifStates.set(channelId, finalStatus)
           set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
-          notifChannels.delete(channelId)
+          // PENTING: Jangan delete channel di sini
         }
       })
     })()
@@ -243,21 +252,32 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
         if (notifChannels.get(channelId) !== channel) return
 
         if (status === 'SUBSCRIBED') {
-          console.log(`✅ Admin notif channel active: ${channelId}`)
+          const wasReconnect = notifStates.get(channelId) === 'closed' || notifStates.get(channelId) === 'errored'
+          console.log(`✅ [NotifStore] ${channelId} ${wasReconnect ? 'Reconnected' : 'Connected'}`)
           notifStates.set(channelId, 'joined')
           set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
-          try {
-            const data = await fetchSnapshot()
-            if (data) set({ notifications: data, isLoading: false })
-          } catch (e) {
-            console.error('[NotifStore] Admin snapshot failed:', e)
+          
+          if (wasReconnect) {
+            console.log(`📡 [NotifStore] ${channelId} Reconnect detected — skipping snapshot`)
+          } else {
+            console.log(`📡 [NotifStore] ${channelId} First connect — fetching initial data...`)
+            try {
+              const data = await fetchSnapshot()
+              if (data) set({ notifications: data, isLoading: false })
+            } catch (e) {
+              console.error('[NotifStore] Admin snapshot failed:', e)
+            }
           }
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-          console.warn(`❌ Admin notif ${channelId} ${status}:`, err)
+          if (status === 'CLOSED' && !err) {
+            console.info(`ℹ️ [NotifStore] Realtime ${channelId} closed gracefully.`)
+          } else {
+            console.warn(`⚠️ [NotifStore] Realtime ${channelId} ${status} — letting Supabase auto-reconnect.`, err || '')
+          }
           const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
           notifStates.set(channelId, finalStatus)
           set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
-          notifChannels.delete(channelId)
+          // PENTING: Jangan delete channel di sini
         }
       })
     })()
@@ -303,12 +323,13 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
         }
 
         const channelId = userId ? `notifications:user:${userId}` : 'notifications:all'
-        const channelState = notifStates.get(channelId)
 
-        if (channelState === 'closed' || channelState === 'errored' || !notifChannels.has(channelId)) {
-          console.warn(`⚠️ [NotifStore] Re-subscribing dead channel: ${channelId}`)
+        if (!notifChannels.has(channelId)) {
+          console.warn(`⚠️ Channel ${channelId} not found in map — re-subscribing...`)
           if (userId) get().subscribeNotifications(userId)
           else get().subscribeAllNotifications()
+        } else {
+          console.log(`ℹ️ Channel ${channelId} exists (state: ${notifStates.get(channelId)}) — trusting Supabase auto-reconnect`)
         }
       } finally {
         set({ _resyncLock: null })

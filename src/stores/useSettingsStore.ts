@@ -125,22 +125,27 @@ export const useSettingsStore = create<SettingsStore>()(
             if (settingsChannels.get(channelId) !== channel) return
 
             if (status === 'SUBSCRIBED') {
-              console.log(`✅ Settings channel active: ${channelId}`)
+              const wasReconnect = settingsStates.get(channelId) === 'closed' || settingsStates.get(channelId) === 'errored'
+              console.log(`✅ [SettingsStore] Settings channel ${wasReconnect ? 'Reconnected' : 'Connected'}`)
               settingsStates.set(channelId, 'joined')
               set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
 
-              // PERBAIKAN: Langsung fetchSettings() bukan resyncRealtime(force: true)
-              try {
-                await get().fetchSettings()
-              } catch (e) {
-                console.error('[SettingsStore] Snapshot fetch failed:', e)
+              if (wasReconnect) {
+                console.log(`📡 [SettingsStore] Reconnect detected — skipping snapshot`)
+              } else {
+                console.log(`📡 [SettingsStore] First connect — fetching settings snapshot...`)
+                get().fetchSettings().catch(err => console.error('Snapshot fetch error:', err))
               }
             } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-              console.warn(`❌ Settings channel ${channelId} ${status}:`, err)
+              if (status === 'CLOSED' && !err) {
+                console.info(`ℹ️ [SettingsStore] Realtime ${channelId} closed gracefully.`)
+              } else {
+                console.warn(`⚠️ [SettingsStore] Realtime ${channelId} ${status} — letting Supabase auto-reconnect.`, err || '')
+              }
               const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
               settingsStates.set(channelId, finalStatus)
               set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
-              settingsChannels.delete(channelId)
+              // PENTING: Jangan delete channel di sini
             }
           })
         })()
@@ -178,10 +183,11 @@ export const useSettingsStore = create<SettingsStore>()(
             await get().fetchSettings()
 
             const channelId = 'public:settings'
-            const channelState = settingsStates.get(channelId)
-            if (channelState === 'closed' || channelState === 'errored' || !settingsChannels.has(channelId)) {
-              console.warn(`⚠️ [SettingsStore] Re-subscribing dead channel`)
+            if (!settingsChannels.has(channelId)) {
+              console.warn(`⚠️ Channel ${channelId} not found in map — re-subscribing...`)
               get().subscribeSettings()
+            } else {
+              console.log(`ℹ️ Channel ${channelId} exists (state: ${settingsStates.get(channelId)}) — trusting Supabase auto-reconnect`)
             }
           } finally {
             set({ _resyncLock: null })

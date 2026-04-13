@@ -30,10 +30,17 @@ let _gapFillLock = false;
 // Digunakan untuk grace period — jangan langsung recover saat baru CLOSED
 const _channelDeadSince = new Map<string, number>();
 
-// Cek apakah ada channel yang SUDAH mati > grace period
-// Grace period 8 detik: channel yang baru CLOSED mungkin sedang reconnect
-// otomatis oleh Supabase client. Jangan interrupt proses itu.
-const hasDeadChannelsPastGrace = (gracePeriodMs = 8000): boolean => {
+// Pelacakan upaya recovery per channel untuk exponential backoff
+const _recoveryAttempts = new Map<string, number>();
+const _lastAttemptAt = new Map<string, number>();
+
+// Fungsi helper exponential backoff: 5s, 10s, 20s, 40s, 80s... max 5 menit
+const getBackoffDelay = (attempts: number) => {
+  return Math.min(300_000, 5000 * Math.pow(2, Math.max(0, attempts - 1)));
+};
+
+// Cek apakah ada channel yang benar-benar butuh recovery sesuai aturan grace period & backoff
+const getChannelsNeedingRecovery = (gracePeriodMs = 8000): string[] => {
   const stores = [
     useOrderStore.getState(),
     useNotificationStore.getState(),
@@ -43,26 +50,39 @@ const hasDeadChannelsPastGrace = (gracePeriodMs = 8000): boolean => {
   ];
 
   const now = Date.now();
-  let anyDead = false;
+  const needingRecovery: string[] = [];
 
   for (const store of stores) {
     for (const [channelId, status] of Object.entries(store.realtimeStatus)) {
       if (status === 'errored' || status === 'closed') {
+        // 1. Inisialisasi timer grace period jika belum ada
         if (!_channelDeadSince.has(channelId)) {
-          // Pertama kali terdeteksi mati — mulai timer grace period
           _channelDeadSince.set(channelId, now);
-        } else if (now - (_channelDeadSince.get(channelId)!) > gracePeriodMs) {
-          // Sudah mati lebih dari grace period → benar-benar perlu recovery
-          anyDead = true;
+          continue;
+        }
+
+        // 2. Cek Grace Period (8s)
+        const timeDead = now - _channelDeadSince.get(channelId)!;
+        if (timeDead < gracePeriodMs) continue;
+
+        // 3. Cek Exponential Backoff
+        const attempts = _recoveryAttempts.get(channelId) || 0;
+        const lastAttempt = _lastAttemptAt.get(channelId) || 0;
+        const backoff = getBackoffDelay(attempts);
+
+        if (now - lastAttempt >= backoff) {
+          needingRecovery.push(channelId);
         }
       } else {
-        // Channel kembali sehat — hapus dari tracking
+        // Channel kembali sehat — reset tracking
         _channelDeadSince.delete(channelId);
+        _recoveryAttempts.delete(channelId);
+        _lastAttemptAt.delete(channelId);
       }
     }
   }
 
-  return anyDead;
+  return needingRecovery;
 };
 
 export const AppListeners = () => {
@@ -311,56 +331,73 @@ export const AppListeners = () => {
     // Menggunakan module-level lock dan cooldown eksplisit
     // ---
     const recoverDeadChannels = async () => {
-      // Lock level 1: Promise lock — cegah concurrent calls
-      if (_recoveryLock) {
-        return _recoveryLock
-      }
+      // 1. Identifikasi channel yang benar-benar butuh recovery
+      const channelsToRecover = getChannelsNeedingRecovery()
+      if (channelsToRecover.length === 0) return
 
-      // Lock level 2: Cooldown timestamp — cegah spam recovery
-      // Bahkan jika lock entah bagaimana terlewat, cooldown ini menghentikannya
+      // Promise lock — cegah concurrent calls
+      if (_recoveryLock) return _recoveryLock
+
+      // Cooldown global (60s) — perlindungan tambahan
       const now = Date.now()
       if (now - _lastRecoveryTime < 60_000) {
-        console.log('⏳ Recovery cooldown active, skipping.')
+        console.log('⏳ Global recovery cooldown active, skipping.')
         return
       }
       _lastRecoveryTime = now
 
       _recoveryLock = (async () => {
-        console.log('🔄 Recovering dead channels...')
+        console.log(`🔄 Recovering ${channelsToRecover.length} dead channels...`)
         try {
           const filter = {
             courierId: userRole === 'courier' ? userId : undefined,
             activeOnly: userRole === 'courier'
           }
 
-          // Stagger 2 detik antar store
-          const stores = [
-            { name: 'Orders', fn: () => useOrderStore.getState().resyncRealtime(filter) },
-            { name: 'Users', fn: () => userRole === 'courier'
+          const storesToRecover = [
+            { id: 'orders', name: 'Orders', check: () => channelsToRecover.some(c => c.startsWith('orders')), fn: () => useOrderStore.getState().resyncRealtime(filter) },
+            { id: 'users', name: 'Users', check: () => channelsToRecover.some(c => c.includes('users') || c.includes('profile')), fn: () => userRole === 'courier'
               ? useUserStore.getState().resyncRealtime(userId)
               : useUserStore.getState().resyncRealtime(undefined)
             },
-            { name: 'Notifs', fn: () => userRole === 'courier'
+            { id: 'notifs', name: 'Notifs', check: () => channelsToRecover.some(c => c.includes('notifications')), fn: () => userRole === 'courier'
               ? useNotificationStore.getState().resyncRealtime(userId)
               : useNotificationStore.getState().resyncRealtime(undefined)
             },
-            { name: 'Customers', fn: () => useCustomerStore.getState().resyncRealtime() },
-            { name: 'Settings', fn: () => useSettingsStore.getState().resyncRealtime() },
+            { id: 'customers', name: 'Customers', check: () => channelsToRecover.some(c => c.includes('customer')), fn: () => useCustomerStore.getState().resyncRealtime() },
+            { id: 'settings', name: 'Settings', check: () => channelsToRecover.some(c => c.includes('settings')), fn: () => useSettingsStore.getState().resyncRealtime() },
           ]
 
-          for (const store of stores) {
+          for (const store of storesToRecover) {
+            if (!store.check()) continue
+
             try {
+              console.log(`🛠️ Attempting recovery for ${store.name}...`)
+              
+              // Update individual attempt counter
+              channelsToRecover.filter(c => {
+                if (store.id === 'orders') return c.startsWith('orders')
+                if (store.id === 'users') return c.includes('users') || c.includes('profile')
+                if (store.id === 'notifs') return c.includes('notifications')
+                if (store.id === 'customers') return c.includes('customer')
+                if (store.id === 'settings') return c.includes('settings')
+                return false
+              }).forEach(c => {
+                _recoveryAttempts.set(c, (_recoveryAttempts.get(c) || 0) + 1)
+                _lastAttemptAt.set(c, Date.now())
+              })
+
               await store.fn()
-              // Jeda 2 detik — beri server waktu untuk memproses koneksi baru
               await new Promise(r => setTimeout(r, 2000))
             } catch (err) {
               console.error(`Recovery failed for ${store.name}:`, err)
             }
           }
-          console.log('✅ Channel recovery complete.')
+          console.log('✅ Channel recovery sequence complete.')
         } finally {
           _recoveryLock = null
-          // Reset grace period tracker setelah recovery selesai
+          // HANYA hapus _channelDeadSince, biarkan _recoveryAttempts tetap ada 
+          // agar backoff berfungsi jika recovery gagal lagi
           _channelDeadSince.clear()
         }
       })()
@@ -383,9 +420,10 @@ export const AppListeners = () => {
         if (!navigator.onLine) return
         // Gap fill selalu dilakukan saat tab kembali aktif
         await fillDataGap()
-        // Recovery hanya jika ada channel mati melewati grace period
-        if (hasDeadChannelsPastGrace()) {
-          console.warn('⚠️ Dead channels found after grace period. Recovering...')
+        // Recovery HANYA jika ada channel yang butuh (pasca grace & backoff)
+        const dead = getChannelsNeedingRecovery()
+        if (dead.length > 0) {
+          console.warn(`⚠️ ${dead.length} dead channels need recovery. Attempting...`)
           await recoverDeadChannels()
         }
       }, 800) // Debounce 800ms untuk menghindari double-fire
@@ -397,7 +435,8 @@ export const AppListeners = () => {
     const handleOnline = async () => {
       console.log('🌐 Back online.')
       await fillDataGap()
-      if (hasDeadChannelsPastGrace()) {
+      const dead = getChannelsNeedingRecovery()
+      if (dead.length > 0) {
         await recoverDeadChannels()
       }
     }
@@ -426,11 +465,12 @@ export const AppListeners = () => {
     // ---
     const healthCheck = async () => {
       if (!navigator.onLine) return
-      if (hasDeadChannelsPastGrace()) {
-        console.warn('📡 [Health] Dead channels detected. Recovering...')
+      const dead = getChannelsNeedingRecovery()
+      if (dead.length > 0) {
+        console.warn(`📡 [Health] ${dead.length} dead channels detected. Recovering...`)
         await recoverDeadChannels()
       } else {
-        console.log('✅ [Health] All channels OK.')
+        console.log('✅ [Health] All channels OK or in backoff.')
       }
     }
 

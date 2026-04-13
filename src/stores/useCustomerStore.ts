@@ -380,22 +380,32 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
       // Set map BEFORE subscribe to allow stale guard to work correctly
       customerChannels.set(channelId, channel)
 
-      channel.subscribe((status) => {
+      channel.subscribe((status, err) => {
         // STALE GUARD: Ignore callbacks from superseded channels
         if (customerChannels.get(channelId) !== channel) return
 
         if (status === 'SUBSCRIBED') {
+          const wasReconnect = customerStates.get(channelId) === 'closed' || customerStates.get(channelId) === 'errored'
+          console.log(`✅ [CustomerStore] Requests channel ${wasReconnect ? 'Reconnected' : 'Connected'}`)
           customerStates.set(channelId, 'joined')
           set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
 
-          // SNAPSHOT REPLACEMENT: Always fetch fresh data on (re)connect
-          console.log(`📡 [CustomerStore] Request snapshot replacement...`)
-          get().fetchPendingRequests().catch(err => console.error('Request snapshot error:', err))
+          if (wasReconnect) {
+            console.log(`📡 [CustomerStore] Reconnect detected — skipping request snapshot`)
+          } else {
+            console.log(`📡 [CustomerStore] First connect — fetching pending requests...`)
+            get().fetchPendingRequests().catch(err => console.error('Request snapshot error:', err))
+          }
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          if (status === 'CLOSED' && !err) {
+            console.info(`ℹ️ [CustomerStore] Realtime ${channelId} closed gracefully.`)
+          } else {
+            console.warn(`⚠️ [CustomerStore] Realtime ${channelId} ${status} — letting Supabase auto-reconnect.`, err || '')
+          }
           const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
           customerStates.set(channelId, finalStatus)
           set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
-          customerChannels.delete(channelId)
+          // PENTING: Jangan delete channel di sini
         }
       })
     })()
@@ -479,22 +489,32 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
       // Set map BEFORE subscribe to allow stale guard to work correctly
       customerChannels.set(channelId, channel)
 
-      channel.subscribe((status) => {
+      channel.subscribe((status, err) => {
         // STALE GUARD: Ignore callbacks from superseded channels
         if (customerChannels.get(channelId) !== channel) return
 
         if (status === 'SUBSCRIBED') {
+          const wasReconnect = customerStates.get(channelId) === 'closed' || customerStates.get(channelId) === 'errored'
+          console.log(`✅ [CustomerStore] Customers channel ${wasReconnect ? 'Reconnected' : 'Connected'}`)
           customerStates.set(channelId, 'joined')
           set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
 
-          // SNAPSHOT REPLACEMENT: Always fetch fresh data on (re)connect
-          console.log(`📡 [CustomerStore] Customer list snapshot replacement...`)
-          get().syncFromServer().catch(err => console.error('Customer snapshot error:', err))
+          if (wasReconnect) {
+            console.log(`📡 [CustomerStore] Reconnect detected — skipping list fetch`)
+          } else {
+            console.log(`📡 [CustomerStore] First connect — syncing from server...`)
+            get().syncFromServer().catch(err => console.error('Customer snapshot error:', err))
+          }
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          if (status === 'CLOSED' && !err) {
+            console.info(`ℹ️ [CustomerStore] Realtime ${channelId} closed gracefully.`)
+          } else {
+            console.warn(`⚠️ [CustomerStore] Realtime ${channelId} ${status} — letting Supabase auto-reconnect.`, err || '')
+          }
           const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
           customerStates.set(channelId, finalStatus)
           set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
-          customerChannels.delete(channelId)
+          // PENTING: Jangan delete channel di sini
         }
       })
     })()
@@ -542,11 +562,12 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
         
         const channels = ['customer_requests_all', 'customers_all']
         for (const channelName of channels) {
-          const channelState = customerStates.get(channelName)
-          if (channelState === 'errored' || channelState === 'closed' || !customerChannels.has(channelName)) {
-            console.warn(`⚠️ [CustomerStore] Connection dead for ${channelName} (${channelState})...`)
+          if (!customerChannels.has(channelName)) {
+            console.warn(`⚠️ [CustomerStore] Connection dead for ${channelName} — re-subscribing...`)
             if (channelName === 'customer_requests_all') await get().subscribeToRequests()
             else await get().subscribeToCustomers()
+          } else {
+            console.log(`ℹ️ Channel ${channelName} exists (state: ${customerStates.get(channelName)}) — trusting Supabase auto-reconnect`)
           }
         }
       } finally {
