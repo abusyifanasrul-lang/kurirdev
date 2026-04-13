@@ -114,28 +114,32 @@ export const useSettingsStore = create<SettingsStore>()(
                 useSettingsStore.getState().fetchSettings()
               }
             )
-            .subscribe(async (status, err) => {
-              if (status === 'SUBSCRIBED') {
-                console.log(`✅ Settings channel active: ${channelId}`)
-                settingsStates.set(channelId, 'joined')
-                set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
-
-                // PERBAIKAN: Langsung fetchSettings() bukan resyncRealtime(force: true)
-                try {
-                  await get().fetchSettings()
-                } catch (e) {
-                  console.error('[SettingsStore] Snapshot fetch failed:', e)
-                }
-              } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-                console.warn(`❌ Settings channel ${channelId} ${status}:`, err)
-                const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
-                settingsStates.set(channelId, finalStatus)
-                set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
-                settingsChannels.delete(channelId)
-              }
-            })
-
+          // Set map BEFORE subscribe to allow stale guard to work correctly
           settingsChannels.set(channelId, channel)
+
+          channel.subscribe(async (status, err) => {
+            // STALE GUARD: Ignore callbacks from superseded channels
+            if (settingsChannels.get(channelId) !== channel) return
+
+            if (status === 'SUBSCRIBED') {
+              console.log(`✅ Settings channel active: ${channelId}`)
+              settingsStates.set(channelId, 'joined')
+              set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
+
+              // PERBAIKAN: Langsung fetchSettings() bukan resyncRealtime(force: true)
+              try {
+                await get().fetchSettings()
+              } catch (e) {
+                console.error('[SettingsStore] Snapshot fetch failed:', e)
+              }
+            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+              console.warn(`❌ Settings channel ${channelId} ${status}:`, err)
+              const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
+              settingsStates.set(channelId, finalStatus)
+              set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
+              settingsChannels.delete(channelId)
+            }
+          })
         })()
 
         return () => get().unsubscribeSettings()

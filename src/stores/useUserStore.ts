@@ -232,6 +232,9 @@ export const useUserStore = create<UserState>()((set, get) => ({
       userChannels.set(channelId, channel)
 
       channel.subscribe((status, err) => {
+        // STALE GUARD: Ignore callbacks from superseded channels
+        if (userChannels.get(channelId) !== channel) return
+
         if (status === 'SUBSCRIBED') {
           console.log(`✅ Realtime enabled for ${channelId}`)
           userStates.set(channelId, 'joined')
@@ -327,6 +330,9 @@ export const useUserStore = create<UserState>()((set, get) => ({
       userChannels.set(channelId, channel)
 
       channel.subscribe((status, err) => {
+        // STALE GUARD: Ignore callbacks from superseded channels
+        if (userChannels.get(channelId) !== channel) return
+
         if (status === 'SUBSCRIBED') {
           console.log(`✅ Profile realtime active: ${channelId}`)
           userStates.set(channelId, 'joined')

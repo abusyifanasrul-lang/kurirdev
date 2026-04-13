@@ -502,6 +502,11 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
       orderChannels.set(channelId, channel)
 
       channel.subscribe((status, err) => {
+        // STALE GUARD: Ignore callbacks from superseded channels
+        // This prevents the CLOSED callback of a cleaned-up channel from
+        // corrupting the state of a newly registered replacement channel.
+        if (orderChannels.get(channelId) !== channel) return
+
         if (status === 'SUBSCRIBED') {
           console.log(`✅ Realtime subscription active for ${channelId}`)
           orderStates.set(channelId, 'joined')
@@ -511,7 +516,6 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
           console.log(`📡 [OrderStore] Snapshot replacement for ${channelId}...`)
           get().fetchInitialOrders(filter).catch(err => console.error('Snapshot fetch error:', err))
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-          // status === 'CLOSED' with no error is often a manual or server-side clean disconnect
           if (status === 'CLOSED' && !err) {
              console.info(`ℹ️ Realtime ${channelId} closed gracefully (likely superseded or cleaned up).`)
           } else {
@@ -582,7 +586,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
       if (orderStates.get(channelId) !== 'joining') return;
 
       const channel = supabase.channel(channelId)
-      
+
       channel
         .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `id=eq.${orderId}` }, (payload) => {
           if (payload.eventType === 'DELETE') {
@@ -600,29 +604,34 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
              set({ currentOrder: payload.new as Order })
           }
         })
-        .subscribe((status, err) => {
-          if (status === 'SUBSCRIBED') {
-            console.log(`✅ Realtime active: ${channelId}`)
-            orderStates.set(channelId, 'joined')
-            set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
 
-            // SNAPSHOT REPLACEMENT: Always fetch fresh data on (re)connect
-            console.log(`📡 [OrderStore] Single order snapshot replacement: ${orderId}...`)
-            fetchCurrent().catch(err => console.error('Single snapshot fetch error:', err))
-          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-            if (status === 'CLOSED' && !err) {
-              console.info(`ℹ️ Realtime ${channelId} closed gracefully.`)
-            } else {
-              console.warn(`❌ Realtime ${channelId} ${status}:`, err || 'No error message')
-            }
-            const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
-            orderStates.set(channelId, finalStatus)
-            set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
-            orderChannels.delete(channelId)
-          }
-        })
-
+      // Set map BEFORE subscribe to allow stale guard to work correctly
       orderChannels.set(channelId, channel)
+
+      channel.subscribe((status, err) => {
+        // STALE GUARD: Ignore callbacks from superseded channels
+        if (orderChannels.get(channelId) !== channel) return
+
+        if (status === 'SUBSCRIBED') {
+          console.log(`✅ Realtime active: ${channelId}`)
+          orderStates.set(channelId, 'joined')
+          set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
+
+          // SNAPSHOT REPLACEMENT: Always fetch fresh data on (re)connect
+          console.log(`📡 [OrderStore] Single order snapshot replacement: ${orderId}...`)
+          fetchCurrent().catch(err => console.error('Single snapshot fetch error:', err))
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          if (status === 'CLOSED' && !err) {
+            console.info(`ℹ️ Realtime ${channelId} closed gracefully.`)
+          } else {
+            console.warn(`❌ Realtime ${channelId} ${status}:`, err || 'No error message')
+          }
+          const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
+          orderStates.set(channelId, finalStatus)
+          set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
+          orderChannels.delete(channelId)
+        }
+      })
     })()
 
     return () => get().unsubscribeOrderById(orderId)

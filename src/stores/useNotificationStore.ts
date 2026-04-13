@@ -123,6 +123,9 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
       notifChannels.set(channelId, channel)
 
       channel.subscribe(async (status, err) => {
+        // STALE GUARD: Ignore callbacks from superseded channels
+        if (notifChannels.get(channelId) !== channel) return
+
         if (status === 'SUBSCRIBED') {
           console.log(`✅ Notif channel active: ${channelId}`)
           notifStates.set(channelId, 'joined')
@@ -236,6 +239,9 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
       notifChannels.set(channelId, channel)
 
       channel.subscribe(async (status, err) => {
+        // STALE GUARD: Ignore callbacks from superseded channels
+        if (notifChannels.get(channelId) !== channel) return
+
         if (status === 'SUBSCRIBED') {
           console.log(`✅ Admin notif channel active: ${channelId}`)
           notifStates.set(channelId, 'joined')

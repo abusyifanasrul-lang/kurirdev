@@ -375,23 +375,28 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
             }
           }
         )
-        .subscribe((status) => {
-          if (status === 'SUBSCRIBED') {
-            customerStates.set(channelId, 'joined')
-            set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
 
-            // SNAPSHOT REPLACEMENT: Always fetch fresh data on (re)connect
-            console.log(`📡 [CustomerStore] Request snapshot replacement...`)
-            get().fetchPendingRequests().catch(err => console.error('Request snapshot error:', err))
-          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-            const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
-            customerStates.set(channelId, finalStatus)
-            set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
-            customerChannels.delete(channelId)
-          }
-        })
-
+      // Set map BEFORE subscribe to allow stale guard to work correctly
       customerChannels.set(channelId, channel)
+
+      channel.subscribe((status) => {
+        // STALE GUARD: Ignore callbacks from superseded channels
+        if (customerChannels.get(channelId) !== channel) return
+
+        if (status === 'SUBSCRIBED') {
+          customerStates.set(channelId, 'joined')
+          set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
+
+          // SNAPSHOT REPLACEMENT: Always fetch fresh data on (re)connect
+          console.log(`📡 [CustomerStore] Request snapshot replacement...`)
+          get().fetchPendingRequests().catch(err => console.error('Request snapshot error:', err))
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
+          customerStates.set(channelId, finalStatus)
+          set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
+          customerChannels.delete(channelId)
+        }
+      })
     })()
 
     return () => get().unsubscribeFromRequests()
@@ -469,23 +474,28 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
             }
           }
         )
-        .subscribe((status) => {
-          if (status === 'SUBSCRIBED') {
-            customerStates.set(channelId, 'joined')
-            set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
 
-            // SNAPSHOT REPLACEMENT: Always fetch fresh data on (re)connect
-            console.log(`📡 [CustomerStore] Customer list snapshot replacement...`)
-            get().syncFromServer().catch(err => console.error('Customer snapshot error:', err))
-          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-            const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
-            customerStates.set(channelId, finalStatus)
-            set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
-            customerChannels.delete(channelId)
-          }
-        })
-
+      // Set map BEFORE subscribe to allow stale guard to work correctly
       customerChannels.set(channelId, channel)
+
+      channel.subscribe((status) => {
+        // STALE GUARD: Ignore callbacks from superseded channels
+        if (customerChannels.get(channelId) !== channel) return
+
+        if (status === 'SUBSCRIBED') {
+          customerStates.set(channelId, 'joined')
+          set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
+
+          // SNAPSHOT REPLACEMENT: Always fetch fresh data on (re)connect
+          console.log(`📡 [CustomerStore] Customer list snapshot replacement...`)
+          get().syncFromServer().catch(err => console.error('Customer snapshot error:', err))
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
+          customerStates.set(channelId, finalStatus)
+          set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
+          customerChannels.delete(channelId)
+        }
+      })
     })()
 
     return () => get().unsubscribeFromCustomers()
