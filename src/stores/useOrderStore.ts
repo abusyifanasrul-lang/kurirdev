@@ -1053,7 +1053,8 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     statusHistory: {},
     activeOrdersByCourier: [],
     currentOrder: null,
-    isLoading: false
+    isLoading: false,
+    realtimeStatus: {},
   }),
 
   pingRealtime: async () => {

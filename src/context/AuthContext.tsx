@@ -5,6 +5,7 @@ import { useUserStore } from '@/stores/useUserStore';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
+import { useCustomerStore } from '@/stores/useCustomerStore';
 import { supabase } from '@/lib/supabaseClient';
 
 interface AuthContextType extends AuthState {
@@ -219,6 +220,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try { useOrderStore.getState().reset(); } catch(e) {}
       try { useNotificationStore.getState().reset(); } catch(e) {}
       try { useSettingsStore.getState().reset(); } catch(e) {}
+      try { useCustomerStore.getState().reset(); } catch(e) {}
 
       try {
         const { useCourierStore } = await import('@/stores/useCourierStore');

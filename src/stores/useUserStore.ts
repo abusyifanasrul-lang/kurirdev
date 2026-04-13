@@ -496,7 +496,7 @@ export const useUserStore = create<UserState>()((set, get) => ({
     await (supabase.from('profiles') as any).update({ is_active: false }).eq('id', id)
   },
 
-  reset: () => set({ users: [], isLoading: false, error: null }),
+  reset: () => set({ users: [], isLoading: false, error: null, realtimeStatus: {} }),
 
   pingRealtime: async () => {
     const channels = Array.from(userChannels.values());

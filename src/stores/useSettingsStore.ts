@@ -194,7 +194,8 @@ export const useSettingsStore = create<SettingsStore>()(
         commission_rate: 80,
         commission_threshold: 5000,
         operational_area: 'Sengkang, Wajo',
-        courier_instructions: DEFAULT_INSTRUCTIONS
+        courier_instructions: DEFAULT_INSTRUCTIONS,
+        realtimeStatus: {},
       }))
     }),
     {

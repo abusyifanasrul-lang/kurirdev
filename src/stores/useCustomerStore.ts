@@ -44,6 +44,7 @@ interface CustomerState {
   realtimeStatus: Record<string, string>
   // Internal lock for resync operations (helps with HMR stability)
   _resyncLock: Promise<void> | null
+  reset: () => void
   subscribeToRequests: () => (() => void)
   subscribeToCustomers: () => (() => void)
   unsubscribeFromRequests: () => void
@@ -555,5 +556,7 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
 
     set({ _resyncLock: resyncPromise })
     return resyncPromise
-  }
+  },
+
+  reset: () => set({ customers: [], changeRequests: [], isLoaded: false, realtimeStatus: {}, _resyncLock: null }),
 }))

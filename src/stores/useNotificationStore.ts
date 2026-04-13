@@ -384,7 +384,7 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
 
   getNotificationsByUser: (userId) => get().notifications.filter(n => n.user_id === userId),
 
-  reset: () => set({ notifications: [], isLoading: false }),
+  reset: () => set({ notifications: [], isLoading: false, realtimeStatus: {} }),
 
   pingRealtime: async () => {
     const channels = Array.from(notifChannels.values())
