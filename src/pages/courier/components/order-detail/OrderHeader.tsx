@@ -19,10 +19,17 @@ export const OrderHeader: React.FC<OrderHeaderProps> = ({
   const navigate = useNavigate();
   const { courier_instructions } = useSettingsStore();
 
-  const instruction = useMemo(() => {
+  const instructionData = useMemo(() => {
     if (!order.notes) return null;
-    return courier_instructions.find(i => i.label === order.notes) || null;
-  }, [order.notes, courier_instructions]);
+    // Find matching preset, but we compare with .instruction as that is what's saved in order.notes
+    const match = courier_instructions.find(i => i.instruction === order.notes || i.label === order.notes);
+    
+    return {
+      text: order.notes,
+      icon: match?.icon || 'ℹ️',
+      isAdminInstruction: !!match || (order.assigner_name && order.notes)
+    };
+  }, [order.notes, courier_instructions, order.assigner_name]);
 
   const getStatusDisplay = () => {
     if (order.status === 'cancelled') return { label: 'Dibatalkan', emoji: '❌', color: 'bg-red-100 text-red-700' };
@@ -75,12 +82,25 @@ export const OrderHeader: React.FC<OrderHeaderProps> = ({
               </span>
             )}
           </div>
-          {instruction && (
-            <div className="flex items-center gap-1.5 mt-2 px-2 py-1 bg-emerald-50 border border-emerald-100 rounded-lg animate-in fade-in slide-in-from-top-1 duration-300">
-              <span className="text-sm leading-none">{instruction.icon}</span>
-              <span className="text-xs font-semibold text-emerald-700 leading-snug italic">
-                {instruction.instruction}
-              </span>
+          
+          {instructionData && (
+            <div className="mt-2.5 animate-in fade-in slide-in-from-top-1 duration-300">
+              <div className="flex flex-col gap-1 p-2 bg-emerald-50/80 border border-emerald-100 rounded-xl shadow-sm">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm leading-none">{instructionData.icon}</span>
+                  <span className="text-[13px] font-bold text-emerald-800 leading-snug">
+                    {instructionData.text}
+                  </span>
+                </div>
+                {order.assigner_name && (
+                  <div className="flex items-center gap-1.5 ml-0.5">
+                    <div className="h-2 w-0.5 bg-emerald-300 rounded-full" />
+                    <span className="text-[10px] text-emerald-600/70 font-medium italic">
+                      Instruksi dari Admin: <span className="font-bold text-emerald-600 uppercase">{order.assigner_name}</span>
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
