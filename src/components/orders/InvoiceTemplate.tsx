@@ -41,30 +41,30 @@ export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ order, invoice
     >
       <div ref={invoiceRef} style={{ background: '#ffffff', boxSizing: 'border-box', padding: '0', width: '400px', fontFamily: '"Inter", system-ui, sans-serif', color: '#111827', margin: '0' }}>
         
-        <div style={{ padding: '32px 24px 48px 24px', background: '#047857', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <div style={{ padding: '32px 24px 48px 24px', background: '#185356', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderRadius: '0 0 24px 24px' }}>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
             <img 
               src="/icons/android/ikonfix.png" 
               style={{ height: '72px', width: 'auto', display: 'block', marginBottom: '-4px' }} 
               alt="Logo" 
             />
-            <span style={{ fontSize: '28px', fontWeight: '900', color: '#ffffff', letterSpacing: '-0.02em', lineHeight: '1', display: 'block', marginBottom: '8px' }}>KurirDev</span>
+            <span style={{ fontSize: '28px', fontWeight: '900', color: '#ffffff', letterSpacing: '-0.02em', lineHeight: '1', display: 'block', marginBottom: '8px' }}>KurirMe</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', alignItems: 'flex-end', height: '32px' }}>
-            <div style={{ color: '#a7f3d0', fontSize: '11px', fontWeight: '800', letterSpacing: '0.15em', textTransform: 'uppercase', lineHeight: '1' }}>Invoice</div>
+            <div style={{ color: '#00B1C3', fontSize: '11px', fontWeight: '800', letterSpacing: '0.15em', textTransform: 'uppercase', lineHeight: '1' }}>Invoice</div>
             <div style={{ color: '#ffffff', fontSize: '14px', fontWeight: '700', lineHeight: '1' }}>Bukti Pengiriman</div>
           </div>
         </div>
 
         {/* Floating Card - Order Num & Status */}
         <div style={{ padding: '0 24px', marginTop: '-28px', position: 'relative', zIndex: 10, boxSizing: 'border-box' }}>
-           <div style={{ background: '#ffffff', borderRadius: '12px', padding: '16px 20px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', border: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+           <div style={{ background: '#ffffff', borderRadius: '16px', padding: '16px 20px', boxShadow: '0 8px 30px rgba(12, 130, 141, 0.12)', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', letterSpacing: '0.05em', marginBottom: '4px', textTransform: 'uppercase' }}>Nomor Pesanan</div>
-                <div style={{ fontSize: '20px', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.02em' }}>#{order.order_number}</div>
+                <div style={{ fontSize: '10px', fontWeight: '700', color: '#0C828D', letterSpacing: '0.05em', marginBottom: '4px', textTransform: 'uppercase' }}>Nomor Pesanan</div>
+                <div style={{ fontSize: '20px', fontWeight: '900', color: '#185356', letterSpacing: '-0.02em' }}>#{order.order_number}</div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ display: 'inline-block', background: '#f0fdf4', color: '#15803d', padding: '4px 10px', borderRadius: '6px', fontSize: '10px', fontWeight: '800', letterSpacing: '0.05em', border: '1px solid #bbf7d0', marginBottom: '6px' }}>
+                <div style={{ display: 'inline-block', background: '#F4FEFF', color: '#00B1C3', padding: '4px 10px', borderRadius: '8px', fontSize: '10px', fontWeight: '800', letterSpacing: '0.05em', border: '1px solid #00B1C3', marginBottom: '6px' }}>
                   LUNAS
                 </div>
                 <div style={{ fontSize: '11px', color: '#475569', fontWeight: '600' }}>
@@ -154,9 +154,9 @@ export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ order, invoice
             </div>
 
             {/* Grand Total Area */}
-            <div style={{ background: '#f0fdf4', borderRadius: '12px', padding: '16px 20px', border: '1px solid #bbf7d0', marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <div style={{ fontSize: '12px', fontWeight: '800', color: '#166534', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0', padding: '0' }}>Total Tagihan</div>
-              <div style={{ fontSize: '24px', fontWeight: '900', color: '#14532d', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em', margin: '0', padding: '0' }}>
+            <div style={{ background: '#F4FEFF', borderRadius: '16px', padding: '16px 20px', border: '1px solid #00B1C3', marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <div style={{ fontSize: '12px', fontWeight: '800', color: '#0C828D', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0', padding: '0' }}>Total Tagihan</div>
+              <div style={{ fontSize: '24px', fontWeight: '900', color: '#185356', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em', margin: '0', padding: '0' }}>
                 Rp {totalPaid.toLocaleString('id-ID')}
               </div>
             </div>
@@ -182,8 +182,8 @@ export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ order, invoice
             
             {/* Simple footer (Compact) */}
             <div style={{ textAlign: 'center', marginTop: '24px', opacity: 0.7 }}>
-                <div style={{ fontSize: '10px', fontWeight: '900', color: '#64748b', letterSpacing: '0.15em' }}>KURIRDEV.COM</div>
-                <div style={{ fontSize: '9px', color: '#94a3b8', marginTop: '4px', fontWeight: '600' }}>Bukti transaksi sah sistem KurirDev.</div>
+                <div style={{ fontSize: '10px', fontWeight: '900', color: '#0C828D', letterSpacing: '0.15em' }}>KURIRME</div>
+                <div style={{ fontSize: '9px', color: '#64748b', marginTop: '4px', fontWeight: '600' }}>Bukti transaksi sah dari sistem KurirMe.</div>
             </div>
         </div>
       </div>

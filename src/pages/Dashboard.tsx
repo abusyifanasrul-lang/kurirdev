@@ -200,8 +200,7 @@ export function Dashboard() {
 
   return (
     <div className="min-h-screen">
-      {/* Visually hidden H1 & Label for SEO & UX Audit compliance */}
-      <h1 className="sr-only">Dashboard KurirDev</h1>
+      <h1 className="sr-only">Dashboard KurirMe</h1>
       <label className="sr-only">Accessibility Control</label>
 
       <Header

@@ -230,7 +230,8 @@ export function Reports() {
     pdf.setFontSize(18);
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(13, 148, 136); // teal-600
-    pdf.text('KurirDev - Laporan Eksekutif Operasional', 15, 20);
+    pdf.setTextColor(33, 37, 41);
+    pdf.text('KurirMe - Laporan Eksekutif Operasional', 15, 20);
 
     pdf.setFontSize(10);
     pdf.setFont('helvetica', 'normal');

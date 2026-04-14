@@ -65,12 +65,15 @@ export function CourierLayout() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-800 pb-20">
       {/* Header */}
-      <header className="bg-emerald-600 dark:bg-gray-900 text-white px-4 py-4 sticky top-0 z-40 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-              <span className="text-lg font-bold">{user?.name?.charAt(0) || 'C'}</span>
-            </div>
+      <header className="bg-[#185356] dark:bg-gray-900 text-white px-4 py-4 sticky top-0 z-40 shadow-sm">
+        <div className="relative flex items-center justify-between min-h-[40px]">
+          {/* Brand Logo Centered */}
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-40 sm:w-48 z-10 pointer-events-none">
+            <img src="/logo.png" alt="KurirMe" className="w-full h-auto object-contain drop-shadow-sm" />
+          </div>
+
+          <div className="flex items-center gap-3 relative z-20">
+            {/* Courier Name & Status */}
             <div>
               <div className="flex items-center gap-2">
                 <p className="font-semibold">{user?.name || 'Courier'}</p>
@@ -87,7 +90,7 @@ export function CourierLayout() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 relative z-20">
             {/* Tombol dark mode — hidden until requested */}
             {/*
             <button

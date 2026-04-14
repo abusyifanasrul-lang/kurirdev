@@ -82,31 +82,30 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-900 via-teal-900 to-cyan-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-[#185356] via-[#0C828D] to-[#00B1C3] flex items-center justify-center p-4">
       {/* Background decoration */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-emerald-500/10 rounded-full" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-cyan-500/10 rounded-full" />
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/10 rounded-full" />
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-[#00B1C3]/20 rounded-full" />
       </div>
 
       <div className="relative w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8 flex flex-col items-center">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-3xl shadow-2xl shadow-emerald-900/20 mb-4 transform hover:rotate-3 transition-transform">
-            <Truck className="h-10 w-10 text-emerald-600" />
+          <div className="inline-flex items-center justify-center w-80 mb-6 transform hover:scale-105 transition-transform duration-300">
+            <img src="/logo.png" alt="Logo KurirMe" className="w-full h-auto object-contain" />
           </div>
-          <h1 className="text-4xl font-black text-white tracking-tight">KurirDev</h1>
-          <p className="text-emerald-200 mt-2 font-medium">Sistem Manajemen Pengiriman</p>
+          <p className="text-white/80 mt-2 font-medium">Sistem Manajemen Pengiriman</p>
         </div>
 
         {/* Login Card */}
         <div className="bg-white rounded-[2rem] shadow-2xl overflow-hidden border border-white/20">
-          <div className="px-8 py-8 bg-emerald-600 text-center relative overflow-hidden">
+          <div className="px-8 py-8 bg-[#00B1C3] text-center relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16" />
             <h2 className="text-2xl font-bold text-white mb-1 relative z-10">
               Selamat Datang
             </h2>
-            <p className="text-emerald-100 text-sm relative z-10 font-medium">
+            <p className="text-white/90 text-sm relative z-10 font-medium">
               Silakan login untuk masuk ke dasbor Anda
             </p>
           </div>
@@ -200,8 +199,8 @@ export function Login() {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-teal-200 text-sm mt-8">
-          KurirDev v1.0
+        <p className="text-center text-white/70 text-sm mt-8">
+          KurirMe v1.0
         </p>
       </div>
     </div>

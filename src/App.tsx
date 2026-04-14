@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Loader2 } from 'lucide-react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
@@ -14,11 +14,9 @@ import type { UserRole } from '@/types';
 // Loading Skeleton
 function LoadingScreen() {
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center" role="status" aria-label="Memuat halaman">
-      <div className="flex flex-col items-center gap-4">
-        <div className="w-12 h-12 border-4 border-emerald-100 border-t-emerald-600 rounded-full animate-spin shadow-sm" />
-        <p className="text-sm text-gray-600 font-medium">Memuat KurirDev...</p>
-      </div>
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4" role="status" aria-label="Memuat halaman">
+      <Loader2 className="h-10 w-10 text-teal-600 animate-spin mb-4" />
+      <p className="text-sm text-gray-600 font-medium">Memuat KurirMe...</p>
     </div>
   );
 }
@@ -195,7 +193,7 @@ function PWAUpdateBanner() {
         <div className="flex-1 min-w-0">
           <h3 className="text-sm font-semibold text-gray-900">Pembaruan Tersedia</h3>
           <p className="text-xs text-gray-600 mt-1 leading-relaxed">
-            Versi terbaru KurirDev sudah siap. Silakan muat ulang untuk fitur baru.
+            Versi terbaru KurirMe sudah siap. Silakan muat ulang untuk fitur baru.
           </p>
           <div className="mt-3 flex items-center gap-3">
             <button

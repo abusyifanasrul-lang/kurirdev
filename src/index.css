@@ -1,8 +1,39 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand: var(--color-emerald-600);
-  --color-brand-light: var(--color-emerald-50);
+  /* KurirMe Official Brand Palette */
+  --color-brand-cyan: #00B1C3;
+  --color-brand-teal: #0C828D;
+  --color-brand-dark: #185356;
+  --color-brand-surface: #F4FEFF;
+
+  --color-brand: var(--color-brand-cyan);
+  --color-brand-light: var(--color-brand-surface);
+
+  /* Global Override: Transform all legacy layouts cleanly without regex mass-replacement */
+  --color-emerald-50: #E0F7FA;
+  --color-emerald-100: #B2EBF2;
+  --color-emerald-200: #80DEEA;
+  --color-emerald-300: #4DD0E1;
+  --color-emerald-400: #26C6DA;
+  --color-emerald-500: #00BCD4;
+  --color-emerald-600: #00B1C3; /* Primary Cyan */
+  --color-emerald-700: #0C828D; /* Medium Teal */
+  --color-emerald-800: #185356; /* Dark Teal */
+  --color-emerald-900: #0A3D40; 
+  --color-emerald-950: #052629; 
+  
+  --color-teal-50: #E0F7FA;
+  --color-teal-100: #B2EBF2;
+  --color-teal-200: #80DEEA;
+  --color-teal-300: #4DD0E1;
+  --color-teal-400: #26C6DA;
+  --color-teal-500: #00BCD4;
+  --color-teal-600: #00B1C3; 
+  --color-teal-700: #0C828D; 
+  --color-teal-800: #185356; 
+  --color-teal-900: #0A3D40;
+  --color-teal-950: #052629;
 
   /* Typography: Professional Mobile System Stack */
   --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
@@ -34,7 +65,7 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
-    @apply text-gray-900 bg-white;
+    @apply text-brand-dark bg-brand-surface;
   }
 
   /* Accessibility: Prevent text from getting too small on mobile */
@@ -45,14 +76,13 @@
 
 @layer utilities {
   .focus-ring {
-    @apply focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2 transition-all;
+    @apply focus:outline-none focus:ring-2 focus:ring-brand-cyan focus:ring-offset-2 transition-all;
   }
   
   .touch-target {
     @apply min-h-[44px] min-w-[44px];
   }
 
-  /* Tracking: Optimized for small caps and headings */
   .tracking-mobile {
     letter-spacing: 0.025em;
   }

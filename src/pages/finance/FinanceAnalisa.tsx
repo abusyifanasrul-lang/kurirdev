@@ -191,8 +191,7 @@ export function FinanceAnalisa() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Visually hidden H1 & Label for SEO & UX Audit compliance */}
-      <h1 className="sr-only">Analisa Keuangan KurirDev</h1>
+      <h1 className="sr-only">Analisa Keuangan KurirMe</h1>
       <label className="sr-only">Financial Dashboard Control</label>
 
       <Header

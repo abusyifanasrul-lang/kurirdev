@@ -8,7 +8,7 @@ interface SEOProps {
 export function useSEO({ title, description }: SEOProps) {
   useEffect(() => {
     // Update title
-    const fullTitle = `${title} | KurirDev`;
+    const fullTitle = `${title} | KurirMe`;
     document.title = fullTitle;
 
     // Update meta description

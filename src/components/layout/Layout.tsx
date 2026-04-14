@@ -143,11 +143,11 @@ export function Layout() {
         </button>
 
         <div className="flex items-center gap-2">
-          <div className="p-1.5 bg-teal-600 rounded-lg">
-            <Truck className="h-5 w-5" />
+          <div className="p-1 bg-white rounded-xl overflow-hidden flex items-center justify-center w-8 h-8">
+            <img src="/logo.png" alt="KurirMe" className="w-full h-full object-contain" />
           </div>
           <div className="flex items-center gap-2">
-            <span className="font-bold">KurirDev</span>
+            <span className="font-bold">KurirMe</span>
             <div 
               className={cn(
                 "w-2 h-2 rounded-full shadow-sm transition-all duration-500",
@@ -177,7 +177,7 @@ export function Layout() {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed top-0 left-0 h-screen bg-gray-900 text-white flex flex-col z-50 transition-transform duration-300 ease-in-out',
+          'fixed top-0 left-0 h-screen bg-brand-dark text-white flex flex-col z-50 transition-transform duration-300 ease-in-out shadow-xl',
           'w-72 lg:w-64',
           isMobile
             ? isSidebarOpen
@@ -187,14 +187,16 @@ export function Layout() {
         )}
       >
         {/* Logo */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-800">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-teal-600 rounded-lg">
-              <Truck className="h-6 w-6" />
+            <div className="w-10 h-10 shrink-0">
+              <img src="/logomini.png" alt="KurirMe Mini" className="w-full h-full object-contain rounded-xl shadow-md" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="font-bold text-lg">KurirDev</h1>
+                <h1 className="font-bold text-lg tracking-wide text-white">
+                  Kurir<span className="text-[#00B1C3]">Me</span>
+                </h1>
                 <div 
                   className={cn(
                     "w-2 h-2 rounded-full shadow-sm transition-all duration-500",
@@ -232,10 +234,10 @@ export function Layout() {
               end={item.end}
               className={({ isActive }) =>
                 cn(
-                  'flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium transition-colors group',
+                  'flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-200 group',
                   isActive
-                    ? 'bg-teal-600 text-white'
-                    : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                    ? 'bg-brand-cyan text-white shadow-md'
+                    : 'text-brand-surface/70 hover:bg-white/10 hover:text-white'
                 )
               }
             >
@@ -249,14 +251,14 @@ export function Layout() {
         </nav>
 
         {/* User section */}
-        <div className="p-4 border-t border-gray-800">
-          <div className="flex items-center gap-3 px-4 py-3">
+        <div className="p-4 border-t border-white/10">
+          <div className="flex items-center gap-3 px-4 py-3 bg-white/5 rounded-2xl">
             <div className={cn(
-              "w-10 h-10 rounded-full flex items-center justify-center font-semibold",
-              user?.role === 'admin' ? 'bg-teal-600' :
-              user?.role === 'finance' ? 'bg-amber-600' :
-              user?.role === 'owner' ? 'bg-emerald-600' :
-              'bg-cyan-600'
+              "w-10 h-10 rounded-full flex items-center justify-center font-semibold text-white shadow-sm",
+              user?.role === 'admin' ? 'bg-brand-cyan' :
+              user?.role === 'finance' ? 'bg-brand-teal' :
+              user?.role === 'owner' ? 'bg-brand-dark border-2 border-brand-cyan' :
+              'bg-brand-cyan'
             )}>
               {user?.name?.charAt(0).toUpperCase() || 'A'}
             </div>
@@ -267,7 +269,7 @@ export function Layout() {
           </div>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 w-full px-4 py-3 mt-2 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors"
+            className="flex items-center justify-center gap-3 w-full px-4 py-3 mt-3 rounded-xl text-sm font-medium text-brand-surface/70 hover:bg-white/10 hover:text-white transition-all duration-200"
           >
             <LogOut className="h-5 w-5" />
             Sign Out
