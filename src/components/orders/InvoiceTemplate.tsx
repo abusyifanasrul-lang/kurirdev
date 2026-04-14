@@ -42,17 +42,16 @@ export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ order, invoice
       <div ref={invoiceRef} style={{ background: '#ffffff', boxSizing: 'border-box', padding: '0', width: '400px', fontFamily: '"Inter", system-ui, sans-serif', color: '#111827', margin: '0' }}>
         
         <div style={{ padding: '32px 24px 48px 24px', background: '#185356', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderRadius: '0 0 24px 24px' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end' }}>
             <img 
-              src="/icons/android/ikonfix.png" 
-              style={{ height: '72px', width: 'auto', display: 'block', marginBottom: '-4px' }} 
+              src="/logo.png" 
+              style={{ height: '72px', width: 'auto', display: 'block' }} 
               alt="Logo" 
             />
-            <span style={{ fontSize: '28px', fontWeight: '900', color: '#ffffff', letterSpacing: '-0.02em', lineHeight: '1', display: 'block', marginBottom: '8px' }}>KurirMe</span>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', alignItems: 'flex-end', height: '32px' }}>
-            <div style={{ color: '#00B1C3', fontSize: '11px', fontWeight: '800', letterSpacing: '0.15em', textTransform: 'uppercase', lineHeight: '1' }}>Invoice</div>
-            <div style={{ color: '#ffffff', fontSize: '14px', fontWeight: '700', lineHeight: '1' }}>Bukti Pengiriman</div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+            <div style={{ color: '#00B1C3', fontSize: '10px', fontWeight: '800', letterSpacing: '0.15em', textTransform: 'uppercase', lineHeight: '1' }}>Invoice</div>
+            <div style={{ color: '#ffffff', fontSize: '14px', fontWeight: '700', lineHeight: '1', whiteSpace: 'nowrap' }}>Bukti Pengiriman</div>
           </div>
         </div>
 
@@ -64,8 +63,8 @@ export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ order, invoice
                 <div style={{ fontSize: '20px', fontWeight: '900', color: '#185356', letterSpacing: '-0.02em' }}>#{order.order_number}</div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ display: 'inline-block', background: '#F4FEFF', color: '#00B1C3', padding: '4px 10px', borderRadius: '8px', fontSize: '10px', fontWeight: '800', letterSpacing: '0.05em', border: '1px solid #00B1C3', marginBottom: '6px' }}>
-                  LUNAS
+                <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: '#F4FEFF', color: '#00B1C3', padding: '4px 10px', minHeight: '22px', borderRadius: '8px', fontSize: '10px', fontWeight: '800', letterSpacing: '0.05em', border: '1px solid #00B1C3', marginBottom: '6px', lineHeight: '1' }}>
+                   LUNAS
                 </div>
                 <div style={{ fontSize: '11px', color: '#475569', fontWeight: '600' }}>
                   {order.created_at ? format(new Date(order.created_at), 'dd MMM yyyy, HH:mm') : format(new Date(), 'dd MMM yyyy, HH:mm')}
@@ -182,8 +181,7 @@ export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ order, invoice
             
             {/* Simple footer (Compact) */}
             <div style={{ textAlign: 'center', marginTop: '24px', opacity: 0.7 }}>
-                <div style={{ fontSize: '10px', fontWeight: '900', color: '#0C828D', letterSpacing: '0.15em' }}>KURIRME</div>
-                <div style={{ fontSize: '9px', color: '#64748b', marginTop: '4px', fontWeight: '600' }}>Bukti transaksi sah dari sistem KurirMe.</div>
+                <div style={{ fontSize: '9px', color: '#64748b', marginTop: '4px', fontWeight: '600' }}>Bukti transaksi sah dari sistem.</div>
             </div>
         </div>
       </div>
