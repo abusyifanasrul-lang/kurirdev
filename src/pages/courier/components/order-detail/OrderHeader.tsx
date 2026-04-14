@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
-import { ArrowLeft, Printer } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Printer } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { Order } from '@/types';
 import { useSettingsStore } from '@/stores/useSettingsStore';
@@ -16,7 +15,6 @@ export const OrderHeader: React.FC<OrderHeaderProps> = ({
   onBagikanInvoice,
   isGeneratingInvoice = false
 }) => {
-  const navigate = useNavigate();
   const { courier_instructions } = useSettingsStore();
 
   const instructionData = useMemo(() => {
@@ -50,12 +48,6 @@ export const OrderHeader: React.FC<OrderHeaderProps> = ({
   return (
     <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between shadow-sm flex-shrink-0 z-50">
       <div className="flex items-center gap-3">
-        <button 
-          onClick={() => navigate('/courier/orders')}
-          className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors"
-        >
-          <ArrowLeft className="h-6 w-6 text-gray-700" />
-        </button>
         <div>
           <h1 className="text-[10px] font-bold text-gray-400 uppercase tracking-mobile leading-tight">
             ID: {order.order_number}
