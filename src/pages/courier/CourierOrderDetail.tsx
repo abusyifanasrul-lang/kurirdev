@@ -379,33 +379,17 @@ export function CourierOrderDetail() {
       
       toastId = addToast('Menyiapkan Gambar Invoice...', 'loading', 0);
       
-      const { default: html2canvas } = await import('html2canvas');
+      const { toPng } = await import('html-to-image');
       
       // Tunggu sebentar untuk memastikan ref ter-render sempurna
       await new Promise(r => setTimeout(r, 300));
       
-      const canvas = await html2canvas(invoiceRef.current, { 
-        scale: 3, // Lebih tajam untuk printer thermal
-        useCORS: true,
+      const dataUrl = await toPng(invoiceRef.current, {
+        pixelRatio: 3, // Lebih tajam untuk printer thermal
         backgroundColor: '#ffffff',
-        logging: false,
-        allowTaint: true,
-        scrollX: 0,
-        scrollY: -window.scrollY, // Fix position fixed issues
-        onclone: (clonedDoc) => {
-          clonedDoc.querySelectorAll('*').forEach((el) => {
-            const s = (el as HTMLElement).style;
-            ['color', 'backgroundColor', 'borderColor', 'borderTopColor', 'borderRightColor', 'borderBottomColor', 'borderLeftColor'].forEach((prop) => {
-              const val = (s as any)[prop];
-              if (typeof val === 'string' && val.includes('oklch')) {
-                (s as any)[prop] = prop === 'color' ? 'inherit' : 'transparent';
-              }
-            });
-          });
-        }
+        cacheBust: true,
       });
       
-      const dataUrl = canvas.toDataURL('image/png', 1.0);
       const link = document.createElement('a');
       link.download = `Invoice-${order.order_number}.png`;
       link.href = dataUrl;

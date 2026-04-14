@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { Plus, Download } from 'lucide-react';
 import { formatLocal, getLocalNow } from '@/utils/date';
-import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
 
 import {
   getCachedOrdersByRange,
@@ -521,17 +521,15 @@ export function Orders() {
     // Wait briefly for React to update the hidden template
     setTimeout(async () => {
       try {
-        const canvas = await html2canvas(invoiceRef.current!, {
+        const dataUrl = await toPng(invoiceRef.current!, {
           backgroundColor: '#ffffff',
-          scale: 2, // Higher resolution
-          logging: false,
-          useCORS: true
+          pixelRatio: 2,
+          cacheBust: true,
         });
         
-        const image = canvas.toDataURL("image/png");
         const link = document.createElement('a');
         link.download = `Invoice-${order.order_number}.png`;
-        link.href = image;
+        link.href = dataUrl;
         link.click();
       } catch (err) {
         console.error("Failed to generate invoice image:", err);

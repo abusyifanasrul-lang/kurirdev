@@ -63,8 +63,8 @@ export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ order, invoice
                 <div style={{ fontSize: '20px', fontWeight: '900', color: '#185356', letterSpacing: '-0.02em' }}>#{order.order_number}</div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: '#F4FEFF', color: '#00B1C3', padding: '4px 10px', minHeight: '22px', borderRadius: '8px', fontSize: '10px', fontWeight: '800', letterSpacing: '0.05em', border: '1px solid #00B1C3', marginBottom: '6px', lineHeight: '1' }}>
-                   LUNAS
+                <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: '#F4FEFF', color: '#00B1C3', padding: '5px 10px', borderRadius: '8px', fontSize: '10px', fontWeight: '800', letterSpacing: '0.05em', border: '1px solid #00B1C3', marginBottom: '6px' }}>
+                  LUNAS
                 </div>
                 <div style={{ fontSize: '11px', color: '#475569', fontWeight: '600' }}>
                   {order.created_at ? format(new Date(order.created_at), 'dd MMM yyyy, HH:mm') : format(new Date(), 'dd MMM yyyy, HH:mm')}
@@ -153,9 +153,11 @@ export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ order, invoice
             </div>
 
             {/* Grand Total Area */}
-            <div style={{ background: '#F4FEFF', borderRadius: '16px', padding: '16px 20px', border: '1px solid #00B1C3', marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <div style={{ fontSize: '12px', fontWeight: '800', color: '#0C828D', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0', padding: '0' }}>Total Tagihan</div>
-              <div style={{ fontSize: '24px', fontWeight: '900', color: '#185356', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em', margin: '0', padding: '0' }}>
+            <div style={{ background: '#F4FEFF', borderRadius: '16px', padding: '16px 20px', border: '1px solid #00B1C3', marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontSize: '12px', fontWeight: '800', color: '#0C828D', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Total Tagihan
+              </div>
+              <div style={{ fontSize: '24px', fontWeight: '900', color: '#185356', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>
                 Rp {totalPaid.toLocaleString('id-ID')}
               </div>
             </div>
