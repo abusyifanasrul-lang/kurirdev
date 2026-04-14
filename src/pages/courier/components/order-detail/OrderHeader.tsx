@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Printer, ChevronDown, ChevronRight } from 'lucide-react';
+import { Printer, ChevronDown, ChevronRight, Map as MapIcon } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { Order } from '@/types';
 import { useSettingsStore } from '@/stores/useSettingsStore';
@@ -8,12 +8,16 @@ interface OrderHeaderProps {
   order: Order;
   onBagikanInvoice: () => void;
   isGeneratingInvoice?: boolean;
+  onToggleMap?: () => void;
+  showMap?: boolean;
 }
 
 export const OrderHeader: React.FC<OrderHeaderProps> = ({
   order,
   onBagikanInvoice,
-  isGeneratingInvoice = false
+  isGeneratingInvoice = false,
+  onToggleMap,
+  showMap = false
 }) => {
   const [isMinimized, setIsMinimized] = useState(false);
   const { courier_instructions } = useSettingsStore();
@@ -141,6 +145,21 @@ export const OrderHeader: React.FC<OrderHeaderProps> = ({
             <Printer className="h-5 w-5" />
           )}
         </button>
+
+        {onToggleMap && (
+          <button
+            onClick={onToggleMap}
+            className={cn(
+              "p-3 rounded-2xl transition-all active:scale-90 flex items-center justify-center shadow-lg",
+              showMap 
+                ? "bg-emerald-50 text-emerald-600 border border-emerald-200" 
+                : "bg-white text-gray-400 border border-gray-100"
+            )}
+            title="Toggle Peta Navigasi"
+          >
+            <MapIcon className={cn("h-5 w-5", showMap && "animate-pulse")} />
+          </button>
+        )}
       </div>
     </div>
   );

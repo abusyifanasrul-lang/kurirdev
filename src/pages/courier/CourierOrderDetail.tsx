@@ -10,6 +10,8 @@ import { OrderStatus } from '@/types';
 import { useCustomerStore } from '@/stores/useCustomerStore';
 import { useToastStore } from '@/stores/useToastStore';
 import { removeFromLocalDB } from '@/lib/orderCache';
+import { useCurrentLocation } from '@/hooks/useCurrentLocation';
+import { useSettingsStore } from '@/stores/useSettingsStore';
 
 // Sub-components
 import { OrderHeader } from './components/order-detail/OrderHeader';
@@ -18,6 +20,7 @@ import { OrderItemsList } from './components/order-detail/OrderItemsList';
 import { OrderPricingSummary } from './components/order-detail/OrderPricingSummary';
 import { OrderCancelModal } from './components/order-detail/OrderCancelModal';
 import { InvoiceTemplate } from '@/components/orders/InvoiceTemplate';
+import { OrderMapPanel } from './components/order-detail/OrderMapPanel';
 
 // Format angka ke tampilan Rupiah: 20000 → "Rp 20.000"
 const formatRupiah = (val: string): string => {
@@ -108,6 +111,17 @@ export function CourierOrderDetail() {
   const [courierInlineNewValue, setCourierInlineNewValue] = useState('');
 
   const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
+  const [showMap, setShowMap] = useState(false);
+
+  // Use the new geolocation hook
+  const { coords: courierCoords, error: locationError, isLoading: isLocationLoading } = useCurrentLocation(showMap);
+  const { operational_area } = useSettingsStore();
+
+  // Construct target address for map
+  const destinationAddress = useMemo(() => {
+    if (!order) return '';
+    return `${order.customer_address}, ${operational_area}`;
+  }, [order, operational_area]);
 
 
   const isLocked = order?.status === 'delivered' || order?.status === 'cancelled' || isSuspended;
@@ -415,6 +429,16 @@ export function CourierOrderDetail() {
           order={order}
           onBagikanInvoice={handleBagikanInvoice}
           isGeneratingInvoice={isGeneratingInvoice}
+          showMap={showMap}
+          onToggleMap={() => setShowMap(!showMap)}
+        />
+        <OrderMapPanel 
+          show={showMap}
+          origin={courierCoords}
+          destination={destinationAddress}
+          onClose={() => setShowMap(false)}
+          isLoading={isLocationLoading}
+          error={locationError}
         />
       </div>
 
