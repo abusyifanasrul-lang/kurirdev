@@ -28,10 +28,11 @@ export const OrderMapPanel: React.FC<OrderMapPanelProps> = ({
 
   if (!show) return null;
 
+
   return (
-    <div className="flex-1 min-h-0 relative bg-gray-50 flex flex-col overflow-hidden">
+    <div className="flex-1 h-full min-h-0 relative bg-gray-50 flex flex-col overflow-hidden">
       {/* Map Container */}
-      <div className="flex-1 min-h-0 relative">
+      <div className="flex-1 h-full min-h-0 relative">
         {error ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-red-50">
             <MapPin className="h-8 w-8 text-red-400 mb-2" />
@@ -51,25 +52,25 @@ export const OrderMapPanel: React.FC<OrderMapPanelProps> = ({
             height="100%"
             loading="lazy"
             src={mapUrl}
-            className="border-0 w-full h-full"
+            className="border-0 w-full h-full block leading-none"
             allowFullScreen
           />
         )}
 
-        {/* Floating Close Button */}
+        {/* Minimalist Floating Close Button */}
         <button 
           onClick={onClose}
-          className="absolute top-4 right-4 z-30 p-3 bg-white/90 backdrop-blur-md rounded-2xl shadow-xl border border-white/50 active:scale-90 transition-all hover:bg-white"
+          className="absolute top-3 right-3 z-30 p-2 bg-white/60 backdrop-blur-md rounded-full shadow-sm border border-white/20 active:scale-90 transition-all hover:bg-white"
         >
-          <X className="h-6 w-6 text-gray-900" />
+          <X className="h-4 w-4 text-gray-900" />
         </button>
 
-        {/* GPS Pulse Info (Bottom Left) */}
+        {/* GPS Pulse Info (Bottom Left) - More Minimalist */}
         {!error && !isLoading && origin && (
-          <div className="absolute bottom-4 left-4 z-30 pointer-events-none">
-            <div className="bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/50 shadow-lg flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
-              <span className="text-[9px] font-bold text-gray-600 uppercase tracking-wider">Live Position Active</span>
+          <div className="absolute bottom-3 left-3 z-30 pointer-events-none">
+            <div className="bg-white/40 backdrop-blur-sm px-2.5 py-1 rounded-full border border-white/20 shadow-sm flex items-center gap-1.5">
+              <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-[8px] font-bold text-gray-700 uppercase tracking-wider">Live Active</span>
             </div>
           </div>
         )}

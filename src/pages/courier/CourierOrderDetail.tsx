@@ -423,13 +423,12 @@ export function CourierOrderDetail() {
   };
 
   return (
-    <div className={cn(
-      "animate-in fade-in duration-500",
-      showMap ? "h-screen flex flex-col overflow-hidden" : ""
-    )}>
+    <div className="animate-in fade-in duration-500">
+
+      {/* SECONDARY HEADER - Order Status - Sticky below global header (72px) */}
       <div className={cn(
-        "bg-white shadow-sm border-b border-gray-100 transition-all duration-300",
-        showMap ? "sticky top-0 z-[100]" : "sticky top-[72px] z-30"
+        "bg-white shadow-sm border-b border-gray-100 sticky top-[72px] z-20 transition-all duration-300",
+        showMap && "shadow-md"
       )}>
         <OrderHeader 
           order={order}
@@ -439,178 +438,185 @@ export function CourierOrderDetail() {
         />
       </div>
 
-      {showMap ? (
+
+      <div className={cn(
+        "transition-all duration-300 min-h-[50vh]",
+        order.status === 'delivered' ? "pb-0" : "pb-40"
+      )}>
         <div className={cn(
-          "flex-1 flex flex-col min-h-0 bg-white animate-in slide-in-from-bottom-5 fade-in duration-500 overflow-hidden",
-          (order.status !== 'delivered' && order.status !== 'cancelled') ? "pb-40" : ""
+          "max-w-md mx-auto space-y-4 pt-6",
+          showMap ? "px-0 sm:px-4" : "p-4"
         )}>
-          <OrderMapPanel 
-            show={showMap}
-            origin={courierCoords}
-            destination={destinationAddress}
-            onClose={() => setShowMap(false)}
-            isLoading={isLocationLoading}
-            error={locationError}
-          />
-        </div>
-      ) : (
-        <div className={cn(
-          "transition-all duration-300",
-          order.status === 'delivered' ? "pb-0" : "pb-40"
-        )}>
-        <div className="max-w-md mx-auto p-4 space-y-4 pt-6">
-          {isSuspended && (
-            <div className="bg-red-50 border border-red-100 rounded-3xl p-5 mb-4 animate-bounce">
-              <div className="flex items-start gap-4">
-                <div className="bg-red-100 p-3 rounded-2xl">
-                  <AlertTriangle className="h-6 w-6 text-red-600" />
-                </div>
-                <div>
-                  <p className="text-red-900 font-black uppercase tracking-tight">Akun Ditangguhkan</p>
-                  <p className="text-red-700 text-xs leading-relaxed mt-1">Selesaikan setoran administrasi untuk melanjutkan pengantaran.</p>
-                </div>
+          {/* CONTENT TOGGLE: Map vs Details */}
+          {showMap ? (
+            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+              {/* Full Width Map Box */}
+              <div className="overflow-hidden border-y sm:border-4 border-white shadow-2xl h-[500px] relative sm:rounded-[2.5rem]">
+                <OrderMapPanel 
+                  show={showMap}
+                  origin={courierCoords}
+                  destination={destinationAddress}
+                  onClose={() => setShowMap(false)}
+                  isLoading={isLocationLoading}
+                  error={locationError}
+                />
               </div>
             </div>
-          )}
-
-          <div ref={customerSectionRef}>
-            <OrderCustomerInfo 
-            order={order}
-            isLocked={isLocked}
-            editCustomer={editCustomer}
-            setEditCustomer={setEditCustomer}
-            editName={editName}
-            setEditName={setEditName}
-            editPhone={editPhone}
-            setEditPhone={setEditPhone}
-            editAddress={editAddress}
-            handleSimpanCustomer={handleSimpanCustomer}
-            courierAddrCustomer={courierAddrCustomer}
-            courierInlineEditId={courierInlineEditId}
-            setCourierInlineEditId={setCourierInlineEditId}
-            courierInlineEditValue={courierInlineEditValue}
-            setCourierInlineEditValue={setCourierInlineEditValue}
-            courierInlineAddingNew={courierInlineAddingNew}
-            setCourierInlineAddingNew={setCourierInlineAddingNew}
-            courierInlineNewValue={courierInlineNewValue}
-            setCourierInlineNewValue={setCourierInlineNewValue}
-            onUpdateAddress={async (id, addr) => {
-               const cust = findByPhone(order.customer_phone || '');
-               if (cust) {
-                  const updatedAddresses = cust.addresses.map(a => a.id === id ? { ...a, address: addr } : a);
-                  await createAddressChangeRequest(cust.id, 'address_edit', cust, { ...cust, addresses: updatedAddresses }, order.id, user?.id, user?.name, undefined, id);
-                  useToastStore.getState().addToast('Perubahan diajukan ke admin', 'success');
-               }
-            }}
-            onDeleteAddress={async (id) => {
-               const cust = findByPhone(order.customer_phone || '');
-               if (cust) {
-                  const updatedAddresses = cust.addresses.filter(a => a.id !== id);
-                  await createAddressChangeRequest(cust.id, 'address_delete', cust, { ...cust, addresses: updatedAddresses }, order.id, user?.id, user?.name, undefined, id);
-                  useToastStore.getState().addToast('Penghapusan diajukan ke admin', 'success');
-               }
-            }}
-            onAddNewAddress={async (phone, addr) => {
-               const cust = findByPhone(phone);
-               if (cust) {
-                  const newAddr = { id: crypto.randomUUID(), label: 'Ditambah Kurir', address: addr, is_default: false, notes: '' };
-                  await createAddressChangeRequest(cust.id, 'address_add', cust, { ...cust, addresses: [...cust.addresses, newAddr] }, order.id, user?.id, user?.name, newAddr);
-                  useToastStore.getState().addToast('Penambahan diajukan ke admin', 'success');
-               }
-            }}
-            onSetAppliedAddress={async (addr) => {
-               setEditAddress(addr);
-               await updateOrder(order.id, { customer_address: addr });
-               useToastStore.getState().addToast('Alamat diterapkan pada order ini', 'success');
-            }}
-            onToggleMap={() => setShowMap(true)}
-          />
-          </div>
-
-          <div ref={itemsSectionRef}>
-          <OrderItemsList 
-            order={order}
-            isLocked={isLocked}
-            showItemForm={showItemForm}
-            setShowItemForm={setShowItemForm}
-            itemList={itemList}
-            namaItem={namaItem}
-            setNamaItem={setNamaItem}
-            hargaItem={hargaItem}
-            setHargaItem={setHargaItem}
-            handleTambahItem={handleTambahItem}
-            handleHapusItem={handleHapusItem}
-            handleSimpanItems={handleSimpanItems}
-            formatRupiah={formatRupiah}
-          />
-          </div>
-
-          <OrderPricingSummary 
-            order={order}
-            isLocked={isLocked}
-            titik={titik}
-            beban={beban}
-            totalBiayaTitik={totalBiayaTitik}
-            totalBiayaBeban={totalBiayaBeban}
-            totalOngkir={totalOngkir}
-            editOngkir={editOngkir}
-            setEditOngkir={setEditOngkir}
-            ongkirValue={ongkirValue}
-            setOngkirValue={setOngkirValue}
-            showBebanForm={showBebanForm}
-            setShowBebanForm={setShowBebanForm}
-            namaBeban={namaBeban}
-            setNamaBeban={setNamaBeban}
-            biayaBeban={biayaBeban}
-            setBiayaBeban={setBiayaBeban}
-            handleTambahTitik={handleTambahTitik}
-            handleHapusTitik={handleHapusTitik}
-            handleTambahBeban={handleTambahBeban}
-            handleHapusBeban={handleHapusBeban}
-            handleSimpanOngkir={handleSimpanOngkir}
-            formatRupiah={formatRupiah}
-          />
-
-          {/* Centrally managed Invoice Template */}
-          <InvoiceTemplate order={order} invoiceRef={invoiceRef} />
-
-          {/* Completion Success View */}
-          {order.status === 'delivered' && (
-            <div className="mt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="bg-emerald-50 border-2 border-emerald-100 rounded-[2.5rem] p-8 text-center shadow-xl shadow-emerald-900/5">
-                <div className="w-20 h-20 bg-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-200">
-                  <span className="text-4xl animate-bounce">✅</span>
+          ) : (
+            <div className="space-y-4 animate-in fade-in duration-300">
+              {isSuspended && (
+                <div className="bg-red-50 border border-red-100 rounded-3xl p-5 mb-4 animate-bounce">
+                  <div className="flex items-start gap-4">
+                    <div className="bg-red-100 p-3 rounded-2xl">
+                      <AlertTriangle className="h-6 w-6 text-red-600" />
+                    </div>
+                    <div>
+                      <p className="text-red-900 font-black uppercase tracking-tight">Akun Ditangguhkan</p>
+                      <p className="text-red-700 text-xs leading-relaxed mt-1">Selesaikan setoran administrasi untuk melanjutkan pengantaran.</p>
+                    </div>
+                  </div>
                 </div>
-                <h2 className="text-2xl font-bold mb-2 text-gray-900">Pesanan Berhasil Terkirim!</h2>
-                <p className="text-sm text-gray-500 mb-8 max-w-[240px] mx-auto">Saldo Anda telah diperbarui sesuai komisi pesanan ini.</p>
-                
-                <div className="grid grid-cols-1 gap-3">
-                  <button
-                    onClick={handleBagikanInvoice}
-                    disabled={isGeneratingInvoice}
-                    className="flex items-center justify-center gap-3 w-full p-5 bg-emerald-600 text-white rounded-2xl font-bold text-xs uppercase tracking-widest active:scale-95 transition-all shadow-xl shadow-emerald-200 disabled:opacity-50 border-b-4 border-emerald-800"
-                  >
-                    {isGeneratingInvoice ? (
-                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    ) : (
-                      <span className="text-2xl">🖨️</span>
-                    )}
-                    CETAK / UNDUH INVOICE
-                  </button>
-                  
-                  <button
-                    onClick={() => navigate('/courier')}
-                    className="w-full p-4 bg-white border-2 border-gray-100 text-gray-900 rounded-2xl font-bold active:scale-95 transition-all"
-                  >
-                    Kembali ke Beranda
-                  </button>
-                </div>
+              )}
+
+              <div ref={customerSectionRef}>
+                <OrderCustomerInfo 
+                  order={order}
+                  isLocked={isLocked}
+                  editCustomer={editCustomer}
+                  setEditCustomer={setEditCustomer}
+                  editName={editName}
+                  setEditName={setEditName}
+                  editPhone={editPhone}
+                  setEditPhone={setEditPhone}
+                  editAddress={editAddress}
+                  handleSimpanCustomer={handleSimpanCustomer}
+                  courierAddrCustomer={courierAddrCustomer}
+                  courierInlineEditId={courierInlineEditId}
+                  setCourierInlineEditId={setCourierInlineEditId}
+                  courierInlineEditValue={courierInlineEditValue}
+                  setCourierInlineEditValue={setCourierInlineEditValue}
+                  courierInlineAddingNew={courierInlineAddingNew}
+                  setCourierInlineAddingNew={setCourierInlineAddingNew}
+                  courierInlineNewValue={courierInlineNewValue}
+                  setCourierInlineNewValue={setCourierInlineNewValue}
+                  onUpdateAddress={async (id, addr) => {
+                    const cust = findByPhone(order.customer_phone || '');
+                    if (cust) {
+                        const updatedAddresses = cust.addresses.map(a => a.id === id ? { ...a, address: addr } : a);
+                        await createAddressChangeRequest(cust.id, 'address_edit', cust, { ...cust, addresses: updatedAddresses }, order.id, user?.id, user?.name, undefined, id);
+                        useToastStore.getState().addToast('Perubahan diajukan ke admin', 'success');
+                    }
+                  }}
+                  onDeleteAddress={async (id) => {
+                    const cust = findByPhone(order.customer_phone || '');
+                    if (cust) {
+                        const updatedAddresses = cust.addresses.filter(a => a.id !== id);
+                        await createAddressChangeRequest(cust.id, 'address_delete', cust, { ...cust, addresses: updatedAddresses }, order.id, user?.id, user?.name, undefined, id);
+                        useToastStore.getState().addToast('Penghapusan diajukan ke admin', 'success');
+                    }
+                  }}
+                  onAddNewAddress={async (phone, addr) => {
+                    const cust = findByPhone(phone);
+                    if (cust) {
+                        const newAddr = { id: crypto.randomUUID(), label: 'Ditambah Kurir', address: addr, is_default: false, notes: '' };
+                        await createAddressChangeRequest(cust.id, 'address_add', cust, { ...cust, addresses: [...cust.addresses, newAddr] }, order.id, user?.id, user?.name, newAddr);
+                        useToastStore.getState().addToast('Penambahan diajukan ke admin', 'success');
+                    }
+                  }}
+                  onSetAppliedAddress={async (addr) => {
+                    setEditAddress(addr);
+                    await updateOrder(order.id, { customer_address: addr });
+                    useToastStore.getState().addToast('Alamat diterapkan pada order ini', 'success');
+                  }}
+                  onToggleMap={() => setShowMap(true)}
+                />
               </div>
+
+              <div ref={itemsSectionRef}>
+                <OrderItemsList 
+                  order={order}
+                  isLocked={isLocked}
+                  showItemForm={showItemForm}
+                  setShowItemForm={setShowItemForm}
+                  itemList={itemList}
+                  namaItem={namaItem}
+                  setNamaItem={setNamaItem}
+                  hargaItem={hargaItem}
+                  setHargaItem={setHargaItem}
+                  handleTambahItem={handleTambahItem}
+                  handleHapusItem={handleHapusItem}
+                  handleSimpanItems={handleSimpanItems}
+                  formatRupiah={formatRupiah}
+                />
+              </div>
+
+              <OrderPricingSummary 
+                order={order}
+                isLocked={isLocked}
+                titik={titik}
+                beban={beban}
+                totalBiayaTitik={totalBiayaTitik}
+                totalBiayaBeban={totalBiayaBeban}
+                totalOngkir={totalOngkir}
+                editOngkir={editOngkir}
+                setEditOngkir={setEditOngkir}
+                ongkirValue={ongkirValue}
+                setOngkirValue={setOngkirValue}
+                showBebanForm={showBebanForm}
+                setShowBebanForm={setShowBebanForm}
+                namaBeban={namaBeban}
+                setNamaBeban={setNamaBeban}
+                biayaBeban={biayaBeban}
+                setBiayaBeban={setBiayaBeban}
+                handleTambahTitik={handleTambahTitik}
+                handleHapusTitik={handleHapusTitik}
+                handleTambahBeban={handleTambahBeban}
+                handleHapusBeban={handleHapusBeban}
+                handleSimpanOngkir={handleSimpanOngkir}
+                formatRupiah={formatRupiah}
+              />
+
+              <InvoiceTemplate order={order} invoiceRef={invoiceRef} />
+
+              {/* Completion Success View */}
+              {order.status === 'delivered' && (
+                <div className="mt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <div className="bg-emerald-50 border-2 border-emerald-100 rounded-[2.5rem] p-8 text-center shadow-xl shadow-emerald-900/5">
+                    <div className="w-20 h-20 bg-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-200">
+                      <span className="text-4xl animate-bounce">✅</span>
+                    </div>
+                    <h2 className="text-2xl font-bold mb-2 text-gray-900">Pesanan Berhasil Terkirim!</h2>
+                    <p className="text-sm text-gray-500 mb-8 max-w-[240px] mx-auto">Saldo Anda telah diperbarui sesuai komisi pesanan ini.</p>
+                    
+                    <div className="grid grid-cols-1 gap-3">
+                      <button
+                        onClick={handleBagikanInvoice}
+                        disabled={isGeneratingInvoice}
+                        className="flex items-center justify-center gap-3 w-full p-5 bg-emerald-600 text-white rounded-2xl font-bold text-xs uppercase tracking-widest active:scale-95 transition-all shadow-xl shadow-emerald-200 disabled:opacity-50 border-b-4 border-emerald-800"
+                      >
+                        {isGeneratingInvoice ? (
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        ) : (
+                          <span className="text-2xl">🖨️</span>
+                        )}
+                        CETAK / UNDUH INVOICE
+                      </button>
+                      
+                      <button
+                        onClick={() => navigate('/courier')}
+                        className="w-full p-4 bg-white border-2 border-gray-100 text-gray-900 rounded-2xl font-bold active:scale-95 transition-all"
+                      >
+                        Kembali ke Beranda
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
-        </div>
-      )}
+      </div>
+
 
       {/* FIXED FOOTER ACTIONS - Now positioned tightly above global navigation */}
       {order.status !== 'delivered' && order.status !== 'cancelled' && (

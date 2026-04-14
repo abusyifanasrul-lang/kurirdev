@@ -19,9 +19,8 @@ export default defineConfig({
       srcDir: "public",
       filename: "sw.js",
       includeAssets: [
-        "icons/android/android-launchericon-192-192.png",
-        "icons/android/android-launchericon-512-512.png",
-        "icons/ios/180.png",
+        "icons/icon-192.webp",
+        "icons/icon-512.webp",
       ],
       manifest: {
         id: "/",
@@ -30,39 +29,34 @@ export default defineConfig({
         description: 'Logistics and Delivery Management System',
         start_url: "/",
         display: "standalone",
-        background_color: "#111827",
-        theme_color: '#059669',
+        background_color: "#F4FEFF",
+        theme_color: '#F4FEFF',
         orientation: "portrait",
         categories: ["business", "productivity"],
         icons: [
           {
-            src: "icons/android/android-launchericon-192-192.png",
+            src: "icons/icon-192.webp",
             sizes: "192x192",
-            type: "image/png",
+            type: "image/webp",
             purpose: "any",
           },
           {
-            src: "icons/android/android-launchericon-192-192.png",
+            src: "icons/icon-192.webp",
             sizes: "192x192",
-            type: "image/png",
+            type: "image/webp",
             purpose: "maskable",
           },
           {
-            src: "icons/android/android-launchericon-512-512.png",
+            src: "icons/icon-512.webp",
             sizes: "512x512",
-            type: "image/png",
+            type: "image/webp",
             purpose: "any",
           },
           {
-            src: "icons/android/android-launchericon-512-512.png",
+            src: "icons/icon-512.webp",
             sizes: "512x512",
-            type: "image/png",
+            type: "image/webp",
             purpose: "maskable",
-          },
-          {
-            src: "icons/ios/180.png",
-            sizes: "180x180",
-            type: "image/png",
           },
         ],
         screenshots: [
@@ -83,11 +77,10 @@ export default defineConfig({
         ],
       },
       injectManifest: {
-        globPatterns: ["**/*.{js,css,html,ico,svg,woff2,woff,ttf}"],
+        globPatterns: ["**/*.{js,css,html,ico,svg,woff2,woff,ttf,webp}"],
         additionalManifestEntries: [
-          { url: 'icons/android/android-launchericon-192-192.png', revision: null },
-          { url: 'icons/android/android-launchericon-512-512.png', revision: null },
-          { url: 'icons/ios/180.png', revision: null },
+          { url: 'icons/icon-192.webp', revision: null },
+          { url: 'icons/icon-512.webp', revision: null },
         ]
       },
     }),
