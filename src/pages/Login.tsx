@@ -91,11 +91,10 @@ export function Login() {
 
       <div className="relative w-full max-w-md">
         {/* Logo */}
-        <div className="text-center mb-8 flex flex-col items-center">
+        <div className="text-center mb-4 flex flex-col items-center">
           <div className="inline-flex items-center justify-center w-80 mb-6 transform hover:scale-105 transition-transform duration-300">
             <img src="/logo.png" alt="Logo KurirMe" className="w-full h-auto object-contain" />
           </div>
-          <p className="text-white/80 mt-2 font-medium">Sistem Manajemen Pengiriman</p>
         </div>
 
         {/* Login Card */}
