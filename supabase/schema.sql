@@ -125,6 +125,10 @@ AS $$
 $$;
 
 -- ATOMIC RPC for Completing an Order (Delivered)
+-- Cleanup for both VARCHAR and TEXT versions to prevent overloading
+DROP FUNCTION IF EXISTS public.complete_order(uuid, uuid, character varying, text, integer, integer);
+DROP FUNCTION IF EXISTS public.complete_order(uuid, uuid, text, text, integer, integer);
+
 CREATE OR REPLACE FUNCTION public.complete_order(
   p_order_id UUID, 
   p_user_id UUID, 
