@@ -28,8 +28,8 @@ export function RevenueBarChart({ data, formatCurrency, formatShortCurrency }: R
           formatter={(value) => [formatCurrency(Number(value || 0))]}
           labelFormatter={(label) => `Tanggal: ${label}`}
         />
-        <Bar dataKey="gross" fill="#0d9488" name="Kotor" radius={[4, 4, 0, 0]} />
-        <Bar dataKey="net" fill="#10B981" name="Bersih" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="gross" fill="#185356" name="Kotor" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="net" fill="#00B1C3" name="Bersih" radius={[4, 4, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );

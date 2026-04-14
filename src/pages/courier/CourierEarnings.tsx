@@ -334,11 +334,11 @@ export function CourierEarnings() {
                     <RechartsLib.Tooltip
                       cursor={{ fill: '#f1f5f9', radius: 8 }}
                       contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', padding: '12px' }}
-                      itemStyle={{ fontSize: '10px', fontWeight: '800', textTransform: 'uppercase', color: '#059669' }}
+                      itemStyle={{ fontSize: '10px', fontWeight: '800', textTransform: 'uppercase', color: '#00B1C3' }}
                       labelStyle={{ fontSize: '9px', fontWeight: 'bold', color: '#94a3b8', marginBottom: '4px' }}
                       formatter={(value: number | undefined) => [formatCurrency(value ?? 0), 'Ringkasan']}
                     />
-                    <RechartsLib.Bar dataKey="earnings" fill="#059669" radius={[4, 4, 0, 0]} />
+                    <RechartsLib.Bar dataKey="earnings" fill="#00B1C3" radius={[4, 4, 0, 0]} />
                   </RechartsLib.BarChart>
                 </RechartsLib.ResponsiveContainer>
               ) : (
