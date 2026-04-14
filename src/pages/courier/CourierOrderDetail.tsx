@@ -29,7 +29,7 @@ const formatRupiah = (val: string): string => {
 export function CourierOrderDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { activeOrdersByCourier, currentOrder, subscribeOrderById, updateOrderStatus, cancelOrder, updateBiayaTambahan, updateItems, updateOngkir, updateOrderWaiting, updateOrder } = useOrderStore();
+  const { activeOrdersByCourier, orders, currentOrder, subscribeOrderById, updateOrderStatus, cancelOrder, updateBiayaTambahan, updateItems, updateOngkir, updateOrderWaiting, updateOrder } = useOrderStore();
   const { user } = useAuth();
   const { users } = useUserStore();
   const { user: currentUser } = useSessionStore();
@@ -49,8 +49,9 @@ export function CourierOrderDetail() {
   const order = useMemo(() => {
      return (currentOrder?.id === id ? currentOrder : null)
        || activeOrdersByCourier.find(o => o.id === id)
+       || orders.find(o => o.id === id)
        || null;
-  }, [currentOrder, activeOrdersByCourier, id]);
+  }, [currentOrder, activeOrdersByCourier, orders, id]);
 
   const liveUser = users.find(u => u.id === currentUser?.id);
   const isSuspended = liveUser?.is_active === false;
@@ -109,6 +110,9 @@ export function CourierOrderDetail() {
   const [courierInlineEditValue, setCourierInlineEditValue] = useState('');
   const [courierInlineAddingNew, setCourierInlineAddingNew] = useState(false);
   const [courierInlineNewValue, setCourierInlineNewValue] = useState('');
+
+  const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
+
 
   const isLocked = order?.status === 'delivered' || order?.status === 'cancelled' || isSuspended;
 
@@ -360,7 +364,7 @@ export function CourierOrderDetail() {
     navigate('/courier/orders');
   };
 
-  const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
+
 
   const handleBagikanInvoice = async () => {
     if (!invoiceRef.current || isGeneratingInvoice) return;

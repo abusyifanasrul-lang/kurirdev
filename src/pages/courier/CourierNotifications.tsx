@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { Bell, CheckCircle, Clock } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { Badge } from '@/components/ui/Badge';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, subDays, isAfter, startOfDay } from 'date-fns';
 import { useNotificationStore } from '@/stores/useNotificationStore';
+import { useOrderStore } from '@/stores/useOrderStore';
 import { useAuth } from '@/context/AuthContext';
 import { Notification } from '@/types';
 
@@ -19,17 +20,34 @@ export function CourierNotifications() {
         return () => unsub()
     }, [user?.id])
 
+    const sevenDaysAgo = startOfDay(subDays(new Date(), 6));
     const myNotifications = notifications
-        .filter(n => n.user_id === user?.id)
+        .filter(n => {
+            const isMyNotif = n.user_id === user?.id;
+            const isRecent = isAfter(parseISO(n.sent_at), sevenDaysAgo);
+            return isMyNotif && isRecent;
+        })
         .sort((a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime());
 
     const handleMarkAsRead = async (notif: Notification) => {
         await markAsRead(notif.id);
         
         // Navigation logic for order-related notifications
-        const orderId = notif.data?.orderId || notif.data?.order_id;
+        const orderId = notif.data?.orderId as string || notif.data?.order_id as string;
         if (orderId) {
-            navigate(`/courier/orders/${orderId}`);
+            // Cek apakah order sudah selesai (ada di daftar history orders)
+            const { orders } = useOrderStore.getState();
+            const historicalOrder = orders.find(o => o.id === orderId);
+            
+            if (historicalOrder?.status === 'delivered' || historicalOrder?.status === 'cancelled') {
+                // Jika sudah selesai, arahkan ke riwayat pendapatan dengan highlight
+                navigate('/courier/earnings', { 
+                    state: { activeTab: 'history', highlightOrderId: orderId } 
+                });
+            } else {
+                // Jika masih aktif atau tidak ditemukan di history lokal, buka detail order
+                navigate(`/courier/orders/${orderId}`);
+            }
         }
     };
 
