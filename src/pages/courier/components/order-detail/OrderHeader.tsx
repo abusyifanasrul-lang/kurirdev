@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Printer, ChevronDown, ChevronRight, Map as MapIcon } from 'lucide-react';
+import { Printer, ChevronDown, ChevronRight } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { Order } from '@/types';
 import { useSettingsStore } from '@/stores/useSettingsStore';
@@ -8,16 +8,14 @@ interface OrderHeaderProps {
   order: Order;
   onBagikanInvoice: () => void;
   isGeneratingInvoice?: boolean;
-  onToggleMap?: () => void;
-  showMap?: boolean;
+  minimal?: boolean;
 }
 
 export const OrderHeader: React.FC<OrderHeaderProps> = ({
   order,
   onBagikanInvoice,
   isGeneratingInvoice = false,
-  onToggleMap,
-  showMap = false
+  minimal = false
 }) => {
   const [isMinimized, setIsMinimized] = useState(false);
   const { courier_instructions } = useSettingsStore();
@@ -54,9 +52,11 @@ export const OrderHeader: React.FC<OrderHeaderProps> = ({
     <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between gap-3 shadow-sm flex-shrink-0 z-50">
       <div className="flex-1 min-w-0">
         <div>
-          <h1 className="text-[10px] font-bold text-gray-400 uppercase tracking-mobile leading-tight">
-            ID: {order.order_number}
-          </h1>
+          {!minimal && (
+            <h1 className="text-[10px] font-bold text-gray-400 uppercase tracking-mobile leading-tight">
+              ID: {order.order_number}
+            </h1>
+          )}
           <div className="flex items-center gap-2 mt-1">
             {order.status === 'delivered' ? (
               <button 
@@ -79,8 +79,7 @@ export const OrderHeader: React.FC<OrderHeaderProps> = ({
               </span>
             )}
           </div>
-          
-          {instructionData && (
+          {!minimal && instructionData && (
             <div className="mt-2.5 animate-in fade-in slide-in-from-top-1 duration-300">
               <button
                 onClick={() => setIsMinimized(!isMinimized)}
@@ -128,39 +127,25 @@ export const OrderHeader: React.FC<OrderHeaderProps> = ({
         </div>
       </div>
 
-
-      <div className="flex items-center gap-2 flex-shrink-0">
-        <button
-          onClick={onBagikanInvoice}
-          disabled={isGeneratingInvoice}
-          className={cn(
-            "p-3 rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition-all active:scale-90 flex items-center justify-center",
-            isGeneratingInvoice && "opacity-70 scale-95"
-          )}
-          title="Download/Print Invoice"
-        >
-          {isGeneratingInvoice ? (
-            <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-          ) : (
-            <Printer className="h-5 w-5" />
-          )}
-        </button>
-
-        {onToggleMap && (
+      {!minimal && (
+        <div className="flex items-center gap-2 flex-shrink-0">
           <button
-            onClick={onToggleMap}
+            onClick={onBagikanInvoice}
+            disabled={isGeneratingInvoice}
             className={cn(
-              "p-3 rounded-2xl transition-all active:scale-90 flex items-center justify-center shadow-lg",
-              showMap 
-                ? "bg-emerald-50 text-emerald-600 border border-emerald-200" 
-                : "bg-white text-gray-400 border border-gray-100"
+              "p-3 rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition-all active:scale-90 flex items-center justify-center",
+              isGeneratingInvoice && "opacity-70 scale-95"
             )}
-            title="Toggle Peta Navigasi"
+            title="Download/Print Invoice"
           >
-            <MapIcon className={cn("h-5 w-5", showMap && "animate-pulse")} />
+            {isGeneratingInvoice ? (
+              <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <Printer className="h-5 w-5" />
+            )}
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

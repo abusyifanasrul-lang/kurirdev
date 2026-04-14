@@ -423,29 +423,41 @@ export function CourierOrderDetail() {
   };
 
   return (
-    <div className="animate-in fade-in duration-500">
-      <div className="sticky top-[72px] z-30">
+    <div className={cn(
+      "animate-in fade-in duration-500",
+      showMap ? "h-screen flex flex-col overflow-hidden" : ""
+    )}>
+      <div className={cn(
+        "bg-white shadow-sm border-b border-gray-100 transition-all duration-300",
+        showMap ? "sticky top-0 z-[100]" : "sticky top-[72px] z-30"
+      )}>
         <OrderHeader 
           order={order}
           onBagikanInvoice={handleBagikanInvoice}
           isGeneratingInvoice={isGeneratingInvoice}
-          showMap={showMap}
-          onToggleMap={() => setShowMap(!showMap)}
-        />
-        <OrderMapPanel 
-          show={showMap}
-          origin={courierCoords}
-          destination={destinationAddress}
-          onClose={() => setShowMap(false)}
-          isLoading={isLocationLoading}
-          error={locationError}
+          minimal={showMap}
         />
       </div>
 
-      <div className={cn(
-        "transition-all duration-300",
-        order.status === 'delivered' ? "pb-0" : "pb-10"
-      )}>
+      {showMap ? (
+        <div className={cn(
+          "flex-1 flex flex-col min-h-0 bg-white animate-in slide-in-from-bottom-5 fade-in duration-500 overflow-hidden",
+          (order.status !== 'delivered' && order.status !== 'cancelled') ? "pb-40" : ""
+        )}>
+          <OrderMapPanel 
+            show={showMap}
+            origin={courierCoords}
+            destination={destinationAddress}
+            onClose={() => setShowMap(false)}
+            isLoading={isLocationLoading}
+            error={locationError}
+          />
+        </div>
+      ) : (
+        <div className={cn(
+          "transition-all duration-300",
+          order.status === 'delivered' ? "pb-0" : "pb-40"
+        )}>
         <div className="max-w-md mx-auto p-4 space-y-4 pt-6">
           {isSuspended && (
             <div className="bg-red-50 border border-red-100 rounded-3xl p-5 mb-4 animate-bounce">
@@ -511,6 +523,7 @@ export function CourierOrderDetail() {
                await updateOrder(order.id, { customer_address: addr });
                useToastStore.getState().addToast('Alamat diterapkan pada order ini', 'success');
             }}
+            onToggleMap={() => setShowMap(true)}
           />
           </div>
 
@@ -596,7 +609,8 @@ export function CourierOrderDetail() {
             </div>
           )}
         </div>
-      </div>
+        </div>
+      )}
 
       {/* FIXED FOOTER ACTIONS - Now positioned tightly above global navigation */}
       {order.status !== 'delivered' && order.status !== 'cancelled' && (

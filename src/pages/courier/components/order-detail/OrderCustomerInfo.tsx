@@ -34,6 +34,7 @@ interface OrderCustomerInfoProps {
   onDeleteAddress: (id: string) => void;
   onAddNewAddress: (phone: string, addr: string) => void;
   onSetAppliedAddress: (addr: string) => void;
+  onToggleMap: () => void;
 }
 
 export const OrderCustomerInfo: React.FC<OrderCustomerInfoProps> = ({
@@ -60,7 +61,8 @@ export const OrderCustomerInfo: React.FC<OrderCustomerInfoProps> = ({
   onUpdateAddress,
   onDeleteAddress,
   onAddNewAddress,
-  onSetAppliedAddress
+  onSetAppliedAddress,
+  onToggleMap
 }) => {
   const { operational_area } = useSettingsStore();
   const { changeRequests } = useCustomerStore();
@@ -80,9 +82,9 @@ export const OrderCustomerInfo: React.FC<OrderCustomerInfoProps> = ({
       address.length < 25 || 
       !operational_area.split(',').some(part => address.toLowerCase().includes(part.trim().toLowerCase()));
     
+    
     const query = needsCompletion ? `${address}, ${operational_area}` : address;
-    const encodedQuery = encodeURIComponent(query);
-    window.open(`https://www.google.com/maps/search/?api=1&query=${encodedQuery}`, '_blank');
+    onToggleMap();
   };
 
   return (
