@@ -50,19 +50,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // fetchProfile TIDAK lagi bergantung pada cachedUser (hanya storeLogin yang stabil)
   const fetchProfile = useCallback(async (userId: string, email: string, isSilent: boolean = false) => {
+    // 1. Throttling minimal
     if (fetchInProgress.current) return;
     if (Date.now() - lastFetchTime.current < 2000) return;
 
     fetchInProgress.current = true;
     lastFetchTime.current = Date.now();
 
-    if (!isSilent) {
-      setState(prev => ({ ...prev, isLoading: true }));
-    }
+    if (!isSilent) setState(prev => ({ ...prev, isLoading: true }));
 
     const timeoutId = setTimeout(() => {
       fetchInProgress.current = false;
-    }, 15000);
+      setState(prev => ({ ...prev, isLoading: false }));
+    }, 10000);
 
     try {
       const { data: profile, error } = await supabase
@@ -128,8 +128,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (error) throw error;
 
         if (session?.user) {
-          // Gunakan cachedUserRef.current (bukan cachedUser langsung)
-          // agar tidak menciptakan dependency yang menyebabkan re-run
           const hasCached = !!cachedUserRef.current;
           await fetchProfile(session.user.id, session.user.email || '', hasCached);
         } else {
@@ -137,12 +135,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (error) {
         console.error('Supabase session error:', error);
-        if (!cachedUserRef.current) {
-          storeLogout();
-          setState({ user: null, token: null, isAuthenticated: false, isLoading: false });
-        } else {
-          setState(prev => ({ ...prev, isLoading: false }));
-        }
+        setState(prev => ({ ...prev, isLoading: false }));
       }
     };
 
@@ -200,11 +193,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         subscription.unsubscribe();
       }
     };
-  // ─── PERBAIKAN: deps array minimal dan stabil ─────────────────
-  // fetchProfile stabil → useEffect ini TIDAK pernah re-run
-  // = onAuthStateChange hanya didaftarkan SATU kali seumur hidup app
-  // ─────────────────────────────────────────────────────────────
-  }, [fetchProfile, storeLogout]);
+  }, [fetchProfile]);
 
   const logout = useCallback(async () => {
     console.log('Initiating logout...');
