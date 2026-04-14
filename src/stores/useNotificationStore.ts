@@ -172,6 +172,13 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
         supabase.removeChannel(channel).catch(() => {})
         notifChannels.delete(channelId)
         notifStates.delete(channelId)
+
+        // Cleanup health status
+        set(state => {
+          const next = { ...state.realtimeStatus }
+          delete next[channelId]
+          return { realtimeStatus: next }
+        })
       }
       notifRefs.set(channelId, 0)
     } else {
@@ -294,6 +301,13 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
         supabase.removeChannel(channel).catch(() => {})
         notifChannels.delete(channelId)
         notifStates.delete(channelId)
+
+        // Cleanup health status
+        set(state => {
+          const next = { ...state.realtimeStatus }
+          delete next[channelId]
+          return { realtimeStatus: next }
+        })
       }
       notifRefs.set(channelId, 0)
     } else {

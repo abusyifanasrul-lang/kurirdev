@@ -423,6 +423,13 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
         supabase.removeChannel(channel)
         customerChannels.delete(channelId)
         customerStates.delete(channelId)
+
+        // Cleanup health status
+        set(state => {
+          const next = { ...state.realtimeStatus }
+          delete next[channelId]
+          return { realtimeStatus: next }
+        })
       }
       customerRefs.set(channelId, 0)
     } else {
@@ -532,6 +539,13 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
         supabase.removeChannel(channel)
         customerChannels.delete(channelId)
         customerStates.delete(channelId)
+
+        // Cleanup health status
+        set(state => {
+          const next = { ...state.realtimeStatus }
+          delete next[channelId]
+          return { realtimeStatus: next }
+        })
       }
       customerRefs.set(channelId, 0)
     } else {

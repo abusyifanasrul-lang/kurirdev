@@ -37,17 +37,8 @@ export const Customers: React.FC = () => {
     if (!isLoaded) loadFromLocal();
     syncFromServer();
     fetchPendingRequests();
-
-    // Subscribe to real-time updates
-    const unsubRequests = subscribeToRequests();
-    const unsubCustomers = subscribeToCustomers();
-
-    return () => {
-      unsubRequests();
-      unsubCustomers();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoaded]); 
+    // Real-time subscriptions are now handled globally by AppListeners.tsx
+  }, [isLoaded, syncFromServer, fetchPendingRequests, loadFromLocal]);
   // Stabilized dependencies to prevent re-subscribing on every state update
 
   const pendingRequests = changeRequests.filter(r => r.status === 'pending');

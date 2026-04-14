@@ -145,6 +145,7 @@ export const AppListeners = () => {
   //   Slot 3 (t=1500ms) → subscribeUsers (effect 4)
   //   Slot 4 (t=2000ms) → subscribeSettings (effect 1)
   //   Slot 5 (t=2500ms) → subscribeProfile  (effect 1.b)
+  //   Slot 6 (t=3100ms) → subscribeCustomers & Requests (effect 4.b)
   // ----------------------------------------------------------------
   useEffect(() => {
     if (!user) return
@@ -282,6 +283,30 @@ export const AppListeners = () => {
     return () => {
       clearTimeout(timerId)
       if (cleanup) cleanup()
+    }
+  }, [user?.id, user?.role])
+
+  // ----------------------------------------------------------------
+  // 4.b Global Customer Subscriptions — delay 3100ms (slot 6)
+  // ----------------------------------------------------------------
+  useEffect(() => {
+    if (!user) return
+    let unsubRequests: (() => void) | undefined
+    let unsubCustomers: (() => void) | undefined
+    
+    const timerId = setTimeout(() => {
+      const customerStore = useCustomerStore.getState()
+      
+      console.log('📡 [AppListeners] Opening customer channels (slot 6)...')
+      // Both Admin and Courier need these for Dashboard and Realtime updates
+      unsubRequests = customerStore.subscribeToRequests()
+      unsubCustomers = customerStore.subscribeToCustomers()
+    }, 3100)
+    
+    return () => {
+      clearTimeout(timerId)
+      if (unsubRequests) unsubRequests()
+      if (unsubCustomers) unsubCustomers()
     }
   }, [user?.id, user?.role])
 

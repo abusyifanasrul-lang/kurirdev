@@ -59,17 +59,13 @@ export function CourierOrderDetail() {
   useEffect(() => {
     if (!id) return;
     const unsubOrder = subscribeOrderById(id);
-    const unsubRequests = subscribeToRequests();
-    const unsubCustomers = subscribeToCustomers();
-    
     fetchPendingRequests();
+    // Real-time customer/request subscriptions are now handled globally
     
     return () => {
       unsubOrder();
-      unsubRequests();
-      unsubCustomers();
     };
-  }, [id, subscribeOrderById, subscribeToRequests, subscribeToCustomers, fetchPendingRequests]);
+  }, [id, subscribeOrderById, fetchPendingRequests]);
 
   // Auto-scroll to show success view when delivered - use separate ref to avoid repetitive scrolls
   const hasScrolled = useRef(false);

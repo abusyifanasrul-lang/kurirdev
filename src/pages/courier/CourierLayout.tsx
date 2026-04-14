@@ -30,18 +30,9 @@ export function CourierLayout() {
 
   useEffect(() => {
     if (!user?.id) return
-
-    // Centralized subscriptions
-    useOrderStore.getState().fetchActiveOrdersByCourier(user.id);
-    const unsubOrders = useOrderStore.getState().subscribeOrders({ courierId: user.id });
-    const unsubRequests = useCustomerStore.getState().subscribeToRequests();
-    const unsubCustomers = useCustomerStore.getState().subscribeToCustomers();
-
-    return () => {
-      unsubOrders();
-      unsubRequests();
-      unsubCustomers();
-    };
+    // Initial data fetch for active orders is handled by AppListeners
+    // but we can keep a local refresh trigger if needed. 
+    // For now, we rely on the global sync.
   }, [user?.id])
   const { notifications } = useNotificationStore();
   const unreadCount = notifications.filter(n => n.user_id === currentUser?.id && !n.is_read).length;
