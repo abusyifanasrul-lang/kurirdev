@@ -25,26 +25,32 @@ export function PasswordTab({ onUpdate, isLoading }: PasswordTabProps) {
   return (
     <Card>
       <h3 className="text-lg font-semibold text-gray-900 mb-6">Change Password</h3>
-      <div className="space-y-4 max-w-md">
+      <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
         <Input
           label="Current Password"
           type="password"
           value={form.currentPassword}
           onChange={(e) => setForm({ ...form, currentPassword: e.target.value })}
+          className="bg-white"
         />
+        <div className="hidden md:block" /> {/* Spacer */}
         <Input
           label="New Password"
           type="password"
           value={form.newPassword}
           onChange={(e) => setForm({ ...form, newPassword: e.target.value })}
           helperText="Min 8 characters"
+          className="bg-white"
         />
         <Input
           label="Confirm New Password"
           type="password"
           value={form.confirmPassword}
           onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+          className="bg-white"
         />
+      </div>
         <div className="pt-4">
           <Button
             onClick={handleSubmit}

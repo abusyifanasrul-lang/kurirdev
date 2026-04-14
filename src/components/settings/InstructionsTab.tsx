@@ -67,7 +67,7 @@ export function InstructionsTab({
         </Button>
       </div>
 
-      <div className="space-y-3">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         {instructions.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             <SettingsIcon className="h-12 w-12 mx-auto mb-3 text-gray-300" />

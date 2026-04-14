@@ -38,7 +38,8 @@ export function GeneralOpsTab({
             </div>
           </div>
           
-          <div className="space-y-6 max-w-xl">
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
             {/* Section 1: Navigasi & Lokasi */}
             <div className="bg-emerald-50/50 border border-emerald-100 p-5 rounded-2xl relative overflow-hidden group">
               <div className="absolute -right-4 -top-4 opacity-5 group-hover:scale-110 transition-transform duration-500 pointer-events-none">
@@ -113,7 +114,8 @@ export function GeneralOpsTab({
                 </div>
               </div>
             </div>
-
+            </div>
+            
             <div className="pt-4">
               <Button onClick={handleSave} className="w-full lg:w-auto px-10 bg-emerald-600 hover:bg-emerald-700 transition-colors shadow-md shadow-emerald-100">
                 Simpan Perubahan

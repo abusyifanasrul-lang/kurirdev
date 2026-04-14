@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Plus, Eye, EyeOff, ToggleLeft, ToggleRight, TrendingUp, Package, DollarSign, Phone, Mail, Award, Hash } from 'lucide-react';
+import { Plus, Eye, EyeOff, ToggleLeft, ToggleRight, TrendingUp, Package, DollarSign, Phone, Mail, Award, Hash, Search } from 'lucide-react';
 import { format } from 'date-fns';
 import { Header } from '@/components/layout/Header';
 import { Card, StatCard } from '@/components/ui/Card';
@@ -47,6 +47,14 @@ export function Couriers() {
   const [courierUnpaidOrders, setCourierUnpaidOrders] = useState<Order[]>([]);
   const [allUnpaidCounts, setAllUnpaidCounts] = useState<Record<string, number>>({})
   const [weekOrders, setWeekOrders] = useState<Order[]>([])
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredCouriers = useMemo(() => {
+    return couriers.filter(c => 
+      c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      c.phone?.includes(searchQuery)
+    );
+  }, [couriers, searchQuery]);
 
   useEffect(() => {
     const loadWeek = async () => {
@@ -237,7 +245,7 @@ export function Couriers() {
 
       <div className="p-4 lg:p-8 space-y-6">
         {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-3 lg:gap-6">
           <StatCard
             title="Total Couriers"
             value={couriers.length}
@@ -263,6 +271,17 @@ export function Couriers() {
           )}
         </div>
 
+        {/* Search Bar */}
+        <div className="max-w-md">
+          <Input
+            placeholder="Search name or phone..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            leftIcon={<Search className="h-4 w-4 text-gray-400" />}
+            className="bg-white"
+          />
+        </div>
+
         {/* Couriers Table */}
         <Card padding="none">
           <Table>
@@ -282,13 +301,13 @@ export function Couriers() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {couriers.length === 0 ? (
+              {filteredCouriers.length === 0 ? (
                 <TableEmpty 
                   colSpan={isFinance ? 7 : 5} 
-                  message="No couriers registered yet. Please click 'Add Courier' to onboard a new team member." 
+                  message={searchQuery ? `No results found for "${searchQuery}"` : "No couriers registered yet. Please click 'Add Courier' to onboard a new team member."} 
                 />
               ) : (
-                couriers.map((courier: Courier) => (
+                filteredCouriers.map((courier: Courier) => (
                   <TableRow
                     key={courier.id}
                     className="cursor-pointer hover:bg-gray-50"

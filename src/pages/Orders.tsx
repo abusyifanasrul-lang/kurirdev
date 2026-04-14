@@ -24,6 +24,7 @@ import { OrderModal } from '@/components/orders/modals/OrderModal';
 import { BulkSettleModal } from '@/components/orders/modals/BulkSettleModal';
 import { CancelOrderModal } from '@/components/orders/modals/CancelOrderModal';
 import { CourierBadge } from '@/components/couriers/CourierBadge';
+import { Pagination } from '@/components/ui/Pagination';
 
 function OrdersLoading() {
   return (
@@ -145,6 +146,8 @@ export function Orders() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchCategory, setSearchCategory] = useState('all');
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 40;
   
   const now = getLocalNow();
   const oneMonthAgo = new Date(now);
@@ -237,6 +240,17 @@ export function Orders() {
       order: prev.field === field && prev.order === 'asc' ? 'desc' : 'asc',
     }));
   };
+
+  const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
+  const paginatedOrders = filteredOrders.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, searchCategory, statusFilter, dateFilter]);
 
 
 
@@ -713,7 +727,7 @@ export function Orders() {
         {/* Orders List (Desktop & Mobile) */}
         <Suspense fallback={<OrdersLoading />}>
           <OrderTable 
-            orders={filteredOrders}
+            orders={paginatedOrders}
             onSelect={(order) => { setSelectedOrder(order); setIsOrderModalOpen(true); }}
             onSort={handleSort}
             sortField={sortConfig.field}
@@ -730,8 +744,17 @@ export function Orders() {
           />
 
           <OrderListMobile 
-            orders={filteredOrders}
+            orders={paginatedOrders}
             onSelect={(order) => { setSelectedOrder(order); setIsOrderModalOpen(true); }}
+          />
+
+          <Pagination 
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            totalItems={filteredOrders.length}
+            itemsPerPage={ITEMS_PER_PAGE}
+            className="mt-6"
           />
         </Suspense>
       </div>

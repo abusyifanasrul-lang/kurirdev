@@ -196,7 +196,7 @@ export function Dashboard() {
 
   const recentOrders = [...allOrders]
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    .slice(0, 5);
+    .slice(0, 15);
 
   return (
     <div className="min-h-screen">
@@ -284,7 +284,7 @@ export function Dashboard() {
         </div>
 
         {/* Stats Grid - Linked to Pages */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-3 lg:gap-6">
           <StatCard
             title={timeRange === 'today' ? "Orders Today" : "Orders"}
             value={analytics.total_orders}
@@ -334,24 +334,14 @@ export function Dashboard() {
             subtitle="Awaiting assignment"
             to="/admin/orders"
           />
-          {user?.role === 'owner' && (
-            <StatCard
-              title="Success Rate"
-              value={`${analytics.success_rate.toFixed(1)}%`}
-              icon={<BarChart3 className="h-6 w-6" />}
-              subtitle={timeRange === 'today' ? 'Hari ini' : 'Periode terpilih'}
-            />
-          )}
-        </div>
+          </div>
 
-        {/* Core Content Grid */}
+
+
+        {/* Row 1: Visual Analytics (Charts) */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-          {/* Main Chart Column (2/3 width) */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Revenue Chart */}
-            {isFinance && (
-              <Card>
+            <div className="lg:col-span-2">
+              <Card className="h-full">
                 <div className="flex items-center justify-between mb-6">
                   <div>
                     <h2 className="text-lg font-semibold text-gray-900">Revenue Trend</h2>
@@ -369,16 +359,97 @@ export function Dashboard() {
                   />
                 </Suspense>
               </Card>
-            )}
+            </div>
+            <div className="lg:col-span-1">
+              <Card className="flex flex-col h-[450px]">
+                <div className="flex items-center justify-between mb-4 shrink-0">
+                  <h2 className="text-lg font-semibold text-gray-900">Courier Queue</h2>
+                  <span className="text-sm font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                    {analytics.active_couriers} Online
+                  </span>
+                </div>
+                <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar text-left">
+                  {(() => {
+                    const activeCouriers = users.filter(u => u.role === 'courier' && u.is_active)
+                    const onlineQueue = [...activeCouriers.filter(u => u.is_online)]
+                      .sort((a, b) => ((a as any).queue_position ?? 999) - ((b as any).queue_position ?? 999))
+                    const offlineCouriers = activeCouriers.filter(u => !u.is_online)
 
-            {/* Recent Orders */}
-            <Card>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-semibold text-gray-900">Recent Orders</h2>
-                <Link to="/admin/orders" className="text-sm text-teal-600 hover:text-teal-700 font-medium">
-                  View all →
-                </Link>
-              </div>
+                    if (activeCouriers.length === 0) return (
+                      <p className="text-sm text-gray-500 text-center py-4">No couriers registered</p>
+                    )
+
+                    return (
+                      <>
+                        {onlineQueue.length === 0 && (
+                          <p className="text-sm text-gray-500 text-center py-4">No online couriers in queue</p>
+                        )}
+                        {onlineQueue.map((courier, index) => {
+                          const status = (courier as any).courier_status ?? 'on'
+                          const waitingOrder = activeOrdersByCourier.find(o => 
+                            o.courier_id === courier.id && 
+                            o.is_waiting === true &&
+                            !['cancelled', 'delivered'].includes(o.status)
+                          );
+                          return (
+                            <div key={courier.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                              <div className="flex items-center gap-3 text-left">
+                                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-teal-100 text-teal-600 font-bold text-xs shrink-0">
+                                  {index + 1}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-medium text-gray-900 text-sm truncate">{courier.name}</p>
+                                  <span className={`text-xs font-semibold ${status === 'stay' ? 'text-blue-600' : 'text-green-600'}`}>
+                                    {status === 'stay' ? '🏠 STAY' : '🚀 ON'}
+                                  </span>
+                                  {waitingOrder && (
+                                    <span className="block text-xs text-yellow-600 font-semibold truncate">
+                                      📝 PENDING — {waitingOrder.order_number}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                        {offlineCouriers.length > 0 && (
+                          <>
+                            <div className="border-t border-dashed border-gray-200 my-2" />
+                            {offlineCouriers.map(courier => (
+                              <div key={courier.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 opacity-60">
+                                <div className="flex items-center gap-3 text-left">
+                                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-200 text-gray-400 font-bold text-xs shrink-0">
+                                    —
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="font-medium text-gray-600 text-sm truncate">{courier.name}</p>
+                                    <span className="text-xs text-red-500 font-semibold"> OFF</span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </>
+                        )}
+                      </>
+                    )
+                  })()}
+                </div>
+              </Card>
+            </div>
+        </div>
+
+        {/* Row 2: Operational Intelligence (Lists) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+          {/* Recent Orders */}
+          <Card className="flex flex-col h-[450px]">
+
+            <div className="flex items-center justify-between mb-6 shrink-0">
+              <h2 className="text-lg font-semibold text-gray-900">Recent Orders</h2>
+              <Link to="/admin/orders" className="text-sm text-teal-600 hover:text-teal-700 font-medium">
+                View all →
+              </Link>
+            </div>
+            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
               <div className="space-y-4">
                 {recentOrders.map((order) => (
                   <div
@@ -400,105 +471,25 @@ export function Dashboard() {
                   </div>
                 ))}
               </div>
-            </Card>
-          </div>
+            </div>
+          </Card>
 
-          {/* Right Column (1/3 width) - Panels */}
-          <div className="space-y-6">
-            {/* Courier Queue Panel (FIFO) */}
-            <Card className="flex flex-col h-[400px]">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900">Courier Queue</h2>
-                <span className="text-sm font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-full">
-                  {analytics.active_couriers} Online
-                </span>
-              </div>
-              <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
-                {(() => {
-                  const activeCouriers = users.filter(u => u.role === 'courier' && u.is_active)
-                  const onlineQueue = [...activeCouriers.filter(u => u.is_online)]
-                    .sort((a, b) => ((a as any).queue_position ?? 999) - ((b as any).queue_position ?? 999))
-                  const offlineCouriers = activeCouriers.filter(u => !u.is_online)
-
-                  if (activeCouriers.length === 0) return (
-                    <p className="text-sm text-gray-500 text-center py-4">No couriers registered</p>
-                  )
-
-                  return (
-                    <>
-                      {onlineQueue.length === 0 && (
-                        <p className="text-sm text-gray-500 text-center py-4">No online couriers in queue</p>
-                      )}
-                      {onlineQueue.map((courier, index) => {
-                        const status = (courier as any).courier_status ?? 'on'
-                        const waitingOrder = activeOrdersByCourier.find(o => 
-                          o.courier_id === courier.id && 
-                          o.is_waiting === true &&
-                          !['cancelled', 'delivered'].includes(o.status)
-                        );
-                        return (
-                          <div key={courier.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
-                            <div className="flex items-center gap-3">
-                              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-teal-100 text-teal-600 font-bold text-xs">
-                                {index + 1}
-                              </div>
-                              <div>
-                                <p className="font-medium text-gray-900 text-sm">{courier.name}</p>
-                                <span className={`text-xs font-semibold ${status === 'stay' ? 'text-blue-600' : 'text-green-600'}`}>
-                                  {status === 'stay' ? '\u{1F3E0} STAY' : '\u{1F680} ON'}
-                                </span>
-                                {waitingOrder && (
-                                  <span className="block text-xs text-yellow-600 font-semibold">
-                                    📝 PENDING — {waitingOrder.order_number}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        )
-                      })}
-                      {offlineCouriers.length > 0 && (
-                        <>
-                          <div className="border-t border-dashed border-gray-200 my-2" />
-                          {offlineCouriers.map(courier => (
-                            <div key={courier.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 opacity-60">
-                              <div className="flex items-center gap-3">
-                                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-200 text-gray-400 font-bold text-xs">
-                                  —
-                                </div>
-                                <div>
-                                  <p className="font-medium text-gray-600 text-sm">{courier.name}</p>
-                                  <span className="text-xs text-red-500 font-semibold">� OFF</span>
-                                  {(courier as any).off_reason && (
-                                    <span className="text-xs text-gray-400 ml-1">• {(courier as any).off_reason}</span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </>
-                      )}
-                    </>
-                  )
-                })()}
-              </div>
-            </Card>
-
-            {/* Order Status Distribution */}
-            <Card>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-semibold text-gray-900">Status Overview</h2>
-                <span className="text-xs text-gray-400">
-                  {timeRange === 'today' ? 'Hari ini' : timeRange === '7days' ? '7 hari terakhir' : '30 hari terakhir'}
-                </span>
-              </div>
+          {/* Status Overview (Moved from Row 1) */}
+          <Card className="flex flex-col h-[450px]">
+            <div className="flex items-center justify-between mb-6 shrink-0">
+              <h2 className="text-lg font-semibold text-gray-900">Status Overview</h2>
+              <span className="text-xs text-gray-400">
+                {timeRange === 'today' ? 'Hari ini' : timeRange === '7days' ? '7 hari terakhir' : '30 hari terakhir'}
+              </span>
+            </div>
+            <div className="flex-1 flex flex-col justify-center">
               <Suspense fallback={<ChartSkeleton height={200} />}>
                 <StatusPieChart 
                   data={analytics.orders_by_status} 
                   colors={COLORS} 
                 />
               </Suspense>
-              <div className="grid grid-cols-2 gap-2 mt-4">
+              <div className="grid grid-cols-2 gap-2 mt-6">
                 {analytics.orders_by_status.slice(0, 4).map((item, index) => (
                   <div key={item.status} className="flex items-center gap-2">
                     <div
@@ -511,20 +502,55 @@ export function Dashboard() {
                   </div>
                 ))}
               </div>
-            </Card>
+            </div>
+          </Card>
+        </div>
 
-            {/* Top Kurir widget (Analytical) */}
-            <Card>
-              <div className="flex items-center gap-2 mb-4">
-                <Award className="h-5 w-5 text-emerald-600" />
-                <h3 className="text-lg font-semibold text-gray-900">Top Kurir</h3>
-              </div>
+        {/* Row 3: Performance Leadership (Bottom Side-by-Side) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Top Customers */}
+          <Card className="flex flex-col h-[450px]">
+            <div className="flex items-center gap-2 mb-4 shrink-0">
+              <ShoppingBag className="h-5 w-5 text-blue-600" />
+              <h3 className="text-lg font-semibold text-gray-900">Top Pelanggan</h3>
+            </div>
+            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
+              {topCustomers.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {topCustomers.map((c, i) => (
+                    <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                      <div className="flex items-center gap-3 text-left min-w-0">
+                        <div className="w-8 h-8 shrink-0 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs">
+                          {i + 1}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-medium text-gray-900 text-xs truncate">{c.name}</p>
+                          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-tight">{c.order_count} order</p>
+                        </div>
+                      </div>
+                      <p className="font-bold text-gray-900 text-xs whitespace-nowrap ml-2">{formatCurrency(c.total_fee)}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6 text-gray-400 text-sm">Belum ada data</div>
+              )}
+            </div>
+          </Card>
+
+          {/* Top Kurir widget (Analytical) */}
+          <Card className="flex flex-col h-[450px]">
+            <div className="flex items-center gap-2 mb-4 shrink-0">
+              <Award className="h-5 w-5 text-emerald-600" />
+              <h3 className="text-lg font-semibold text-gray-900">Top Kurir</h3>
+            </div>
+            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
               {topCouriersLocal.length > 0 ? (
                 <div className="space-y-3">
                   {topCouriersLocal.map((c, i) => (
                     <div key={c.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                      <div className="flex items-center gap-3 text-left">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${
+                      <div className="flex items-center gap-3 text-left min-w-0">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
                           i === 0 ? 'bg-yellow-100 text-yellow-700' :
                           i === 1 ? 'bg-gray-200 text-gray-600' :
                           i === 2 ? 'bg-orange-100 text-orange-700' :
@@ -537,44 +563,16 @@ export function Dashboard() {
                           <p className="text-[10px] text-gray-500 uppercase font-bold tracking-tight">{c.delivery_count} delivery</p>
                         </div>
                       </div>
-                      <p className="font-bold text-gray-900 text-xs whitespace-nowrap">{formatCurrency(c.total_fee)}</p>
+                      <p className="font-bold text-gray-900 text-xs whitespace-nowrap ml-2">{formatCurrency(c.total_fee)}</p>
                     </div>
                   ))}
                 </div>
               ) : (
                 <div className="text-center py-8 text-gray-400 text-sm">Belum ada data</div>
               )}
-            </Card>
-          </div>
-        </div>
-
-        {/* Top Customers (Full Width on Bottom) */}
-        <Card>
-          <div className="flex items-center gap-2 mb-4">
-            <ShoppingBag className="h-5 w-5 text-blue-600" />
-            <h3 className="text-lg font-semibold text-gray-900">Top Pelanggan</h3>
-          </div>
-          {topCustomers.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
-              {topCustomers.map((c, i) => (
-                <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                  <div className="flex items-center gap-3 text-left min-w-0">
-                    <div className="w-8 h-8 shrink-0 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs">
-                      {i + 1}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-medium text-gray-900 text-xs truncate">{c.name}</p>
-                      <p className="text-[10px] text-gray-500 font-bold uppercase tracking-tight">{c.order_count} order</p>
-                    </div>
-                  </div>
-                  <p className="font-bold text-gray-900 text-xs whitespace-nowrap ml-2">{formatCurrency(c.total_fee)}</p>
-                </div>
-              ))}
             </div>
-          ) : (
-            <div className="text-center py-6 text-gray-400 text-sm">Belum ada data</div>
-          )}
-        </Card>
+          </Card>
+        </div>
       </div>
     </div>
   );

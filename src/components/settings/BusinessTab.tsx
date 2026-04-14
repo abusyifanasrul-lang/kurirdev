@@ -47,45 +47,48 @@ export function BusinessTab({
             </div>
           </div>
           
-          <div className="space-y-6 max-w-lg">
-            <Input
-              label="Komisi Kurir (%)"
-              helperText="Persentase dari total ongkir yang diterima oleh kurir. Contoh: 80% berarti Kurir Rp12.000 & Admin Rp3.000 dari total Rp15.000."
-              type="number"
-              value={form.commission_rate}
-              onChange={e => setForm(prev => ({ ...prev, commission_rate: Number(e.target.value) }))}
-              min={0}
-              max={100}
-              className="text-lg font-semibold"
-            />
-            
-            <Input
-              label="Ambang Batas Potongan (Rp)"
-              helperText="Ongkir di bawah atau sama dengan nilai ini TIDAK akan dipotong admin (Kurir 100%)."
-              type="text"
-              value={form.commission_threshold !== undefined ? `Rp ${form.commission_threshold.toLocaleString('id-ID')}` : ''}
-              onChange={e => {
-                const val = Number(e.target.value.replace(/[^0-9]/g, ''));
-                setForm(prev => ({ ...prev, commission_threshold: val }));
-              }}
-              className="text-lg font-semibold"
-            />
+          <div className="space-y-6">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
+            <div className="space-y-6">
+              <Input
+                label="Komisi Kurir (%)"
+                helperText="Persentase dari total ongkir yang diterima oleh kurir. Contoh: 80% berarti Kurir Rp12.000 & Admin Rp3.000 dari total Rp15.000."
+                type="number"
+                value={form.commission_rate}
+                onChange={e => setForm(prev => ({ ...prev, commission_rate: Number(e.target.value) }))}
+                min={0}
+                max={100}
+                className="text-lg font-semibold bg-white"
+              />
+              
+              <Input
+                label="Ambang Batas Potongan (Rp)"
+                helperText="Ongkir di bawah atau sama dengan nilai ini TIDAK akan dipotong admin (Kurir 100%)."
+                type="text"
+                value={form.commission_threshold !== undefined ? `Rp ${form.commission_threshold.toLocaleString('id-ID')}` : ''}
+                onChange={e => {
+                  const val = Number(e.target.value.replace(/[^0-9]/g, ''));
+                  setForm(prev => ({ ...prev, commission_threshold: val }));
+                }}
+                className="text-lg font-semibold bg-white"
+              />
+            </div>
 
-            <div className="bg-teal-50 border border-teal-100 p-5 rounded-2xl">
-              <h4 className="text-sm font-bold text-teal-800 mb-3 flex items-center gap-2">
+            <div className="bg-teal-50 border border-teal-100 p-5 rounded-2xl h-full flex flex-col justify-center">
+              <h4 className="text-sm font-bold text-teal-800 mb-4 flex items-center gap-2">
                 <Shield className="h-4 w-4" />
                 Simulasi Bagi Hasil
               </h4>
-              <div className="space-y-3 text-sm">
+              <div className="space-y-4 text-sm bg-white/50 p-4 rounded-xl border border-teal-100/50">
                 <div className="flex justify-between items-center">
-                  <span className="text-teal-600">Ongkir Standar (Rp15.000):</span>
+                  <span className="text-teal-600 font-medium">Ongkir Standar (Rp15.000):</span>
                   <div className="text-right">
                     <p className="font-bold text-teal-900">Kurir: Rp {Math.round(15000 * form.commission_rate / 100).toLocaleString('id-ID')}</p>
                     <p className="text-[10px] text-teal-600">Admin: Rp {Math.round(15000 * (100 - form.commission_rate) / 100).toLocaleString('id-ID')}</p>
                   </div>
                 </div>
-                <div className="border-t border-teal-100 pt-2 flex justify-between items-center">
-                  <span className="text-teal-600">Ongkir Kecil (≤ Rp{form.commission_threshold.toLocaleString('id-ID')}):</span>
+                <div className="border-t border-teal-100/50 pt-3 flex justify-between items-center">
+                  <span className="text-teal-600 font-medium">Ongkir Kecil (≤ Rp{form.commission_threshold.toLocaleString('id-ID')}):</span>
                   <div className="text-right">
                     <p className="font-bold text-teal-900 text-base">Kurir: 100%</p>
                     <p className="text-[10px] text-teal-600 underline">Tanpa Potongan Admin</p>
@@ -93,6 +96,7 @@ export function BusinessTab({
                 </div>
               </div>
             </div>
+          </div>
 
             <div className="pt-4">
               <Button onClick={handleSave} className="w-full lg:w-auto px-10">

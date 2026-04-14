@@ -33,24 +33,29 @@ export function ProfileTab({
     <div className="space-y-6">
       <Card>
         <h3 className="text-lg font-semibold text-gray-900 mb-6">Profile Information</h3>
-        <div className="space-y-4 max-w-md">
+        <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
           <Input
             label="Full Name"
             value={form.name}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, name: e.target.value })}
+            className="bg-white"
           />
           <Input
             label="Email Address"
             type="email"
             value={form.email}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, email: e.target.value })}
+            className="bg-white"
           />
           <Input
             label="Phone Number"
             value={form.phone}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, phone: e.target.value })}
             placeholder="+628..."
+            className="bg-white"
           />
+        </div>
           <div className="pt-4 flex flex-col gap-3">
             <Button onClick={handleSubmit} isLoading={isLoading}>
               Save Changes

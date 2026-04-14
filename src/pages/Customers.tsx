@@ -3,16 +3,23 @@ import { useCustomerStore } from '@/stores/useCustomerStore';
 import { localDB } from '@/lib/orderCache';
 import { useAuth } from '@/context/AuthContext';
 import { useToastStore } from '@/stores/useToastStore';
-import { Users, Check, X, Clock, Phone, MapPin, Plus, Trash2, Edit2, Save, Package, Calendar, AlertCircle } from 'lucide-react';
+import { Users, Check, X, Clock, Phone, MapPin, Plus, Trash2, Edit2, Save, Package, Calendar, AlertCircle, Search } from 'lucide-react';
 import { Customer } from '@/types';
 import { Modal } from '@/components/ui/Modal';
 import { Header } from '@/components/layout/Header';
+import { Button } from '@/components/ui/Button';
+import { Card, StatCard } from '@/components/ui/Card';
+import { Input } from '@/components/ui/Input';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { Pagination } from '@/components/ui/Pagination';
 
 export const Customers: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 25;
   
   const { 
     customers, 
@@ -23,6 +30,7 @@ export const Customers: React.FC = () => {
     syncFromServer,
     subscribeToRequests,
     subscribeToCustomers,
+    upsertCustomer // Added
   } = useCustomerStore();
 
   useEffect(() => {
@@ -61,19 +69,43 @@ export const Customers: React.FC = () => {
     return (b.order_count || 0) - (a.order_count || 0);
   });
 
+  const totalPages = Math.ceil(filteredCustomers.length / ITEMS_PER_PAGE);
+  const paginatedCustomers = filteredCustomers.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  // Reset to page 1 when search query changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
 
   return (
     <div className="min-h-screen">
       <Header 
         title="Manajemen Pelanggan"
         subtitle="Kelola master data pelanggan dan persetujuan perubahan alamat."
-        showSearch
-        searchValue={searchQuery}
-        onSearchChange={setSearchQuery}
-        searchPlaceholder="Cari nama atau no. telepon..."
+        actions={
+          <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => setIsAddModalOpen(true)}>
+            Add Customer
+          </Button>
+        }
       />
 
-      <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6 animate-in fade-in duration-300">
+      <div className="p-4 md:p-8 max-w-[1600px] mx-auto space-y-6 animate-in fade-in duration-300">
+        
+        {/* Search Bar */}
+        <div className="max-w-md">
+          <Input
+            placeholder="Cari nama atau no. telepon..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            leftIcon={<Search className="h-4 w-4 text-gray-400" />}
+            className="bg-white"
+          />
+        </div>
+
         <div className="bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse min-w-[600px]">
@@ -86,15 +118,18 @@ export const Customers: React.FC = () => {
                     <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-widest text-right pr-6">Bergabung</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {filteredCustomers.length === 0 ? (
+                <tbody className="divide-y divide-gray-50">
+                  {paginatedCustomers.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="p-8 text-center text-gray-500 text-sm font-medium">
-                        Tidak ada pelanggan ditemukan
+                      <td colSpan={5} className="p-12 text-center">
+                        <div className="flex flex-col items-center gap-2">
+                          <span className="text-3xl">🔍</span>
+                          <p className="text-gray-500 font-medium">Tidak ada data pelanggan.</p>
+                        </div>
                       </td>
                     </tr>
                   ) : (
-                    filteredCustomers.map(customer => (
+                    paginatedCustomers.map(customer => (
                       <tr 
                         key={customer.id} 
                         onClick={() => { setSelectedCustomerId(customer.id); setIsModalOpen(true); }}
@@ -136,8 +171,37 @@ export const Customers: React.FC = () => {
                 </tbody>
               </table>
             </div>
+            
+            <div className="border-t border-gray-100 bg-gray-50/30">
+              <Pagination 
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                totalItems={filteredCustomers.length}
+                itemsPerPage={ITEMS_PER_PAGE}
+              />
+            </div>
           </div>
       </div>
+
+      {isAddModalOpen && (
+        <AddCustomerModal 
+          isOpen={isAddModalOpen}
+          onClose={() => setIsAddModalOpen(false)}
+          onAdd={async (data) => {
+            const newCustomer: Customer = {
+              id: crypto.randomUUID(),
+              name: data.name!,
+              phone: data.phone!,
+              addresses: [],
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              order_count: 0
+            };
+            await upsertCustomer(newCustomer);
+          }}
+        />
+      )}
 
       {isModalOpen && selectedCustomerId && (
         <DetailModal 
@@ -147,6 +211,60 @@ export const Customers: React.FC = () => {
         />
       )}
     </div>
+  );
+};
+
+const AddCustomerModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  onAdd: (customer: Partial<Customer>) => Promise<void>;
+}> = ({ isOpen, onClose, onAdd }) => {
+  const [formData, setFormData] = useState({ name: '', phone: '' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { addToast } = useToastStore();
+
+  const handleSubmit = async () => {
+    if (!formData.name || !formData.phone) return;
+    setIsSubmitting(true);
+    try {
+      await onAdd(formData);
+      addToast('Pelanggan berhasil ditambahkan', 'success');
+      onClose();
+      setFormData({ name: '', phone: '' });
+    } catch (err: any) {
+      addToast(err.message || 'Gagal menambahkan aktifkan', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Tambah Pelanggan Baru">
+       <div className="space-y-4">
+          <Input 
+            label="Nama Lengkap"
+            value={formData.name}
+            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+            placeholder="Masukkan nama pelanggan..."
+          />
+          <Input 
+            label="Nomor Telepon"
+            value={formData.phone}
+            onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+            placeholder="Contoh: 08123456789..."
+          />
+          <div className="pt-2">
+            <Button 
+                onClick={handleSubmit} 
+                className="w-full" 
+                isLoading={isSubmitting}
+                disabled={!formData.name || !formData.phone}
+            >
+              TAMBAH PELANGGAN
+            </Button>
+          </div>
+       </div>
+    </Modal>
   );
 };
 
