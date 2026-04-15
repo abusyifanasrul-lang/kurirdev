@@ -1,5 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
+import { PushNotifications } from '@capacitor/push-notifications';
+import { requestFCMPermission } from '@/lib/fcm';
 import {
   Mail,
   Phone,
@@ -37,13 +40,41 @@ export function CourierProfile() {
   );
 
   const [notifPermission, setNotifPermission] = useState<NotificationPermission>(
-    typeof Notification !== 'undefined' ? Notification.permission : 'default'
+    'default'
   );
 
+  useEffect(() => {
+    const checkPermission = async () => {
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const perm = await PushNotifications.checkPermissions();
+          setNotifPermission(perm.receive === 'granted' ? 'granted' : 'default');
+        } catch (e) {
+          console.warn('Failed to check push permissions:', e);
+        }
+      } else if (typeof Notification !== 'undefined') {
+        setNotifPermission(Notification.permission);
+      }
+    };
+    checkPermission();
+  }, []);
+
   const handleRequestNotifPermission = async () => {
-    if (typeof Notification === 'undefined') return;
-    const result = await Notification.requestPermission();
-    setNotifPermission(result);
+    if (!user) return;
+    try {
+      const token = await requestFCMPermission(user.id);
+      if (token) {
+        setNotifPermission('granted');
+      } else {
+        // Refresh local status from system if possible
+        if (Capacitor.isNativePlatform()) {
+          const perm = await PushNotifications.checkPermissions();
+          setNotifPermission(perm.receive === 'granted' ? 'granted' : 'default');
+        }
+      }
+    } catch (err) {
+      console.error('Failed to request notification permission:', err);
+    }
   };
 
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);

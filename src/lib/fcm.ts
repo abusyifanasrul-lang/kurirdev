@@ -47,26 +47,39 @@ async function clearStaleFirebaseData(): Promise<void> {
 /**
  * Native Registration for Capacitor
  */
-const registerNativePush = async (userId: string): Promise<string | null> => {
+/**
+ * Internal helper to setup native listeners
+ */
+const setupNativePushListeners = async (userId: string) => {
   try {
-    let perm = await PushNotifications.checkPermissions()
-    
-    if (perm.receive !== 'granted') {
-      perm = await PushNotifications.requestPermissions()
-    }
-
-    if (perm.receive !== 'granted') {
-      throw new Error('User denied push permissions')
-    }
+    // Clear existing listeners to prevent duplicates on re-mount/re-login
+    await PushNotifications.removeAllListeners()
 
     // Add listeners for native notifications
     await PushNotifications.addListener('registration', async ({ value: token }) => {
       console.log('🚀 Native FCM token received:', token.substring(0, 20) + '...')
-      await (supabase.from('profiles') as any).update({
-        fcm_token: token,
-        fcm_token_updated_at: new Date().toISOString(),
-        platform: 'android'
-      }).eq('id', userId)
+      
+      // Optimization: Only update if token changed or stale (> 24h)
+      const { data: currentProfile } = await supabase
+        .from('profiles')
+        .select('fcm_token, fcm_token_updated_at')
+        .eq('id', userId)
+        .single();
+
+      const isTokenChanged = currentProfile?.fcm_token !== token;
+      const isOld = !currentProfile?.fcm_token_updated_at || 
+                    (Date.now() - new Date(currentProfile.fcm_token_updated_at).getTime()) > 24 * 60 * 60 * 1000;
+
+      if (isTokenChanged || isOld) {
+        console.log(`[FCM-Native] 🔄 Updating token in DB (Changed: ${isTokenChanged}, Old: ${isOld})`);
+        await (supabase.from('profiles') as any).update({
+          fcm_token: token,
+          fcm_token_updated_at: new Date().toISOString(),
+          platform: 'android'
+        }).eq('id', userId)
+      } else {
+        console.log('[FCM-Native] ✅ Token still fresh in DB');
+      }
     })
 
     await PushNotifications.addListener('registrationError', (err) => {
@@ -86,7 +99,27 @@ const registerNativePush = async (userId: string): Promise<string | null> => {
         window.location.href = `/courier/orders/${data.orderId}`
       }
     })
+  } catch (e) {
+    console.error('❌ Failed to setup native listeners:', e)
+  }
+}
 
+/**
+ * Native Registration for Capacitor
+ */
+const registerNativePush = async (userId: string): Promise<string | null> => {
+  try {
+    let perm = await PushNotifications.checkPermissions()
+    
+    if (perm.receive !== 'granted') {
+      perm = await PushNotifications.requestPermissions()
+    }
+
+    if (perm.receive !== 'granted') {
+      throw new Error('User denied push permissions')
+    }
+
+    await setupNativePushListeners(userId)
     await PushNotifications.register()
     return 'pending_native_callback'
   } catch (e) {
@@ -159,7 +192,8 @@ export const requestFCMPermission = async (userId: string): Promise<string | nul
 export const refreshFCMToken = async (userId: string): Promise<void> => {
   try {
     if (Capacitor.isNativePlatform()) {
-      await PushNotifications.register() // Re-triggers current registration listener
+      await setupNativePushListeners(userId)
+      await PushNotifications.register() // Re-triggers the 'registration' listener above
     } else {
       if (!messaging) return
       const registration = await navigator.serviceWorker.getRegistration('/sw.js')
