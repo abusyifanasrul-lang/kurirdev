@@ -149,9 +149,11 @@ export function Layout() {
           <div 
             className={cn(
               "w-2 h-2 rounded-full shadow-sm transition-all duration-500",
-              isOffline ? "bg-red-500" : isHealthy ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
+              isOffline ? "bg-red-500" : 
+              overall === 'initializing' ? "bg-slate-400" :
+              isHealthy ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
             )} 
-            title={isOffline ? "Offline" : isHealthy ? "LIVE" : "Syncing..."}
+            title={isOffline ? "Offline" : overall === 'initializing' ? "Initializing..." : isHealthy ? "LIVE" : "Syncing..."}
           />
         </div>
 
@@ -197,9 +199,11 @@ export function Layout() {
                 <div 
                   className={cn(
                     "w-2 h-2 rounded-full shadow-sm transition-all duration-500",
-                    isOffline ? "bg-red-500" : isHealthy ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
+                    isOffline ? "bg-red-500" : 
+                    overall === 'initializing' ? "bg-slate-400" :
+                    isHealthy ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
                   )} 
-                  title={isOffline ? "Offline" : isHealthy ? "LIVE" : "Syncing..."}
+                  title={isOffline ? "Offline" : overall === 'initializing' ? "Initializing..." : isHealthy ? "LIVE" : "Syncing..."}
                 />
               </div>
               <div className="flex items-center gap-2">

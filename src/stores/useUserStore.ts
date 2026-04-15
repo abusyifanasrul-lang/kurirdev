@@ -237,15 +237,17 @@ export const useUserStore = create<UserState>()((set, get) => ({
         if (userChannels.get(channelId) !== channel) return
 
         if (status === 'SUBSCRIBED') {
-          const wasReconnect = userStates.get(channelId) === 'closed' || userStates.get(channelId) === 'errored'
-          console.log(`✅ [UserStore] ${channelId} ${wasReconnect ? 'Reconnected' : 'Connected'}`)
+          const prevState = userStates.get(channelId)
+          const wasCleanReconnect = prevState === 'closed'
+          
+          console.log(`✅ [UserStore] ${channelId} ${wasCleanReconnect ? 'Reconnected (clean)' : 'Connected/Recovered'}`)
           userStates.set(channelId, 'joined')
           set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
           
-          if (wasReconnect) {
-            console.log(`📡 [UserStore] ${channelId} Reconnect detected — skipping list fetch`)
+          if (wasCleanReconnect) {
+            console.log(`📡 [UserStore] ${channelId} Clean reconnect detected — skipping list fetch`)
           } else {
-            console.log(`📡 [UserStore] ${channelId} First connect — fetching users list...`)
+            console.log(`📡 [UserStore] ${channelId} First connect or error recovery — fetching users list...`)
             get().fetchUsers().catch(err => console.error('Snapshot fetch error:', err))
           }
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
@@ -274,6 +276,13 @@ export const useUserStore = create<UserState>()((set, get) => ({
         supabase.removeChannel(channel).catch(() => {})
         userChannels.delete(channelId)
         userStates.delete(channelId)
+
+        // Cleanup health status
+        set(state => {
+          const next = { ...state.realtimeStatus }
+          delete next[channelId]
+          return { realtimeStatus: next }
+        })
       }
       userRefs.set(channelId, 0)
     } else {
@@ -343,12 +352,13 @@ export const useUserStore = create<UserState>()((set, get) => ({
         if (userChannels.get(channelId) !== channel) return
 
         if (status === 'SUBSCRIBED') {
-          const wasReconnect = userStates.get(channelId) === 'closed' || userStates.get(channelId) === 'errored'
-          console.log(`✅ [UserStore] ${channelId} ${wasReconnect ? 'Reconnected' : 'Connected'}`)
+          const prevState = userStates.get(channelId)
+          const wasCleanReconnect = prevState === 'closed'
+          console.log(`✅ [UserStore] ${channelId} ${wasCleanReconnect ? 'Reconnected (clean)' : 'Connected/Recovered'}`)
           userStates.set(channelId, 'joined')
           set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
 
-          if (wasReconnect) {
+          if (wasCleanReconnect) {
             console.log(`📡 [UserStore] ${channelId} Reconnect detected — skipping profile fetch`)
           } else {
             console.log(`📡 [UserStore] ${channelId} First connect — fetching profile data...`)
@@ -380,6 +390,13 @@ export const useUserStore = create<UserState>()((set, get) => ({
         supabase.removeChannel(channel).catch(() => {})
         userChannels.delete(channelId)
         userStates.delete(channelId)
+
+        // Cleanup health status
+        set(state => {
+          const next = { ...state.realtimeStatus }
+          delete next[channelId]
+          return { realtimeStatus: next }
+        })
       }
       userRefs.set(channelId, 0)
     } else {

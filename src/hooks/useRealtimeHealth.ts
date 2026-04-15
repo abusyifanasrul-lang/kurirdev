@@ -5,7 +5,7 @@ import { useUserStore } from '@/stores/useUserStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { useCustomerStore } from '@/stores/useCustomerStore';
 
-export type RealtimeHealthStatus = 'healthy' | 'degraded' | 'disconnected' | 'joining';
+export type RealtimeHealthStatus = 'healthy' | 'degraded' | 'disconnected' | 'joining' | 'initializing';
 
 export interface ChannelInfo {
   id: string;
@@ -53,19 +53,26 @@ export const useRealtimeHealth = () => {
   }, [orderStatus, notifStatus, userStatus, settingsStatus, customerStatus]);
 
   const stats = useMemo(() => {
-    const total = channels.length;
-    const joined = channels.filter((c) => c.status === 'joined').length;
-    const joining = channels.filter((c) => c.status === 'joining').length;
-    const errored = channels.filter((c) => c.status === 'errored' || c.status === 'closed').length;
+    // Total currently active/pending channels (exclude gracefully closed)
+    const activeChannels = channels.filter((c) => c.status !== 'closed');
+    const total = activeChannels.length;
+    const joined = activeChannels.filter((c) => c.status === 'joined').length;
+    const errored = activeChannels.filter((c) => c.status === 'errored').length;
+    const joining = activeChannels.filter((c) => c.status === 'joining').length;
 
     let overall: RealtimeHealthStatus = 'healthy';
-    
+
     if (total === 0) {
-      overall = 'joining';
-    } else if (errored === total) {
+      // Belum ada channel terdaftar sama sekali — masih startup, bukan "healthy"
+      overall = 'initializing';
+    } else if (errored === total && total > 0) {
       overall = 'disconnected';
-    } else if (errored > 0 || joining > 0) {
+    } else if (errored > 0 || (joining > 0 && joined === 0)) {
       overall = 'degraded';
+    } else if (joining > 0) {
+      overall = 'joining';
+    } else {
+      overall = 'healthy';
     }
 
     return {

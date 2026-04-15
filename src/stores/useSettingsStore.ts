@@ -125,12 +125,13 @@ export const useSettingsStore = create<SettingsStore>()(
             if (settingsChannels.get(channelId) !== channel) return
 
             if (status === 'SUBSCRIBED') {
-              const wasReconnect = settingsStates.get(channelId) === 'closed' || settingsStates.get(channelId) === 'errored'
-              console.log(`✅ [SettingsStore] Settings channel ${wasReconnect ? 'Reconnected' : 'Connected'}`)
+              const prevState = settingsStates.get(channelId)
+              const wasCleanReconnect = prevState === 'closed'
+              console.log(`✅ [SettingsStore] Settings channel ${wasCleanReconnect ? 'Reconnected (clean)' : 'Connected/Recovered'}`)
               settingsStates.set(channelId, 'joined')
               set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
 
-              if (wasReconnect) {
+              if (wasCleanReconnect) {
                 console.log(`📡 [SettingsStore] Reconnect detected — skipping snapshot`)
               } else {
                 console.log(`📡 [SettingsStore] First connect — fetching settings snapshot...`)
@@ -162,6 +163,13 @@ export const useSettingsStore = create<SettingsStore>()(
             supabase.removeChannel(channel).catch(() => {})
             settingsChannels.delete(channelId)
             settingsStates.delete(channelId)
+
+            // Cleanup health status
+            set(state => {
+              const next = { ...state.realtimeStatus }
+              delete next[channelId]
+              return { realtimeStatus: next }
+            })
           }
           settingsRefs.set(channelId, 0)
         } else {

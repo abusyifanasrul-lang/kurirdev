@@ -127,12 +127,13 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
         if (notifChannels.get(channelId) !== channel) return
 
         if (status === 'SUBSCRIBED') {
-          const wasReconnect = notifStates.get(channelId) === 'closed' || notifStates.get(channelId) === 'errored'
-          console.log(`✅ [NotifStore] ${channelId} ${wasReconnect ? 'Reconnected' : 'Connected'}`)
+          const prevState = notifStates.get(channelId)
+          const wasCleanReconnect = prevState === 'closed'
+          console.log(`✅ [NotifStore] ${channelId} ${wasCleanReconnect ? 'Reconnected (clean)' : 'Connected/Recovered'}`)
           notifStates.set(channelId, 'joined')
           set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
 
-          if (wasReconnect) {
+          if (wasCleanReconnect) {
             console.log(`📡 [NotifStore] ${channelId} Reconnect detected — skipping snapshot (handled by AppListeners gap-fill)`)
           } else {
             console.log(`📡 [NotifStore] ${channelId} First connect — fetching initial data...`)
@@ -259,12 +260,13 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
         if (notifChannels.get(channelId) !== channel) return
 
         if (status === 'SUBSCRIBED') {
-          const wasReconnect = notifStates.get(channelId) === 'closed' || notifStates.get(channelId) === 'errored'
-          console.log(`✅ [NotifStore] ${channelId} ${wasReconnect ? 'Reconnected' : 'Connected'}`)
+          const prevState = notifStates.get(channelId)
+          const wasCleanReconnect = prevState === 'closed'
+          console.log(`✅ [NotifStore] ${channelId} ${wasCleanReconnect ? 'Reconnected (clean)' : 'Connected/Recovered'}`)
           notifStates.set(channelId, 'joined')
           set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
           
-          if (wasReconnect) {
+          if (wasCleanReconnect) {
             console.log(`📡 [NotifStore] ${channelId} Reconnect detected — skipping snapshot`)
           } else {
             console.log(`📡 [NotifStore] ${channelId} First connect — fetching initial data...`)

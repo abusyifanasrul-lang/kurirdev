@@ -501,12 +501,13 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
         if (orderChannels.get(channelId) !== channel) return
 
         if (status === 'SUBSCRIBED') {
-          const wasReconnect = orderStates.get(channelId) === 'closed' || orderStates.get(channelId) === 'errored'
-          console.log(`✅ [OrderStore] ${channelId} ${wasReconnect ? 'Reconnected' : 'Connected'}`)
+          const prevState = orderStates.get(channelId)
+          const wasCleanReconnect = prevState === 'closed'
+          console.log(`✅ [OrderStore] ${channelId} ${wasCleanReconnect ? 'Reconnected (clean)' : 'Connected/Recovered'}`)
           orderStates.set(channelId, 'joined')
           set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
 
-          if (wasReconnect) {
+          if (wasCleanReconnect) {
             console.log(`📡 [OrderStore] ${channelId} Reconnect detected — skipping snapshot (handled by AppListeners gap-fill)`)
           } else {
             console.log(`📡 [OrderStore] ${channelId} First connect — fetching initial data...`)
@@ -617,12 +618,13 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
         if (orderChannels.get(channelId) !== channel) return
 
         if (status === 'SUBSCRIBED') {
-          const wasReconnect = orderStates.get(channelId) === 'closed' || orderStates.get(channelId) === 'errored'
-          console.log(`✅ [OrderStore] ${channelId} ${wasReconnect ? 'Reconnected' : 'Connected'}`)
+          const prevState = orderStates.get(channelId)
+          const wasCleanReconnect = prevState === 'closed'
+          console.log(`✅ [OrderStore] ${channelId} ${wasCleanReconnect ? 'Reconnected (clean)' : 'Connected/Recovered'}`)
           orderStates.set(channelId, 'joined')
           set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
 
-          if (wasReconnect) {
+          if (wasCleanReconnect) {
             console.log(`📡 [OrderStore] ${channelId} Reconnect detected — skipping single fetch`)
           } else {
             console.log(`📡 [OrderStore] ${channelId} First connect — fetching order data...`)

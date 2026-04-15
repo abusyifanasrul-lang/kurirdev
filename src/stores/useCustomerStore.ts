@@ -385,12 +385,13 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
         if (customerChannels.get(channelId) !== channel) return
 
         if (status === 'SUBSCRIBED') {
-          const wasReconnect = customerStates.get(channelId) === 'closed' || customerStates.get(channelId) === 'errored'
-          console.log(`✅ [CustomerStore] Requests channel ${wasReconnect ? 'Reconnected' : 'Connected'}`)
+          const prevState = customerStates.get(channelId)
+          const wasCleanReconnect = prevState === 'closed'
+          console.log(`✅ [CustomerStore] Requests channel ${wasCleanReconnect ? 'Reconnected (clean)' : 'Connected/Recovered'}`)
           customerStates.set(channelId, 'joined')
           set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
 
-          if (wasReconnect) {
+          if (wasCleanReconnect) {
             console.log(`📡 [CustomerStore] Reconnect detected — skipping request snapshot`)
           } else {
             console.log(`📡 [CustomerStore] First connect — fetching pending requests...`)
@@ -501,12 +502,13 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
         if (customerChannels.get(channelId) !== channel) return
 
         if (status === 'SUBSCRIBED') {
-          const wasReconnect = customerStates.get(channelId) === 'closed' || customerStates.get(channelId) === 'errored'
-          console.log(`✅ [CustomerStore] Customers channel ${wasReconnect ? 'Reconnected' : 'Connected'}`)
+          const prevState = customerStates.get(channelId)
+          const wasCleanReconnect = prevState === 'closed'
+          console.log(`✅ [CustomerStore] Customers channel ${wasCleanReconnect ? 'Reconnected (clean)' : 'Connected/Recovered'}`)
           customerStates.set(channelId, 'joined')
           set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
 
-          if (wasReconnect) {
+          if (wasCleanReconnect) {
             console.log(`📡 [CustomerStore] Reconnect detected — skipping list fetch`)
           } else {
             console.log(`📡 [CustomerStore] First connect — syncing from server...`)
