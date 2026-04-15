@@ -40,6 +40,10 @@ function OrdersLoading() {
   );
 }
 
+import { Capacitor } from '@capacitor/core'
+import { Filesystem, Directory } from '@capacitor/filesystem'
+import { Share } from '@capacitor/share'
+
 // Stores & Types
 import { useOrderStore, type OrderState } from '@/stores/useOrderStore';
 import { useCourierStore } from '@/stores/useCourierStore';
@@ -47,6 +51,8 @@ import { useUserStore } from '@/stores/useUserStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { useCustomerStore } from '@/stores/useCustomerStore';
 import { InvoiceTemplate } from '@/components/orders/InvoiceTemplate';
+import { shareInvoiceNative } from '@/lib/invoiceUtils';
+import { useToastStore } from '@/stores/useToastStore';
 import { useAuth } from '@/context/AuthContext';
 import type { Order, Customer } from '@/types';
 import { calcAdminEarning } from '@/lib/calcEarning';
@@ -177,6 +183,7 @@ export function Orders() {
   const [inlineAddingNew, setInlineAddingNew] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
   const invoiceRef = useRef<HTMLDivElement>(null);
+  const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
 
   const filteredOrders = useMemo(() => {
     return allOrders
@@ -208,7 +215,7 @@ export function Orders() {
           } else if (searchCategory === 'customer_name') {
             matchesSearch = order.customer_name.toLowerCase().includes(q);
           } else if (searchCategory === 'customer_phone') {
-            matchesSearch = order.customer_phone.includes(searchQuery);
+            matchesSearch = order.customer_phone.toLowerCase().includes(searchQuery);
           } else if (searchCategory === 'courier_name') {
             matchesSearch = getCourierName(order.courier_id)?.toLowerCase().includes(q) || false;
           } else if (searchCategory === 'customer_address') {
@@ -513,29 +520,17 @@ export function Orders() {
   };
 
   const handlePrintInvoice = async (order: Order) => {
-    if (!invoiceRef.current) return;
+    if (!invoiceRef.current || isGeneratingInvoice) return;
     
-    // Set selected order to ensure template renders the correct one
-    setSelectedOrder(order);
-    
-    // Wait briefly for React to update the hidden template
-    setTimeout(async () => {
-      try {
-        const dataUrl = await toPng(invoiceRef.current!, {
-          backgroundColor: '#ffffff',
-          pixelRatio: 2,
-          cacheBust: true,
-        });
-        
-        const link = document.createElement('a');
-        link.download = `Invoice-${order.order_number}.png`;
-        link.href = dataUrl;
-        link.click();
-      } catch (err) {
-        console.error("Failed to generate invoice image:", err);
-        alert("Gagal membuat gambar invoice.");
-      }
-    }, 100);
+    setIsGeneratingInvoice(true);
+    const toastActions = {
+      addToast: useToastStore.getState().addToast,
+      removeToast: useToastStore.getState().removeToast,
+      updateToast: useToastStore.getState().updateToast
+    };
+
+    await shareInvoiceNative(order, invoiceRef.current, toastActions);
+    setIsGeneratingInvoice(false);
   };
 
   const handleDateFilterChange = async (

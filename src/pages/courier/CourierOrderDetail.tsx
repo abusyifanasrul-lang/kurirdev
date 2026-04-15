@@ -21,6 +21,7 @@ import { OrderPricingSummary } from './components/order-detail/OrderPricingSumma
 import { OrderCancelModal } from './components/order-detail/OrderCancelModal';
 import { InvoiceTemplate } from '@/components/orders/InvoiceTemplate';
 import { OrderMapPanel } from './components/order-detail/OrderMapPanel';
+import { shareInvoiceNative } from '@/lib/invoiceUtils';
 
 // Format angka ke tampilan Rupiah: 20000 → "Rp 20.000"
 const formatRupiah = (val: string): string => {
@@ -377,49 +378,17 @@ export function CourierOrderDetail() {
 
 
   const handleBagikanInvoice = async () => {
-    if (!invoiceRef.current || isGeneratingInvoice) return;
+    if (!invoiceRef.current || isGeneratingInvoice || !order) return;
     
-    const addToast = useToastStore.getState().addToast;
-    const removeToast = useToastStore.getState().removeToast;
-    let toastId: string | undefined;
+    setIsGeneratingInvoice(true);
+    const toastActions = {
+      addToast: useToastStore.getState().addToast,
+      removeToast: useToastStore.getState().removeToast,
+      updateToast: useToastStore.getState().updateToast
+    };
 
-    try {
-      setIsGeneratingInvoice(true);
-      console.log('📄 Bagikan Invoice triggered', { 
-        orderId: order?.id, 
-        hasRef: !!invoiceRef.current,
-        status: order?.status 
-      });
-      
-      toastId = addToast('Menyiapkan Gambar Invoice...', 'loading', 0);
-      
-      const { toPng } = await import('html-to-image');
-      
-      // Tunggu sebentar untuk memastikan ref ter-render sempurna
-      await new Promise(r => setTimeout(r, 300));
-      
-      const dataUrl = await toPng(invoiceRef.current, {
-        pixelRatio: 3, // Lebih tajam untuk printer thermal
-        backgroundColor: '#ffffff',
-        cacheBust: true,
-      });
-      
-      const link = document.createElement('a');
-      link.download = `Invoice-${order.order_number}.png`;
-      link.href = dataUrl;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      if (toastId) removeToast(toastId);
-      addToast('Invoice berhasil diunduh!', 'success', 3000);
-    } catch (error: any) {
-      console.error('Invoice generation failed:', error);
-      if (toastId) removeToast(toastId);
-      addToast(`Gagal: ${error.message || 'Coba lagi'}`, 'error', 5000);
-    } finally {
-      setIsGeneratingInvoice(false);
-    }
+    await shareInvoiceNative(order, invoiceRef.current, toastActions);
+    setIsGeneratingInvoice(false);
   };
 
   return (

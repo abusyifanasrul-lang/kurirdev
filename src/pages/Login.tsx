@@ -89,13 +89,7 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#185356] via-[#0C828D] to-[#00B1C3] flex items-center justify-center p-4">
-      {/* Background decoration */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/10 rounded-full" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-[#00B1C3]/20 rounded-full" />
-      </div>
-
+    <div className="min-h-screen bg-brand-dark flex items-center justify-center p-4">
       <div className="relative w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-4 flex flex-col items-center">
@@ -112,7 +106,7 @@ export function Login() {
               Selamat Datang
             </h2>
             <p className="text-white/90 text-sm relative z-10 font-medium">
-              Silakan login ke akun Anda untuk masuk
+              Silakan login ke akun Anda
             </p>
           </div>
 

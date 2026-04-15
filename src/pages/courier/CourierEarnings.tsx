@@ -12,6 +12,8 @@ import { Badge } from '@/components/ui/Badge';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { formatCurrency, formatShortCurrency } from '@/utils/formatter';
 import { InvoiceTemplate } from '@/components/orders/InvoiceTemplate';
+import { shareInvoiceNative } from '@/lib/invoiceUtils';
+import { useToastStore } from '@/stores/useToastStore';
 
 type Period = 'daily' | 'weekly';
 type Tab = 'summary' | 'history';
@@ -41,6 +43,7 @@ export function CourierEarnings() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [courierOrders, setCourierOrders] = useState<Order[]>([]);
   const [RechartsLib, setRechartsLib] = useState<any>(null);
+  const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
   const invoiceRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -81,17 +84,17 @@ export function CourierEarnings() {
   }, [location.state, activeTab]);
 
   const handleBagikanInvoice = async () => {
-    if (!invoiceRef.current) return;
-    const { toPng } = await import('html-to-image');
-    const dataUrl = await toPng(invoiceRef.current, {
-      pixelRatio: 2,
-      backgroundColor: '#ffffff',
-      cacheBust: true,
-    });
-    const link = document.createElement('a');
-    link.download = `Invoice-${selectedOrder?.order_number}.png`;
-    link.href = dataUrl;
-    link.click();
+    if (!invoiceRef.current || !selectedOrder || isGeneratingInvoice) return;
+    
+    setIsGeneratingInvoice(true);
+    const toastActions = {
+      addToast: useToastStore.getState().addToast,
+      removeToast: useToastStore.getState().removeToast,
+      updateToast: useToastStore.getState().updateToast
+    };
+
+    await shareInvoiceNative(selectedOrder, invoiceRef.current, toastActions);
+    setIsGeneratingInvoice(false);
   };
 
   // 7-day limit for history tab
@@ -463,9 +466,17 @@ export function CourierEarnings() {
             <div className="p-6 pt-0">
               <button
                 onClick={handleBagikanInvoice}
-                className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold text-xs uppercase tracking-mobile active:scale-[0.98] transition-all shadow-lg shadow-emerald-100"
+                disabled={isGeneratingInvoice}
+                className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold text-xs uppercase tracking-mobile active:scale-[0.98] transition-all shadow-lg shadow-emerald-100 disabled:opacity-50"
               >
-                CETAK / UNDUH INVOICE PNG
+                {isGeneratingInvoice ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>MEMPROSES...</span>
+                  </div>
+                ) : (
+                  "CETAK / UNDUH INVOICE PNG"
+                )}
               </button>
             </div>
           </div>
