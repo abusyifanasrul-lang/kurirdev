@@ -24,8 +24,8 @@ export default defineConfig({
       ],
       manifest: {
         id: "/",
-        name: 'KurirDev',
-        short_name: 'KurirDev',
+        name: 'KurirMe',
+        short_name: 'KurirMe',
         description: 'Logistics and Delivery Management System',
         start_url: "/",
         display: "standalone",
@@ -35,25 +35,25 @@ export default defineConfig({
         categories: ["business", "productivity"],
         icons: [
           {
-            src: "icons/icon-192.webp",
+            src: "icons/icon-192.webp?v=2",
             sizes: "192x192",
             type: "image/webp",
             purpose: "any",
           },
           {
-            src: "icons/icon-192.webp",
+            src: "icons/icon-192.webp?v=2",
             sizes: "192x192",
             type: "image/webp",
             purpose: "maskable",
           },
           {
-            src: "icons/icon-512.webp",
+            src: "icons/icon-512.webp?v=2",
             sizes: "512x512",
             type: "image/webp",
             purpose: "any",
           },
           {
-            src: "icons/icon-512.webp",
+            src: "icons/icon-512.webp?v=2",
             sizes: "512x512",
             type: "image/webp",
             purpose: "maskable",
