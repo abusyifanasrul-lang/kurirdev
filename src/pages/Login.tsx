@@ -23,11 +23,16 @@ export function Login() {
       localStorage.removeItem(`lastLoginEmail_${r}`);
     });
 
-    // Load generic saved email
-    const saved = localStorage.getItem('lastLoginEmail');
-    if (saved) {
-      setEmail(saved);
+    // Load generic saved email and password
+    const savedEmail = localStorage.getItem('lastLoginEmail');
+    const savedPassword = localStorage.getItem('lastLoginPassword');
+    
+    if (savedEmail) {
+      setEmail(savedEmail);
       setRememberMe(true);
+    }
+    if (savedPassword) {
+      setPassword(savedPassword);
     }
   }, []);
 
@@ -61,8 +66,10 @@ export function Login() {
       // 2. Remember Me logic
       if (rememberMe) {
         localStorage.setItem('lastLoginEmail', email);
+        localStorage.setItem('lastLoginPassword', password);
       } else {
         localStorage.removeItem('lastLoginEmail');
+        localStorage.removeItem('lastLoginPassword');
       }
 
       // Note: We don't fetch profile or navigate manually here.
@@ -92,7 +99,7 @@ export function Login() {
       <div className="relative w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-4 flex flex-col items-center">
-          <div className="inline-flex items-center justify-center w-80 mb-6 transform hover:scale-105 transition-transform duration-300">
+          <div className="inline-flex items-center justify-center w-64 mb-6 transform hover:scale-105 transition-transform duration-300">
             <img src="/logo.png" alt="Logo KurirMe" className="w-full h-auto object-contain" />
           </div>
         </div>
@@ -105,7 +112,7 @@ export function Login() {
               Selamat Datang
             </h2>
             <p className="text-white/90 text-sm relative z-10 font-medium">
-              Silakan login untuk masuk ke dasbor Anda
+              Silakan login ke akun Anda untuk masuk
             </p>
           </div>
 

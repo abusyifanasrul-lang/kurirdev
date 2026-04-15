@@ -17,7 +17,6 @@ export const supabase = createClient<Database>(
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
-      storage: window.sessionStorage,
       storageKey: 'kurirdev-auth-token',
     },
     realtime: {
