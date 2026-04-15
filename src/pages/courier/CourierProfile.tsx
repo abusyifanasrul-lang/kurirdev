@@ -345,6 +345,14 @@ export function CourierProfile() {
                   {notifPermission === 'granted' ? '✅ Diizinkan' :
                    notifPermission === 'denied' ? '❌ Diblokir' : '⚠️ Belum diizinkan'}
                 </p>
+                {notifPermission === 'granted' && (
+                  <button 
+                    onClick={handleRequestNotifPermission}
+                    className="text-[10px] font-bold text-emerald-600 uppercase tracking-mobile hover:underline mt-0.5"
+                  >
+                    Sinkronkan Sekarang
+                  </button>
+                )}
               </div>
             </div>
             {notifPermission === 'default' && (

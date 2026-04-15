@@ -10,17 +10,20 @@ serve(async (req) => {
   const supabaseClient = createClient(supabaseUrl, supabaseServiceRole)
 
   try {
-    // 1. Security Check
+    // 1. Security Check (Strict)
     const xSecret = req.headers.get('X-Webhook-Secret')
     const authHeader = req.headers.get('Authorization')?.replace('Bearer ', '')
     const providedSecret = (xSecret || authHeader || '').trim()
     const expectedSecret = (webhookSecret || '').trim()
 
-    if (webhookSecret && providedSecret !== expectedSecret) {
-      console.error(`Status 401: Secret mismatch.`)
-      // Diagnostic logging (safe to log lengths)
-      console.log(`[AUTH] Provided len=${providedSecret.length}, Expected len=${expectedSecret.length}`)
-      return new Response(JSON.stringify({ error: "Unauthorized", message: "Secret mismatch" }), { status: 401 })
+    if (!webhookSecret) {
+      console.error('[SECURITY] WEBHOOK_SECRET is not configured in environment variables.')
+      return new Response(JSON.stringify({ error: "Configuration Error", message: "Server security not configured" }), { status: 500 })
+    }
+
+    if (providedSecret !== expectedSecret) {
+      console.error(`[SECURITY] Unauthorized access attempt. Secret mismatch.`)
+      return new Response(JSON.stringify({ error: "Unauthorized", message: "Invalid webhook secret" }), { status: 401 })
     }
 
     const payload = await req.json()
@@ -42,11 +45,16 @@ serve(async (req) => {
       .single()
 
     if (profileError || !profile?.fcm_token) {
-      console.log(`[NOTIF] Courier ${notification.user_id} has no valid FCM token, skipping push.`)
-      await supabaseClient
+      console.warn(`[NOTIF] Courier ${notification.user_id} has no valid FCM token (Status: Skipped)`)
+      const { error: updateError } = await supabaseClient
         .from('notifications')
-        .update({ fcm_status: 'skipped', fcm_error: 'No FCM token found in profiles' })
+        .update({ 
+          fcm_status: 'skipped', 
+          fcm_error: profileError ? `DB Error: ${profileError.message}` : 'No FCM token found in profiles table' 
+        })
         .eq('id', notificationId)
+      
+      if (updateError) console.error('[NOTIF] Failed to update status to skipped:', updateError)
       return new Response(JSON.stringify({ message: "Skipped: No FCM token" }), { status: 200 })
     }
 

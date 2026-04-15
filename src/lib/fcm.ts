@@ -45,96 +45,105 @@ async function clearStaleFirebaseData(): Promise<void> {
 }
 
 /**
- * Native Registration for Capacitor
+ * Internal helper to set up listeners for native push notifications.
  */
-/**
 const setupNativePushListeners = async (userId: string) => {
   try {
+    console.log('[FCM-Setup] 🛡️ Setting up listeners for user:', userId);
+    
     // Create High Importance channel for heads-up notifications (balloons)
-    await PushNotifications.createChannel({
-      id: 'orders',
-      name: 'Pesanan Baru',
-      description: 'Notifikasi untuk pesanan baru dan update status',
-      importance: 5,
-      visibility: 1,
-      vibration: true,
-    })
+    if (Capacitor.getPlatform() === 'android') {
+      await PushNotifications.createChannel({
+        id: 'orders',
+        name: 'Pesanan Baru',
+        description: 'Notifikasi untuk pesanan baru dan update status',
+        importance: 5,
+        visibility: 1,
+        vibration: true,
+      }).catch(err => console.error('[FCM-Setup] Channel creation failed:', err));
+    }
 
-    // Clear existing listeners to prevent duplicates on re-mount/re-login
-    await PushNotifications.removeAllListeners()
+    // Clear existing listeners to prevent duplicates
+    await PushNotifications.removeAllListeners();
 
-    // Add listeners for native notifications
+    // 1. ADD LISTENERS
     await PushNotifications.addListener('registration', async ({ value: token }) => {
-      console.log('🚀 Native FCM token received:', token.substring(0, 20) + '...')
+      console.log('🚀 Native FCM token received:', token.substring(0, 20) + '...');
       
-      // Optimization: Only update if token changed or stale (> 24h)
-      const { data: currentProfile } = await supabase
-        .from('profiles')
-        .select('fcm_token, fcm_token_updated_at')
-        .eq('id', userId)
-        .single();
+      try {
+        // FORCE sync for Budi - remove optimization for now
+        console.log(`[FCM-Native] 🔄 Synchronizing token to Supabase...`);
+        
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({
+            fcm_token: token,
+            fcm_token_updated_at: new Date().toISOString(),
+            platform: 'android'
+          })
+          .eq('id', userId);
 
-      const isTokenChanged = currentProfile?.fcm_token !== token;
-      const isOld = !currentProfile?.fcm_token_updated_at || 
-                    (Date.now() - new Date(currentProfile.fcm_token_updated_at).getTime()) > 24 * 60 * 60 * 1000;
-
-      if (isTokenChanged || isOld) {
-        console.log(`[FCM-Native] 🔄 Updating token in DB (Changed: ${isTokenChanged}, Old: ${isOld})`);
-        await (supabase.from('profiles') as any).update({
-          fcm_token: token,
-          fcm_token_updated_at: new Date().toISOString(),
-          platform: 'android'
-        }).eq('id', userId)
-      } else {
-        console.log('[FCM-Native] ✅ Token still fresh in DB');
+        if (updateError) {
+          console.error('[FCM-Native] ❌ Failed to update Supabase:', updateError.message);
+        } else {
+          console.log('[FCM-Native] ✅ Token synced to Supabase successfully.');
+          localStorage.setItem('fcm_token_synced_at', Date.now().toString());
+        }
+      } catch (dbErr) {
+        console.error('[FCM-Native] ❌ DB Exception:', dbErr);
       }
-    })
+    });
 
     await PushNotifications.addListener('registrationError', (err) => {
-      console.error('❌ Native registration error:', err)
-    })
+      console.error('❌ Native registration error:', err);
+    });
 
-    // Listen for notifications while app is open
     await PushNotifications.addListener('pushNotificationReceived', (notification) => {
-      console.log('🔔 Notification received while app open:', notification.title)
-    })
+      console.log('🔔 Notification received while app open:', notification.title);
+    });
 
-    // Listen for notification clicks (Deep Linking)
     await PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
-      console.log('🚀 Push action performed:', action)
-      const data = action.notification.data
+      console.log('🚀 Push action performed:', action);
+      const data = action.notification.data;
       if (data && data.orderId) {
-        window.location.href = `/courier/orders/${data.orderId}`
+        window.location.href = `/courier/orders/${data.orderId}`;
       }
-    })
+    });
+
+    // 2. TRIGGER REGISTRATION
+    // A small delay helps ensure listeners are 100% ready on some older Androids
+    setTimeout(async () => {
+      console.log('[FCM-Setup] 📡 Calling PushNotifications.register()...');
+      await PushNotifications.register();
+    }, 200);
+
   } catch (e) {
-    console.error('❌ Failed to setup native listeners:', e)
+    console.error('❌ Failed to setup native listeners:', e);
   }
-}
+};
 
 /**
- * Native Registration for Capacitor
+ * Native Registration Entry Point
  */
 const registerNativePush = async (userId: string): Promise<string | null> => {
   try {
-    let perm = await PushNotifications.checkPermissions()
+    let perm = await PushNotifications.checkPermissions();
     
     if (perm.receive !== 'granted') {
-      perm = await PushNotifications.requestPermissions()
+      perm = await PushNotifications.requestPermissions();
     }
 
     if (perm.receive !== 'granted') {
-      throw new Error('User denied push permissions')
+      throw new Error('User denied push permissions');
     }
 
-    await setupNativePushListeners(userId)
-    await PushNotifications.register()
-    return 'pending_native_callback'
+    await setupNativePushListeners(userId);
+    return 'pending_native_callback';
   } catch (e) {
-    console.error('❌ Failed native registration:', e)
-    return null
+    console.error('❌ Failed native registration:', e);
+    return null;
   }
-}
+};
 
 /**
  * Web Registration for PWA
