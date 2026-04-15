@@ -48,10 +48,18 @@ async function clearStaleFirebaseData(): Promise<void> {
  * Native Registration for Capacitor
  */
 /**
- * Internal helper to setup native listeners
- */
 const setupNativePushListeners = async (userId: string) => {
   try {
+    // Create High Importance channel for heads-up notifications (balloons)
+    await PushNotifications.createChannel({
+      id: 'orders',
+      name: 'Pesanan Baru',
+      description: 'Notifikasi untuk pesanan baru dan update status',
+      importance: 5,
+      visibility: 1,
+      vibration: true,
+    })
+
     // Clear existing listeners to prevent duplicates on re-mount/re-login
     await PushNotifications.removeAllListeners()
 

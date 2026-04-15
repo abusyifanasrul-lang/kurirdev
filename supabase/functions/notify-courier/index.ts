@@ -87,7 +87,10 @@ serve(async (req) => {
         data: notification.data || {},
         android: {
           ttl: "7200s",
-          priority: "high"
+          priority: "high",
+          notification: {
+            channelId: "orders"
+          }
         },
         apns: {
           headers: {
