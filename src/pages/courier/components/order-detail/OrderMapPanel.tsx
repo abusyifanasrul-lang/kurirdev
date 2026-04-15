@@ -57,17 +57,18 @@ export const OrderMapPanel: React.FC<OrderMapPanelProps> = ({
           />
         )}
 
+
         {/* Minimalist Floating Close Button */}
         <button 
           onClick={onClose}
-          className="absolute top-3 right-3 z-30 p-2 bg-white/60 backdrop-blur-md rounded-full shadow-sm border border-white/20 active:scale-90 transition-all hover:bg-white"
+          className="absolute top-3 right-3 z-20 p-2 bg-white/60 backdrop-blur-md rounded-full shadow-sm border border-white/20 active:scale-90 transition-all hover:bg-white"
         >
           <X className="h-4 w-4 text-gray-900" />
         </button>
 
         {/* GPS Pulse Info (Bottom Left) - More Minimalist */}
         {!error && !isLoading && origin && (
-          <div className="absolute bottom-3 left-3 z-30 pointer-events-none">
+          <div className="absolute bottom-3 left-3 z-20 pointer-events-none">
             <div className="bg-white/40 backdrop-blur-sm px-2.5 py-1 rounded-full border border-white/20 shadow-sm flex items-center gap-1.5">
               <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
               <span className="text-[8px] font-bold text-gray-700 uppercase tracking-wider">Live Active</span>

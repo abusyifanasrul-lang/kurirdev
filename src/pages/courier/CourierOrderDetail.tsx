@@ -427,7 +427,7 @@ export function CourierOrderDetail() {
 
       {/* SECONDARY HEADER - Order Status - Sticky below global header (72px) */}
       <div className={cn(
-        "bg-white shadow-sm border-b border-gray-100 sticky top-[72px] z-20 transition-all duration-300",
+        "bg-white shadow-sm border-b border-gray-100 sticky top-[72px] z-30 transition-all duration-300",
         showMap && "shadow-md"
       )}>
         <OrderHeader 

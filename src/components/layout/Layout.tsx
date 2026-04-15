@@ -142,20 +142,17 @@ export function Layout() {
           <Menu className="h-6 w-6" />
         </button>
 
-        <div className="flex items-center gap-2">
-          <div className="p-1 bg-white rounded-xl overflow-hidden flex items-center justify-center w-8 h-8">
-            <img src="/logo.png" alt="KurirMe" className="w-full h-full object-contain" />
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="font-bold">KurirMe</span>
-            <div 
-              className={cn(
-                "w-2 h-2 rounded-full shadow-sm transition-all duration-500",
-                isOffline ? "bg-red-500" : isHealthy ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
-              )} 
-              title={isOffline ? "Offline" : isHealthy ? "LIVE" : "Syncing..."}
-            />
-          </div>
+
+
+        <div className="flex items-center gap-3">
+          <img src="/logo.png" alt="KurirMe" className="h-7 w-auto object-contain" />
+          <div 
+            className={cn(
+              "w-2 h-2 rounded-full shadow-sm transition-all duration-500",
+              isOffline ? "bg-red-500" : isHealthy ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
+            )} 
+            title={isOffline ? "Offline" : isHealthy ? "LIVE" : "Syncing..."}
+          />
         </div>
 
         <div className="flex items-center gap-2">
