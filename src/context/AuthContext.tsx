@@ -120,6 +120,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // ─────────────────────────────────────────────────────────────
   }, [storeLogin, storeLogout]);
 
+  // Centralized Tabula Rasa cleanup function
+  const performFullCleanup = useCallback(async () => {
+    console.log('🧼 [AuthContext] Performing full Tabula Rasa cleanup...');
+    
+    // 1. Reset all Zustand stores
+    try { useSessionStore.getState().reset(); } catch(e) {}
+    try { useUserStore.getState().reset(); } catch(e) {}
+    try { useOrderStore.getState().reset(); } catch(e) {}
+    try { useNotificationStore.getState().reset(); } catch(e) {}
+    try { useSettingsStore.getState().reset(); } catch(e) {}
+    try { useCustomerStore.getState().reset(); } catch(e) {}
+
+    try {
+      const { useCourierStore } = await import('@/stores/useCourierStore');
+      useCourierStore.getState().reset();
+    } catch(e) {}
+
+    // 2. Clear localStorage keys
+    const keysToRemove = [
+      'session-storage', 
+      'business-settings', 
+      'kurirdev_db_meta', 
+      'courier-storage',
+      'user-storage'
+    ];
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+
+    // 3. Clear IndexedDB cache (Order mirroring)
+    try {
+      const { clearAllCache } = await import('@/lib/orderCache');
+      await clearAllCache();
+    } catch(e) {}
+
+    // 4. Clear Supabase channels
+    try {
+      await supabase.removeAllChannels();
+    } catch(e) {}
+
+    // 5. Reset local state
+    setState({ user: null, token: null, isAuthenticated: false, isLoading: false });
+    console.log('✅ [AuthContext] Cleanup complete.');
+  }, []);
+
+  const logout = useCallback(async () => {
+    console.log('Initiating logout...');
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error('Error during Supabase sign out:', err);
+    }
+    
+    // Give time for the signOut to propagate if needed, then cleanup
+    setTimeout(performFullCleanup, 100);
+  }, [performFullCleanup]);
+
   useEffect(() => {
     // checkSession hanya dijalankan sekali saat mount
     const checkSession = async () => {
@@ -150,26 +205,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           supabase.realtime.setAuth(session.access_token);
           lastTokenRef.current = session.access_token;
           console.log('🔑 Realtime JWT synced.');
-          // ─── PERBAIKAN: HAPUS custom event dispatch ───────────────
-          // window.dispatchEvent(new CustomEvent('supabase-realtime-auth-synced'))
-          // Event ini menyebabkan AppListeners trigger fillDataGap/recovery
-          // setiap kali token di-refresh (setiap jam), yang tidak perlu.
-          // setAuth() sudah cukup — WebSocket otomatis menggunakan token baru.
-          // ─────────────────────────────────────────────────────────
         } catch (e) {
           console.error('Failed to sync Realtime auth:', e);
         }
       }
 
       if (event === 'SIGNED_OUT') {
-        storeLogout();
-        setState({ user: null, token: null, isAuthenticated: false, isLoading: false });
-        supabase.removeAllChannels();
+        performFullCleanup();
         return;
       }
 
       // SIGNED_IN untuk user yang sama — skip fetchProfile sepenuhnya
-      // Ini mencegah loop: fetchProfile → storeLogin → re-render → re-register listener
       if (event === 'SIGNED_IN' && currentUserIdRef.current === session?.user?.id) {
         console.log('Session already active for user:', session?.user?.id, '— skipping refetch.');
         return;
@@ -186,48 +232,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    // Listener ini hanya didaftarkan SEKALI (deps array kosong)
-    // Karena fetchProfile sekarang stabil (tidak bergantung cachedUser)
     return () => {
       if (subscription && typeof subscription.unsubscribe === 'function') {
         subscription.unsubscribe();
       }
     };
-  }, [fetchProfile]);
-
-  const logout = useCallback(async () => {
-    console.log('Initiating logout...');
-    try {
-      await supabase.auth.signOut();
-    } catch (err) {
-      console.error('Error during Supabase sign out:', err);
-    }
-
-    setTimeout(async () => {
-      try { useSessionStore.getState().reset(); } catch(e) {}
-      try { useUserStore.getState().reset(); } catch(e) {}
-      try { useOrderStore.getState().reset(); } catch(e) {}
-      try { useNotificationStore.getState().reset(); } catch(e) {}
-      try { useSettingsStore.getState().reset(); } catch(e) {}
-      try { useCustomerStore.getState().reset(); } catch(e) {}
-
-      try {
-        const { useCourierStore } = await import('@/stores/useCourierStore');
-        useCourierStore.getState().reset();
-      } catch(e) {}
-
-      const keysToRemove = ['session-storage', 'business-settings', 'kurirdev_db_meta', 'courier-storage'];
-      keysToRemove.forEach(key => localStorage.removeItem(key));
-
-      try {
-        const { clearAllCache } = await import('@/lib/orderCache');
-        await clearAllCache();
-      } catch(e) {}
-
-      setState({ user: null, token: null, isAuthenticated: false, isLoading: false });
-      console.log('Logout cleanup complete.');
-    }, 100);
-  }, [storeLogout]);
+  }, [fetchProfile, performFullCleanup]);
 
   const updateUser = useCallback((updatedUser: User) => {
     storeUpdateUser(updatedUser);

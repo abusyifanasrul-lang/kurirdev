@@ -10,6 +10,159 @@
 # Walkthrough - Enhanced Maintenance Security
 
 
+## Session Update: 2026-04-18 08:03:34
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 4
+- **Files**: `b/vite.config.ts, b/src/lib/supabaseClient.ts, b/scripts/sync_knowledge.py, b/src/context/AuthContext.tsx`
+- **Overwrites**: `const logout = useCallback(async () => {, setTimeout(async () => {, keysToRemove.forEach(key => localStorage.removeItem(key));, supabase.auth.onAuthStateChange((event) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 4
+- **Files**: `b/src/context/AuthContext.tsx, b/src/lib/supabaseClient.ts, b/vite.config.ts, b/scripts/sync_knowledge.py`
+- **Overwrites**: `const logout = useCallback(async () => {, setTimeout(async () => {, keysToRemove.forEach(key => localStorage.removeItem(key));, supabase.auth.onAuthStateChange((event) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 3
+- **Files**: `b/src/stores/useUserStore.ts, b/src/stores/useOrderStore.ts, b/src/components/layout/Layout.tsx, b/src/stores/useNotificationStore.ts, b/src/hooks/useRealtimeHealth.ts, b/src/stores/useCustomerStore.ts, b/src/stores/useSettingsStore.ts`
+- **Overwrites**: `const joined = channels.filter((c) => c.status === 'joined').length;, const joining = channels.filter((c) => c.status === 'joining').length;, const errored = channels.filter((c) => c.status === 'errored' || c.status === 'closed').length;`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 3
+- **Files**: `b/src/stores/useCustomerStore.ts, b/src/stores/useOrderStore.ts, b/src/components/layout/Layout.tsx, b/src/stores/useSettingsStore.ts, b/src/stores/useNotificationStore.ts, b/src/hooks/useRealtimeHealth.ts, b/src/stores/useUserStore.ts`
+- **Overwrites**: `const joined = channels.filter((c) => c.status === 'joined').length;, const joining = channels.filter((c) => c.status === 'joining').length;, const errored = channels.filter((c) => c.status === 'errored' || c.status === 'closed').length;`
+---
+- **Type**: legacy_backfill
+- **Desc**: --- WALKTHROUGH ---
+# Walkthrough - Enhanced Maintenance Security
+
+I have implemented a robust security layer for administrative maintenance actions in the Storage settings. This update ensures that high-risk operations (like database cleanup) are transparent, safe, and require explicit confirmation.
+
+## Key Changes
+
+### 1. Advanced Maintenance Modal
+Implemented a multi-phase workflow for the **"Cleanup Dummy Orders"** action:
+- **Phase 1: Analyzing**: The system scans the live database to map the exact impact before any changes occur.
+- **Phase 2: Detailed Stats**: Displays a breakdown of exactly how many orders will be "Delivered" (paid) vs "Cancelled" (unpaid).
+- **Phase 3: "Double-Lock" Confirmation**: Requires the user to type a specific challenge phrase ("saya mengerti") to proceed.
+- **Phase 4: Feedback**: Real-time progress and a final success report.
+
+### 2. Safety Buffer & Logic
+Updated `cleanupOrders.ts` to be more conservative:
+- **60-Minute Safety Buffer**: Any order created within the last hour is automatically ignored to protect active courier work.
+- **Dry-Run Support**: Maintenance tools can now "Preview" impacts without touching the database.
+
+### 3. "Danger Zone" Visuals
+Redesigned the **Super Admin Maintenance** section:
+- Added high-contrast "Danger Zone" styling with clear "Admin Only" labeling.
+- Enhanced descriptors for "Orphaned Orders" scanning to avoid confusion.
+
+### 4. Global Reset Protection
+Updated the **"Reset & Sync"** warning in the main settings:
+- Replaced the simple prompt with a detailed list of consequences (data erasure and forced logout) to prevent accidental execution.
+
+## Verification Results
+
+### Manual Audit Success
+- [x] Cleanup Analyze phase returns correct counts.
+- [x] Challenge-phrase lockout works correctly.
+- [x] Recent orders ( < 60 mins ) are spared from cleanup.
+- [x] Type errors in `ProfileTab` and `Settings.tsx` resolved.
+
+> [!IMPORTANT]
+> The **60-minute safety buffer** is now the default for all cleanup oper
+---
+
+## Session Update: 2026-04-18 08:03:01
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 4
+- **Files**: `b/src/context/AuthContext.tsx, b/src/lib/supabaseClient.ts, b/vite.config.ts, b/scripts/sync_knowledge.py`
+- **Overwrites**: `const logout = useCallback(async () => {, setTimeout(async () => {, keysToRemove.forEach(key => localStorage.removeItem(key));, supabase.auth.onAuthStateChange((event) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 3
+- **Files**: `b/src/stores/useUserStore.ts, b/src/stores/useOrderStore.ts, b/src/components/layout/Layout.tsx, b/src/stores/useNotificationStore.ts, b/src/hooks/useRealtimeHealth.ts, b/src/stores/useCustomerStore.ts, b/src/stores/useSettingsStore.ts`
+- **Overwrites**: `const joined = channels.filter((c) => c.status === 'joined').length;, const joining = channels.filter((c) => c.status === 'joining').length;, const errored = channels.filter((c) => c.status === 'errored' || c.status === 'closed').length;`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 3
+- **Files**: `b/src/stores/useCustomerStore.ts, b/src/stores/useOrderStore.ts, b/src/components/layout/Layout.tsx, b/src/stores/useSettingsStore.ts, b/src/stores/useNotificationStore.ts, b/src/hooks/useRealtimeHealth.ts, b/src/stores/useUserStore.ts`
+- **Overwrites**: `const joined = channels.filter((c) => c.status === 'joined').length;, const joining = channels.filter((c) => c.status === 'joining').length;, const errored = channels.filter((c) => c.status === 'errored' || c.status === 'closed').length;`
+---
+- **Type**: legacy_backfill
+- **Desc**: --- WALKTHROUGH ---
+# Walkthrough - Enhanced Maintenance Security
+
+I have implemented a robust security layer for administrative maintenance actions in the Storage settings. This update ensures that high-risk operations (like database cleanup) are transparent, safe, and require explicit confirmation.
+
+## Key Changes
+
+### 1. Advanced Maintenance Modal
+Implemented a multi-phase workflow for the **"Cleanup Dummy Orders"** action:
+- **Phase 1: Analyzing**: The system scans the live database to map the exact impact before any changes occur.
+- **Phase 2: Detailed Stats**: Displays a breakdown of exactly how many orders will be "Delivered" (paid) vs "Cancelled" (unpaid).
+- **Phase 3: "Double-Lock" Confirmation**: Requires the user to type a specific challenge phrase ("saya mengerti") to proceed.
+- **Phase 4: Feedback**: Real-time progress and a final success report.
+
+### 2. Safety Buffer & Logic
+Updated `cleanupOrders.ts` to be more conservative:
+- **60-Minute Safety Buffer**: Any order created within the last hour is automatically ignored to protect active courier work.
+- **Dry-Run Support**: Maintenance tools can now "Preview" impacts without touching the database.
+
+### 3. "Danger Zone" Visuals
+Redesigned the **Super Admin Maintenance** section:
+- Added high-contrast "Danger Zone" styling with clear "Admin Only" labeling.
+- Enhanced descriptors for "Orphaned Orders" scanning to avoid confusion.
+
+### 4. Global Reset Protection
+Updated the **"Reset & Sync"** warning in the main settings:
+- Replaced the simple prompt with a detailed list of consequences (data erasure and forced logout) to prevent accidental execution.
+
+## Verification Results
+
+### Manual Audit Success
+- [x] Cleanup Analyze phase returns correct counts.
+- [x] Challenge-phrase lockout works correctly.
+- [x] Recent orders ( < 60 mins ) are spared from cleanup.
+- [x] Type errors in `ProfileTab` and `Settings.tsx` resolved.
+
+> [!IMPORTANT]
+> The **60-minute safety buffer** is now the default for all cleanup oper
+---
+- **Type**: legacy_backfill
+- **Desc**: --- WALKTHROUGH ---
+# Sync & UI Consistency Optimization
+
+Berdasarkan analisis mendalam yang Anda berikan, saya telah mengoptimalkan mekanisme sinkronisasi data dan integrasi UI untuk memastikan sistem lebih resilien, efisien, dan semantik.
+
+## Perbaikan yang Dilakukan
+
+### 1. Resiliensi Sinkronisasi (Issue #3)
+Mekanisme `fetchInitialOrders` telah direfaktorisasi menggunakan blok `try...catch...finally`. 
+- **Keuntungan**: Event `indexeddb-synced` dan pembersihan status `isSyncing`/`isLoading` sekarang dipastikan berjalan meskipun terjadi error di salah satu query Supabase.
+- **Dampak**: UI tidak akan menggantung dalam status "Syncing..." jika terjadi gangguan jaringan tengah jalan.
+
+### 2. Harmonisasi Rentang Waktu (Issue #2)
+Menyelaraskan kalkulasi `sevenDaysAgo` menjadi `sixDaysAgo` (`getDate() - 6`).
+- **Analisis**: `T-6 + Hari Ini = 7 hari`. Ini pas dengan tampilan grafik dan histori di `CourierEarnings.tsx`.
+- **Keuntungan**: Menghilangkan redundansi fetch data 1 hari yang tidak ditampilkan di UI, sehingga lebih menghemat *database reads*.
+
+### 3. Renaming Semantik (Issue #1)
+Mengganti flag `isFetchingActiveOrders` menjadi `isSyncing`.
+- **Analisis**: Flag ini sekarang mencakup seluruh proses sinkronisasi (Active + Finalized), sehingga nama `isSyncing` jauh lebih akurat secara teknis.
+- **Perubahan**: Seluruh referensi di `useOrderStore` dan `CourierEarnings` telah diperbarui.
+
+### 4. Optimalisasi Admin Sync (Issue #4)
+Memperbarui `needsWeeklySync` dan `saveWeeklySyncTime` di `orderCache.ts` untuk mendukung `userId` opsional.
+- **Implementasi**: Jika Admin (tanpa `courierId`) melakukan sinkronisasi, sistem akan menggunakan key `'global_admin_sync'`.
+- **Keuntungan**: Admin tidak lagi melakukan full-fetch 7 hari pada setiap kali aplikasi dibuka; sistem sekarang ingat kapan Admin terakhir kali melakukan sinkronisasi mingguan.
+
+## Hasil Verifikasi
+
+### Mekanisme Error-Handling
+- [x] Event `indexeddb-synced` ter-dispatch meskipun query gagal.
+- [x] Status `isSynci
+---
+
 ## Session Update: 2026-04-17 06:21:36
 - **Type**: auto_harvest
 - **Desc**: Changes detected via git diff. Overwritten potential functions: 3

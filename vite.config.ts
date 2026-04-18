@@ -18,10 +18,7 @@ export default defineConfig({
       strategies: "injectManifest",
       srcDir: "public",
       filename: "sw.js",
-      includeAssets: [
-        "icons/icon-192.webp",
-        "icons/icon-512.webp",
-      ],
+
       manifest: {
         id: "/",
         name: 'KurirMe',
@@ -78,10 +75,7 @@ export default defineConfig({
       },
       injectManifest: {
         globPatterns: ["**/*.{js,css,html,ico,svg,woff2,woff,ttf,webp}"],
-        additionalManifestEntries: [
-          { url: 'icons/icon-192.webp', revision: null },
-          { url: 'icons/icon-512.webp', revision: null },
-        ]
+
       },
     }),
   ],

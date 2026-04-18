@@ -65,6 +65,11 @@ def sync():
     
     # 3. Update Markdown Map
     update_knowledge_map(obs)
+
+    # 4. Sync Knowledge Graph (Graphify)
+    print("Updating Graphify Knowledge Graph...")
+    graphify_out = run_script("graphify update .")
+    print(graphify_out)
     
     print("Sync complete.")
 

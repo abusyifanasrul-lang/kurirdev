@@ -26,9 +26,4 @@ export const supabase = createClient<Database>(
 )
 
 // Global auth state listener
-supabase.auth.onAuthStateChange((event) => {
-  if (event === 'SIGNED_OUT') {
-    // Stores will be reset in AuthContext logout logic
-    console.log('User signed out from Supabase');
-  }
-})
+// Centralized auth listener moved to AuthContext.tsx
