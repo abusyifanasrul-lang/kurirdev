@@ -10,6 +10,33 @@
 # Walkthrough - Enhanced Maintenance Security
 
 
+## Session Update: 2026-04-18 12:24:03
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 4
+- **Files**: `b/vite.config.ts, b/KNOWLEDGE_MAP.md, b/scripts/sync_knowledge.py, b/src/lib/supabaseClient.ts, b/src/context/AuthContext.tsx`
+- **Overwrites**: `const logout = useCallback(async () => {, setTimeout(async () => {, keysToRemove.forEach(key => localStorage.removeItem(key));, supabase.auth.onAuthStateChange((event) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 4
+- **Files**: `b/vite.config.ts, b/src/lib/supabaseClient.ts, b/scripts/sync_knowledge.py, b/src/context/AuthContext.tsx`
+- **Overwrites**: `const logout = useCallback(async () => {, setTimeout(async () => {, keysToRemove.forEach(key => localStorage.removeItem(key));, supabase.auth.onAuthStateChange((event) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 4
+- **Files**: `b/src/context/AuthContext.tsx, b/src/lib/supabaseClient.ts, b/vite.config.ts, b/scripts/sync_knowledge.py`
+- **Overwrites**: `const logout = useCallback(async () => {, setTimeout(async () => {, keysToRemove.forEach(key => localStorage.removeItem(key));, supabase.auth.onAuthStateChange((event) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 3
+- **Files**: `b/src/stores/useUserStore.ts, b/src/stores/useOrderStore.ts, b/src/components/layout/Layout.tsx, b/src/stores/useNotificationStore.ts, b/src/hooks/useRealtimeHealth.ts, b/src/stores/useCustomerStore.ts, b/src/stores/useSettingsStore.ts`
+- **Overwrites**: `const joined = channels.filter((c) => c.status === 'joined').length;, const joining = channels.filter((c) => c.status === 'joining').length;, const errored = channels.filter((c) => c.status === 'errored' || c.status === 'closed').length;`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 3
+- **Files**: `b/src/stores/useCustomerStore.ts, b/src/stores/useOrderStore.ts, b/src/components/layout/Layout.tsx, b/src/stores/useSettingsStore.ts, b/src/stores/useNotificationStore.ts, b/src/hooks/useRealtimeHealth.ts, b/src/stores/useUserStore.ts`
+- **Overwrites**: `const joined = channels.filter((c) => c.status === 'joined').length;, const joining = channels.filter((c) => c.status === 'joining').length;, const errored = channels.filter((c) => c.status === 'errored' || c.status === 'closed').length;`
+---
+
 ## Session Update: 2026-04-18 08:03:34
 - **Type**: auto_harvest
 - **Desc**: Changes detected via git diff. Overwritten potential functions: 4
