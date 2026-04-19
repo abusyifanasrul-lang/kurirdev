@@ -20,7 +20,11 @@ export const supabase = createClient<Database>(
       storageKey: 'kurirdev-auth-token',
     },
     realtime: {
-      heartbeatIntervalMs: 25000,
+      params: { eventsPerSecond: 10 },
+      worker: true,
+      workerUrl: '/worker.js',
+      heartbeatIntervalMs: 20000,
+      timeout: 15000
     }
   }
 )

@@ -91,35 +91,135 @@ export const AppListeners = () => {
   const lastActiveRef = useRef<number>(Date.now())
 
   // ----------------------------------------------------------------
-  // 1. Settings — delay 2000ms (slot 4)
+  // 1. Subscription Orchestrator (Serial Queue) — FINAL HARDENED
+  // BERHASIL: Menggantikan slot-based timers dengan antrean event-based.
+  // Channel dibuka satu per satu setelah channel sebelumnya terhubung (joined)
+  // atau timeout lokal tercapai, mencegah throttling Supabase.
   // ----------------------------------------------------------------
   useEffect(() => {
     if (!user) return
-    let cleanup: (() => void) | undefined
-    const timerId = setTimeout(() => {
-      fetchSettings()
-      cleanup = subscribeSettings()
-    }, 2000)
-    return () => {
-      clearTimeout(timerId)
-      if (cleanup) cleanup()
-    }
-  }, [user?.id, fetchSettings, subscribeSettings])
+    let active = true // Flag untuk mencegah kebocoran async (isMounted)
+    const cleanups: Array<() => void> = []
 
-  // ----------------------------------------------------------------
-  // 1.b Profile realtime — delay 2500ms (slot 5)
-  // ----------------------------------------------------------------
-  useEffect(() => {
-    if (!user) return
-    let cleanup: (() => void) | undefined
-    const timerId = setTimeout(() => {
-      cleanup = useUserStore.getState().subscribeProfile(user.id)
-    }, 2500)
-    return () => {
-      clearTimeout(timerId)
-      if (cleanup) cleanup()
+    // waitForStatus sengaja di dalam useEffect agar capture flag 'active' yang bersifat lokal
+    const waitForStatus = (storeGetter: () => any, channelId: string, timeout = 8000) => {
+      return new Promise((resolve) => {
+        const start = Date.now()
+        const check = setInterval(() => {
+          if (!active) { clearInterval(check); resolve('cancelled'); return; }
+          const status = storeGetter().realtimeStatus?.[channelId]
+          if (status === 'joined' || status === 'errored' || status === 'timed_out' || Date.now() - start > timeout) {
+            clearInterval(check)
+            resolve(status || 'timeout')
+          }
+        }, 150)
+      })
     }
-  }, [user?.id])
+
+    const runQueue = async () => {
+      const userId = user.id
+      const userRole = user.role
+      const filter = {
+        courierId: userRole === 'courier' ? userId : undefined,
+        activeOnly: userRole === 'courier'
+      }
+
+      // --- STEP 1: ORDERS (Paling Kritis) ---
+      if (!active) return
+      try {
+        console.log('📡 [Orchestrator] Step 1: Orders...')
+        const orderStore = useOrderStore.getState()
+        // Note: fetchInitialOrders dipanggil otomatis di dalam callback SUBSCRIBED di store
+        cleanups.push(orderStore.subscribeOrders(filter))
+        const orderCId = userRole === 'courier' ? `orders:courier:${userId}` : 'orders:global'
+        await waitForStatus(() => useOrderStore.getState(), orderCId)
+      } catch (e) {
+        console.error('❌ [Orchestrator] Orders subscription failed:', e)
+      }
+
+      // --- STEP 2: NOTIFICATIONS ---
+      if (!active) return
+      try {
+        console.log('📡 [Orchestrator] Step 2: Notifications...')
+        const notifStore = useNotificationStore.getState()
+        cleanups.push(userRole === 'courier' 
+          ? notifStore.subscribeNotifications(userId) 
+          : notifStore.subscribeAllNotifications()
+        )
+        const notifCId = userRole === 'courier' ? `notifications:user:${userId}` : 'notifications:all'
+        await waitForStatus(() => useNotificationStore.getState(), notifCId)
+      } catch (e) {
+        console.error('❌ [Orchestrator] Notifications subscription failed:', e)
+      }
+
+      // --- STEP 3: PROFILE (Presence/Status) ---
+      if (!active) return
+      try {
+        console.log('📡 [Orchestrator] Step 3: Profile...')
+        cleanups.push(useUserStore.getState().subscribeProfile(userId))
+        await waitForStatus(() => useUserStore.getState(), `profile:single:${userId}`)
+      } catch (e) {
+        console.error('❌ [Orchestrator] Profile subscription failed:', e)
+      }
+
+      // --- STEP 4: SETTINGS ---
+      if (!active) return
+      try {
+        console.log('📡 [Orchestrator] Step 4: Settings...')
+        const settingsStore = useSettingsStore.getState()
+        await settingsStore.fetchSettings()
+        cleanups.push(settingsStore.subscribeSettings())
+        await waitForStatus(() => useSettingsStore.getState(), 'public:settings')
+      } catch (e) {
+        console.error('❌ [Orchestrator] Settings subscription failed:', e)
+      }
+
+      // --- STEP 5: ADMIN USERS ---
+      if (active && userRole !== 'courier') {
+        try {
+          console.log('📡 [Orchestrator] Step 5: Admin Users...')
+          cleanups.push(useUserStore.getState().subscribeUsers())
+          await waitForStatus(() => useUserStore.getState(), 'users:list')
+        } catch (e) {
+          console.error('❌ [Orchestrator] Admin Users subscription failed:', e)
+        }
+      }
+
+      // --- STEP 6: CUSTOMERS & REQUESTS ---
+      if (!active) return
+      try {
+        console.log('📡 [Orchestrator] Step 6: Customers & Requests...')
+        const customerStore = useCustomerStore.getState()
+        cleanups.push(customerStore.subscribeToRequests())
+        await waitForStatus(() => useCustomerStore.getState(), 'customer_requests_all')
+        
+        if (active) {
+          cleanups.push(customerStore.subscribeToCustomers())
+          console.log('✅ [Orchestrator] All subscription slots initialized.')
+        }
+      } catch (e) {
+        console.error('❌ [Orchestrator] Customer data subscription failed:', e)
+      }
+    }
+
+    runQueue().catch(err => {
+      if (active) console.error('🚨 [Orchestrator] FATAL QUEUE ERROR:', err)
+    })
+
+    return () => {
+      active = false
+      cleanups.forEach((unsub, i) => {
+        try { 
+          if (typeof unsub === 'function') unsub(); 
+        } catch (e) { 
+          console.warn(`⚠️ [Orchestrator] Cleanup failed at index ${i}:`, e); 
+        }
+      })
+    }
+  }, [user?.id, user?.role])
+
+
+
 
   // ----------------------------------------------------------------
   // 1.c Suspension gate
@@ -133,86 +233,43 @@ export const AppListeners = () => {
   }, [liveUser?.is_active, logout])
 
   // ----------------------------------------------------------------
-  // 2. Orders, Notifs, FCM
-  //
-  // PERBAIKAN KRITIS: Sebelumnya subscribeOrders dan subscribeNotifications
-  // dipanggil langsung di t=0ms bersamaan dengan subscribeUsers (t=0ms).
-  // Ini menyebabkan 5 channel dibuka sekaligus → Supabase throttle → TIMED_OUT.
-  //
-  // Solusi: Stagger setiap subscribe dengan jeda 600ms antar slot:
-  //   Slot 1 (t=300ms)  → subscribeOrders
-  //   Slot 2 (t=900ms)  → subscribeNotifications
-  //   Slot 3 (t=1500ms) → subscribeUsers (effect 4)
-  //   Slot 4 (t=2000ms) → subscribeSettings (effect 1)
-  //   Slot 5 (t=2500ms) → subscribeProfile  (effect 1.b)
-  //   Slot 6 (t=3100ms) → subscribeCustomers & Requests (effect 4.b)
+  // 2. FCM Push Notifications (Separate from Realtime)
   // ----------------------------------------------------------------
   useEffect(() => {
-    if (!user) return
-
-    const filter = {
-      courierId: user.role === 'courier' ? user.id : undefined,
-      activeOnly: user.role === 'courier'
-    }
-
-    const orderStore = useOrderStore.getState()
-    const notifStore = useNotificationStore.getState()
-
-    // Initial data load — bisa langsung, tidak membuka WebSocket
-    const fetchTimerId = setTimeout(() => orderStore.fetchInitialOrders(filter), 500)
-
-    // Slot 1: subscribeOrders — t=300ms
-    let unsubOrders: (() => void) | undefined
-    const ordersTimerId = setTimeout(() => {
-      console.log('📡 [AppListeners] Opening orders channel (slot 1)...')
-      unsubOrders = orderStore.subscribeOrders(filter)
-    }, 300)
-
-    // Slot 2: subscribeNotifications — t=900ms
-    let unsubNotifs: (() => void) | undefined
-    const notifTimerId = setTimeout(() => {
-      console.log('📡 [AppListeners] Opening notifications channel (slot 2)...')
-      unsubNotifs = user.role === 'courier'
-        ? notifStore.subscribeNotifications(user.id)
-        : notifStore.subscribeAllNotifications()
-    }, 900)
+    if (!user || user.role !== 'courier') return
 
     let fcmCleanup: { unsubscribe?: any } = {}
     let fcmRefreshInterval: any = null
 
-    if (user.role === 'courier') {
-      import('@/lib/fcm').then(({ refreshFCMToken, onForegroundMessage }) => {
-        refreshFCMToken(user.id).catch(console.error)
-        fcmRefreshInterval = setInterval(() => {
-          refreshFCMToken(user.id).catch(console.error)
-        }, 7 * 24 * 60 * 60 * 1000)
-        fcmCleanup.unsubscribe = onForegroundMessage((payload) => {
-          orderStore.fetchActiveOrdersByCourier(user.id)
-          const notifData = payload.notification || payload.data || {}
-          if (notifData.title && Notification.permission === 'granted') {
-            const notif = new Notification(notifData.title, {
-              body: notifData.body || '',
-              icon: '/icons/android/android-launchericon-192-192.png',
-              tag: payload.data?.orderId || 'kurirdev-foreground',
-            })
-            notif.onclick = () => window.focus()
-          }
-        })
-      }).catch(err => console.error('[FCM] import failed:', err))
-    }
+    import('@/lib/fcm').then(({ refreshFCMToken, onForegroundMessage }) => {
+      if (!user) return // Stale check
+      refreshFCMToken(user.id).catch(console.error)
+      fcmRefreshInterval = setInterval(() => {
+        if (user) refreshFCMToken(user.id).catch(console.error)
+      }, 7 * 24 * 60 * 60 * 1000)
+
+      fcmCleanup.unsubscribe = onForegroundMessage((payload) => {
+        useOrderStore.getState().fetchActiveOrdersByCourier(user.id)
+        const notifData = payload.notification || payload.data || {}
+        if (notifData.title && Notification.permission === 'granted') {
+          const notif = new Notification(notifData.title, {
+            body: notifData.body || '',
+            icon: '/icons/android/android-launchericon-192-192.png',
+            tag: payload.data?.orderId || 'kurirdev-foreground',
+          })
+          notif.onclick = () => window.focus()
+        }
+      })
+    }).catch(err => console.error('[FCM] import failed:', err))
 
     return () => {
-      clearTimeout(fetchTimerId)
-      clearTimeout(ordersTimerId)
-      clearTimeout(notifTimerId)
-      if (unsubOrders) unsubOrders()
-      if (unsubNotifs) unsubNotifs()
       if (fcmRefreshInterval) clearInterval(fcmRefreshInterval)
       if (fcmCleanup.unsubscribe && typeof fcmCleanup.unsubscribe === 'function') {
         fcmCleanup.unsubscribe()
       }
     }
   }, [user?.id, user?.role])
+
 
   // ----------------------------------------------------------------
   // 2.e Support stores
@@ -270,45 +327,9 @@ export const AppListeners = () => {
     }
   }, [user?.id, user?.role])
 
-  // ----------------------------------------------------------------
-  // 4. Admin users subscription — delay 1500ms (slot 3)
-  // ----------------------------------------------------------------
-  useEffect(() => {
-    if (!user || user.role === 'courier') return
-    let cleanup: (() => void) | undefined
-    const timerId = setTimeout(() => {
-      console.log('📡 [AppListeners] Opening users channel (slot 3)...')
-      cleanup = useUserStore.getState().subscribeUsers()
-    }, 1500)
-    return () => {
-      clearTimeout(timerId)
-      if (cleanup) cleanup()
-    }
-  }, [user?.id, user?.role])
 
-  // ----------------------------------------------------------------
-  // 4.b Global Customer Subscriptions — delay 3100ms (slot 6)
-  // ----------------------------------------------------------------
-  useEffect(() => {
-    if (!user) return
-    let unsubRequests: (() => void) | undefined
-    let unsubCustomers: (() => void) | undefined
-    
-    const timerId = setTimeout(() => {
-      const customerStore = useCustomerStore.getState()
-      
-      console.log('📡 [AppListeners] Opening customer channels (slot 6)...')
-      // Both Admin and Courier need these for Dashboard and Realtime updates
-      unsubRequests = customerStore.subscribeToRequests()
-      unsubCustomers = customerStore.subscribeToCustomers()
-    }, 3100)
-    
-    return () => {
-      clearTimeout(timerId)
-      if (unsubRequests) unsubRequests()
-      if (unsubCustomers) unsubCustomers()
-    }
-  }, [user?.id, user?.role])
+
+
 
   // ----------------------------------------------------------------
   // 5. Gap fill + Channel recovery
