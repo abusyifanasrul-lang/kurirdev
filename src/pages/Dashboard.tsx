@@ -284,56 +284,68 @@ export function Dashboard() {
         </div>
 
         {/* Stats Grid - Linked to Pages */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-3 lg:gap-6">
-          <StatCard
-            title={timeRange === 'today' ? "Orders Today" : "Orders"}
-            value={analytics.total_orders}
-            icon={<Package className="h-6 w-6" />}
-            trend={{ value: 12, isPositive: true }}
-            to="/admin/orders"
-          />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6">
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both [animation-delay:100ms]">
+            <StatCard
+              title={timeRange === 'today' ? "Orders Today" : "Orders"}
+              value={analytics.total_orders}
+              icon={<Package className="h-6 w-6" />}
+              trend={{ value: 12, isPositive: true }}
+              to="/admin/orders"
+            />
+          </div>
           {isFinance ? (
             <>
-              <StatCard
-                title="Net Revenue Admin"
-                value={formatCurrency(analytics.net_revenue)}
-                icon={<DollarSign className="h-6 w-6" />}
-                subtitle={timeRange === 'today' ? "Hari ini · setelah komisi" : "Data periode terpilih"}
-                to="/admin/reports"
-              />
-              <StatCard
-                title="Fee Bebas Komisi"
-                value={formatCurrency(analytics.below_threshold)}
-                icon={<TrendingUp className="h-6 w-6" />}
-                subtitle={timeRange === 'today' ? `Hari ini · order ≤ Rp ${commission_threshold.toLocaleString('id-ID')}` : "Data periode terpilih"}
-                to="/admin/reports"
-              />
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both [animation-delay:200ms]">
+                <StatCard
+                  title="Net Revenue Admin"
+                  value={formatCurrency(analytics.net_revenue)}
+                  icon={<DollarSign className="h-6 w-6" />}
+                  subtitle={timeRange === 'today' ? "Hari ini · setelah komisi" : "Data periode terpilih"}
+                  to="/admin/reports"
+                />
+              </div>
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both [animation-delay:300ms]">
+                <StatCard
+                  title="Fee Bebas Komisi"
+                  value={formatCurrency(analytics.below_threshold)}
+                  icon={<TrendingUp className="h-6 w-6" />}
+                  subtitle={timeRange === 'today' ? `Hari ini · order ≤ Rp ${commission_threshold.toLocaleString('id-ID')}` : "Data periode terpilih"}
+                  to="/admin/reports"
+                />
+              </div>
             </>
           ) : (
             <>
-              <StatCard
-                title="Active Orders"
-                value={allOrders.filter(o => ['assigned', 'picked_up', 'in_transit'].includes(o.status)).length}
-                icon={<TrendingUp className="h-6 w-6" />}
-                subtitle="Sedang diproses"
-                to="/admin/orders"
-              />
-              <StatCard
-                title={timeRange === 'today' ? "Terkirim Hari Ini" : "Total Terkirim"}
-                value={analytics.total_delivered}
-                icon={<Package className="h-6 w-6" />}
-                subtitle={timeRange === 'today' ? "Sudah sampai" : "Periode terpilih"}
-                to="/admin/orders"
-              />
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both [animation-delay:200ms]">
+                <StatCard
+                  title="Active Orders"
+                  value={allOrders.filter(o => ['assigned', 'picked_up', 'in_transit'].includes(o.status)).length}
+                  icon={<TrendingUp className="h-6 w-6" />}
+                  subtitle="Sedang diproses"
+                  to="/admin/orders"
+                />
+              </div>
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both [animation-delay:300ms]">
+                <StatCard
+                  title={timeRange === 'today' ? "Terkirim Hari Ini" : "Total Terkirim"}
+                  value={analytics.total_delivered}
+                  icon={<Package className="h-6 w-6" />}
+                  subtitle={timeRange === 'today' ? "Sudah sampai" : "Periode terpilih"}
+                  to="/admin/orders"
+                />
+              </div>
             </>
           )}
-          <StatCard
-            title="Pending Orders"
-            value={analytics.pending_orders}
-            icon={<Clock className="h-6 w-6" />}
-            subtitle="Awaiting assignment"
-            to="/admin/orders"
-          />
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both [animation-delay:400ms]">
+            <StatCard
+              title="Pending Orders"
+              value={analytics.pending_orders}
+              icon={<Clock className="h-6 w-6" />}
+              subtitle="Awaiting assignment"
+              to="/admin/orders"
+            />
+          </div>
           </div>
 
 

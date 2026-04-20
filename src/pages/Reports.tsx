@@ -497,28 +497,36 @@ export function Reports() {
         )}
 
         {/* Summary Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6">
-          <StatCard
-            title="Total Orders"
-            value={analytics.totalOrders}
-            icon={<Package className="h-6 w-6" />}
-          />
-          <StatCard
-            title="Total Revenue"
-            value={formatCurrency(analytics.totalRevenue)}
-            icon={<DollarSign className="h-6 w-6" />}
-          />
-          <StatCard
-            title="Avg. Orders/Day"
-            value={analytics.avgOrdersPerDay.toFixed(1)}
-            icon={<TrendingUp className="h-6 w-6" />}
-          />
-          <StatCard
-            title="Top Courier"
-            value={analytics.topCourier?.name || 'N/A'}
-            icon={<Award className="h-6 w-6" />}
-            subtitle={analytics.topCourier ? `${analytics.topCourier.count} orders` : undefined}
-          />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both [animation-delay:100ms]">
+            <StatCard
+              title="Total Orders"
+              value={analytics.totalOrders}
+              icon={<Package className="h-6 w-6" />}
+            />
+          </div>
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both [animation-delay:200ms]">
+            <StatCard
+              title="Total Revenue"
+              value={formatCurrency(analytics.totalRevenue)}
+              icon={<DollarSign className="h-6 w-6" />}
+            />
+          </div>
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both [animation-delay:300ms]">
+            <StatCard
+              title="Avg. Orders/Day"
+              value={analytics.avgOrdersPerDay.toFixed(1)}
+              icon={<TrendingUp className="h-6 w-6" />}
+            />
+          </div>
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both [animation-delay:400ms]">
+            <StatCard
+              title="Top Courier"
+              value={analytics.topCourier?.name || 'N/A'}
+              icon={<Award className="h-6 w-6" />}
+              subtitle={analytics.topCourier ? `${analytics.topCourier.count} orders` : undefined}
+            />
+          </div>
         </div>
 
         {/* Charts */}

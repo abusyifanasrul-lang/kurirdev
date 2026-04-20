@@ -7,9 +7,10 @@ interface CardProps {
   className?: string;
   padding?: 'none' | 'sm' | 'md' | 'lg';
   onClick?: () => void;
+  isHoverable?: boolean;
 }
 
-export function Card({ children, className, padding = 'md', onClick }: CardProps) {
+export function Card({ children, className, padding = 'md', onClick, isHoverable }: CardProps) {
   const paddings = {
     none: '',
     sm: 'p-4',
@@ -22,7 +23,7 @@ export function Card({ children, className, padding = 'md', onClick }: CardProps
       className={cn(
         'bg-white rounded-xl shadow-sm border border-gray-200',
         paddings[padding],
-        onClick && 'cursor-pointer hover:shadow-md transition-shadow',
+        (onClick || isHoverable) && 'cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300',
         className
       )}
       onClick={onClick}
@@ -48,7 +49,7 @@ interface StatCardProps {
 
 export function StatCard({ title, value, icon, trend, subtitle, className, to, onClick }: StatCardProps) {
   const Content = (
-    <Card className={cn('h-full', className)} padding="sm" onClick={onClick}>
+    <Card className={cn('h-full', className)} padding="sm" onClick={onClick} isHoverable={!!to}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className="text-xs lg:text-sm font-bold text-gray-600 uppercase tracking-mobile truncate">{title}</p>
