@@ -413,8 +413,8 @@ export function CourierOrderDetail() {
         order.status === 'delivered' ? "pb-0" : "pb-40"
       )}>
         <div className={cn(
-          "max-w-md mx-auto space-y-4 pt-6",
-          showMap ? "px-0 sm:px-4" : "p-4"
+          "max-w-md mx-auto space-y-4 pt-4 mini:pt-6",
+          showMap ? "px-0 sm:px-4" : "p-3 mini:p-4"
         )}>
           {/* CONTENT TOGGLE: Map vs Details */}
           {showMap ? (
@@ -549,8 +549,8 @@ export function CourierOrderDetail() {
 
               {/* Completion Success View */}
               {order.status === 'delivered' && (
-                <div className="mt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                  <div className="bg-emerald-50 border-2 border-emerald-100 rounded-[2.5rem] p-8 text-center shadow-xl shadow-emerald-900/5">
+                <div className="mt-6 mini:mt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <div className="bg-emerald-50 border-2 border-emerald-100 rounded-3xl mini:rounded-[2.5rem] p-6 mini:p-8 text-center shadow-xl shadow-emerald-900/5">
                     <div className="w-20 h-20 bg-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-200">
                       <span className="text-4xl animate-bounce">✅</span>
                     </div>
@@ -589,7 +589,7 @@ export function CourierOrderDetail() {
 
       {/* FIXED FOOTER ACTIONS - Now positioned tightly above global navigation */}
       {order.status !== 'delivered' && order.status !== 'cancelled' && (
-        <div className="fixed bottom-[64px] left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-100 p-2.5 pb-4 space-y-1.5 shadow-[0_-15px_40px_rgba(0,0,0,0.12)] z-30">
+        <div className="fixed bottom-[56px] mini:bottom-[64px] left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-100 p-2 xs:p-2.5 pb-3 mini:pb-4 space-y-1 xs:space-y-1.5 shadow-[0_-15px_40px_rgba(0,0,0,0.12)] z-30">
           <div className="flex gap-1.5">
             {!isLocked && (
               <button

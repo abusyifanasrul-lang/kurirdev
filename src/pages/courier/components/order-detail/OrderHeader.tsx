@@ -49,11 +49,11 @@ export const OrderHeader: React.FC<OrderHeaderProps> = ({
   const status = getStatusDisplay();
 
   return (
-    <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between gap-3 shadow-sm flex-shrink-0 z-50">
+    <div className="bg-white border-b border-gray-100 px-3 mini:px-4 py-2 mini:py-3 flex items-center justify-between gap-2 mini:gap-3 shadow-sm flex-shrink-0 z-50">
       <div className="flex-1 min-w-0">
         <div>
           {!minimal && (
-            <h1 className="text-[10px] font-bold text-gray-400 uppercase tracking-mobile leading-tight">
+            <h1 className="text-[10px] font-bold text-gray-400 uppercase tracking-mobile leading-tight tabular-nums">
               ID: {order.order_number}
             </h1>
           )}
@@ -68,13 +68,13 @@ export const OrderHeader: React.FC<OrderHeaderProps> = ({
                 )}
                 title="Klik untuk Unduh Invoice"
               >
-                <span className="text-sm font-bold text-emerald-700 leading-none flex items-center gap-1.5">
+                <span className="text-sm font-bold text-emerald-700 leading-none flex items-center gap-1.5 whitespace-nowrap">
                   {status.emoji} {status.label.toUpperCase()}
                   <span className="text-[10px] bg-emerald-600 text-white px-1.5 py-0.5 rounded-md font-bold animate-bounce shadow-sm ml-1">PRINT 🖨️</span>
                 </span>
               </button>
             ) : (
-              <span className="text-sm font-bold text-gray-900 leading-snug tracking-tight">
+              <span className="text-sm font-bold text-gray-900 leading-snug tracking-tight whitespace-nowrap">
                 {status.emoji} {status.label.toUpperCase()}
               </span>
             )}

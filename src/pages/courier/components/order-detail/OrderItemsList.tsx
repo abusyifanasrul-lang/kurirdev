@@ -54,7 +54,7 @@ export const OrderItemsList: React.FC<OrderItemsListProps> = ({
               <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                 <div>
                   <p className="text-sm font-semibold text-gray-900 leading-snug">{item.nama}</p>
-                  <p className="text-xs font-medium text-gray-600">Rp {item.harga.toLocaleString('id-ID')}</p>
+                  <p className="text-xs font-medium text-gray-600 whitespace-nowrap">Rp {item.harga.toLocaleString('id-ID')}</p>
                 </div>
                 <button onClick={() => handleHapusItem(idx)} className="p-1.5 text-gray-400 hover:text-red-500">
                   <X className="h-4 w-4" />
@@ -105,7 +105,7 @@ export const OrderItemsList: React.FC<OrderItemsListProps> = ({
                   </div>
                   <p className="text-sm font-semibold text-gray-900 leading-snug">{item.nama}</p>
                 </div>
-                <p className="text-sm font-bold text-emerald-600 font-mono">
+                <p className="text-sm font-bold text-emerald-600 tabular-nums whitespace-nowrap">
                   Rp {item.harga.toLocaleString('id-ID')}
                 </p>
               </div>

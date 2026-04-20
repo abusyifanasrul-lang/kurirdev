@@ -156,7 +156,7 @@ export function CourierDashboard() {
       {!isStatsLoading && unpaidStats.count > 0 && (
         <div
           onClick={() => navigate('/courier/earnings', { state: { activeTab: 'history' } })}
-          className="flex items-center justify-between gap-3 bg-orange-50 border border-orange-200 rounded-3xl px-5 py-4 cursor-pointer active:scale-[0.98] transition-all shadow-sm"
+          className="flex items-center justify-between gap-3 bg-orange-50 border border-orange-200 rounded-2xl xs:rounded-3xl px-4 mini:px-5 py-3.5 mini:py-4 cursor-pointer active:scale-[0.98] transition-all shadow-sm"
         >
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-2xl bg-orange-100 flex items-center justify-center flex-shrink-0 border border-orange-200">
@@ -166,7 +166,7 @@ export function CourierDashboard() {
               <p className="text-sm font-black text-orange-900 leading-tight mb-0.5">
                 {unpaidStats.count} Pesanan
               </p>
-              <p className="text-[11px] font-bold text-orange-600 uppercase tracking-tight">
+              <p className="text-[11px] font-bold text-orange-600 uppercase tracking-tight whitespace-nowrap">
                 {formatCurrency(unpaidStats.earnings)} Belum Disetor
               </p>
             </div>
@@ -178,7 +178,7 @@ export function CourierDashboard() {
       )}
 
       {/* Status Toggle — ON / STAY / OFF */}
-      <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+      <div className="bg-white rounded-2xl xs:rounded-3xl p-4 mini:p-6 shadow-sm border border-gray-100">
         <div className="flex items-center justify-between mb-5">
           <p className="text-[10px] uppercase font-black text-gray-400 tracking-[0.2em]">Status Operasional</p>
           {courierStatus === 'off' && (liveUser as any)?.off_reason && (
@@ -194,44 +194,44 @@ export function CourierDashboard() {
             <p className="text-xs text-red-600 font-black uppercase tracking-tight">Akun Terblokir — Hubungi Admin</p>
           </div>
         ) : (
-          <div className="flex gap-2.5">
+          <div className="flex gap-1.5 mini:gap-2.5">
             <button
               onClick={handleSetOn}
               disabled={isSuspended || isUpdatingStatus}
               className={cn(
-                "flex-1 flex flex-col items-center gap-1.5 py-4 rounded-2xl text-[10px] font-black border transition-all active:scale-95 uppercase tracking-widest",
+                "flex-1 flex flex-col items-center gap-1 py-3 mini:py-4 rounded-xl xs:rounded-2xl text-[9px] mini:text-[10px] font-black border transition-all active:scale-95 uppercase tracking-widest",
                 courierStatus === 'on'
                   ? "bg-emerald-600 text-white border-emerald-600 shadow-xl shadow-emerald-100"
                   : "bg-gray-50 text-gray-400 border-gray-100 hover:border-emerald-200"
               )}
             >
-              <span className="text-lg mb-0.5">{isUpdatingStatus && courierStatus !== 'on' ? "..." : "⚡"}</span>
+              <span className="text-base mini:text-lg mb-0.5">{isUpdatingStatus && courierStatus !== 'on' ? "..." : "⚡"}</span>
               {courierStatus === 'on' ? "Aktif" : "Bekerja"}
             </button>
             <button
               onClick={handleSetStay}
               disabled={isSuspended || isUpdatingStatus}
               className={cn(
-                "flex-1 flex flex-col items-center gap-1.5 py-4 rounded-2xl text-[10px] font-black border transition-all active:scale-95 uppercase tracking-widest",
+                "flex-1 flex flex-col items-center gap-1 py-3 mini:py-4 rounded-xl xs:rounded-2xl text-[9px] mini:text-[10px] font-black border transition-all active:scale-95 uppercase tracking-widest",
                 courierStatus === 'stay'
                   ? "bg-blue-600 text-white border-blue-600 shadow-xl shadow-blue-100"
                   : "bg-gray-50 text-gray-400 border-gray-100 hover:border-blue-200"
               )}
             >
-              <span className="text-lg mb-0.5">{isUpdatingStatus && courierStatus !== 'stay' ? "..." : "🏠"}</span>
+              <span className="text-base mini:text-lg mb-0.5">{isUpdatingStatus && courierStatus !== 'stay' ? "..." : "🏠"}</span>
               STAY
             </button>
             <button
               onClick={() => setShowOffModal(true)}
               disabled={isSuspended || isUpdatingStatus}
               className={cn(
-                "flex-1 flex flex-col items-center gap-1.5 py-4 rounded-2xl text-[10px] font-black border transition-all active:scale-95 uppercase tracking-widest",
+                "flex-1 flex flex-col items-center gap-1 py-3 mini:py-4 rounded-xl xs:rounded-2xl text-[9px] mini:text-[10px] font-black border transition-all active:scale-95 uppercase tracking-widest",
                 courierStatus === 'off'
                   ? "bg-red-600 text-white border-red-600 shadow-xl shadow-red-100"
                   : "bg-gray-50 text-gray-400 border-gray-100 hover:border-red-200"
               )}
             >
-              <span className="text-lg mb-0.5">{isUpdatingStatus && courierStatus !== 'off' ? "..." : "🛑"}</span>
+              <span className="text-base mini:text-lg mb-0.5">{isUpdatingStatus && courierStatus !== 'off' ? "..." : "🛑"}</span>
               OFF
             </button>
           </div>
@@ -239,24 +239,24 @@ export function CourierDashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-1.5 mini:gap-3">
         {[
           { label: 'Setoran', val: formatShortCurrency(todayStats.earnings), icon: DollarSign, color: 'emerald' },
           { label: 'Selesai', val: todayStats.count, icon: CheckCircle, color: 'blue' },
           { label: 'Jalan', val: activeOrders.length, icon: Clock, color: 'orange' }
         ].map((stat) => (
-          <div key={stat.label} className="bg-white rounded-3xl p-4 shadow-sm border border-gray-100/50 text-center flex flex-col items-center justify-between min-h-[115px]">
+          <div key={stat.label} className="bg-white rounded-2xl auto-rows-min xs:rounded-3xl p-3 mini:p-4 shadow-sm border border-gray-100/50 text-center flex flex-col items-center justify-between min-h-[105px] mini:min-h-[115px]">
             <div className={cn(
-              "w-11 h-11 rounded-2xl flex items-center justify-center mb-2 border",
+              "w-9 h-9 mini:w-11 mini:h-11 rounded-xl mini:rounded-2xl flex items-center justify-center mb-1.5 mini:mb-2 border",
               stat.color === 'emerald' ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
               stat.color === 'blue' ? "bg-blue-50 text-blue-600 border-blue-100" :
               "bg-orange-50 text-orange-600 border-orange-100"
             )}>
-              <stat.icon className="h-5 w-5" />
+              <stat.icon className="h-4 w-4 mini:h-5 mini:w-5" />
             </div>
             <div>
-              <p className="text-base font-black text-gray-900 leading-tight tracking-tight">{stat.val}</p>
-              <p className="text-[9px] uppercase font-black text-gray-400 tracking-widest mt-0.5">{stat.label}</p>
+              <p className="text-sm mini:text-base font-black text-gray-900 leading-tight tracking-tighter whitespace-nowrap">{stat.val}</p>
+              <p className="text-[8px] mini:text-[9px] uppercase font-black text-gray-400 tracking-widest mt-0.5">{stat.label}</p>
             </div>
           </div>
         ))}
@@ -285,15 +285,15 @@ export function CourierDashboard() {
               <button
                 key={order.id}
                 onClick={() => navigate(`/courier/orders/${order.id}`)}
-                className="group w-full bg-white rounded-3xl p-5 shadow-sm border border-gray-100/70 text-left hover:border-emerald-400 hover:shadow-xl hover:shadow-emerald-50 transition-all active:scale-[0.98]"
+                className="group w-full bg-white rounded-2xl xs:rounded-3xl p-4 mini:p-5 shadow-sm border border-gray-100/70 text-left hover:border-emerald-400 hover:shadow-xl hover:shadow-emerald-50 transition-all active:scale-[0.98]"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-3">
-                      <span className="text-[10px] font-black bg-gray-900 text-white px-2.5 py-0.5 rounded-lg tracking-tighter">
+                      <span className="text-[10px] font-bold bg-gray-900 text-white px-2.5 py-0.5 rounded-lg tabular-nums">
                         #{order.order_number}
                       </span>
-                      <Badge variant={getStatusBadgeVariant(order.status)} className="font-black text-[9px] uppercase tracking-widest h-5">
+                      <Badge variant={getStatusBadgeVariant(order.status)} className="font-black text-[9px] uppercase tracking-widest h-5 whitespace-nowrap">
                         {getStatusLabel(order.status, 'courier')}
                       </Badge>
                       {order.is_waiting && (
@@ -315,14 +315,11 @@ export function CourierDashboard() {
                         {order.created_at ? format(parseISO(order.created_at), 'MMM dd, HH:mm') : '-'}
                       </div>
                       <div className="bg-emerald-50 px-4 py-1.5 rounded-xl border border-emerald-100 shadow-sm shadow-emerald-50">
-                        <p className="text-sm font-black text-emerald-600">
+                        <p className="text-sm font-black text-emerald-600 whitespace-nowrap">
                           {formatCurrency(order.total_fee || 0)}
                         </p>
                       </div>
                     </div>
-                  </div>
-                  <div className="w-11 h-11 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-400 border border-gray-100 flex-shrink-0 mt-3 transition-all group-hover:bg-emerald-50 group-hover:text-emerald-700 group-hover:border-emerald-100 group-hover:scale-110">
-                    <ChevronRight className="h-6 w-6" />
                   </div>
                 </div>
               </button>
@@ -334,7 +331,7 @@ export function CourierDashboard() {
       {/* Modal Alasan OFF */}
       {showOffModal && (
         <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-xl flex items-center justify-center z-[100] px-5 animate-in fade-in duration-300">
-          <div className="bg-white rounded-[2.5rem] p-7 w-full max-w-sm space-y-6 animate-in zoom-in-95 duration-300 border border-white/20 shadow-2xl">
+          <div className="bg-white rounded-3xl sx:rounded-[2.5rem] p-5 mini:p-7 w-full max-w-sm space-y-5 xs:space-y-6 animate-in zoom-in-95 duration-300 border border-white/20 shadow-2xl">
             <div className="text-center">
               <div className="w-14 h-14 bg-red-50 text-red-500 rounded-3xl flex items-center justify-center mx-auto mb-4 border border-red-100">
                 <Clock className="h-7 w-7" />

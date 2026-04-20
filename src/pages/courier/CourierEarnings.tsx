@@ -266,7 +266,7 @@ export function CourierEarnings() {
               <div className="flex items-center gap-2 mb-2 text-gray-400">
                 <span className="text-[9px] uppercase font-bold tracking-mobile">Hari Ini</span>
               </div>
-              <p className="text-xl font-bold text-gray-900 tracking-tight">{formatCurrency(todayStats.earnings)}</p>
+              <p className="text-lg mini:text-xl font-bold text-gray-900 tracking-tight whitespace-nowrap">{formatCurrency(todayStats.earnings)}</p>
               <div className="mt-2 flex items-center gap-1">
                 <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
                 <span className="text-[10px] text-emerald-600 font-bold">{todayStats.orders} Pesanan</span>
@@ -279,7 +279,7 @@ export function CourierEarnings() {
               <div className="flex items-center gap-2 mb-2 text-gray-400">
                 <span className="text-[9px] uppercase font-bold tracking-mobile">7 Hari</span>
               </div>
-              <p className="text-xl font-bold text-gray-900 tracking-tight">{formatCurrency(last7DaysStats.earnings)}</p>
+              <p className="text-lg mini:text-xl font-bold text-gray-900 tracking-tight whitespace-nowrap">{formatCurrency(last7DaysStats.earnings)}</p>
               <div className="mt-2 flex items-center gap-1">
                 <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
                 <span className="text-[10px] text-emerald-600 font-bold">{last7DaysStats.orders} Pesanan</span>
@@ -425,12 +425,12 @@ export function CourierEarnings() {
                           <div className="flex justify-between items-end mt-3.5 pt-3.5 border-t border-gray-50">
                             <div className="flex flex-col">
                               <span className="text-[9px] text-gray-400 font-bold uppercase tracking-mobile mb-0.5">Standard Fee</span>
-                              <span className="text-xs font-bold text-gray-900">{formatCurrency(order.total_fee)}</span>
+                              <span className="text-xs font-bold text-gray-900 whitespace-nowrap">{formatCurrency(order.total_fee || 0)}</span>
                             </div>
                             {courierEarning > 0 && (
                               <div className="text-right flex flex-col items-end">
                                 <span className="text-[9px] text-emerald-500 font-bold uppercase tracking-mobile mb-0.5">Earning Net</span>
-                                <span className="text-lg font-bold text-emerald-600 tracking-tight">{formatCurrency(courierEarning)}</span>
+                                <span className="text-base mini:text-lg font-bold text-emerald-600 tracking-tight whitespace-nowrap">{formatCurrency(courierEarning)}</span>
                               </div>
                             )}
                           </div>

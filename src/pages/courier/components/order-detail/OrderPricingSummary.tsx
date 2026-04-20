@@ -54,8 +54,8 @@ export const OrderPricingSummary: React.FC<OrderPricingSummaryProps> = ({
   formatRupiah
 }) => {
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 mb-6">
-      <h2 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Ringkasan Biaya</h2>
+    <div className="bg-white rounded-xl xs:rounded-2xl p-4 mini:p-5 shadow-sm border border-gray-100 mb-6">
+      <h2 className="text-xs mini:text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Ringkasan Biaya</h2>
       
       <div className="space-y-3">
         <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
@@ -78,14 +78,14 @@ export const OrderPricingSummary: React.FC<OrderPricingSummaryProps> = ({
               <button onClick={handleSimpanOngkir} className="text-emerald-600"><Check className="h-4 w-4" /></button>
             </div>
           ) : (
-            <span className="text-sm font-bold text-gray-900">Rp {(order.total_fee || 0).toLocaleString('id-ID')}</span>
+            <span className="text-sm font-bold text-gray-900 whitespace-nowrap">Rp {(order.total_fee || 0).toLocaleString('id-ID')}</span>
           )}
         </div>
 
         <div className="flex items-center justify-between p-3 bg-emerald-50/50 rounded-xl border border-emerald-50">
           <div>
             <p className="text-sm font-medium text-emerald-900">Biaya Titik ({titik} lokasi)</p>
-            <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-tight">+ Rp {totalBiayaTitik.toLocaleString('id-ID')}</p>
+            <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-tight whitespace-nowrap">+ Rp {totalBiayaTitik.toLocaleString('id-ID')}</p>
           </div>
           {!isLocked && (
             <div className="flex items-center gap-1">
@@ -99,7 +99,7 @@ export const OrderPricingSummary: React.FC<OrderPricingSummaryProps> = ({
           <div className="flex items-center justify-between mb-2">
             <div>
               <p className="text-sm font-medium text-amber-900">Biaya Beban/Lainnya</p>
-              <p className="text-[10px] text-amber-600 font-bold uppercase tracking-tight">+ Rp {totalBiayaBeban.toLocaleString('id-ID')}</p>
+              <p className="text-[10px] text-amber-600 font-bold uppercase tracking-tight whitespace-nowrap">+ Rp {totalBiayaBeban.toLocaleString('id-ID')}</p>
             </div>
             {!isLocked && (
               <button onClick={() => setShowBebanForm(!showBebanForm)} className="p-2 bg-white rounded-lg border border-amber-100"><Plus className="h-4 w-4 text-amber-600" /></button>
@@ -111,7 +111,7 @@ export const OrderPricingSummary: React.FC<OrderPricingSummaryProps> = ({
               <div key={idx} className="flex items-center justify-between py-1 border-t border-amber-100/50">
                 <span className="text-xs text-amber-800">{b.nama}</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-amber-900">Rp {b.biaya.toLocaleString('id-ID')}</span>
+                  <span className="text-xs font-bold text-amber-900 whitespace-nowrap">Rp {b.biaya.toLocaleString('id-ID')}</span>
                   {!isLocked && (
                     <button onClick={() => handleHapusBeban(idx)} className="text-amber-400 hover:text-red-500"><Trash2 className="h-3 w-3" /></button>
                   )}
@@ -150,7 +150,7 @@ export const OrderPricingSummary: React.FC<OrderPricingSummaryProps> = ({
 
         <div className="flex items-center justify-between p-4 bg-emerald-600 rounded-2xl shadow-lg shadow-emerald-100">
           <span className="text-sm font-bold text-emerald-50 uppercase tracking-wider">Total Akhir Ongkir</span>
-          <span className="text-xl font-black text-white font-mono">Rp {totalOngkir.toLocaleString('id-ID')}</span>
+          <span className="text-lg mini:text-xl font-black text-white tabular-nums whitespace-nowrap tracking-tighter">Rp {totalOngkir.toLocaleString('id-ID')}</span>
         </div>
       </div>
     </div>

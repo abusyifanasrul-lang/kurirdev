@@ -58,9 +58,9 @@ export function CourierLayout() {
       {/* Header */}
       <header className="bg-[#185356] dark:bg-gray-900 text-white px-4 py-4 sticky top-0 z-40 shadow-sm">
         <div className="relative flex items-center justify-between min-h-[40px]">
-          {/* Brand Logo Centered */}
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-40 sm:w-48 z-10 pointer-events-none">
-            <img src="/logo.png" alt="KurirMe" className="w-full h-auto object-contain drop-shadow-sm" />
+          {/* Brand Logo Centered - Hidden on mini to avoid collisions */}
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-32 xs:w-40 sm:w-48 z-10 pointer-events-none hidden mini:block">
+            <img src="/logo.png" alt="KurirMe" className="w-full h-auto object-contain drop-shadow-sm opacity-90" />
           </div>
 
           <div className="flex items-center gap-3 relative z-20">
@@ -130,7 +130,7 @@ export function CourierLayout() {
               end={item.end}
               className={({ isActive }) =>
                 cn(
-                  'flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-colors min-w-[60px]',
+                  'flex flex-col items-center gap-0.5 px-2 mini:px-3 py-1.5 rounded-lg transition-colors min-w-[55px] mini:min-w-[60px]',
                   isActive
                     ? 'text-emerald-600 bg-emerald-50'
                     : 'text-gray-500 hover:text-gray-700'
@@ -138,14 +138,14 @@ export function CourierLayout() {
               }
             >
               <div className="relative">
-                <item.icon className="h-5 w-5" />
+                <item.icon className="h-4.5 w-4.5 mini:h-5 mini:w-5" />
                 {item.path === '/courier/notifications' && unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-[16px] flex items-center justify-center px-[3px]">
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] mini:text-[10px] font-bold rounded-full min-w-[14px] h-[14px] mini:min-w-[16px] mini:h-[16px] flex items-center justify-center px-[3px]">
                     {unreadCount > 99 ? '99+' : unreadCount}
                   </span>
                 )}
               </div>
-              <span className="text-xs font-medium">{item.label}</span>
+              <span className="text-[10px] mini:text-xs font-medium">{item.label}</span>
             </NavLink>
           ))}
         </div>

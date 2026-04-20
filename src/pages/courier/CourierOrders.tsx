@@ -103,10 +103,10 @@ export function CourierOrders() {
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="text-[10px] font-black bg-gray-900 text-white px-2.5 py-0.5 rounded-lg tracking-tighter">
+                    <span className="text-[10px] font-bold bg-gray-900 text-white px-2.5 py-0.5 rounded-lg tabular-nums">
                       #{order.order_number}
                     </span>
-                    <Badge variant={getStatusBadgeVariant(order.status)} className="font-black text-[9px] uppercase tracking-widest h-5">
+                    <Badge variant={getStatusBadgeVariant(order.status)} className="font-black text-[9px] uppercase tracking-widest h-5 whitespace-nowrap">
                       {getStatusLabel(order.status, 'courier')}
                     </Badge>
                     {order.is_waiting && (
@@ -127,14 +127,11 @@ export function CourierOrders() {
                       {order.created_at ? format(parseISO(order.created_at), 'HH:mm') : '-'}
                     </div>
                     <div className="bg-emerald-50 px-4 py-1.5 rounded-xl border border-emerald-100 shadow-sm shadow-emerald-50">
-                      <p className="text-sm font-black text-emerald-600">
+                      <p className="text-sm font-black text-emerald-600 tabular-nums">
                         {formatCurrency(order.total_fee || 0)}
                       </p>
                     </div>
                   </div>
-                </div>
-                <div className="w-11 h-11 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 border border-emerald-100 flex-shrink-0 mt-2 transition-all group-hover:scale-110">
-                  <ChevronRight className="h-6 w-6" />
                 </div>
               </div>
             </button>
