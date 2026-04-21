@@ -10,6 +10,32 @@
 # Walkthrough - Enhanced Maintenance Security
 
 
+## Session Update: 2026-04-22 05:38:20
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 16
+- **Files**: `b/src/components/settings/BusinessTab.tsx, b/src/pages/finance/FinancePenagihan.tsx, b/src/pages/Orders.tsx, b/src/pages/courier/CourierEarnings.tsx, b/src/pages/Reports.tsx, b/src/pages/finance/FinanceDashboard.tsx, b/src/pages/courier/CourierDashboard.tsx, b/src/pages/Dashboard.tsx, b/src/stores/useOrderStore.ts, b/src/pages/Couriers.tsx, b/src/lib/calcEarning.test.ts, b/src/stores/useSettingsStore.ts, b/supabase/migrations/20240421000000_deduction_logic.sql, b/KNOWLEDGE_MAP.md, b/src/lib/calcEarning.ts, b/src/pages/finance/FinanceAnalisa.tsx, b/src/pages/Settings.tsx, b/src/lib/orderCache.ts`
+- **Overwrites**: `onSaveSettings: (data: { commission_rate: number; commission_threshold: number }) => void;, const handleSave = () => {, onChange={e => setForm(prev => ({ ...prev, commission_rate: Number(e.target.value) }))}, onChange={e => {, setForm(prev => ({ ...prev, commission_threshold: val }));, describe('calcCourierEarning', () => {, it('should prioritize applied_commission_rate from order snapshot', () => {, it('should prioritize applied_commission_threshold from order snapshot', () => {, // total_fee (15k) <= threshold (20k) => 100% = 15000, it('should add extraTitik and extraBeban to the total', () => {, it('should handle zero extra fees properly', () => {, describe('calcAdminEarning', () => {, it('should return 0 if total_fee <= threshold', () => {, it('should return remaining percentage if total_fee > threshold', () => {, it('should prioritize snapshot rate and threshold', () => {, it('should not include extra courier fees in admin earning', () => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 2
+- **Files**: `b/src/pages/Dashboard.tsx, b/KNOWLEDGE_MAP.md, b/src/components/ui/Card.tsx, b/src/pages/Reports.tsx`
+- **Overwrites**: `export function Card({ children, className, padding = 'md', onClick }: CardProps) {, value={allOrders.filter(o => ['assigned', 'picked_up', 'in_transit'].includes(o.status)).length}`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 2
+- **Files**: `b/src/pages/Dashboard.tsx, b/src/pages/Reports.tsx, b/src/components/ui/Card.tsx, b/KNOWLEDGE_MAP.md`
+- **Overwrites**: `export function Card({ children, className, padding = 'md', onClick }: CardProps) {, value={allOrders.filter(o => ['assigned', 'picked_up', 'in_transit'].includes(o.status)).length}`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 2
+- **Files**: `b/src/pages/Dashboard.tsx, b/KNOWLEDGE_MAP.md, b/src/components/ui/Card.tsx, b/src/pages/Reports.tsx`
+- **Overwrites**: `export function Card({ children, className, padding = 'md', onClick }: CardProps) {, value={allOrders.filter(o => ['assigned', 'picked_up', 'in_transit'].includes(o.status)).length}`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 0
+- **Files**: `b/KNOWLEDGE_MAP.md`
+---
+
 ## Session Update: 2026-04-21 23:44:50
 - **Type**: auto_harvest
 - **Desc**: Changes detected via git diff. Overwritten potential functions: 2

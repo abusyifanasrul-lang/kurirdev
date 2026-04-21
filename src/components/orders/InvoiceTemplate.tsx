@@ -175,15 +175,15 @@ export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ order, invoice
                <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'right' }}>
                   <div style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Admin & Sistem</div>
                   <div style={{ fontWeight: '800', color: '#0f172a', fontSize: '13px' }}>{resolvedAssigner}</div>
-                  <div style={{ color: '#475569', fontSize: '11px', fontWeight: '500', marginTop: '4px', minHeight: '14px' }}>
-                    {order.creator_name ? `Dibuat oleh: ${order.creator_name}` : (order.payment_confirmed_by_name ? `Verif: ${order.payment_confirmed_by_name}` : ' ')}
+                  <div style={{ color: '#475569', fontSize: '11px', fontWeight: '500', marginTop: '4px', minHeight: '14px', textAlign: 'right' }}>
+                    <a href="https://instagram.com/kurirme.sengkang" style={{ color: 'inherit', textDecoration: 'none' }}>@kurirme.sengkang</a>
                   </div>
                </div>
             </div>
             
             {/* Simple footer (Compact) */}
             <div style={{ textAlign: 'center', marginTop: '24px', opacity: 0.7 }}>
-                <div style={{ fontSize: '9px', color: '#64748b', marginTop: '4px', fontWeight: '600' }}>Bukti transaksi sah dari sistem.</div>
+                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', fontWeight: '600' }}>Terima kasih telah mempercayai layanan kami! 🙏</div>
             </div>
         </div>
       </div>
