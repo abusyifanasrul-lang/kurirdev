@@ -73,7 +73,7 @@ export function Orders() {
   const { rotateQueue } = useCourierStore();
   const { users } = useUserStore();
   const { user } = useAuth();
-  const { commission_rate, commission_threshold, courier_instructions } = useSettingsStore();
+  const { commission_rate, commission_threshold, commission_type, courier_instructions } = useSettingsStore();
   const { customers, upsertCustomer, addAddress, updateAddress, deleteAddress, findByPhone } = useCustomerStore();
 
   const isOpsAdmin = user?.role === 'admin_kurir' || user?.role === 'admin';
@@ -146,7 +146,7 @@ export function Orders() {
       cachedOrders, cacheStatus])
 
   const calcPlatformFee = (order: Order) => {
-    return calcAdminEarning(order, { commission_rate, commission_threshold })
+    return calcAdminEarning(order, { commission_rate, commission_threshold, commission_type })
   }
 
   const [searchQuery, setSearchQuery] = useState('');

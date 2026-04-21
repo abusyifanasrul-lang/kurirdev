@@ -38,8 +38,8 @@ function ChartSkeleton({ height = 300 }: { height?: number }) {
 export function FinanceAnalisa() {
   const { orders } = useOrderStore();
   const { users } = useUserStore();
-  const { commission_rate, commission_threshold } = useSettingsStore();
-  const earningSettings = { commission_rate, commission_threshold };
+  const { commission_rate, commission_threshold, commission_type } = useSettingsStore();
+  const earningSettings = { commission_rate, commission_threshold, commission_type };
 
   const [period, setPeriod] = useState<Period>('7days');
   const [periodOrders, setPeriodOrders] = useState<Order[]>([]);

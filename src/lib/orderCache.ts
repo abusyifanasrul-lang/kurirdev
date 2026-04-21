@@ -587,7 +587,7 @@ export async function getOrdersByCourierFromLocal(
  */
 export async function getCourierTodayStats(
   courierId: string,
-  earningSettings: { commission_rate: number; commission_threshold: number }
+  earningSettings: { commission_rate: number; commission_threshold: number; commission_type?: 'percentage' | 'flat' }
 ): Promise<{ count: number; earnings: number }> {
   const today = getLocalDateStr(new Date().toISOString())
   
@@ -778,8 +778,8 @@ export async function getTopCouriers(
     .toArray()
 
   const map = new Map<string, { id: string; name: string; delivery_count: number; total_fee: number }>()
-  const { commission_rate, commission_threshold } = useSettingsStore.getState()
-  const earningSettings = { commission_rate, commission_threshold }
+  const { commission_rate, commission_threshold, commission_type } = useSettingsStore.getState()
+  const earningSettings = { commission_rate, commission_threshold, commission_type }
 
   for (const o of all) {
     const cid = o.courier_id!

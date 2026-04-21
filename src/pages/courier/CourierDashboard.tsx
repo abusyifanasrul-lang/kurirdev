@@ -23,7 +23,7 @@ export function CourierDashboard() {
   const { setCourierOffline, setCourierOnline } = useCourierStore();
   const { users, subscribeProfile } = useUserStore();
   const { user: currentUser } = useSessionStore();
-  const { commission_rate, commission_threshold } = useSettingsStore();
+  const { commission_rate, commission_threshold, commission_type } = useSettingsStore();
 
   const liveUser = users.find(u => u.id === currentUser?.id);
   const isSuspended = liveUser?.is_active === false;
@@ -70,15 +70,14 @@ export function CourierDashboard() {
       const stats = await import('@/lib/orderCache');
       
       // 1. Today's Stats (Delivered only)
-      const today = await stats.getCourierTodayStats(user.id, { commission_rate, commission_threshold });
+      const today = await stats.getCourierTodayStats(user.id, { commission_rate, commission_threshold, commission_type });
       setTodayStats(today);
 
       // 2. Unpaid Warnings (Optimized)
       const unpaid = await stats.getUnpaidOrdersByCourier(user.id);
       const unpaidEarnings = unpaid.reduce((sum, o) => {
-        const rate = o.applied_commission_rate ?? commission_rate
-        const threshold = o.applied_commission_threshold ?? commission_threshold
-        return sum + calcAdminEarning(o, { commission_rate: rate, commission_threshold: threshold })
+        const type = o.applied_commission_type ?? commission_type
+        return sum + calcAdminEarning(o, { commission_rate, commission_threshold, commission_type: type })
       }, 0);
       
       setUnpaidStats({ count: unpaid.length, earnings: unpaidEarnings });
@@ -86,7 +85,7 @@ export function CourierDashboard() {
     } catch (err) {
       console.error('Failed to load dashboard stats:', err);
     }
-  }, [user?.id, commission_rate, commission_threshold]);
+  }, [user?.id, commission_rate, commission_threshold, commission_type]);
 
   // Initial load
   useEffect(() => {

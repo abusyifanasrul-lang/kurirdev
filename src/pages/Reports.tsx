@@ -40,7 +40,7 @@ export function Reports() {
   const { fetchOrdersByDateRange } = useOrderStore();
   const { couriers } = useCourierStore();
   const { users } = useUserStore();
-  const { commission_rate, commission_threshold } = useSettingsStore();
+  const { commission_rate, commission_threshold, commission_type } = useSettingsStore();
 
   const [reportOrders, setReportOrders] = useState<Order[]>([]);
   const [cacheStatus, setCacheStatus] = useState<'idle' | 'checking' | 'missing' | 'loading' | 'loaded'>('idle');
@@ -123,7 +123,7 @@ export function Reports() {
     // 2. Summary Stats
     const totalOrders = filteredOrders.length;
     const deliveredOrders = filteredOrders.filter(o => o.status === 'delivered');
-    const earningSettings = { commission_rate, commission_threshold };
+    const earningSettings = { commission_rate, commission_threshold, commission_type };
 
     // Total Revenue (Gross)
     const totalRevenue = deliveredOrders.reduce((acc, o) =>

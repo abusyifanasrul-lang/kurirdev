@@ -62,6 +62,7 @@ export function Settings() {
   const { 
     commission_rate, 
     commission_threshold, 
+    commission_type,
     operational_area,
     operational_timezone,
     courier_instructions,
@@ -124,6 +125,7 @@ export function Settings() {
         .update({
           commission_rate: state.commission_rate,
           commission_threshold: state.commission_threshold,
+          commission_type: state.commission_type,
           operational_area: state.operational_area,
           operational_timezone: state.operational_timezone,
           courier_instructions: state.courier_instructions,
@@ -337,6 +339,7 @@ export function Settings() {
                     <BusinessTab 
                       commission_rate={commission_rate}
                       commission_threshold={commission_threshold}
+                      commission_type={commission_type}
                       onSaveSettings={handleSaveBusinessSettings}
                       onResync={handleResync}
                       cacheMeta={cacheMeta}

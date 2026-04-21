@@ -10,6 +10,32 @@
 # Walkthrough - Enhanced Maintenance Security
 
 
+## Session Update: 2026-04-21 23:44:50
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 2
+- **Files**: `b/src/pages/Dashboard.tsx, b/KNOWLEDGE_MAP.md, b/src/components/ui/Card.tsx, b/src/pages/Reports.tsx`
+- **Overwrites**: `export function Card({ children, className, padding = 'md', onClick }: CardProps) {, value={allOrders.filter(o => ['assigned', 'picked_up', 'in_transit'].includes(o.status)).length}`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 2
+- **Files**: `b/src/pages/Dashboard.tsx, b/src/pages/Reports.tsx, b/src/components/ui/Card.tsx, b/KNOWLEDGE_MAP.md`
+- **Overwrites**: `export function Card({ children, className, padding = 'md', onClick }: CardProps) {, value={allOrders.filter(o => ['assigned', 'picked_up', 'in_transit'].includes(o.status)).length}`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 2
+- **Files**: `b/src/pages/Dashboard.tsx, b/KNOWLEDGE_MAP.md, b/src/components/ui/Card.tsx, b/src/pages/Reports.tsx`
+- **Overwrites**: `export function Card({ children, className, padding = 'md', onClick }: CardProps) {, value={allOrders.filter(o => ['assigned', 'picked_up', 'in_transit'].includes(o.status)).length}`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 0
+- **Files**: `b/KNOWLEDGE_MAP.md`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 16
+- **Files**: `b/KNOWLEDGE_MAP.md`
+- **Overwrites**: `- **Overwrites**: `const joined = channels.filter((c) => c.status === 'joined').length;, const joining = channels.filter((c) => c.status === 'joining').length;, const errored = channels.filter((c) => c.status === 'errored' || c.status === 'closed').length;`, - **Overwrites**: `const logout = useCallback(async () => {, setTimeout(async () => {, keysToRemove.forEach(key => localStorage.removeItem(key));, supabase.auth.onAuthStateChange((event) => {`, - **Overwrites**: `const logout = useCallback(async () => {, setTimeout(async () => {, keysToRemove.forEach(key => localStorage.removeItem(key));, supabase.auth.onAuthStateChange((event) => {`, - **Overwrites**: `const logout = useCallback(async () => {, setTimeout(async () => {, keysToRemove.forEach(key => localStorage.removeItem(key));, supabase.auth.onAuthStateChange((event) => {`, - **Overwrites**: `const joined = channels.filter((c) => c.status === 'joined').length;, const joining = channels.filter((c) => c.status === 'joining').length;, const errored = channels.filter((c) => c.status === 'errored' || c.status === 'closed').length;`, - **Overwrites**: `const joined = channels.filter((c) => c.status === 'joined').length;, const joining = channels.filter((c) => c.status === 'joining').length;, const errored = channels.filter((c) => c.status === 'errored' || c.status === 'closed').length;`, - **Overwrites**: `const logout = useCallback(async () => {, setTimeout(async () => {, keysToRemove.forEach(key => localStorage.removeItem(key));, supabase.auth.onAuthStateChange((event) => {`, - **Overwrites**: `const logout = useCallback(async () => {, setTimeout(async () => {, keysToRemove.forEach(key => localStorage.removeItem(key));, supabase.auth.onAuthStateChange((event) => {`, - **Overwrites**: `const joined = channels.filter((c) => c.status === 'joined').length;, const joining = channels.filter((c) => c.status === 'joining').length;, const errored = channels.filter((c) => c.status === 'errored' || c.status === 'closed').length;`, - **Overwrites**: `const joined = channels.filter((c) => c.status === 'joined').length;, const joining = channels.filter((c) => c.status === 'joining').length;, const errored = channels.filter((c) => c.status === 'errored' || c.status === 'closed').length;`, - **Overwrites**: `const logout = useCallback(async () => {, setTimeout(async () => {, keysToRemove.forEach(key => localStorage.removeItem(key));, supabase.auth.onAuthStateChange((event) => {`, - **Overwrites**: `const joined = channels.filter((c) => c.status === 'joined').length;, const joining = channels.filter((c) => c.status === 'joining').length;, const errored = channels.filter((c) => c.status === 'errored' || c.status === 'closed').length;`, - **Overwrites**: `const joined = channels.filter((c) => c.status === 'joined').length;, const joining = channels.filter((c) => c.status === 'joining').length;, const errored = channels.filter((c) => c.status === 'errored' || c.status === 'closed').length;`, - **Overwrites**: `const joined = channels.filter((c) => c.status === 'joined').length;, const joining = channels.filter((c) => c.status === 'joining').length;, const errored = channels.filter((c) => c.status === 'errored' || c.status === 'closed').length;`, - **Overwrites**: `const joined = channels.filter((c) => c.status === 'joined').length;, const joining = channels.filter((c) => c.status === 'joining').length;, const errored = channels.filter((c) => c.status === 'errored' || c.status === 'closed').length;`, cursor.execute("SELECT type, description, affected_files, overwritten_functions, timestamp FROM observations ORDER BY id DESC LIMIT 5")`
+---
+
 ## Session Update: 2026-04-20 19:51:57
 - **Type**: auto_harvest
 - **Desc**: Changes detected via git diff. Overwritten potential functions: 2

@@ -729,14 +729,15 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     try {
       await withRetry(async () => {
         if (status === 'delivered') {
-          const { commission_rate, commission_threshold } = useSettingsStore.getState()
+          const { commission_rate, commission_threshold, commission_type } = useSettingsStore.getState()
           const { error } = await (supabase.rpc as any)('complete_order', {
              p_order_id: orderId,
              p_user_id: userId,
              p_user_name: userName,
              p_notes: notes || '',
              p_commission_rate: commission_rate,
-             p_commission_threshold: commission_threshold
+             p_commission_threshold: commission_threshold,
+             p_commission_type: commission_type
           })
           if (error) throw error
           
@@ -745,7 +746,8 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
             status: 'delivered', 
             is_waiting: false, 
             applied_commission_rate: commission_rate, 
-            applied_commission_threshold: commission_threshold, 
+            applied_commission_threshold: commission_threshold,
+            applied_commission_type: commission_type,
             actual_delivery_time: new Date().toISOString() 
           }
           

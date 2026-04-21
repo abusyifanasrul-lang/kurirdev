@@ -34,8 +34,8 @@ export function Couriers() {
   const { users } = useUserStore();
   const couriers = users.filter(u => u.role === 'courier') as Courier[];
   const { orders, activeOrdersByCourier, getOrdersByCourier, settleOrder, fetchInitialOrders } = useOrderStore();
-  const { commission_rate, commission_threshold } = useSettingsStore();
-  const earningSettings = { commission_rate, commission_threshold };
+  const { commission_rate, commission_threshold, commission_type } = useSettingsStore();
+  const earningSettings = { commission_rate, commission_threshold, commission_type };
   const { user } = useAuth();
   const isFinance = user?.role === 'finance' || user?.role === 'owner';
 

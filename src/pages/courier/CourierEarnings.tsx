@@ -32,8 +32,8 @@ export function CourierEarnings() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  const { commission_rate, commission_threshold } = useSettingsStore();
-  const earningSettings = { commission_rate, commission_threshold };
+  const { commission_rate, commission_threshold, commission_type } = useSettingsStore();
+  const earningSettings = { commission_rate, commission_threshold, commission_type };
   const { isSyncing } = useOrderStore();
 
   const [activeTab, setActiveTab] = useState<Tab>((location.state as any)?.activeTab || 'summary');

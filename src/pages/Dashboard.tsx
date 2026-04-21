@@ -47,9 +47,9 @@ export function Dashboard() {
   const { orders, activeOrdersByCourier } = useOrderStore();
   const { users } = useUserStore();
   const { user } = useAuth();
-  const { commission_rate, commission_threshold } = useSettingsStore();
+  const { commission_rate, commission_threshold, commission_type } = useSettingsStore();
   const { changeRequests, fetchPendingRequests } = useCustomerStore();
-  const earningSettings = { commission_rate, commission_threshold };
+  const earningSettings = { commission_rate, commission_threshold, commission_type };
 
   const isFinance = user?.role === 'finance' || user?.role === 'owner';
   const canApprove = user?.role === 'admin' || user?.role === 'admin_kurir';

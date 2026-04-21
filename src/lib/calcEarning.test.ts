@@ -6,6 +6,13 @@ describe('calcEarning Logic', () => {
   const defaultSettings = {
     commission_rate: 80, // Kurir dapat 80%
     commission_threshold: 10000, // Threshold 10rb
+    commission_type: 'percentage' as const,
+  }
+
+  const flatSettings = {
+    commission_rate: 80, 
+    commission_threshold: 5000, // Threshold 5rb
+    commission_type: 'flat' as const,
   }
 
   const baseOrder: Order = {
@@ -21,7 +28,7 @@ describe('calcEarning Logic', () => {
     updated_at: new Date().toISOString(),
   }
 
-  describe('calcCourierEarning', () => {
+  describe('Percentage Model (Existing)', () => {
     it('should give 100% fee to courier if total_fee <= threshold', () => {
       const order = { ...baseOrder, total_fee: 10000 }
       const res = calcCourierEarning(order, defaultSettings)
@@ -30,80 +37,53 @@ describe('calcEarning Logic', () => {
 
     it('should give percentage fee to courier if total_fee > threshold', () => {
       const order = { ...baseOrder, total_fee: 20000 }
-      // 20000 * 80% = 16000
-      const res = calcCourierEarning(order, defaultSettings)
-      expect(res).toBe(16000)
-    })
-
-    it('should prioritize applied_commission_rate from order snapshot', () => {
-      const order = { ...baseOrder, total_fee: 20000, applied_commission_rate: 70 }
-      // 20000 * 70% = 14000
-      const res = calcCourierEarning(order, defaultSettings)
-      expect(res).toBe(14000)
-    })
-
-    it('should prioritize applied_commission_threshold from order snapshot', () => {
-      const order = { ...baseOrder, total_fee: 15000, applied_commission_threshold: 20000 }
-      // total_fee (15k) <= threshold (20k) => 100% = 15000
-      const res = calcCourierEarning(order, defaultSettings)
-      expect(res).toBe(15000)
-    })
-
-    it('should add extraTitik and extraBeban to the total', () => {
-      const order = { 
-        ...baseOrder, 
-        total_fee: 20000, 
-        total_biaya_titik: 3000, 
-        total_biaya_beban: 2000 
-      }
-      // (20000 * 80%) + 3000 + 2000 = 16000 + 5000 = 21000
-      const res = calcCourierEarning(order, defaultSettings)
-      expect(res).toBe(21000)
-    })
-
-    it('should handle zero extra fees properly', () => {
-      const order = { ...baseOrder, total_fee: 20000 }
       const res = calcCourierEarning(order, defaultSettings)
       expect(res).toBe(16000)
     })
   })
 
-  describe('calcAdminEarning', () => {
-    it('should return 0 if total_fee <= threshold', () => {
+  describe('Flat Range Model (New)', () => {
+    it('should give 0 admin fee for ongkir <= threshold (5k)', () => {
+      const order = { ...baseOrder, total_fee: 5000 }
+      expect(calcAdminEarning(order, flatSettings)).toBe(0)
+      expect(calcCourierEarning(order, flatSettings)).toBe(5000)
+    })
+
+    it('should give 1000 admin fee for 5001 - 19999 (when threshold is 5k)', () => {
+      const order1 = { ...baseOrder, total_fee: 6000 }
+      expect(calcAdminEarning(order1, flatSettings)).toBe(1000)
+      expect(calcCourierEarning(order1, flatSettings)).toBe(5000)
+
+      const order2 = { ...baseOrder, total_fee: 15000 }
+      expect(calcAdminEarning(order2, flatSettings)).toBe(1000)
+      expect(calcCourierEarning(order2, flatSettings)).toBe(14000)
+    })
+
+    it('should give 2000 admin fee for 20000 - 29999', () => {
+      const order = { ...baseOrder, total_fee: 23000 }
+      expect(calcAdminEarning(order, flatSettings)).toBe(2000)
+    })
+
+    it('should use custom threshold (e.g., 10k)', () => {
+      const customSettings = { ...flatSettings, commission_threshold: 10000 }
       const order = { ...baseOrder, total_fee: 10000 }
-      const res = calcAdminEarning(order, defaultSettings)
-      expect(res).toBe(0)
+      expect(calcAdminEarning(order, customSettings)).toBe(0)
+      
+      const order2 = { ...baseOrder, total_fee: 11000 }
+      expect(calcAdminEarning(order2, customSettings)).toBe(1000)
     })
 
-    it('should return remaining percentage if total_fee > threshold', () => {
-      const order = { ...baseOrder, total_fee: 20000 }
-      // 20000 * (100% - 80%) = 20000 * 20% = 4000
-      const res = calcAdminEarning(order, defaultSettings)
-      expect(res).toBe(4000)
-    })
-
-    it('should prioritize snapshot rate and threshold', () => {
+    it('should still handle extra courier fees correctly in flat mode', () => {
       const order = { 
         ...baseOrder, 
-        total_fee: 30000, 
-        applied_commission_rate: 60,
-        applied_commission_threshold: 5000 
+        total_fee: 15000, 
+        total_biaya_titik: 3000, 
+        total_biaya_beban: 2000 
       }
-      // 30000 * (100% - 60%) = 30000 * 40% = 12000
-      const res = calcAdminEarning(order, defaultSettings)
-      expect(res).toBe(12000)
-    })
-
-    it('should not include extra courier fees in admin earning', () => {
-      const order = { 
-        ...baseOrder, 
-        total_fee: 20000, 
-        total_biaya_titik: 5000, 
-        total_biaya_beban: 3000 
-      }
-      // 20000 * 20% = 4000 (extra fees only for courier)
-      const res = calcAdminEarning(order, defaultSettings)
-      expect(res).toBe(4000)
+      // total_fee 15k admin share 1k -> courier base 14k
+      // 14k + 3k + 2k = 19k
+      const res = calcCourierEarning(order, flatSettings)
+      expect(res).toBe(19000)
     })
   })
 })

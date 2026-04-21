@@ -20,8 +20,8 @@ export function FinanceDashboard() {
   const { user } = useAuth();
   const { orders, activeOrdersByCourier } = useOrderStore();
   const { users } = useUserStore();
-  const { commission_rate, commission_threshold } = useSettingsStore();
-  const earningSettings = { commission_rate, commission_threshold };
+  const { commission_rate, commission_threshold, commission_type } = useSettingsStore();
+  const earningSettings = { commission_rate, commission_threshold, commission_type };
 
   const couriers = users.filter(u => u.role === 'courier');
   const [weekOrders, setWeekOrders] = useState<Order[]>([]);

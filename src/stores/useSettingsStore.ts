@@ -14,6 +14,7 @@ export type { CourierInstruction }
 interface BusinessSettings {
   commission_rate: number
   commission_threshold: number
+  commission_type: 'percentage' | 'flat'
   operational_area: string
   operational_timezone: string
   courier_instructions: CourierInstruction[]
@@ -45,6 +46,7 @@ export const useSettingsStore = create<SettingsStore>()(
     (set, get) => ({
       commission_rate: 80,
       commission_threshold: 5000,
+      commission_type: 'percentage',
       operational_area: 'Sengkang, Wajo',
       operational_timezone: 'Asia/Jakarta',
       courier_instructions: DEFAULT_INSTRUCTIONS,
@@ -74,6 +76,7 @@ export const useSettingsStore = create<SettingsStore>()(
           ...state,
           commission_rate: data.commission_rate,
           commission_threshold: data.commission_threshold,
+          commission_type: data.commission_type || 'percentage',
           operational_area: data.operational_area || 'Sengkang, Wajo',
           operational_timezone: data.operational_timezone || 'Asia/Jakarta',
           courier_instructions: data.courier_instructions || DEFAULT_INSTRUCTIONS
@@ -210,6 +213,7 @@ export const useSettingsStore = create<SettingsStore>()(
         ...state,
         commission_rate: 80,
         commission_threshold: 5000,
+        commission_type: 'percentage',
         operational_area: 'Sengkang, Wajo',
         operational_timezone: 'Asia/Jakarta',
         courier_instructions: DEFAULT_INSTRUCTIONS,
