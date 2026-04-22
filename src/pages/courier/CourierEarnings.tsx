@@ -13,6 +13,7 @@ import { useOrderStore } from '@/stores/useOrderStore';
 import { formatCurrency, formatShortCurrency } from '@/utils/formatter';
 import { InvoiceTemplate } from '@/components/orders/InvoiceTemplate';
 import { shareInvoiceNative } from '@/lib/invoiceUtils';
+import { getPlatformInfo } from '@/lib/platformUtils';
 import { useToastStore } from '@/stores/useToastStore';
 
 type Period = 'daily' | 'weekly';
@@ -463,7 +464,7 @@ export function CourierEarnings() {
               </div>
             </div>
 
-            <div className="p-6 pt-0">
+            <div className="p-6 pt-0 space-y-3">
               <button
                 onClick={handleBagikanInvoice}
                 disabled={isGeneratingInvoice}
@@ -475,9 +476,25 @@ export function CourierEarnings() {
                     <span>MEMPROSES...</span>
                   </div>
                 ) : (
-                  "CETAK / UNDUH INVOICE PNG"
+                  getPlatformInfo().isNative ? 'CETAK / BAGIKAN INVOICE' : 'BAGIKAN INVOICE (PNG)'
                 )}
               </button>
+
+              <button
+                onClick={() => {
+                  import('@/lib/invoiceUtils').then(m => m.shareToWhatsApp(selectedOrder!));
+                }}
+                className="w-full py-4 bg-[#25D366] hover:bg-[#128C7E] text-white rounded-2xl font-bold text-xs uppercase tracking-mobile active:scale-[0.98] transition-all shadow-lg shadow-emerald-900/10"
+              >
+                KIRIM RINCIAN KE WA
+              </button>
+
+              <div className="pt-2 opacity-30 flex items-center justify-center gap-2">
+                 <div className="w-1 h-1 rounded-full bg-emerald-600"></div>
+                 <span className="text-[8px] font-black uppercase tracking-widest text-emerald-900">
+                   {getPlatformInfo().isNative ? 'Mode Native APK' : (getPlatformInfo().isPWA ? 'Mode PWA' : 'Mode Web')}
+                 </span>
+              </div>
             </div>
           </div>
         </div>

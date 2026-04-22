@@ -22,6 +22,7 @@ import { OrderCancelModal } from './components/order-detail/OrderCancelModal';
 import { InvoiceTemplate } from '@/components/orders/InvoiceTemplate';
 import { OrderMapPanel } from './components/order-detail/OrderMapPanel';
 import { shareInvoiceNative } from '@/lib/invoiceUtils';
+import { getPlatformInfo } from '@/lib/platformUtils';
 
 // Format angka ke tampilan Rupiah: 20000 → "Rp 20.000"
 const formatRupiah = (val: string): string => {
@@ -41,9 +42,7 @@ export function CourierOrderDetail() {
     findByPhone, 
     upsertCustomer, 
     createAddressChangeRequest, 
-    fetchPendingRequests,
-    subscribeToRequests,
-    subscribeToCustomers
+    fetchPendingRequests
   } = useCustomerStore();
   const invoiceRef = useRef<HTMLDivElement>(null);
   const customerSectionRef = useRef<HTMLDivElement>(null);
@@ -557,27 +556,44 @@ export function CourierOrderDetail() {
                     <h2 className="text-2xl font-bold mb-2 text-gray-900">Pesanan Berhasil Terkirim!</h2>
                     <p className="text-sm text-gray-500 mb-8 max-w-[240px] mx-auto">Saldo Anda telah diperbarui sesuai komisi pesanan ini.</p>
                     
-                    <div className="grid grid-cols-1 gap-3">
-                      <button
-                        onClick={handleBagikanInvoice}
-                        disabled={isGeneratingInvoice}
-                        className="flex items-center justify-center gap-3 w-full p-5 bg-emerald-600 text-white rounded-2xl font-bold text-xs uppercase tracking-widest active:scale-95 transition-all shadow-xl shadow-emerald-200 disabled:opacity-50 border-b-4 border-emerald-800"
-                      >
-                        {isGeneratingInvoice ? (
-                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        ) : (
-                          <span className="text-2xl">🖨️</span>
-                        )}
-                        CETAK / UNDUH INVOICE
-                      </button>
-                      
-                      <button
-                        onClick={() => navigate('/courier')}
-                        className="w-full p-4 bg-white border-2 border-gray-100 text-gray-900 rounded-2xl font-bold active:scale-95 transition-all"
-                      >
-                        Kembali ke Beranda
-                      </button>
-                    </div>
+                      <div className="grid grid-cols-1 gap-3">
+                        <button
+                          onClick={handleBagikanInvoice}
+                          disabled={isGeneratingInvoice}
+                          className="flex items-center justify-center gap-3 w-full p-5 bg-emerald-600 text-white rounded-2xl font-bold text-xs uppercase tracking-widest active:scale-95 transition-all shadow-xl shadow-emerald-200 disabled:opacity-50 border-b-4 border-emerald-800"
+                        >
+                          {isGeneratingInvoice ? (
+                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          ) : (
+                            <span className="text-2xl">🖨️</span>
+                          )}
+                          {getPlatformInfo().isNative ? 'CETAK / BAGIKAN INVOICE' : 'BAGIKAN INVOICE (PNG)'}
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            import('@/lib/invoiceUtils').then(m => m.shareToWhatsApp(order));
+                          }}
+                          className="flex items-center justify-center gap-3 w-full p-5 bg-[#25D366] text-white rounded-2xl font-bold text-xs uppercase tracking-widest active:scale-95 transition-all shadow-xl shadow-emerald-900/10 border-b-4 border-[#128C7E]"
+                        >
+                          <span className="text-2xl">💬</span>
+                          KIRIM RINCIAN KE WA
+                        </button>
+                        
+                        <button
+                          onClick={() => navigate('/courier')}
+                          className="w-full p-4 bg-white border-2 border-gray-100 text-gray-900 rounded-2xl font-bold active:scale-95 transition-all"
+                        >
+                          Kembali ke Beranda
+                        </button>
+
+                        <div className="mt-4 opacity-30 flex items-center justify-center gap-2">
+                           <div className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></div>
+                           <span className="text-[9px] font-black uppercase tracking-widest text-emerald-900">
+                             Mode {getPlatformInfo().isNative ? 'Native APK' : (getPlatformInfo().isPWA ? 'PWA Optimized' : 'Web View')}
+                           </span>
+                        </div>
+                      </div>
                   </div>
                 </div>
               )}
