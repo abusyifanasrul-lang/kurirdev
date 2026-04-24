@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Plus, Eye, EyeOff, ToggleLeft, ToggleRight, TrendingUp, Package, DollarSign, Phone, Mail, Award, Hash, Search } from 'lucide-react';
+import { Plus, Eye, EyeOff, ToggleLeft, ToggleRight, TrendingUp, Package, DollarSign, Phone, Mail, Award, Hash, Search, QrCode } from 'lucide-react';
 import { format } from 'date-fns';
 import { Header } from '@/components/layout/Header';
 import { Card, StatCard } from '@/components/ui/Card';
@@ -9,6 +9,7 @@ import { Select } from '@/components/ui/Select';
 import { Modal } from '@/components/ui/Modal';
 import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
 import { CourierBadge } from '@/components/couriers/CourierBadge';
+import { StayQRDisplay } from '@/components/admin/StayQRDisplay';
 import {
   Table,
   TableHead,
@@ -48,6 +49,7 @@ export function Couriers() {
   const [allUnpaidCounts, setAllUnpaidCounts] = useState<Record<string, number>>({})
   const [weekOrders, setWeekOrders] = useState<Order[]>([])
   const [searchQuery, setSearchQuery] = useState('');
+  const [showQRModal, setShowQRModal] = useState(false);
 
   const filteredCouriers = useMemo(() => {
     return couriers.filter(c => 
@@ -237,9 +239,14 @@ export function Couriers() {
         title="Couriers"
         subtitle={`${couriers.length} registered`}
         actions={
-          <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => setIsAddModalOpen(true)}>
-            Add Courier
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" leftIcon={<QrCode className="h-4 w-4" />} onClick={() => setShowQRModal(true)}>
+              QR Stay
+            </Button>
+            <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => setIsAddModalOpen(true)}>
+              Add Courier
+            </Button>
+          </div>
         }
       />
 
@@ -686,6 +693,10 @@ export function Couriers() {
           </div>
         );
       })()}
+      {/* QR Stay Verification Modal */}
+      <Modal isOpen={showQRModal} onClose={() => setShowQRModal(false)} title="QR Stay Verification" size="lg">
+        <StayQRDisplay />
+      </Modal>
     </div>
   );
 }

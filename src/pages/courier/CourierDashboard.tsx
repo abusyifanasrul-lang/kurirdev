@@ -4,6 +4,7 @@ import { ChevronRight, AlertTriangle, DollarSign, CheckCircle, Clock, Package } 
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/utils/cn';
 import { Badge } from '@/components/ui/Badge';
+import { QRScannerModal } from '@/components/courier/QRScannerModal';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useCourierStore } from '@/stores/useCourierStore';
 import { useAuth } from '@/context/AuthContext';
@@ -30,6 +31,7 @@ export function CourierDashboard() {
   const isOnline = liveUser?.is_online ?? false;
 
   const [showOffModal, setShowOffModal] = useState(false);
+  const [showQRScanner, setShowQRScanner] = useState(false);
   const [selectedOffReason, setSelectedOffReason] = useState('');
   const [customOffReason, setCustomOffReason] = useState('');
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
@@ -120,15 +122,10 @@ export function CourierDashboard() {
     }
   };
 
-  const handleSetStay = async () => {
+  const handleSetStay = () => {
     if (!user?.id || isSuspended || isUpdatingStatus) return;
-    setIsUpdatingStatus(true);
-    try {
-      await setCourierOnline(user.id, 'stay');
-      useSessionStore.getState().updateUser({ is_online: true, courier_status: 'stay' as any });
-    } finally {
-      setIsUpdatingStatus(false);
-    }
+    // Open QR scanner for Stay verification (attendance)
+    setShowQRScanner(true);
   };
 
   const handleConfirmOff = async () => {
@@ -383,6 +380,15 @@ export function CourierDashboard() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* QR Scanner Modal for Stay Verification */}
+      {user?.id && (
+        <QRScannerModal
+          isOpen={showQRScanner}
+          onClose={() => setShowQRScanner(false)}
+          courierId={user.id}
+        />
       )}
     </div>
   );

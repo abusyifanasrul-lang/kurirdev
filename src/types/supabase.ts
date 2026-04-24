@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -49,48 +49,73 @@ export type Database = {
       }
       customer_change_requests: {
         Row: {
+          admin_id: string | null
           admin_notes: string | null
+          affected_address_id: string | null
+          change_type: string | null
           created_at: string | null
           customer_id: string | null
+          customer_name: string | null
           id: string
+          new_address: Json | null
           old_data: Json
           order_id: string | null
           requested_data: Json
           requester_id: string | null
+          requester_name: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           status: string | null
           updated_at: string | null
         }
         Insert: {
+          admin_id?: string | null
           admin_notes?: string | null
+          affected_address_id?: string | null
+          change_type?: string | null
           created_at?: string | null
           customer_id?: string | null
+          customer_name?: string | null
           id?: string
+          new_address?: Json | null
           old_data: Json
           order_id?: string | null
           requested_data: Json
           requester_id?: string | null
+          requester_name?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string | null
           updated_at?: string | null
         }
         Update: {
+          admin_id?: string | null
           admin_notes?: string | null
+          affected_address_id?: string | null
+          change_type?: string | null
           created_at?: string | null
           customer_id?: string | null
+          customer_name?: string | null
           id?: string
+          new_address?: Json | null
           old_data?: Json
           order_id?: string | null
           requested_data?: Json
           requester_id?: string | null
+          requester_name?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string | null
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "customer_change_requests_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "customer_change_requests_customer_id_fkey"
             columns: ["customer_id"]
@@ -211,16 +236,25 @@ export type Database = {
         Row: {
           actual_delivery_time: string | null
           actual_pickup_time: string | null
+          applied_admin_fee: number | null
           applied_commission_rate: number | null
           applied_commission_threshold: number | null
+          applied_commission_type: string | null
           assigned_at: string | null
+          assigned_by: string | null
+          assigner_name: string | null
+          assignment_instruction: string | null
           beban: Json | null
           cancel_reason_type: string | null
           cancellation_reason: string | null
           cancelled_at: string | null
+          cancelled_by: string | null
+          canceller_name: string | null
           courier_id: string | null
+          courier_name: string | null
           created_at: string | null
           created_by: string | null
+          creator_name: string | null
           customer_address: string
           customer_address_id: string | null
           customer_id: string | null
@@ -234,6 +268,8 @@ export type Database = {
           items: Json | null
           notes: string | null
           order_number: string
+          payment_confirmed_by: string | null
+          payment_confirmed_by_name: string | null
           payment_status: string | null
           status: string | null
           titik: number | null
@@ -245,16 +281,25 @@ export type Database = {
         Insert: {
           actual_delivery_time?: string | null
           actual_pickup_time?: string | null
+          applied_admin_fee?: number | null
           applied_commission_rate?: number | null
           applied_commission_threshold?: number | null
+          applied_commission_type?: string | null
           assigned_at?: string | null
+          assigned_by?: string | null
+          assigner_name?: string | null
+          assignment_instruction?: string | null
           beban?: Json | null
           cancel_reason_type?: string | null
           cancellation_reason?: string | null
           cancelled_at?: string | null
+          cancelled_by?: string | null
+          canceller_name?: string | null
           courier_id?: string | null
+          courier_name?: string | null
           created_at?: string | null
           created_by?: string | null
+          creator_name?: string | null
           customer_address: string
           customer_address_id?: string | null
           customer_id?: string | null
@@ -268,6 +313,8 @@ export type Database = {
           items?: Json | null
           notes?: string | null
           order_number: string
+          payment_confirmed_by?: string | null
+          payment_confirmed_by_name?: string | null
           payment_status?: string | null
           status?: string | null
           titik?: number | null
@@ -279,16 +326,25 @@ export type Database = {
         Update: {
           actual_delivery_time?: string | null
           actual_pickup_time?: string | null
+          applied_admin_fee?: number | null
           applied_commission_rate?: number | null
           applied_commission_threshold?: number | null
+          applied_commission_type?: string | null
           assigned_at?: string | null
+          assigned_by?: string | null
+          assigner_name?: string | null
+          assignment_instruction?: string | null
           beban?: Json | null
           cancel_reason_type?: string | null
           cancellation_reason?: string | null
           cancelled_at?: string | null
+          cancelled_by?: string | null
+          canceller_name?: string | null
           courier_id?: string | null
+          courier_name?: string | null
           created_at?: string | null
           created_by?: string | null
+          creator_name?: string | null
           customer_address?: string
           customer_address_id?: string | null
           customer_id?: string | null
@@ -302,6 +358,8 @@ export type Database = {
           items?: Json | null
           notes?: string | null
           order_number?: string
+          payment_confirmed_by?: string | null
+          payment_confirmed_by_name?: string | null
           payment_status?: string | null
           status?: string | null
           titik?: number | null
@@ -311,6 +369,20 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "orders_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_cancelled_by_fkey"
+            columns: ["cancelled_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orders_courier_id_fkey"
             columns: ["courier_id"]
@@ -330,6 +402,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_payment_confirmed_by_fkey"
+            columns: ["payment_confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -413,31 +492,124 @@ export type Database = {
         Row: {
           commission_rate: number
           commission_threshold: number
+          commission_type: string | null
           courier_instructions: Json | null
+          id: string
           operational_area: string | null
           operational_timezone: string | null
-          id: string
           updated_at: string | null
         }
         Insert: {
           commission_rate?: number
           commission_threshold?: number
+          commission_type?: string | null
           courier_instructions?: Json | null
+          id?: string
           operational_area?: string | null
           operational_timezone?: string | null
-          id?: string
           updated_at?: string | null
         }
         Update: {
           commission_rate?: number
           commission_threshold?: number
+          commission_type?: string | null
           courier_instructions?: Json | null
+          id?: string
           operational_area?: string | null
           operational_timezone?: string | null
-          id?: string
           updated_at?: string | null
         }
         Relationships: []
+      }
+      stay_attendance_logs: {
+        Row: {
+          courier_id: string
+          courier_name: string | null
+          created_at: string | null
+          id: string
+          token_id: string
+          verified_at: string | null
+        }
+        Insert: {
+          courier_id: string
+          courier_name?: string | null
+          created_at?: string | null
+          id?: string
+          token_id: string
+          verified_at?: string | null
+        }
+        Update: {
+          courier_id?: string
+          courier_name?: string | null
+          created_at?: string | null
+          id?: string
+          token_id?: string
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stay_attendance_logs_courier_id_fkey"
+            columns: ["courier_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stay_attendance_logs_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "stay_qr_tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stay_qr_tokens: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          expires_at: string
+          id: string
+          is_used: boolean | null
+          token: string
+          used_at: string | null
+          used_by: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          expires_at: string
+          id?: string
+          is_used?: boolean | null
+          token: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          is_used?: boolean | null
+          token?: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stay_qr_tokens_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stay_qr_tokens_used_by_fkey"
+            columns: ["used_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tracking_logs: {
         Row: {
@@ -489,11 +661,28 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      complete_order: {
+        Args: {
+          p_commission_rate: number
+          p_commission_threshold: number
+          p_commission_type?: string
+          p_notes: string
+          p_order_id: string
+          p_user_id: string
+          p_user_name: string
+        }
+        Returns: undefined
+      }
       generate_order_number: { Args: never; Returns: string }
       get_auth_user_role: { Args: never; Returns: string }
+      mark_order_paid: { Args: { p_order_id: string }; Returns: undefined }
       rotate_courier_queue: {
         Args: { target_user_id: string }
         Returns: undefined
+      }
+      verify_stay_qr: {
+        Args: { p_courier_id: string; p_token: string }
+        Returns: Json
       }
     }
     Enums: {
@@ -627,3 +816,4 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
