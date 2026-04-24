@@ -48,6 +48,7 @@ export interface User {
   total_earnings_alltime?: number;
   unpaid_count?: number;
   unpaid_amount?: number;
+  is_priority_recovery?: boolean;
 }
 
 export interface CreateUserInput {

@@ -59,6 +59,7 @@ const mapProfileToUser = (profile: any, existingUser?: User): User => {
     total_earnings_alltime: profile.total_earnings_alltime !== undefined ? profile.total_earnings_alltime : base.total_earnings_alltime,
     unpaid_count: profile.unpaid_count !== undefined ? profile.unpaid_count : base.unpaid_count,
     unpaid_amount: profile.unpaid_amount !== undefined ? profile.unpaid_amount : base.unpaid_amount,
+    is_priority_recovery: profile.is_priority_recovery !== undefined ? profile.is_priority_recovery : base.is_priority_recovery,
   };
 };
 
@@ -210,10 +211,13 @@ export const useUserStore = create<UserState>()((set, get) => ({
               const newUser = mapProfileToUser(newRec)
               set(state => ({ users: [...state.users, newUser] }))
             } else if (eventType === 'UPDATE') {
-              const updatedUser = mapProfileToUser(newRec)
-              set(state => ({
-                users: state.users.map(u => u.id === (newRec as any).id ? updatedUser : u)
-              }))
+              set(state => {
+                const existingUser = state.users.find(u => u.id === (newRec as any).id)
+                const updatedUser = mapProfileToUser(newRec, existingUser)
+                return {
+                  users: state.users.map(u => u.id === (newRec as any).id ? updatedUser : u)
+                }
+              })
             } else if (eventType === 'DELETE') {
               set(state => ({
                 users: state.users.filter(u => u.id !== (oldRec as any).id)

@@ -261,9 +261,40 @@ export function Orders() {
 
 
 
-  const availableCouriers = users
-    .filter(u => u.role === 'courier' && u.is_active === true && u.is_online === true)
-    .sort((a, b) => ((a as any).queue_position ?? 999) - ((b as any).queue_position ?? 999));
+  const availableCouriers = useMemo(() => {
+    const courierList = users.filter(u => u.role === 'courier' && u.is_active === true && u.is_online === true);
+    
+    return courierList.sort((a, b) => {
+      // Helper to determine priority tier (Lower is higher priority)
+      const getTier = (u: any) => {
+        if (u.is_priority_recovery) return 1;
+        if (u.courier_status === 'stay') return 2;
+        
+        // Count active orders from the store
+        const activeOrders = activeOrdersByCourier.filter(o => 
+          o.courier_id === u.id && !['cancelled', 'delivered'].includes(o.status)
+        );
+        
+        if (u.courier_status === 'on' && activeOrders.length === 0) return 3;
+        
+        // Tier 4: Has pending orders (not yet picked up)
+        if (u.courier_status === 'on' && activeOrders.some(o => o.status === 'pending' || o.status === 'assigned')) return 4;
+        
+        // Tier 5: Only has non-pending orders (already picked up/in transit)
+        if (u.courier_status === 'on') return 5;
+        
+        return 6; // Default fallback
+      };
+
+      const tierA = getTier(a);
+      const tierB = getTier(b);
+
+      if (tierA !== tierB) return tierA - tierB;
+      
+      // Secondary sort: FIFO (queue_position)
+      return (a.queue_position ?? 999) - (b.queue_position ?? 999);
+    });
+  }, [users, activeOrdersByCourier]);
 
   const courierWaitingOrder = (courierId: string) =>
     activeOrdersByCourier.find(o => 
