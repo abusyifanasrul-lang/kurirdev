@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from 'react';
-import { Plus, Eye, EyeOff, ToggleLeft, ToggleRight, TrendingUp, Package, DollarSign, Phone, Mail, Award, Hash, Search, QrCode } from 'lucide-react';
+import { useState, useMemo, useEffect, lazy, Suspense } from 'react';
+import { Plus, Eye, EyeOff, ToggleLeft, ToggleRight, TrendingUp, Package, DollarSign, Phone, Mail, Award, Hash, Search, QrCode, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { Header } from '@/components/layout/Header';
 import { Card, StatCard } from '@/components/ui/Card';
@@ -9,7 +9,8 @@ import { Select } from '@/components/ui/Select';
 import { Modal } from '@/components/ui/Modal';
 import { Badge, getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
 import { CourierBadge } from '@/components/couriers/CourierBadge';
-import { StayQRDisplay } from '@/components/admin/StayQRDisplay';
+// import { StayQRDisplay } from '@/components/admin/StayQRDisplay';
+const StayQRDisplay = lazy(() => import('@/components/admin/StayQRDisplay').then(m => ({ default: m.StayQRDisplay })));
 import {
   Table,
   TableHead,
@@ -695,7 +696,9 @@ export function Couriers() {
       })()}
       {/* QR Stay Verification Modal */}
       <Modal isOpen={showQRModal} onClose={() => setShowQRModal(false)} title="QR Stay Verification" size="lg">
-        <StayQRDisplay />
+        <Suspense fallback={<div className="flex items-center justify-center p-12"><RefreshCw className="w-8 h-8 animate-spin text-teal-600" /></div>}>
+          <StayQRDisplay />
+        </Suspense>
       </Modal>
     </div>
   );

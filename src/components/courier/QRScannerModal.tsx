@@ -39,7 +39,7 @@ export function QRScannerModal({ isOpen, onClose, courierId }: QRScannerModalPro
 
   const handleVerify = useCallback(async (token: string) => {
     // Prevent duplicate processing or processing after success/verifying
-    if (isProcessingRef.current || scanState === 'verifying' || scanState === 'success') return;
+    if (scanState === 'verifying' || scanState === 'success') return;
     isProcessingRef.current = true;
 
     setScanState('verifying');
@@ -84,7 +84,7 @@ export function QRScannerModal({ isOpen, onClose, courierId }: QRScannerModalPro
         // Delay resetting processing to prevent instant re-scans of same failed QR
         setTimeout(() => {
           isProcessingRef.current = false;
-        }, 1000);
+        }, 1500);
       }
     } catch {
       setScanState('error');
@@ -117,9 +117,11 @@ export function QRScannerModal({ isOpen, onClose, courierId }: QRScannerModalPro
         async (decodedText) => {
           // Immediately set processing to true to block further callbacks
           if (isProcessingRef.current) return;
+          isProcessingRef.current = true;
           
-          // QR scanned successfully
-          // Don't await stopScanner here to avoid UI hang, call it inside handleVerify
+          // QR scanned successfully - stop scanner immediately to prevent flicker/multiple scans
+          await stopScanner();
+          
           handleVerify(decodedText);
         },
         () => {
@@ -182,8 +184,8 @@ export function QRScannerModal({ isOpen, onClose, courierId }: QRScannerModalPro
             ref={containerRef}
             id="qr-reader"
             className={cn(
-              "w-full aspect-square",
-              (scanState === 'success' || (scanState === 'error' && cameraError)) && "hidden"
+              "w-full aspect-square transition-opacity duration-300",
+              (scanState === 'success' || (scanState === 'error' && cameraError)) ? "opacity-0 pointer-events-none" : "opacity-100"
             )}
           />
 

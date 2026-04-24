@@ -20,11 +20,13 @@ export function StayQRDisplay() {
   const [todayLogs, setTodayLogs] = useState<StayLog[]>([]);
   const [lastScannedBy, setLastScannedBy] = useState<string | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const isGeneratingRef = useRef(false);
 
   const QR_EXPIRY_MINUTES = 5;
 
   const generateNewToken = useCallback(async () => {
-    if (!user?.id || isGenerating) return;
+    if (!user?.id || isGeneratingRef.current) return;
+    isGeneratingRef.current = true;
     setIsGenerating(true);
     setLastScannedBy(null);
 
@@ -52,8 +54,9 @@ export function StayQRDisplay() {
       setExpiresAt(expires);
     } finally {
       setIsGenerating(false);
+      isGeneratingRef.current = false;
     }
-  }, [user?.id, isGenerating]);
+  }, [user?.id]);
 
   // Countdown timer
   useEffect(() => {
@@ -81,35 +84,6 @@ export function StayQRDisplay() {
     return () => clearInterval(interval);
   }, [expiresAt, generateNewToken]);
 
-  // Subscribe to realtime changes for auto-regenerate
-  useEffect(() => {
-    // Listen to ALL attendance logs inserts. When ANY courier succeeds, 
-    // we want to refresh our logs and regenerate a new QR code for the next one.
-    const channel = supabase
-      .channel('stay-attendance-events')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'stay_attendance_logs',
-        },
-        (payload) => {
-          console.log('New stay attendance detected:', payload);
-          // Refresh list and generate new QR immediately
-          fetchTodayLogs();
-          generateNewToken();
-        }
-      )
-      .subscribe();
-
-    channelRef.current = channel;
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [generateNewToken, fetchTodayLogs]);
-
   // Fetch today's attendance logs
   const fetchTodayLogs = useCallback(async () => {
     const todayStart = new Date();
@@ -128,6 +102,38 @@ export function StayQRDisplay() {
       }
     }
   }, []);
+
+  // Subscribe to realtime changes for auto-regenerate
+  useEffect(() => {
+    // Listen to ALL attendance logs inserts. When ANY courier succeeds, 
+    // we want to refresh our logs and regenerate a new QR code for the next one.
+    const channel = supabase
+      .channel('stay-attendance-events')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'stay_attendance_logs',
+        },
+        (payload) => {
+          console.log('New stay attendance detected:', payload);
+          // Refresh list and generate new QR immediately
+          fetchTodayLogs();
+          // Use a small delay to ensure the token used is already processed
+          setTimeout(() => {
+            generateNewToken();
+          }, 100);
+        }
+      )
+      .subscribe();
+
+    channelRef.current = channel;
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [generateNewToken, fetchTodayLogs]);
 
   // Initial load
   useEffect(() => {
