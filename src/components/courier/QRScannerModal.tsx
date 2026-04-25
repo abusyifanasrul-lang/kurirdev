@@ -1,9 +1,32 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { Html5Qrcode } from 'html5-qrcode';
-import { X, Camera, RefreshCw, AlertTriangle, CheckCircle } from 'lucide-react';
-import { cn } from '@/utils/cn';
+/**
+ * QRScannerModal.tsx — Refactored
+ *
+ * Fix yang diterapkan:
+ * 1. React Portal — overlay dirender LANGSUNG ke document.body,
+ *    bukan di dalam #root yang di-hide CSS → solusi white screen
+ * 2. scanState dihapus dari deps handleVerify → pakai isProcessingRef saja
+ * 3. useSessionStore pakai selector, bukan getState()
+ * 4. Double useEffect cleanup → digabung jadi satu
+ * 5. CSS: opacity hanya pada #root, tidak pada html/body
+ * 6. onAnimationEnd gantikan setTimeout 300ms yang tidak reliable
+ */
+
+import {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+} from 'react';
+import { createPortal } from 'react-dom';
+import { Capacitor } from '@capacitor/core';
+import { BarcodeScanner, BarcodeFormat } from '@capacitor-mlkit/barcode-scanning';
+import jsQR from 'jsqr';
+import { X, RefreshCw, AlertTriangle, CheckCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useSessionStore } from '@/stores/useSessionStore';
+import './qr-scanner.css';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface QRScannerModalProps {
   isOpen: boolean;
@@ -13,35 +36,73 @@ interface QRScannerModalProps {
 
 type ScanState = 'scanning' | 'verifying' | 'success' | 'error';
 
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export function QRScannerModal({ isOpen, onClose, courierId }: QRScannerModalProps) {
   const [scanState, setScanState] = useState<ScanState>('scanning');
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [cameraError, setCameraError] = useState(false);
-  const scannerRef = useRef<Html5Qrcode | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const isProcessingRef = useRef(false);
+  const [isReady, setIsReady] = useState(false); // Controls when to start scanner
 
-  const stopScanner = useCallback(async () => {
-    if (scannerRef.current) {
-      try {
-        const state = scannerRef.current.getState();
-        // Only stop if scanner is actually scanning (state 2 = SCANNING)
-        if (state === 2) {
-          await scannerRef.current.stop();
-        }
-      } catch {
-        // Scanner may already be stopped
-      }
-      scannerRef.current = null;
+  const isNative = Capacitor.isNativePlatform();
+
+  // ─── FIX #3: Zustand selector (bukan getState() langsung) ────────────────
+  const updateUser = useSessionStore(state => state.updateUser);
+
+  // Refs
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const isProcessingRef = useRef(false);
+  const animationFrameIdRef = useRef<number | null>(null);
+  const lastScanTimeRef = useRef<number>(0);
+
+  // ─── CLEANUP ──────────────────────────────────────────────────────────────
+
+  const stopWebScanner = useCallback(() => {
+    if (animationFrameIdRef.current !== null) {
+      cancelAnimationFrame(animationFrameIdRef.current);
+      animationFrameIdRef.current = null;
+    }
+    if (videoRef.current?.srcObject) {
+      (videoRef.current.srcObject as MediaStream)
+        .getTracks()
+        .forEach(track => track.stop());
+      videoRef.current.srcObject = null;
     }
   }, []);
 
+  const stopNativeScanner = useCallback(async () => {
+    try {
+      // Restore UI PERTAMA sebelum stopScan()
+      // Jika dibalik, ada frame di mana kamera visible tapi #root belum kembali
+      document.body.classList.remove('scanner-active');
+      document.documentElement.classList.remove('scanner-active');
+      await BarcodeScanner.removeAllListeners();
+      await BarcodeScanner.stopScan();
+    } catch (e) {
+      // Sudah dihentikan sebelumnya — abaikan error
+      console.warn('[QRScanner] stopNativeScan warning:', e);
+    }
+  }, []);
+
+  const stopScanner = useCallback(async () => {
+    if (isNative) {
+      await stopNativeScanner();
+    } else {
+      stopWebScanner();
+    }
+  }, [isNative, stopNativeScanner, stopWebScanner]);
+
+  // ─── VERIFICATION ─────────────────────────────────────────────────────────
+
+  // ─── FIX #2: Hapus scanState dari deps — isProcessingRef sebagai guard ───
   const handleVerify = useCallback(async (token: string) => {
-    // Prevent duplicate processing or processing after success/verifying
-    if (scanState === 'verifying' || scanState === 'success') return;
+    if (isProcessingRef.current) return;
     isProcessingRef.current = true;
 
+    // Stop scanner sebelum network call
+    await stopScanner();
     setScanState('verifying');
 
     try {
@@ -57,216 +118,312 @@ export function QRScannerModal({ isOpen, onClose, courierId }: QRScannerModalPro
         return;
       }
 
-      const result = data as unknown as { success: boolean; message?: string; error?: string; courier_name?: string } | null;
+      type VerifyResult = { success: boolean; message?: string; error?: string };
+      const result = data as VerifyResult | null;
 
       if (result?.success) {
         setScanState('success');
         setSuccessMessage(result.message || 'Status STAY aktif!');
-        
-        // Ensure scanner is stopped
-        await stopScanner();
 
-        useSessionStore.getState().updateUser({
+        // ─── FIX #3: Pakai selector, bukan getState() ─────────────────────
+        updateUser({
           is_online: true,
-          courier_status: 'stay' as any,
+          courier_status: 'stay',
         });
 
-        // Auto-close after 2 seconds
-        setTimeout(() => {
-          onClose();
-        }, 2000);
+        setTimeout(() => onClose(), 2000);
       } else {
         setScanState('error');
-        // Explicitly check for invalid token vs other errors
-        const msg = result?.error || 'QR Code tidak valid.';
-        setErrorMessage(msg);
-        
-        // Delay resetting processing to prevent instant re-scans of same failed QR
-        setTimeout(() => {
-          isProcessingRef.current = false;
-        }, 1500);
+        setErrorMessage(result?.error || 'QR Code tidak valid.');
+        isProcessingRef.current = false;
       }
     } catch {
       setScanState('error');
       setErrorMessage('Koneksi gagal. Periksa internet kamu.');
       isProcessingRef.current = false;
     }
-  }, [courierId, onClose, scanState, stopScanner]);
+  }, [courierId, onClose, stopScanner, updateUser]);
+  // ↑ scanState TIDAK ada di sini lagi
+
+  // ─── WEB SCANNER ──────────────────────────────────────────────────────────
+
+  const startWebScanner = useCallback(async () => {
+    if (!videoRef.current || !canvasRef.current) return;
+
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false,
+      });
+    } catch (err) {
+      const e = err as DOMException;
+      setCameraError(true);
+      setScanState('error');
+      setErrorMessage(
+        e.name === 'NotAllowedError'
+          ? 'Izin kamera ditolak di browser.'
+          : 'Tidak bisa mengakses kamera browser.',
+      );
+      return;
+    }
+
+    videoRef.current.srcObject = stream;
+    videoRef.current.setAttribute('playsinline', 'true');
+    await videoRef.current.play();
+
+    const ctx = canvasRef.current.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return;
+
+    const tick = (timestamp: number) => {
+      if (isProcessingRef.current) return;
+
+      if (timestamp - lastScanTimeRef.current >= 150) {
+        lastScanTimeRef.current = timestamp;
+
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        if (video && canvas && video.readyState === video.HAVE_ENOUGH_DATA) {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: 'dontInvert',
+          });
+
+          if (code?.data) {
+            handleVerify(code.data);
+            return; // rAF berhenti setelah ini
+          }
+        }
+      }
+      animationFrameIdRef.current = requestAnimationFrame(tick);
+    };
+    animationFrameIdRef.current = requestAnimationFrame(tick);
+  }, [handleVerify]);
+
+  // ─── NATIVE SCANNER ───────────────────────────────────────────────────────
+
+  const startNativeScanner = useCallback(async () => {
+    // ─── FIX #1 dari review sebelumnya: checkPermissions dulu ────────────
+    const { camera: currentStatus } = await BarcodeScanner.checkPermissions();
+
+    if (currentStatus === 'denied') {
+      setCameraError(true);
+      setScanState('error');
+      setErrorMessage('Izin kamera ditolak. Aktifkan di Pengaturan.');
+      await BarcodeScanner.openSettings();
+      return;
+    }
+
+    if (currentStatus !== 'granted') {
+      const { camera: newStatus } = await BarcodeScanner.requestPermissions();
+      if (newStatus !== 'granted') {
+        setScanState('error');
+        setErrorMessage('Izin kamera diperlukan untuk scan.');
+        return;
+      }
+    }
+
+    // ─── FIX WHITE SCREEN: Tambahkan class SEBELUM startScan() ───────────
+    // Jika diletakkan sesudah, ada 1-2 frame kosong putih saat transisi
+    document.body.classList.add('scanner-active');
+    document.documentElement.classList.add('scanner-active');
+
+    // Tunggu satu frame agar CSS opacity diterapkan browser
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+
+    await BarcodeScanner.removeAllListeners();
+    await BarcodeScanner.addListener('barcodeScanned', result => {
+      if (result.barcode?.rawValue) {
+        handleVerify(result.barcode.rawValue);
+      }
+    });
+
+    await BarcodeScanner.startScan({ formats: [BarcodeFormat.QrCode] });
+  }, [handleVerify]);
+
+  // ─── START SCANNER ────────────────────────────────────────────────────────
 
   const startScanner = useCallback(async () => {
-    if (!containerRef.current) return;
-
     setScanState('scanning');
     setErrorMessage('');
     setCameraError(false);
     isProcessingRef.current = false;
+    lastScanTimeRef.current = 0;
 
     try {
-      await stopScanner();
-
-      const scanner = new Html5Qrcode('qr-reader');
-      scannerRef.current = scanner;
-
-      await scanner.start(
-        { facingMode: 'environment' },
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1,
-        },
-        async (decodedText) => {
-          // Immediately set processing to true to block further callbacks
-          if (isProcessingRef.current) return;
-          isProcessingRef.current = true;
-          
-          // QR scanned successfully - stop scanner immediately to prevent flicker/multiple scans
-          await stopScanner();
-          
-          handleVerify(decodedText);
-        },
-        () => {
-          // Scan error (no QR found in frame) — ignored
-        }
-      );
-    } catch {
+      if (isNative) {
+        await startNativeScanner();
+      } else {
+        await startWebScanner();
+      }
+    } catch (err) {
       setCameraError(true);
       setScanState('error');
-      setErrorMessage('Tidak bisa mengakses kamera. Izinkan akses kamera di pengaturan HP.');
-    }
-  }, [stopScanner, handleVerify]);
-
-  useEffect(() => {
-    if (isOpen) {
-      // Small delay to let the DOM render before starting scanner
-      const timeout = setTimeout(() => {
-        startScanner();
-      }, 300);
-      return () => clearTimeout(timeout);
-    } else {
-      stopScanner();
-      setScanState('scanning');
-      setErrorMessage('');
-      setSuccessMessage('');
+      setErrorMessage('Gagal memulai scanner. Coba lagi.');
       isProcessingRef.current = false;
     }
-  }, [isOpen, startScanner, stopScanner]);
+  }, [isNative, startNativeScanner, startWebScanner]);
 
-  // Cleanup on unmount
+  const handleRetry = useCallback(() => {
+    startScanner();
+  }, [startScanner]);
+
+  const handleClose = useCallback(async () => {
+    await stopScanner();
+    onClose();
+  }, [stopScanner, onClose]);
+
+  // ─── FIX #4: Satu useEffect, tidak dobel ──────────────────────────────────
+
   useEffect(() => {
+    if (!isOpen) return;
+
+    // Reset state saat modal dibuka
+    setIsReady(false);
+    setScanState('scanning');
+    setErrorMessage('');
+    setCameraError(false);
+
     return () => {
+      // Cleanup saat isOpen berubah atau unmount
       stopScanner();
+      isProcessingRef.current = false;
+      setIsReady(false);
     };
-  }, [stopScanner]);
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  // ↑ Sengaja tidak masukkan stopScanner — fungsi ini stabil dan
+  //   tidak perlu menjadi trigger re-run effect
+
+  // ─── FIX #6: Mulai scanner saat isReady (dipicu onAnimationEnd) ──────────
+
+  useEffect(() => {
+    if (isReady) {
+      startScanner();
+    }
+  }, [isReady]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ─── RENDER ───────────────────────────────────────────────────────────────
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-xl flex flex-col items-center justify-center z-[100] animate-in fade-in duration-300">
-      {/* Header */}
-      <div className="w-full max-w-sm px-5 mb-6 flex items-center justify-between">
+  // ─── FIX WHITE SCREEN (utama): Render via Portal langsung ke body ────────
+  // Overlay ini hidup DI LUAR #root, sehingga saat #root di-opacity:0,
+  // overlay ini tetap terlihat karena tidak ter-affect oleh CSS cascade-nya
+  return createPortal(
+    <div
+      className={[
+        'qrs-overlay-portal',
+        isNative && scanState === 'scanning'
+          ? 'qrs--native-mode'
+          : 'qrs--web-mode',
+      ].join(' ')}
+      // ─── FIX #6: Trigger startScanner setelah animasi masuk selesai ────
+      onAnimationEnd={() => {
+        if (!isReady) setIsReady(true);
+      }}
+      style={{ animation: 'qrs-fadein 0.2s ease forwards' }}
+    >
+      <style>{`@keyframes qrs-fadein { from { opacity: 0 } to { opacity: 1 } }`}</style>
+
+      {/* ── Header ──────────────────────────────────────────────────────── */}
+      <div className="qrs-header">
         <div>
-          <h3 className="text-lg font-black text-white tracking-tight">Scan QR Code</h3>
-          <p className="text-xs text-gray-400 font-medium">Arahkan kamera ke QR di layar admin</p>
+          <h3 style={{ color: 'white', fontWeight: 700, fontSize: 17, margin: 0 }}>
+            Scan QR Code
+          </h3>
+          <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 12, margin: 0 }}>
+            Arahkan kamera ke layar admin
+          </p>
         </div>
-        <button
-          onClick={() => { stopScanner(); onClose(); }}
-          className="p-2.5 rounded-2xl bg-white/10 text-white hover:bg-white/20 transition-all active:scale-95"
-        >
-          <X className="h-5 w-5" />
+        <button className="qrs-close-btn" onClick={handleClose} aria-label="Tutup scanner">
+          <X size={18} />
         </button>
       </div>
 
-      {/* Scanner Area */}
-      <div className="w-full max-w-sm px-5">
-        <div className="relative bg-black rounded-3xl overflow-hidden shadow-2xl border border-white/10">
-          {/* Camera viewfinder - ALWAYS visible during scanning and verifying to prevent flicker */}
-          <div
-            ref={containerRef}
-            id="qr-reader"
-            className={cn(
-              "w-full aspect-square transition-opacity duration-300",
-              (scanState === 'success' || (scanState === 'error' && cameraError)) ? "opacity-0 pointer-events-none" : "opacity-100"
-            )}
+      {/* ── Viewfinder ───────────────────────────────────────────────────── */}
+      <div className="qrs-viewfinder-box">
+
+        {/* Video element — web only */}
+        {!isNative && (
+          <video
+            ref={videoRef}
+            className="qrs-video"
+            playsInline
+            muted
+            autoPlay
           />
+        )}
 
-          {/* Verifying Overlay */}
-          {scanState === 'verifying' && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/60 backdrop-blur-sm gap-4 animate-in fade-in duration-200">
-              <div className="w-16 h-16 rounded-full bg-blue-500/20 flex items-center justify-center animate-pulse">
-                <RefreshCw className="h-8 w-8 text-blue-400 animate-spin" />
-              </div>
-              <p className="text-sm font-black text-white uppercase tracking-widest">Memverifikasi...</p>
-            </div>
-          )}
+        <canvas ref={canvasRef} style={{ display: 'none' }} />
 
-          {/* Success State Overlay */}
-          {scanState === 'success' && (
-            <div className="w-full aspect-square flex flex-col items-center justify-center bg-gray-900 gap-4 animate-in zoom-in-95 duration-300">
-              <div className="w-20 h-20 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                <CheckCircle className="h-10 w-10 text-emerald-400" />
-              </div>
-              <div className="text-center px-6">
-                <p className="text-base font-black text-emerald-400 uppercase tracking-widest mb-1">Berhasil!</p>
-                <p className="text-xs text-gray-400 font-medium">{successMessage}</p>
-              </div>
-            </div>
-          )}
+        {/* Scan frame corners — selalu tampil saat scanning */}
+        {scanState === 'scanning' && (
+          <>
+            {!isNative && <div className="qrs-dim" />}
+            <span className="qrs-corner qrs-corner--tl" />
+            <span className="qrs-corner qrs-corner--tr" />
+            <span className="qrs-corner qrs-corner--bl" />
+            <span className="qrs-corner qrs-corner--br" />
+            <div className="qrs-laser" />
+          </>
+        )}
 
-          {/* Error State Overlay (camera error) */}
-          {(scanState === 'error' && cameraError) && (
-            <div className="w-full aspect-square flex flex-col items-center justify-center bg-gray-900 gap-4 px-8 animate-in fade-in">
-              <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center">
-                <Camera className="h-8 w-8 text-red-400" />
-              </div>
-              <div className="text-center">
-                <p className="text-sm font-black text-red-400 uppercase tracking-wider mb-1">Kamera Tidak Tersedia</p>
-                <p className="text-xs text-gray-400 font-medium">{errorMessage}</p>
-              </div>
-            </div>
-          )}
+        {/* ── State overlays ─────────────────────────────────────────────── */}
 
-          {/* Viewfinder overlay corners (only during scanning) */}
-          {scanState === 'scanning' && !cameraError && (
-            <div className="absolute inset-0 pointer-events-none animate-in fade-in duration-500">
-              {/* Corner markers */}
-              <div className="absolute top-8 left-8 w-10 h-10 border-t-4 border-l-4 border-emerald-400 rounded-tl-xl" />
-              <div className="absolute top-8 right-8 w-10 h-10 border-t-4 border-r-4 border-emerald-400 rounded-tr-xl" />
-              <div className="absolute bottom-8 left-8 w-10 h-10 border-b-4 border-l-4 border-emerald-400 rounded-bl-xl" />
-              <div className="absolute bottom-8 right-8 w-10 h-10 border-b-4 border-r-4 border-emerald-400 rounded-br-xl" />
-            </div>
-          )}
-        </div>
+        {scanState === 'verifying' && (
+          <div className="qrs-state-overlay">
+            <RefreshCw size={32} color="#60a5fa" style={{ animation: 'spin 1s linear infinite' }} />
+            <p style={{ color: 'white', fontWeight: 700, fontSize: 13, margin: 0 }}>
+              MEMVERIFIKASI...
+            </p>
+            <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+          </div>
+        )}
+
+        {scanState === 'success' && (
+          <div className="qrs-state-overlay">
+            <CheckCircle size={48} color="#34d399" />
+            <p style={{ color: '#34d399', fontWeight: 700, fontSize: 15, margin: 0 }}>
+              BERHASIL!
+            </p>
+            <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, margin: 0 }}>
+              {successMessage}
+            </p>
+          </div>
+        )}
+
+        {scanState === 'error' && (
+          <div className="qrs-state-overlay">
+            <AlertTriangle size={40} color="#f87171" />
+            <p style={{ color: '#f87171', fontWeight: 700, fontSize: 13, margin: '0 0 4px', textAlign: 'center' }}>
+              {cameraError ? 'KAMERA ERROR' : 'GAGAL VERIFIKASI'}
+            </p>
+            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, margin: 0, textAlign: 'center', maxWidth: 200, lineHeight: 1.5 }}>
+              {errorMessage}
+            </p>
+          </div>
+        )}
       </div>
 
-      {/* Error Banner (QR invalid, not camera error) */}
-      {scanState === 'error' && !cameraError && (
-        <div className="w-full max-w-sm px-5 mt-4 animate-in slide-in-from-top-2">
-          <div className="bg-red-500/20 border border-red-500/30 rounded-2xl p-4 flex items-start gap-3">
-            <AlertTriangle className="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-black text-red-300">{errorMessage}</p>
-              <button
-                onClick={startScanner}
-                className="mt-2 text-xs font-bold text-red-400 underline underline-offset-2"
-              >
-                Coba scan lagi
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Retry button for camera error */}
-      {scanState === 'error' && cameraError && (
-        <div className="w-full max-w-sm px-5 mt-4">
-          <button
-            onClick={startScanner}
-            className="w-full py-4 bg-white/10 text-white rounded-2xl text-xs font-black uppercase tracking-widest active:scale-95 transition-all"
-          >
+      {/* ── Footer ───────────────────────────────────────────────────────── */}
+      <div className="qrs-footer">
+        {scanState === 'error' && (
+          <button className="qrs-retry-btn" onClick={handleRetry}>
+            <RefreshCw size={15} />
             Coba Lagi
           </button>
-        </div>
-      )}
-    </div>
+        )}
+        {scanState === 'scanning' && (
+          <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12, margin: 0 }}>
+            Pastikan QR Code terlihat jelas di dalam frame
+          </p>
+        )}
+      </div>
+    </div>,
+    document.body, // ← Portal target: langsung ke body, di luar #root
   );
 }

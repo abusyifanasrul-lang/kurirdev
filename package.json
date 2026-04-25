@@ -13,6 +13,7 @@
     "pwa:sync": "npm run build && npx cap sync"
   },
   "dependencies": {
+    "@capacitor-mlkit/barcode-scanning": "^8.0.1",
     "@capacitor/android": "^8.3.0",
     "@capacitor/camera": "^8.0.2",
     "@capacitor/filesystem": "^8.1.2",
@@ -27,9 +28,9 @@
     "dexie": "^4.0.8",
     "firebase": "^11.6.0",
     "html-to-image": "^1.11.13",
-    "html5-qrcode": "^2.3.8",
     "idb": "^8.0.3",
     "jspdf": "^4.2.0",
+    "jsqr": "^1.4.0",
     "lucide-react": "^0.564.0",
     "qrcode.react": "^4.2.0",
     "react": "19.2.3",

@@ -480,15 +480,6 @@ export function CourierEarnings() {
                 )}
               </button>
 
-              <button
-                onClick={() => {
-                  import('@/lib/invoiceUtils').then(m => m.shareToWhatsApp(selectedOrder!));
-                }}
-                className="w-full py-4 bg-[#25D366] hover:bg-[#128C7E] text-white rounded-2xl font-bold text-xs uppercase tracking-mobile active:scale-[0.98] transition-all shadow-lg shadow-emerald-900/10"
-              >
-                KIRIM RINCIAN KE WA
-              </button>
-
               <div className="pt-2 opacity-30 flex items-center justify-center gap-2">
                  <div className="w-1 h-1 rounded-full bg-emerald-600"></div>
                  <span className="text-[8px] font-black uppercase tracking-widest text-emerald-900">

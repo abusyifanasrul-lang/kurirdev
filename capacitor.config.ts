@@ -18,6 +18,9 @@ const config: CapacitorConfig = {
       splashFullScreen: true,
       splashImmersive: true,
     },
+    BarcodeScanning: {
+      googleBarcodeScannerModuleVersion: '16.1.0',
+    },
   },
 };
 

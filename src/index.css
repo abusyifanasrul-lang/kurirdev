@@ -96,4 +96,16 @@
   .tracking-mobile {
     letter-spacing: 0.025em;
   }
+
+  /* Scanner Viewport for Native Capacitor Plugin */
+  body.scanner-active, 
+  html.scanner-active {
+    background-color: transparent !important;
+  }
+
+  body.scanner-active #root {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    /* No transition to avoid white flash */
+  }
 }

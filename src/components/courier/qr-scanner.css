@@ -1,0 +1,175 @@
+/* ============================================================
+   QR Scanner — Native Capacitor Transparent Layer Fix
+   
+   ARSITEKTUR:
+   - Native camera berada di layer PALING BAWAH (Android WebView layer)
+   - React app (#root) berada di ATASNYA
+   - Scanner overlay (.qrs-overlay-portal) berada di PALING ATAS
+   
+   Saat scan aktif:
+   1. #root → opacity 0 (app hilang, kamera terlihat)
+   2. .qrs-overlay-portal → tetap visible (z-index tinggi, DI LUAR #root)
+   ============================================================ */
+
+/* ── KRITIS: Hanya sembunyikan #root, BUKAN html/body ──────────────────────
+   Jangan pernah opacity: 0 pada html/body — ini akan menyembunyikan 
+   semua element termasuk overlay yang ada di luar #root              */
+body.scanner-active,
+html.scanner-active {
+  background-color: transparent !important;
+  /* TIDAK ADA opacity di sini */
+}
+
+body.scanner-active #root {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  /* TIDAK ADA transition — harus instan, transisi = white flash */
+}
+
+/* ── Scanner overlay portal — hidup di luar #root ──────────────────────────
+   Render portal ini langsung ke document.body via React Portal          */
+.qrs-overlay-portal {
+  position: fixed;
+  inset: 0;
+  z-index: 99999; /* Harus lebih tinggi dari semua elemen app */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  /* background: transparent — kamera tampil di bawah ini */
+}
+
+/* ── Web mode — ada background karena kamera tampil dalam <video> ──────── */
+.qrs-overlay-portal.qrs--web-mode {
+  background: rgba(0, 0, 0, 0.82);
+}
+
+/* ── Native mode — BENAR-BENAR transparan ──────────────────────────────── */
+.qrs-overlay-portal.qrs--native-mode {
+  background: transparent;
+}
+
+/* ── Viewfinder frame ──────────────────────────────────────────────────── */
+.qrs-viewfinder-box {
+  position: relative;
+  width: min(85vw, 320px);
+  aspect-ratio: 1;
+}
+
+/* ── Corner brackets ───────────────────────────────────────────────────── */
+.qrs-corner {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  border-color: #22c55e;
+  border-style: solid;
+  border-width: 0;
+}
+
+.qrs-corner--tl { top: 0; left: 0; border-top-width: 3px; border-left-width: 3px; border-radius: 4px 0 0 0; }
+.qrs-corner--tr { top: 0; right: 0; border-top-width: 3px; border-right-width: 3px; border-radius: 0 4px 0 0; }
+.qrs-corner--bl { bottom: 0; left: 0; border-bottom-width: 3px; border-left-width: 3px; border-radius: 0 0 0 4px; }
+.qrs-corner--br { bottom: 0; right: 0; border-bottom-width: 3px; border-right-width: 3px; border-radius: 0 0 4px 0; }
+
+/* ── Laser line ─────────────────────────────────────────────────────────── */
+.qrs-laser {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #22c55e, transparent);
+  border-radius: 1px;
+  animation: qrs-scan 2s ease-in-out infinite;
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.6);
+}
+
+@keyframes qrs-scan {
+  0%   { top: 4px; }
+  50%  { top: calc(100% - 6px); }
+  100% { top: 4px; }
+}
+
+/* ── Dim area outside frame (web only) ─────────────────────────────────── */
+.qrs-dim {
+  position: absolute;
+  inset: 0;
+  /* Cutout di tengah menggunakan box-shadow */
+  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.55);
+  border-radius: 12px;
+  pointer-events: none;
+}
+
+/* ── Video element ──────────────────────────────────────────────────────── */
+.qrs-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+}
+
+/* ── State overlays (verifying / success / error) ───────────────────────── */
+.qrs-state-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(10, 10, 10, 0.92);
+  backdrop-filter: blur(4px);
+}
+
+/* ── Header & footer controls ───────────────────────────────────────────── */
+.qrs-header {
+  width: min(85vw, 320px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.qrs-footer {
+  width: min(85vw, 320px);
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.qrs-close-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+
+.qrs-close-btn:hover { background: rgba(255, 255, 255, 0.2); }
+.qrs-close-btn:active { transform: scale(0.95); }
+
+.qrs-retry-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  background: #22c55e;
+  color: white;
+  border: none;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.qrs-retry-btn:hover { opacity: 0.88; }

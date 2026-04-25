@@ -570,16 +570,7 @@ export function CourierOrderDetail() {
                           {getPlatformInfo().isNative ? 'CETAK / BAGIKAN INVOICE' : 'BAGIKAN INVOICE (PNG)'}
                         </button>
 
-                        <button
-                          onClick={() => {
-                            import('@/lib/invoiceUtils').then(m => m.shareToWhatsApp(order));
-                          }}
-                          className="flex items-center justify-center gap-3 w-full p-5 bg-[#25D366] text-white rounded-2xl font-bold text-xs uppercase tracking-widest active:scale-95 transition-all shadow-xl shadow-emerald-900/10 border-b-4 border-[#128C7E]"
-                        >
-                          <span className="text-2xl">💬</span>
-                          KIRIM RINCIAN KE WA
-                        </button>
-                        
+
                         <button
                           onClick={() => navigate('/courier')}
                           className="w-full p-4 bg-white border-2 border-gray-100 text-gray-900 rounded-2xl font-bold active:scale-95 transition-all"
