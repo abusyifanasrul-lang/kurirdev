@@ -10,6 +10,60 @@
 # Walkthrough - Enhanced Maintenance Security
 
 
+## Session Update: 2026-04-28 07:22:53
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 4
+- **Files**: `b/KNOWLEDGE_MAP.md, b/src/stores/useUserStore.ts, b/src/types/index.ts, b/src/pages/Orders.tsx`
+- **Overwrites**: `.filter(u => u.role === 'courier' && u.is_active === true && u.is_online === true), .sort((a, b) => ((a as any).queue_position ?? 999) - ((b as any).queue_position ?? 999));, set(state => ({, users: state.users.map(u => u.id === (newRec as any).id ? updatedUser : u)`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 4
+- **Files**: `b/KNOWLEDGE_MAP.md, b/src/stores/useUserStore.ts, b/src/pages/Orders.tsx, b/src/types/index.ts`
+- **Overwrites**: `.filter(u => u.role === 'courier' && u.is_active === true && u.is_online === true), .sort((a, b) => ((a as any).queue_position ?? 999) - ((b as any).queue_position ?? 999));, set(state => ({, users: state.users.map(u => u.id === (newRec as any).id ? updatedUser : u)`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 1
+- **Files**: `b/KNOWLEDGE_MAP.md, b/src/components/courier/QRScannerModal.tsx, b/src/pages/Couriers.tsx, b/src/components/admin/StayQRDisplay.tsx`
+- **Overwrites**: `const fetchTodayLogs = useCallback(async () => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 2
+- **Files**: `b/src/pages/Couriers.tsx, b/src/components/courier/QRScannerModal.tsx, b/KNOWLEDGE_MAP.md, b/package.json, b/src/pages/courier/CourierDashboard.tsx, b/package-lock.json, b/src/types/supabase.ts, b/src/components/admin/StayQRDisplay.tsx`
+- **Overwrites**: `<Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => setIsAddModalOpen(true)}>, const handleSetStay = async () => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 16
+- **Files**: `b/src/components/settings/BusinessTab.tsx, b/src/pages/finance/FinancePenagihan.tsx, b/src/pages/Orders.tsx, b/src/pages/courier/CourierEarnings.tsx, b/src/pages/Reports.tsx, b/src/pages/finance/FinanceDashboard.tsx, b/src/pages/courier/CourierDashboard.tsx, b/src/pages/Dashboard.tsx, b/src/stores/useOrderStore.ts, b/src/pages/Couriers.tsx, b/src/lib/calcEarning.test.ts, b/src/stores/useSettingsStore.ts, b/supabase/migrations/20240421000000_deduction_logic.sql, b/KNOWLEDGE_MAP.md, b/src/lib/calcEarning.ts, b/src/pages/finance/FinanceAnalisa.tsx, b/src/pages/Settings.tsx, b/src/lib/orderCache.ts`
+- **Overwrites**: `onSaveSettings: (data: { commission_rate: number; commission_threshold: number }) => void;, const handleSave = () => {, onChange={e => setForm(prev => ({ ...prev, commission_rate: Number(e.target.value) }))}, onChange={e => {, setForm(prev => ({ ...prev, commission_threshold: val }));, describe('calcCourierEarning', () => {, it('should prioritize applied_commission_rate from order snapshot', () => {, it('should prioritize applied_commission_threshold from order snapshot', () => {, // total_fee (15k) <= threshold (20k) => 100% = 15000, it('should add extraTitik and extraBeban to the total', () => {, it('should handle zero extra fees properly', () => {, describe('calcAdminEarning', () => {, it('should return 0 if total_fee <= threshold', () => {, it('should return remaining percentage if total_fee > threshold', () => {, it('should prioritize snapshot rate and threshold', () => {, it('should not include extra courier fees in admin earning', () => {`
+---
+
+## Session Update: 2026-04-27 23:39:50
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 4
+- **Files**: `b/KNOWLEDGE_MAP.md, b/src/stores/useUserStore.ts, b/src/types/index.ts, b/src/pages/Orders.tsx`
+- **Overwrites**: `.filter(u => u.role === 'courier' && u.is_active === true && u.is_online === true), .sort((a, b) => ((a as any).queue_position ?? 999) - ((b as any).queue_position ?? 999));, set(state => ({, users: state.users.map(u => u.id === (newRec as any).id ? updatedUser : u)`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 4
+- **Files**: `b/KNOWLEDGE_MAP.md, b/src/stores/useUserStore.ts, b/src/pages/Orders.tsx, b/src/types/index.ts`
+- **Overwrites**: `.filter(u => u.role === 'courier' && u.is_active === true && u.is_online === true), .sort((a, b) => ((a as any).queue_position ?? 999) - ((b as any).queue_position ?? 999));, set(state => ({, users: state.users.map(u => u.id === (newRec as any).id ? updatedUser : u)`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 1
+- **Files**: `b/KNOWLEDGE_MAP.md, b/src/components/courier/QRScannerModal.tsx, b/src/pages/Couriers.tsx, b/src/components/admin/StayQRDisplay.tsx`
+- **Overwrites**: `const fetchTodayLogs = useCallback(async () => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 2
+- **Files**: `b/src/pages/Couriers.tsx, b/src/components/courier/QRScannerModal.tsx, b/KNOWLEDGE_MAP.md, b/package.json, b/src/pages/courier/CourierDashboard.tsx, b/package-lock.json, b/src/types/supabase.ts, b/src/components/admin/StayQRDisplay.tsx`
+- **Overwrites**: `<Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => setIsAddModalOpen(true)}>, const handleSetStay = async () => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 16
+- **Files**: `b/src/components/settings/BusinessTab.tsx, b/src/pages/finance/FinancePenagihan.tsx, b/src/pages/Orders.tsx, b/src/pages/courier/CourierEarnings.tsx, b/src/pages/Reports.tsx, b/src/pages/finance/FinanceDashboard.tsx, b/src/pages/courier/CourierDashboard.tsx, b/src/pages/Dashboard.tsx, b/src/stores/useOrderStore.ts, b/src/pages/Couriers.tsx, b/src/lib/calcEarning.test.ts, b/src/stores/useSettingsStore.ts, b/supabase/migrations/20240421000000_deduction_logic.sql, b/KNOWLEDGE_MAP.md, b/src/lib/calcEarning.ts, b/src/pages/finance/FinanceAnalisa.tsx, b/src/pages/Settings.tsx, b/src/lib/orderCache.ts`
+- **Overwrites**: `onSaveSettings: (data: { commission_rate: number; commission_threshold: number }) => void;, const handleSave = () => {, onChange={e => setForm(prev => ({ ...prev, commission_rate: Number(e.target.value) }))}, onChange={e => {, setForm(prev => ({ ...prev, commission_threshold: val }));, describe('calcCourierEarning', () => {, it('should prioritize applied_commission_rate from order snapshot', () => {, it('should prioritize applied_commission_threshold from order snapshot', () => {, // total_fee (15k) <= threshold (20k) => 100% = 15000, it('should add extraTitik and extraBeban to the total', () => {, it('should handle zero extra fees properly', () => {, describe('calcAdminEarning', () => {, it('should return 0 if total_fee <= threshold', () => {, it('should return remaining percentage if total_fee > threshold', () => {, it('should prioritize snapshot rate and threshold', () => {, it('should not include extra courier fees in admin earning', () => {`
+---
+
 ## Session Update: 2026-04-27 21:18:02
 - **Type**: auto_harvest
 - **Desc**: Changes detected via git diff. Overwritten potential functions: 4
