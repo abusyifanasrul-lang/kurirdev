@@ -53,6 +53,8 @@ const mapProfileToUser = (profile: any, existingUser?: User): User => {
     vehicle_type: profile.vehicle_type !== undefined ? profile.vehicle_type : base.vehicle_type,
     plate_number: profile.plate_number !== undefined ? profile.plate_number : base.plate_number,
     queue_position: profile.queue_position !== undefined ? profile.queue_position : base.queue_position,
+    queue_joined_at: profile.queue_joined_at !== undefined ? profile.queue_joined_at : base.queue_joined_at,
+    cancel_count: profile.cancel_count !== undefined ? profile.cancel_count : base.cancel_count,
     created_at: profile.created_at || base.created_at || new Date().toISOString(),
     updated_at: profile.updated_at || base.updated_at || new Date().toISOString(),
     total_deliveries_alltime: profile.total_deliveries_alltime !== undefined ? profile.total_deliveries_alltime : base.total_deliveries_alltime,

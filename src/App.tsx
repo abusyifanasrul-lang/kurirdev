@@ -63,6 +63,8 @@ const FinanceAnalisa = lazy(() => fetchWithRetry(() => import('@/pages/finance/F
 
 // Super Admin Only
 const SystemDiagnostics = lazy(() => fetchWithRetry(() => import('@/pages/admin/SystemDiagnostics').then(m => ({ default: m.SystemDiagnostics }))));
+const Shifts = lazy(() => fetchWithRetry(() => import('@/pages/admin/Shifts').then(m => ({ default: m.default }))));
+const AttendanceMonitoring = lazy(() => fetchWithRetry(() => import('@/pages/admin/AttendanceMonitoring').then(m => ({ default: m.AttendanceMonitoring }))));
 
 // Courier Pages
 const CourierLayout = lazy(() => fetchWithRetry(() => import('@/pages/courier/CourierLayout').then(m => ({ default: m.CourierLayout }))));
@@ -262,6 +264,24 @@ export function App() {
 
                   {/* Couriers */}
                   <Route path="couriers" element={<Couriers />} />
+
+                  {/* Shifts */}
+                  <Route 
+                    path="shifts" 
+                    element={
+                      <ProtectedRoute allowedRoles={['admin', 'owner', 'admin_kurir']}>
+                        <Shifts />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="attendance" 
+                    element={
+                      <ProtectedRoute allowedRoles={['admin', 'owner', 'admin_kurir']}>
+                        <AttendanceMonitoring />
+                      </ProtectedRoute>
+                    } 
+                  />
 
                   {/* Customers */}
                   <Route 

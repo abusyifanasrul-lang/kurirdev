@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Percent, Wallet, Calculator, Shield, Info } from 'lucide-react';
+import { Percent, Wallet, Calculator, Shield, Info, Clock } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatter';
 import { calcCourierEarning, calcAdminEarning } from '@/lib/calcEarning';
 import type { User as UserType, Order } from '@/types';
@@ -11,7 +11,19 @@ interface BusinessTabProps {
   commission_rate: number;
   commission_threshold: number;
   commission_type: 'percentage' | 'flat';
-  onSaveSettings: (data: { commission_rate: number; commission_threshold: number; commission_type: 'percentage' | 'flat' }) => Promise<void>;
+  onSaveSettings: (data: { 
+    commission_rate: number; 
+    commission_threshold: number; 
+    commission_type: 'percentage' | 'flat';
+    fine_late_minor_amount?: number;
+    fine_late_major_minutes?: number;
+    fine_late_major_amount?: number;
+    fine_alpha_amount?: number;
+  }) => Promise<void>;
+  fine_late_minor_amount?: number;
+  fine_late_major_minutes?: number;
+  fine_late_major_amount?: number;
+  fine_alpha_amount?: number;
   // Props kept for compatibility
   onResync?: () => Promise<void>;
   cacheMeta?: any;
@@ -22,16 +34,21 @@ interface BusinessTabProps {
   getOrphanedOrdersLocal?: (activeIds: string[]) => Promise<Order[]>;
 }
 
-export function BusinessTab({
-  commission_rate: initialRate,
-  commission_threshold: initialThreshold,
-  commission_type: initialType,
-  onSaveSettings,
-}: BusinessTabProps) {
+export function BusinessTab(props: BusinessTabProps) {
+  const {
+    commission_rate: initialRate,
+    commission_threshold: initialThreshold,
+    commission_type: initialType,
+    onSaveSettings,
+  } = props;
   const [form, setForm] = useState({
     commission_rate: initialRate,
     commission_threshold: initialThreshold,
     commission_type: initialType || 'percentage',
+    fine_late_minor_amount: props.fine_late_minor_amount ?? 1000,
+    fine_late_major_minutes: props.fine_late_major_minutes ?? 60,
+    fine_late_major_amount: props.fine_late_major_amount ?? 30000,
+    fine_alpha_amount: props.fine_alpha_amount ?? 50000,
   });
 
   const [simOngkir, setSimOngkir] = useState<number>(15000);
@@ -207,6 +224,82 @@ export function BusinessTab({
             </div>
 
           </div>
+        </div>
+      </Card>
+
+      <Card className="border-none shadow-sm bg-white overflow-hidden mt-6">
+        <div className="p-5 border-b border-gray-50">
+          <h2 className="text-lg font-bold text-gray-900">Denda & Penalti</h2>
+          <p className="text-xs text-gray-500">Atur besaran denda untuk keterlambatan dan ketidakhadiran.</p>
+        </div>
+        
+        <div className="p-5 lg:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-2">
+              <Clock className="w-3.5 h-3.5 text-amber-500" />
+              Keterlambatan (Late)
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="Denda Per Order (Minor)"
+                type="text"
+                value={`Rp ${form.fine_late_minor_amount.toLocaleString('id-ID')}`}
+                onChange={e => {
+                  const val = Number(e.target.value.replace(/[^0-9]/g, ''));
+                  setForm(prev => ({ ...prev, fine_late_minor_amount: val }));
+                }}
+                className="text-sm font-bold bg-gray-50"
+                helperText="Dipotong dari setiap order jika status terlambat aktif."
+              />
+              <Input
+                label="Ambang Batas Major (Menit)"
+                type="number"
+                value={form.fine_late_major_minutes}
+                onChange={e => setForm(prev => ({ ...prev, fine_late_major_minutes: Number(e.target.value) }))}
+                className="text-sm font-bold bg-gray-50"
+                helperText="Menit keterlambatan untuk denda besar."
+              />
+            </div>
+            <Input
+              label="Denda Sekali Potong (Major)"
+              type="text"
+              value={`Rp ${form.fine_late_major_amount.toLocaleString('id-ID')}`}
+              onChange={e => {
+                const val = Number(e.target.value.replace(/[^0-9]/g, ''));
+                setForm(prev => ({ ...prev, fine_late_major_amount: val }));
+              }}
+              className="text-sm font-bold bg-gray-50"
+              helperText="Denda flat jika terlambat melebihi ambang batas major."
+            />
+          </div>
+
+          <div className="space-y-4">
+            <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-2">
+              <Shield className="w-3.5 h-3.5 text-rose-500" />
+              Absensi & Alpha
+            </h4>
+            <Input
+              label="Denda Alpha / Tanpa Izin"
+              type="text"
+              value={`Rp ${form.fine_alpha_amount.toLocaleString('id-ID')}`}
+              onChange={e => {
+                const val = Number(e.target.value.replace(/[^0-9]/g, ''));
+                setForm(prev => ({ ...prev, fine_alpha_amount: val }));
+              }}
+              className="text-sm font-bold bg-gray-50"
+              helperText="Dikenakan saat kurir tidak masuk tanpa keterangan."
+            />
+          </div>
+        </div>
+
+        <div className="px-5 pb-6">
+          <Button 
+            onClick={handleSave} 
+            disabled={isSaving}
+            className="w-full sm:w-auto h-10 px-8 text-sm shadow-md"
+          >
+            {isSaving ? 'Menyimpan...' : 'Simpan Denda'}
+          </Button>
         </div>
       </Card>
     </div>

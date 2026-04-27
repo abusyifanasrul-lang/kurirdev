@@ -66,6 +66,11 @@ export function Settings() {
     operational_area,
     operational_timezone,
     courier_instructions,
+    fine_late_minor_amount,
+    fine_late_major_minutes,
+    fine_late_major_amount,
+    fine_alpha_amount,
+    billing_start_day,
     updateSettings,
     addCourierInstruction,
     updateCourierInstruction,
@@ -129,6 +134,11 @@ export function Settings() {
           operational_area: state.operational_area,
           operational_timezone: state.operational_timezone,
           courier_instructions: state.courier_instructions,
+          fine_late_minor_amount: state.fine_late_minor_amount,
+          fine_late_major_minutes: state.fine_late_major_minutes,
+          fine_late_major_amount: state.fine_late_major_amount,
+          fine_alpha_amount: state.fine_alpha_amount,
+          billing_start_day: state.billing_start_day,
         } as any)
         .eq('id', 'global');
         
@@ -340,6 +350,10 @@ export function Settings() {
                       commission_rate={commission_rate}
                       commission_threshold={commission_threshold}
                       commission_type={commission_type}
+                      fine_late_minor_amount={fine_late_minor_amount}
+                      fine_late_major_minutes={fine_late_major_minutes}
+                      fine_late_major_amount={fine_late_major_amount}
+                      fine_alpha_amount={fine_alpha_amount}
                       onSaveSettings={handleSaveBusinessSettings}
                       onResync={handleResync}
                       cacheMeta={cacheMeta}
@@ -355,6 +369,7 @@ export function Settings() {
                     <GeneralOpsTab 
                       operational_area={operational_area}
                       operational_timezone={operational_timezone}
+                      billing_start_day={billing_start_day}
                       onSaveSettings={handleSaveBusinessSettings}
                     />
                   )}

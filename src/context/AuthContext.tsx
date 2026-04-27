@@ -95,6 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           vehicle_type: (profile.vehicle_type as any) || undefined,
           plate_number: profile.plate_number || undefined,
           queue_position: profile.queue_position || undefined,
+          queue_joined_at: profile.queue_joined_at || undefined,
           total_deliveries_alltime: profile.total_deliveries_alltime || 0,
           total_earnings_alltime: profile.total_earnings_alltime || 0,
           unpaid_count: profile.unpaid_count || 0,

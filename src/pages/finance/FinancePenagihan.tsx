@@ -14,14 +14,31 @@ import {
   Table, TableHead, TableBody, TableRow, TableHeader, TableCell
 } from '@/components/ui/Table';
 import { Input } from '@/components/ui/Input';
+import { useAttendanceStore } from '@/stores/useAttendanceStore';
+import { useAuth } from '@/context/AuthContext';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useUserStore } from '@/stores/useUserStore';
-import { useAuth } from '@/context/AuthContext';
 import { useSettingsStore } from '@/stores/useSettingsStore';
-import { calcAdminEarning } from '@/lib/calcEarning';
 import { getOrdersForWeek, getAllUnpaidOrdersLocal } from '@/lib/orderCache';
+import { calcAdminEarning, calcCourierEarning } from '@/lib/calcEarning';
+import { formatCurrency } from '@/utils/formatter';
 import { cn } from '@/utils/cn';
 import type { Order } from '@/types';
+
+interface AttendanceLog {
+  id: string;
+  courier_id: string;
+  date: string;
+  first_online_at: string | null;
+  last_online_at: string | null;
+  status: 'on_time' | 'late' | 'late_minor' | 'late_major' | 'alpha' | 'sick' | 'off';
+  late_minutes: number;
+  flat_fine: number;
+  payment_status: 'unpaid' | 'paid';
+  shift_name?: string;
+  shift_start?: string;
+  shift_end?: string;
+}
 
 type FilterType = 'unpaid' | 'paid' | 'all';
 
@@ -29,6 +46,7 @@ export function FinancePenagihan() {
   const { user } = useAuth();
   const { orders, settleOrder } = useOrderStore();
   const { users } = useUserStore();
+  const { unpaidAttendance, fetchUnpaidAttendance, settleAttendance } = useAttendanceStore();
   const { commission_rate, commission_threshold, commission_type } = useSettingsStore();
   const earningSettings = { commission_rate, commission_threshold, commission_type };
 
@@ -41,7 +59,7 @@ export function FinancePenagihan() {
 
   // Confirm modal state
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [confirmCourier, setConfirmCourier] = useState<{ id: string; name: string; orders: Order[] } | null>(null);
+  const [confirmCourier, setConfirmCourier] = useState<{ id: string; name: string; orders: Order[]; fines: AttendanceLog[] } | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [confirmSuccess, setConfirmSuccess] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
@@ -50,6 +68,23 @@ export function FinancePenagihan() {
     if (!id) return 'Unknown';
     const u = users.find(x => x.id === id);
     return u ? u.name : 'Staf Terhapus';
+  };
+
+  const getAdminEarning = (order: Order) => {
+    // Prioritaskan snapshot yang tersimpan di database saat order selesai
+    let baseEarning = 0;
+    if (order.applied_admin_fee !== undefined && order.applied_admin_fee !== null) {
+      baseEarning = order.applied_admin_fee;
+    } else {
+      // Fallback ke kalkulasi live hanya jika snapshot tidak ada
+      // (untuk order lama sebelum kolom applied_admin_fee ada)
+      baseEarning = calcAdminEarning(order, earningSettings);
+    }
+
+    // Setoran Admin = Admin Fee + Denda (jika ada)
+    // Denda per order (fine_deducted) adalah uang yang seharusnya milik kurir
+    // tapi dipotong ke admin karena keterlambatan.
+    return baseEarning + (order.fine_deducted || 0);
   };
 
   const loadLocalOrders = useCallback(async () => {
@@ -61,7 +96,8 @@ export function FinancePenagihan() {
     recentOrders.forEach(o => map.set(o.id, o));
     unpaidOrders.forEach(o => map.set(o.id, o));
     setLocalOrders(Array.from(map.values()));
-  }, []);
+    fetchUnpaidAttendance();
+  }, [fetchUnpaidAttendance]);
 
   useEffect(() => {
     loadLocalOrders();
@@ -88,33 +124,41 @@ export function FinancePenagihan() {
       courierName: string;
       courierVehicle?: any;
       totalEarning: number;
+      totalFines: number;
       unpaidOrders: Order[];
       paidOrders: Order[];
+      unpaidFines: AttendanceLog[];
       lastSettlement: string | null;
     }> = [];
 
     for (const courier of couriers) {
       const courierOrders = deliveredOrders.filter(o => o.courier_id === courier.id);
-      if (courierOrders.length === 0) continue; // Skip couriers with no delivered orders
+      const courierFines = unpaidAttendance.filter(a => a.courier_id === courier.id);
+      
+      if (courierOrders.length === 0 && courierFines.length === 0) continue; 
 
       const unpaid = courierOrders.filter(o => o.payment_status === 'unpaid');
       const paid = courierOrders.filter(o => o.payment_status === 'paid');
 
       const totalEarning = unpaid.reduce((sum, o) =>
-        sum + calcAdminEarning(o, earningSettings), 0
+        sum + getAdminEarning(o), 0
       );
+      
+      const totalFines = courierFines.reduce((sum, f) => sum + f.flat_fine, 0);
 
       result.push({
         courierId: courier.id,
         courierName: courier.name,
         courierVehicle: courier.vehicle_type,
         totalEarning,
+        totalFines,
         unpaidOrders: unpaid.sort((a, b) =>
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         ),
         paidOrders: paid.sort((a, b) =>
           new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
         ).slice(0, 5),
+        unpaidFines: courierFines,
         lastSettlement: paid.length > 0 ? paid[0].updated_at : null,
       });
     }
@@ -130,19 +174,21 @@ export function FinancePenagihan() {
       // Only include orphans if there's actually something to show
       if (unpaid.length > 0 || paid.length > 0) {
         const totalEarning = unpaid.reduce((sum, o) =>
-          sum + calcAdminEarning(o, earningSettings), 0
+          sum + getAdminEarning(o), 0
         );
 
         result.push({
           courierId: 'unknown_legacy',
           courierName: '📦 Kurir Terhapus / Unknown',
           totalEarning,
+          totalFines: 0,
           unpaidOrders: unpaid.sort((a, b) =>
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           ),
           paidOrders: paid.sort((a, b) =>
             new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
           ).slice(0, 5),
+          unpaidFines: [],
           lastSettlement: null
         });
       }
@@ -160,19 +206,19 @@ export function FinancePenagihan() {
       }
 
       // Filter based on payment status
-      if (filter === 'unpaid' && c.unpaidOrders.length === 0) return false;
-      if (filter === 'paid' && (c.paidOrders.length === 0 || c.unpaidOrders.length > 0)) return false;
+      if (filter === 'unpaid' && c.unpaidOrders.length === 0 && c.unpaidFines.length === 0) return false;
+      if (filter === 'paid' && (c.paidOrders.length === 0 || c.unpaidOrders.length > 0 || c.unpaidFines.length > 0)) return false;
 
       return true;
     });
   }, [rawCourierSummary, filter, searchQuery]);
 
   // Global stats for dashboard cards and header
-  const totalUnpaid = rawCourierSummary.reduce((sum, c) => sum + c.totalEarning, 0);
+  const totalUnpaid = rawCourierSummary.reduce((sum, c) => sum + c.totalEarning + c.totalFines, 0);
   const totalUnpaidOrders = rawCourierSummary.reduce((sum, c) => sum + c.unpaidOrders.length, 0);
 
-   const handleConfirmSettlement = (courierId: string, courierName: string, orders: Order[]) => {
-    setConfirmCourier({ id: courierId, name: courierName, orders });
+   const handleConfirmSettlement = (courierId: string, courierName: string, orders: Order[], fines: AttendanceLog[]) => {
+    setConfirmCourier({ id: courierId, name: courierName, orders, fines });
     setShowConfirmModal(true);
     setConfirmSuccess(false);
     setConfirmError(null);
@@ -188,6 +234,9 @@ export function FinancePenagihan() {
 
       for (const order of confirmCourier.orders) {
         await settleOrder(order.id, user.id, user.name);
+      }
+      for (const fine of confirmCourier.fines) {
+        await settleAttendance(fine.id, user.id);
       }
       setSelectedOrders(prev => {
         const next = new Set(prev);
@@ -208,8 +257,6 @@ export function FinancePenagihan() {
     }
   };
 
-  const formatCurrency = (val: number) =>
-    new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
 
   const getAgingBadge = (dateStr: string) => {
     const days = differenceInDaysLocal(getLocalNow(), dateStr);
@@ -353,10 +400,23 @@ export function FinancePenagihan() {
                       {hasUnpaid && (
                         <div className="text-right">
                           <p className="text-lg font-bold text-amber-700">
-                            {formatCurrency(courier.unpaidOrders.some(o => selectedOrders.has(o.id)) 
-                              ? courier.unpaidOrders.filter(o => selectedOrders.has(o.id)).reduce((sum, o) => sum + calcAdminEarning(o, earningSettings), 0)
-                              : courier.totalEarning)}
+                            {formatCurrency(
+                              (courier.unpaidOrders.some(o => selectedOrders.has(o.id)) 
+                                  ? courier.unpaidOrders.filter(o => selectedOrders.has(o.id)).reduce((sum, o) => sum + getAdminEarning(o), 0)
+                                  : courier.totalEarning) + courier.totalFines
+                            )}
                           </p>
+                          {(() => {
+                            const relevantOrders = courier.unpaidOrders.some(o => selectedOrders.has(o.id))
+                              ? courier.unpaidOrders.filter(o => selectedOrders.has(o.id))
+                              : courier.unpaidOrders;
+                            const totalFine = relevantOrders.reduce((sum, o) => sum + ((o as any).fine_deducted || 0), 0) + courier.totalFines;
+                            return totalFine > 0 ? (
+                              <p className="text-[10px] text-red-600 font-medium">
+                                Total Denda: {formatCurrency(totalFine)}
+                              </p>
+                            ) : null;
+                          })()}
                         </div>
                       )}
                       {hasUnpaid && (
@@ -368,7 +428,8 @@ export function FinancePenagihan() {
                             handleConfirmSettlement(
                               courier.courierId, 
                               courier.courierName, 
-                              courierSelected.length > 0 ? courierSelected : courier.unpaidOrders
+                              courierSelected.length > 0 ? courierSelected : courier.unpaidOrders,
+                              courier.unpaidFines
                             );
                           }}
                           className="bg-amber-600 hover:bg-amber-700"
@@ -416,6 +477,7 @@ export function FinancePenagihan() {
                                   <TableHeader>Tanggal</TableHeader>
                                   <TableHeader>Fee</TableHeader>
                                   <TableHeader>Setoran</TableHeader>
+                                  <TableHeader className="text-red-600">Denda</TableHeader>
                                   <TableHeader>Umur</TableHeader>
                                 </TableRow>
                               </TableHead>
@@ -441,7 +503,13 @@ export function FinancePenagihan() {
                                       <TableCell>{formatLocal(order.created_at, 'dd MMM yyyy')}</TableCell>
                                       <TableCell>{formatCurrency(order.total_fee)}</TableCell>
                                       <TableCell className="font-medium text-amber-700">
-                                        {formatCurrency(calcAdminEarning(order, earningSettings))}
+                                        {formatCurrency(getAdminEarning(order))}
+                                      </TableCell>
+                                      <TableCell className="font-medium text-red-600">
+                                        {(order as any).fine_deducted > 0 
+                                          ? `-${formatCurrency((order as any).fine_deducted)}` 
+                                          : <span className="text-gray-300">-</span>
+                                        }
                                       </TableCell>
                                       <TableCell>
                                         <Badge className={aging.className}>{aging.label}</Badge>
@@ -452,6 +520,31 @@ export function FinancePenagihan() {
                               </TableBody>
                             </Table>
                           </div>
+
+                          {courier.unpaidFines.length > 0 && (
+                            <div className="mt-4">
+                              <h4 className="text-sm font-semibold text-gray-700 mb-3">Denda Kehadiran</h4>
+                              <div className="space-y-2">
+                                {courier.unpaidFines.map((fine) => (
+                                  <div key={fine.id} className="flex items-center justify-between p-3 bg-red-50 border border-red-100 rounded-lg">
+                                    <div>
+                                      <p className="text-sm font-medium text-gray-900">
+                                        {fine.status === 'alpha' ? 'Denda Alpha (Tidak Masuk)' : 
+                                         fine.status === 'late_major' ? 'Denda Terlambat Parah (>60m)' : 
+                                         'Denda Terlambat (Flat)'} ({fine.shift_name || 'Shift'})
+                                      </p>
+                                      <p className="text-xs text-gray-500">
+                                        {formatLocal(fine.date, 'dd MMM yyyy')} • {fine.status === 'alpha' ? 'Absen' : `${fine.late_minutes} menit terlambat`}
+                                      </p>
+                                    </div>
+                                    <p className="text-sm font-bold text-red-600">
+                                      {formatCurrency(fine.flat_fine)}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </>
                       )}
 
@@ -476,7 +569,7 @@ export function FinancePenagihan() {
                                 </div>
                                 <div className="text-right">
                                   <p className="text-sm font-medium text-green-700">
-                                    {formatCurrency(calcAdminEarning(order, earningSettings))}
+                                    {formatCurrency(getAdminEarning(order))}
                                   </p>
                                   <CheckCircle className="h-4 w-4 text-green-500 ml-auto" />
                                 </div>
@@ -521,22 +614,39 @@ export function FinancePenagihan() {
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
                 <p className="font-medium text-amber-900">{confirmCourier.name}</p>
                 <p className="text-2xl font-bold text-amber-700 mt-1">
-                  {formatCurrency(confirmCourier.orders.reduce((sum, o) =>
-                    sum + calcAdminEarning(o, earningSettings), 0
-                  ))}
+                  {formatCurrency(
+                    confirmCourier.orders.reduce((sum, o) => sum + getAdminEarning(o), 0) +
+                    confirmCourier.fines.reduce((sum, f) => sum + f.flat_fine, 0)
+                  )}
                 </p>
-                <p className="text-sm text-amber-600">{confirmCourier.orders.length} order</p>
+                <p className="text-sm text-amber-600">
+                  {confirmCourier.orders.length} order + {confirmCourier.fines.length} denda
+                </p>
               </div>
 
               <div className="max-h-40 overflow-y-auto">
                 {confirmCourier.orders.map((order) => (
                   <div key={order.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
                     <div>
-                      <p className="text-sm font-medium">{order.order_number}</p>
+                      <p className="text-sm font-medium text-gray-900">{order.order_number}</p>
                       <p className="text-xs text-gray-500">{formatLocal(order.created_at, 'dd MMM')}</p>
                     </div>
                     <p className="text-sm font-medium text-amber-700">
-                      {formatCurrency(calcAdminEarning(order, earningSettings))}
+                      {formatCurrency(getAdminEarning(order))}
+                    </p>
+                  </div>
+                ))}
+                
+                {confirmCourier.fines.map((fine) => (
+                  <div key={fine.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                    <div>
+                      <p className="text-sm font-medium text-red-600">
+                        {fine.status === 'alpha' ? 'Denda Alpha' : 'Denda Terlambat'} ({fine.shift_name})
+                      </p>
+                      <p className="text-xs text-gray-500">{formatLocal(fine.date, 'dd MMM')}</p>
+                    </div>
+                    <p className="text-sm font-medium text-red-600">
+                      {formatCurrency(fine.flat_fine)}
                     </p>
                   </div>
                 ))}

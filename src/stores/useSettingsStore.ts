@@ -18,6 +18,11 @@ interface BusinessSettings {
   operational_area: string
   operational_timezone: string
   courier_instructions: CourierInstruction[]
+  fine_late_minor_amount: number
+  fine_late_major_minutes: number
+  fine_late_major_amount: number
+  fine_alpha_amount: number
+  billing_start_day: number
 }
 
 interface SettingsStore extends BusinessSettings {
@@ -50,6 +55,11 @@ export const useSettingsStore = create<SettingsStore>()(
       operational_area: 'Sengkang, Wajo',
       operational_timezone: 'Asia/Jakarta',
       courier_instructions: DEFAULT_INSTRUCTIONS,
+      fine_late_minor_amount: 1000,
+      fine_late_major_minutes: 60,
+      fine_late_major_amount: 30000,
+      fine_alpha_amount: 50000,
+      billing_start_day: 1,
       realtimeStatus: {},
       _resyncLock: null,
 
@@ -79,7 +89,12 @@ export const useSettingsStore = create<SettingsStore>()(
           commission_type: data.commission_type || 'percentage',
           operational_area: data.operational_area || 'Sengkang, Wajo',
           operational_timezone: data.operational_timezone || 'Asia/Jakarta',
-          courier_instructions: data.courier_instructions || DEFAULT_INSTRUCTIONS
+          courier_instructions: data.courier_instructions || DEFAULT_INSTRUCTIONS,
+          fine_late_minor_amount: data.fine_late_minor_amount ?? 1000,
+          fine_late_major_minutes: data.fine_late_major_minutes ?? 60,
+          fine_late_major_amount: data.fine_late_major_amount ?? 30000,
+          fine_alpha_amount: data.fine_alpha_amount ?? 50000,
+          billing_start_day: data.billing_start_day ?? 1
         }))
       },
 
@@ -217,13 +232,18 @@ export const useSettingsStore = create<SettingsStore>()(
         operational_area: 'Sengkang, Wajo',
         operational_timezone: 'Asia/Jakarta',
         courier_instructions: DEFAULT_INSTRUCTIONS,
+        fine_late_minor_amount: 1000,
+        fine_late_major_minutes: 60,
+        fine_late_major_amount: 30000,
+        fine_alpha_amount: 50000,
+        billing_start_day: 1,
         realtimeStatus: {},
       }))
     }),
     {
       name: 'business-settings',
       storage: createJSONStorage(() => localStorage),
-      version: 6,
+      version: 7,
       migrate: (persistedState: any, version: number) => {
         const iconNameToEmoji: Record<string, string> = {
           'CheckCircle': '✅', 'Search': '🔍', 'ShoppingCart': '🛒',

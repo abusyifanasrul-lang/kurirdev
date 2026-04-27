@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, lazy, Suspense } from 'react';
-import { Plus, Eye, EyeOff, ToggleLeft, ToggleRight, TrendingUp, Package, DollarSign, Phone, Mail, Award, Hash, Search, QrCode, RefreshCw } from 'lucide-react';
+import { Plus, Eye, EyeOff, ToggleLeft, ToggleRight, TrendingUp, Package, DollarSign, Phone, Mail, Award, Hash, Search, QrCode, RefreshCw, AlertCircle, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { Header } from '@/components/layout/Header';
 import { Card, StatCard } from '@/components/ui/Card';
@@ -28,6 +28,8 @@ import { useUserStore } from '@/stores/useUserStore';
 import { useAuth } from '@/context/AuthContext';
 import { Courier, Order } from '@/types';
 import { useSettingsStore } from '@/stores/useSettingsStore';
+import { useShiftStore } from '@/stores/useShiftStore';
+import { useAttendanceStore } from '@/stores/useAttendanceStore';
 import { calcCourierEarning, calcAdminEarning } from '@/lib/calcEarning';
 import { getUnpaidOrdersByCourier, getOrdersForWeek } from '@/lib/orderCache';
 
@@ -38,6 +40,8 @@ export function Couriers() {
   const { orders, activeOrdersByCourier, getOrdersByCourier, settleOrder, fetchInitialOrders } = useOrderStore();
   const { commission_rate, commission_threshold, commission_type } = useSettingsStore();
   const earningSettings = { commission_rate, commission_threshold, commission_type };
+  const { shifts, fetchShifts } = useShiftStore();
+  const { fetchCourierAttendance } = useAttendanceStore();
   const { user } = useAuth();
   const isFinance = user?.role === 'finance' || user?.role === 'owner';
 
@@ -51,6 +55,7 @@ export function Couriers() {
   const [weekOrders, setWeekOrders] = useState<Order[]>([])
   const [searchQuery, setSearchQuery] = useState('');
   const [showQRModal, setShowQRModal] = useState(false);
+  const [courierAttendance, setCourierAttendance] = useState<any[]>([]);
 
   const filteredCouriers = useMemo(() => {
     return couriers.filter(c => 
@@ -70,7 +75,8 @@ export function Couriers() {
   }, [])
   useEffect(() => {
     fetchInitialOrders();
-  }, [fetchInitialOrders]);
+    fetchShifts();
+  }, [fetchInitialOrders, fetchShifts]);
 
   const allOrders = useMemo(() => {
     const map = new Map<string, Order>()
@@ -111,8 +117,9 @@ export function Couriers() {
       setCourierUnpaidOrders([])
       return
     }
-    getUnpaidOrdersByCourier(selectedCourier.id).then(setCourierUnpaidOrders)
-  }, [selectedCourier?.id])
+    getUnpaidOrdersByCourier(selectedCourier.id).then(setCourierUnpaidOrders);
+    fetchCourierAttendance(selectedCourier.id).then(setCourierAttendance);
+  }, [selectedCourier?.id, fetchCourierAttendance])
 
   // Form state
   const [newCourier, setNewCourier] = useState({
@@ -122,6 +129,7 @@ export function Couriers() {
     phone: '',
     vehicle_type: 'motorcycle' as Courier['vehicle_type'],
     plate_number: '',
+    shift_id: '',
   });
 
   const activeCouriersCount = couriers.filter((c: Courier) => c.is_active).length;
@@ -144,6 +152,7 @@ export function Couriers() {
       is_online: false,
       vehicle_type: newCourier.vehicle_type,
       plate_number: newCourier.plate_number,
+      shift_id: newCourier.shift_id || null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -162,7 +171,8 @@ export function Couriers() {
       password: '',
       phone: '',
       vehicle_type: 'motorcycle',
-      plate_number: ''
+      plate_number: '',
+      shift_id: ''
     });
   };
 
@@ -296,6 +306,7 @@ export function Couriers() {
             <TableHead>
               <TableRow>
                 <TableHeader>Name</TableHeader>
+                <TableHeader>Shift</TableHeader>
                 <TableHeader>Status</TableHeader>
                 <TableHeader>Active</TableHeader>
                 <TableHeader>Completed (7H)</TableHeader>
@@ -322,21 +333,20 @@ export function Couriers() {
                     onClick={() => { setSelectedCourier(courier); setIsPerformanceModalOpen(true); }}
                   >
                     <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center text-teal-600 font-bold text-xs">
-                          {courier.name.charAt(0)}
-                        </div>
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-gray-900">{courier.name}</span>
-                            <CourierBadge type={courier.vehicle_type} showLabel={false} className="border-none bg-transparent p-0" />
-                          </div>
-                          <span className="text-xs text-gray-500 hidden lg:inline">{courier.email}</span>
-                        </div>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-gray-900">{courier.name}</span>
+                        <span className="text-[10px] text-gray-400 font-medium uppercase tracking-tight">
+                          {courier.phone}
+                        </span>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-col gap-1">
+                      <Badge variant="outline" className="font-bold text-[10px] border-gray-200 text-gray-500">
+                        {shifts.find(s => s.id === courier.shift_id)?.name || 'NONE'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-2 items-center">
                         <Badge variant={courier.is_active ? 'success' : 'danger'}>
                           {courier.is_active ? 'Active' : 'Suspended'}
                         </Badge>
@@ -359,6 +369,11 @@ export function Couriers() {
                               {waitingOrder && (
                                 <span className="text-xs text-yellow-600 font-semibold">
                                   📝 PENDING — {waitingOrder.order_number}
+                                </span>
+                              )}
+                              {(courier as any).late_fine_active && (
+                                <span className="text-[10px] px-1.5 py-0.5 bg-rose-50 text-rose-600 rounded font-black border border-rose-100 flex items-center gap-1 animate-pulse">
+                                  <AlertCircle className="w-3 h-3" /> LATE PENALTY
                                 </span>
                               )}
                             </>
@@ -481,6 +496,16 @@ export function Couriers() {
               placeholder="B 1234 XYZ"
             />
           </div>
+          <Select
+            label="Kelompok Shift"
+            value={newCourier.shift_id}
+            onChange={(e) => setNewCourier({ ...newCourier, shift_id: e.target.value })}
+            placeholder="-- Pilih Shift --"
+            options={shifts.map(s => ({ 
+              value: s.id, 
+              label: `${s.name} (${s.start_time.substring(0, 5)} - ${s.end_time.substring(0, 5)})` 
+            }))}
+          />
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button variant="outline" onClick={() => { setIsAddModalOpen(false); setShowCourierPassword(false); }}>
               Cancel
@@ -578,6 +603,29 @@ export function Couriers() {
               </div>
             </div>
 
+            {/* Attendance Summary */}
+            <div className="mb-6">
+              <h4 className="text-sm font-medium text-gray-600 flex items-center gap-2 mb-3">
+                <Clock className="w-4 h-4" /> Attendance Summary
+              </h4>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-100">
+                  <p className="text-[10px] text-emerald-600 font-black uppercase tracking-wider mb-1">On Time</p>
+                  <p className="text-lg font-black text-emerald-700">{courierAttendance.filter(a => a.status === 'on_time').length}</p>
+                </div>
+                <div className="bg-amber-50 rounded-xl p-3 border border-amber-100">
+                  <p className="text-[10px] text-amber-600 font-black uppercase tracking-wider mb-1">Late</p>
+                  <p className="text-lg font-black text-amber-700">{courierAttendance.filter(a => a.status === 'late').length}</p>
+                </div>
+                <div className="bg-rose-50 rounded-xl p-3 border border-rose-100">
+                  <p className="text-[10px] text-rose-600 font-black uppercase tracking-wider mb-1">Denda</p>
+                  <p className="text-lg font-black text-rose-700">
+                    {formatCurrency(courierAttendance.reduce((sum, a) => sum + (a.flat_fine || 0), 0))}
+                  </p>
+                </div>
+              </div>
+            </div>
+
             {/* Tagihan Setoran (Terproteksi RBAC) */}
             {isFinance && (() => {
               const unpaidOrders = courierUnpaidOrders
@@ -628,6 +676,50 @@ export function Couriers() {
                       <div className="text-right">
                         <Badge variant={getStatusBadgeVariant(order.status)} size="sm">{getStatusLabel(order.status)}</Badge>
                         <p className="text-xs font-medium mt-1">{formatCurrency(order.total_fee || 0)}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Attendance History */}
+            <div>
+              <h4 className="font-semibold mb-3">Riwayat Absensi (Recent)</h4>
+              <div className="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-2">
+                {courierAttendance.length === 0 ? (
+                  <p className="text-center text-gray-400 py-4 text-sm">Belum ada riwayat absensi.</p>
+                ) : (
+                  courierAttendance.map((log) => (
+                    <div key={log.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded border-b last:border-0 border-gray-100">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-sm text-gray-900">{log.shift_name || 'Shift'}</p>
+                          <Badge 
+                            variant={
+                              log.status === 'on_time' ? 'success' : 
+                              log.status === 'late' ? 'warning' : 'danger'
+                            } 
+                            size="sm"
+                          >
+                            {log.status === 'on_time' ? 'Tepat Waktu' : 
+                             log.status === 'late' ? 'Terlambat' : 
+                             log.status === 'alpha' ? 'Alpha' : log.status}
+                          </Badge>
+                        </div>
+                        <p className="text-[10px] text-gray-500 font-medium">
+                          {format(new Date(log.date), 'EEEE, dd MMM yyyy')}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs font-bold text-gray-700">
+                          {log.first_online_at ? format(new Date(log.first_online_at), 'HH:mm') : '--:--'}
+                        </p>
+                        {log.flat_fine > 0 && (
+                          <p className="text-[10px] font-black text-rose-500 mt-0.5">
+                            Denda: {formatCurrency(log.flat_fine)}
+                          </p>
+                        )}
                       </div>
                     </div>
                   ))

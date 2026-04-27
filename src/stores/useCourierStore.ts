@@ -53,7 +53,7 @@ export const useCourierStore = create<CourierState>()((_set, get) => ({
 
   rotateQueue: async (assignedCourierId) => {
     const { error } = await supabase.rpc('rotate_courier_queue', {
-      target_user_id: assignedCourierId
+      p_courier_id: assignedCourierId
     })
     
     if (error) {
@@ -66,7 +66,7 @@ export const useCourierStore = create<CourierState>()((_set, get) => ({
   setCourierOffline: async (courierId, reason) => {
     const userStore = useUserStore.getState()
     
-    // Trigger in DB will handle queue_position = NULL and shifting others
+    // Trigger in DB will handle queue exit logic
     await userStore.updateUser(courierId, {
       is_online: false,
       courier_status: 'off',
@@ -77,11 +77,19 @@ export const useCourierStore = create<CourierState>()((_set, get) => ({
   setCourierOnline: async (courierId, status) => {
     const userStore = useUserStore.getState()
     
-    // Trigger in DB will handle queue_position = max + 1
+    // Trigger in DB will handle queue entry (FIFO timestamp)
     await userStore.updateUser(courierId, {
       is_online: true,
       courier_status: status,
       off_reason: '',
     })
+
+    // Priority 2: Record attendance check-in
+    if (status === 'on' || status === 'stay') {
+      await supabase.rpc('record_courier_checkin', { 
+        p_courier_id: courierId 
+      });
+      // Silent fail, attendance can be manually added by admin if needed
+    }
   },
 }))

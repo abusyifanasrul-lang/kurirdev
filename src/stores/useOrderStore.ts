@@ -839,6 +839,11 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
           })
           .eq('id', orderId)
         if (error) throw error
+
+        // Move courier to end of FIFO queue
+        const { error: rpcError } = await (supabase.rpc as any)('rotate_courier_queue', { p_courier_id: courierId })
+        if (rpcError) console.error('FIFO rotation error:', rpcError)
+
         await (supabase.from('tracking_logs') as any).insert({
           order_id: orderId,
           status: 'assigned',
@@ -982,12 +987,11 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   },
 
   settleOrder: async (orderId, userId, userName) => {
-    const { error } = await (supabase.from('orders') as any).update({
-      payment_status: 'paid',
-      payment_confirmed_by: userId,
-      payment_confirmed_by_name: userName,
-      updated_at: new Date().toISOString()
-    }).eq('id', orderId)
+    const { error } = await (supabase.rpc as any)('mark_order_paid', { 
+      p_order_id: orderId,
+      p_admin_id: userId,
+      p_admin_name: userName
+    })
 
     if (error) throw error
 

@@ -7,17 +7,20 @@ import { Settings, MapPin, Clock } from 'lucide-react';
 interface GeneralOpsTabProps {
   operational_area: string;
   operational_timezone: string;
-  onSaveSettings: (data: { operational_area: string, operational_timezone: string }) => void;
+  billing_start_day: number;
+  onSaveSettings: (data: { operational_area: string, operational_timezone: string, billing_start_day: number }) => void;
 }
 
 export function GeneralOpsTab({
   operational_area,
   operational_timezone,
+  billing_start_day,
   onSaveSettings,
 }: GeneralOpsTabProps) {
   const [form, setForm] = useState({
     operational_area,
     operational_timezone: operational_timezone || 'Asia/Jakarta',
+    billing_start_day: billing_start_day || 1,
   });
 
   const handleSave = () => {
@@ -114,6 +117,38 @@ export function GeneralOpsTab({
                 </div>
               </div>
             </div>
+            </div>
+
+            {/* Section 3: Siklus Penagihan */}
+            <div className="bg-amber-50/50 border border-amber-100 p-5 rounded-2xl relative overflow-hidden group mt-6">
+              <h4 className="text-sm font-bold text-amber-800 mb-4 flex items-center gap-2">
+                <div className="bg-amber-100 p-1.5 rounded-lg">
+                  <Settings className="h-4 w-4" />
+                </div>
+                Siklus Penagihan
+              </h4>
+
+              <div className="relative">
+                <label className="block text-xs font-bold text-amber-900/60 uppercase tracking-widest mb-2 px-1">
+                  Hari Awal Mingguan
+                </label>
+                <select
+                  className="w-full px-4 py-3 bg-white border border-amber-200 rounded-xl focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 outline-none transition-all appearance-none text-gray-900 font-semibold shadow-sm"
+                  value={form.billing_start_day}
+                  onChange={(e) => setForm({ ...form, billing_start_day: Number(e.target.value) })}
+                >
+                  <option value={1}>Senin</option>
+                  <option value={2}>Selasa</option>
+                  <option value={3}>Rabu</option>
+                  <option value={4}>Kamis</option>
+                  <option value={5}>Jumat</option>
+                  <option value={6}>Sabtu</option>
+                  <option value={0}>Minggu</option>
+                </select>
+                <p className="mt-2 text-[11px] text-amber-700 leading-relaxed">
+                  Menentukan hari pertama dalam satu minggu untuk filter laporan "Minggu Ini" dan perhitungan insentif mingguan kurir.
+                </p>
+              </div>
             </div>
             
             <div className="pt-4">

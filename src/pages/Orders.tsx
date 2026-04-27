@@ -291,8 +291,14 @@ export function Orders() {
 
       if (tierA !== tierB) return tierA - tierB;
       
-      // Secondary sort: FIFO (queue_position)
-      return (a.queue_position ?? 999) - (b.queue_position ?? 999);
+      // Secondary sort: FIFO (queue_joined_at)
+      const timeA = a.queue_joined_at ? new Date(a.queue_joined_at).getTime() : Infinity;
+      const timeB = b.queue_joined_at ? new Date(b.queue_joined_at).getTime() : Infinity;
+      
+      if (timeA !== timeB) return timeA - timeB;
+
+      // Tertiary sort: ID (Deterministic tiebreaker)
+      return a.id.localeCompare(b.id);
     });
   }, [users, activeOrdersByCourier]);
 

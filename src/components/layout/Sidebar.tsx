@@ -8,6 +8,7 @@ import {
   Settings,
   LogOut,
   Truck,
+  DollarSign,
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/context/AuthContext';
@@ -19,12 +20,20 @@ interface NavItem {
   end?: boolean;
 }
 
-const navItems: NavItem[] = [
+const adminNavItems: NavItem[] = [
   { path: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { path: '/admin/orders', label: 'Orders', icon: Package },
   { path: '/admin/couriers', label: 'Couriers', icon: Users },
+  { path: '/admin/shifts', label: 'Shifts', icon: Truck },
+  { path: '/admin/attendance', label: 'Attendance', icon: Bell },
+];
+
+const financeNavItems: NavItem[] = [
+  { path: '/admin/finance', label: 'Finance', icon: DollarSign },
   { path: '/admin/reports', label: 'Reports', icon: FileText },
-  { path: '/admin/notifications', label: 'Notifications', icon: Bell },
+];
+
+const systemNavItems: NavItem[] = [
   { path: '/admin/settings', label: 'Settings', icon: Settings },
 ];
 
@@ -37,39 +46,102 @@ export function Sidebar() {
     navigate('/');
   };
 
+  const allNavItems = [
+    ...adminNavItems,
+    ...financeNavItems,
+    ...systemNavItems,
+  ].filter(item => {
+    if (user?.role === 'finance') {
+      return item.path.includes('finance') || item.path.includes('reports') || item.path.includes('settings');
+    }
+    return true;
+  });
+
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-gray-900 text-white flex flex-col">
       {/* Logo */}
       <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-800">
-        <div className="p-2 bg-teal-600 rounded-lg">
+        <div className="p-2 bg-teal-600 rounded-lg shadow-lg shadow-teal-900/20">
           <Truck className="h-6 w-6" />
         </div>
         <div>
-          <h1 className="font-bold text-lg">DeliveryPro</h1>
-          <p className="text-xs text-gray-400">Admin Dashboard</p>
+          <h1 className="font-bold text-lg tracking-tight">KurirMe</h1>
+          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Admin Dashboard</p>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            end={item.end}
-            className={({ isActive }) =>
-              cn(
-                'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors',
-                isActive
-                  ? 'bg-teal-600 text-white'
-                  : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-              )
-            }
-          >
-            <item.icon className="h-5 w-5" />
-            {item.label}
-          </NavLink>
-        ))}
+      <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto scrollbar-hide">
+        <div className="space-y-6">
+          {/* Main Section */}
+          <div className="space-y-1">
+            <p className="px-4 text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Utama</p>
+            {adminNavItems.filter(item => user?.role !== 'finance').map((item) => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                end={item.end}
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 group',
+                    isActive
+                      ? 'bg-teal-600 text-white shadow-lg shadow-teal-900/40'
+                      : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                  )
+                }
+              >
+                <item.icon className={cn("h-4 w-4 transition-transform group-hover:scale-110")} />
+                {item.label}
+              </NavLink>
+            ))}
+          </div>
+
+          {/* Finance Section */}
+          <div className="space-y-1">
+            <p className="px-4 text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Keuangan</p>
+            {financeNavItems.map((item) => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                end={item.end}
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 group',
+                    isActive
+                      ? 'bg-teal-600 text-white shadow-lg shadow-teal-900/40'
+                      : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                  )
+                }
+              >
+                <item.icon className={cn("h-4 w-4 transition-transform group-hover:scale-110")} />
+                {item.label}
+              </NavLink>
+            ))}
+          </div>
+
+          {/* System Section */}
+          <div className="space-y-1">
+            <p className="px-4 text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Sistem</p>
+            {systemNavItems.map((item) => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                end={item.end}
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 group',
+                    isActive
+                      ? 'bg-teal-600 text-white shadow-lg shadow-teal-900/40'
+                      : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                  )
+                }
+              >
+                <item.icon className={cn("h-4 w-4 transition-transform group-hover:scale-110")} />
+                {item.label}
+              </NavLink>
+            ))}
+          </div>
+        </div>
       </nav>
 
       {/* User section */}

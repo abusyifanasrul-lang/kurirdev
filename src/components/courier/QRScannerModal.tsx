@@ -236,7 +236,7 @@ export function QRScannerModal({ isOpen, onClose, courierId }: QRScannerModalPro
     await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
 
     await BarcodeScanner.removeAllListeners();
-    await BarcodeScanner.addListener('barcodeScanned', result => {
+    await BarcodeScanner.addListener('barcodesScanned', result => {
       if (result.barcode?.rawValue) {
         handleVerify(result.barcode.rawValue);
       }

@@ -44,11 +44,14 @@ export interface User {
   plate_number?: string;
   created_by?: string;
   queue_position?: number;
+  queue_joined_at?: string;
+  cancel_count?: number;
   total_deliveries_alltime?: number;
   total_earnings_alltime?: number;
   unpaid_count?: number;
   unpaid_amount?: number;
   is_priority_recovery?: boolean;
+  shift_id?: string;
 }
 
 export interface CreateUserInput {
@@ -121,6 +124,8 @@ export interface Order {
   is_waiting?: boolean;
   applied_commission_rate?: number;
   applied_commission_threshold?: number;
+  applied_commission_type?: 'flat' | 'percentage';
+  fine_deducted?: number;
   cancel_reason_type?: 'customer' | 'item_unavailable' | 'other';
   assigned_by?: string;
   payment_confirmed_by?: string;

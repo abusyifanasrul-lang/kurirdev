@@ -384,7 +384,12 @@ export function Dashboard() {
                   {(() => {
                     const activeCouriers = users.filter(u => u.role === 'courier' && u.is_active)
                     const onlineQueue = [...activeCouriers.filter(u => u.is_online)]
-                      .sort((a, b) => ((a as any).queue_position ?? 999) - ((b as any).queue_position ?? 999))
+                      .sort((a, b) => {
+                        const timeA = (a as any).queue_joined_at ? new Date((a as any).queue_joined_at).getTime() : Infinity;
+                        const timeB = (b as any).queue_joined_at ? new Date((b as any).queue_joined_at).getTime() : Infinity;
+                        if (timeA !== timeB) return timeA - timeB;
+                        return a.id.localeCompare(b.id);
+                      })
                     const offlineCouriers = activeCouriers.filter(u => !u.is_online)
 
                     if (activeCouriers.length === 0) return (

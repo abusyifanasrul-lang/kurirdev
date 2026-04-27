@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -437,6 +437,7 @@ export type Database = {
           unpaid_count: number | null
           updated_at: string | null
           vehicle_type: string | null
+          queue_joined_at: string | null
         }
         Insert: {
           courier_status?: string | null
@@ -461,6 +462,7 @@ export type Database = {
           unpaid_count?: number | null
           updated_at?: string | null
           vehicle_type?: string | null
+          queue_joined_at?: string | null
         }
         Update: {
           courier_status?: string | null
@@ -485,6 +487,7 @@ export type Database = {
           unpaid_count?: number | null
           updated_at?: string | null
           vehicle_type?: string | null
+          queue_joined_at?: string | null
         }
         Relationships: []
       }
@@ -498,6 +501,11 @@ export type Database = {
           operational_area: string | null
           operational_timezone: string | null
           updated_at: string | null
+          billing_start_day: number
+          fine_late_minor_amount: number
+          fine_late_major_minutes: number
+          fine_late_major_amount: number
+          fine_alpha_amount: number
         }
         Insert: {
           commission_rate?: number
@@ -508,6 +516,11 @@ export type Database = {
           operational_area?: string | null
           operational_timezone?: string | null
           updated_at?: string | null
+          billing_start_day?: number
+          fine_late_minor_amount?: number
+          fine_late_major_minutes?: number
+          fine_late_major_amount?: number
+          fine_alpha_amount?: number
         }
         Update: {
           commission_rate?: number
@@ -518,8 +531,142 @@ export type Database = {
           operational_area?: string | null
           operational_timezone?: string | null
           updated_at?: string | null
+          billing_start_day?: number
+          fine_late_minor_amount?: number
+          fine_late_major_minutes?: number
+          fine_late_major_amount?: number
+          fine_alpha_amount?: number
         }
         Relationships: []
+      }
+      shifts: {
+        Row: {
+          id: string
+          name: string
+          start_time: string
+          end_time: string
+          is_overnight: boolean
+          is_active: boolean
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          start_time: string
+          end_time: string
+          is_overnight?: boolean
+          is_active?: boolean
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          start_time?: string
+          end_time?: string
+          is_overnight?: boolean
+          is_active?: boolean
+          created_at?: string | null
+        }
+        Relationships: []
+      }
+      courier_shifts: {
+        Row: {
+          id: string
+          courier_id: string
+          shift_id: string
+          assigned_at: string | null
+          assigned_by: string | null
+        }
+        Insert: {
+          id?: string
+          courier_id: string
+          shift_id: string
+          assigned_at?: string | null
+          assigned_by?: string | null
+        }
+        Update: {
+          id?: string
+          courier_id?: string
+          shift_id?: string
+          assigned_at?: string | null
+          assigned_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courier_shifts_courier_id_fkey"
+            columns: ["courier_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "courier_shifts_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      shift_attendance: {
+        Row: {
+          id: string
+          courier_id: string
+          shift_id: string | null
+          date: string
+          first_online_at: string | null
+          last_online_at: string | null
+          status: string
+          late_minutes: number | null
+          flat_fine: number | null
+          payment_status: string | null
+          payment_confirmed_at: string | null
+          payment_confirmed_by: string | null
+        }
+        Insert: {
+          id?: string
+          courier_id: string
+          shift_id?: string | null
+          date: string
+          first_online_at?: string | null
+          last_online_at?: string | null
+          status?: string
+          late_minutes?: number | null
+          flat_fine?: number | null
+          payment_status?: string | null
+          payment_confirmed_at?: string | null
+          payment_confirmed_by?: string | null
+        }
+        Update: {
+          id?: string
+          courier_id?: string
+          shift_id?: string | null
+          date?: string
+          first_online_at?: string | null
+          last_online_at?: string | null
+          status?: string
+          late_minutes?: number | null
+          flat_fine?: number | null
+          payment_status?: string | null
+          payment_confirmed_at?: string | null
+          payment_confirmed_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_attendance_courier_id_fkey"
+            columns: ["courier_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_attendance_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       stay_attendance_logs: {
         Row: {

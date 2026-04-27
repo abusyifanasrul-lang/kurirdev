@@ -33,10 +33,13 @@ export const calculateAdminFee = (totalFee: number, settings: EarningSettings): 
 export const calcCourierEarning = (order: Order, settings: EarningSettings): number => {
   const adminFee = calculateAdminFee(order.total_fee, settings)
   const courierBaseShare = order.total_fee - adminFee
+  const fine = (order as any).fine_deducted || 0
   
-  return courierBaseShare + (order.total_biaya_titik ?? 0) + (order.total_biaya_beban ?? 0)
+  return Math.max(0, courierBaseShare - fine) + (order.total_biaya_titik ?? 0) + (order.total_biaya_beban ?? 0)
 }
 
 export const calcAdminEarning = (order: Order, settings: EarningSettings): number => {
-  return calculateAdminFee(order.total_fee, settings)
+  const adminFee = calculateAdminFee(order.total_fee, settings)
+  const fine = (order as any).fine_deducted || 0
+  return adminFee + fine
 }

@@ -16,6 +16,8 @@ import { formatCurrency, formatShortCurrency } from '@/utils/formatter';
 import { Order } from '@/types';
 import { getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
 
+import { AttendanceWidget } from '@/components/courier/AttendanceWidget';
+
 export function CourierDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -29,6 +31,7 @@ export function CourierDashboard() {
   const liveUser = users.find(u => u.id === currentUser?.id);
   const isSuspended = liveUser?.is_active === false;
   const isOnline = liveUser?.is_online ?? false;
+  const lateFineActive = (liveUser as any)?.late_fine_active ?? false;
 
   const [showOffModal, setShowOffModal] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
@@ -147,6 +150,13 @@ export function CourierDashboard() {
 
   return (
     <div className="space-y-6 p-1">
+      {/* Attendance Status Widget */}
+      {user?.id && (
+        <AttendanceWidget 
+          courierId={user.id} 
+          lateFineActive={lateFineActive} 
+        />
+      )}
 
       {/* Unpaid Warning Card — If any */}
       {!isStatsLoading && unpaidStats.count > 0 && (

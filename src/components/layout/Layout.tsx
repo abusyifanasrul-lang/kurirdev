@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -17,6 +17,8 @@ import {
   BarChart3,
   ShieldAlert,
   BookUser,
+  CalendarDays,
+  Clock as ClockIcon,
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/context/AuthContext';
@@ -31,49 +33,51 @@ interface NavItem {
   end?: boolean;
 }
 
-// Navigation per role
-const roleNavItems: Record<string, NavItem[]> = {
-  admin_kurir: [
-    { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true },
-    { path: '/admin/orders', label: 'Orders', icon: Package },
-    { path: '/admin/couriers', label: 'Couriers', icon: Users },
-    { path: '/admin/customers', label: 'Customers', icon: BookUser },
-    { path: '/admin/notifications', label: 'Notifikasi', icon: Bell },
-    { path: '/admin/settings', label: 'Settings', icon: Settings },
-  ],
-  // Owner: Business Pilot - analytics & financial insight, no operational menus
-  owner: [
-    { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true },
-    { path: '/admin/finance', label: 'Keuangan', icon: DollarSign },
-    { path: '/admin/reports', label: 'Reports', icon: FileText },
-    { path: '/admin/settings', label: 'Settings', icon: Settings },
-  ],
-  finance: [
-    { path: '/admin/finance', label: 'Dashboard', icon: DollarSign, end: true },
-    { path: '/admin/finance/penagihan', label: 'Penagihan', icon: TrendingUp },
-    { path: '/admin/finance/analisa', label: 'Analisa', icon: BarChart3 },
-    { path: '/admin/orders', label: 'Orders', icon: Package },
-    { path: '/admin/reports', label: 'Reports', icon: FileText },
-    { path: '/admin/settings', label: 'Settings', icon: Settings },
-  ],
-  // Super Admin (admin): God View - full access + exclusive Diagnostics
-  admin: [
-    { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true },
-    { path: '/admin/orders', label: 'Orders', icon: Package },
-    { path: '/admin/couriers', label: 'Couriers', icon: Users },
-    { path: '/admin/customers', label: 'Customers', icon: BookUser },
-    { path: '/admin/finance', label: 'Keuangan', icon: DollarSign },
-    { path: '/admin/reports', label: 'Reports', icon: FileText },
-    { path: '/admin/notifications', label: 'Notifikasi', icon: Bell },
-    { path: '/admin/settings', label: 'Settings', icon: Settings },
-    { path: '/admin/diagnostics', label: 'Diagnostics', icon: ShieldAlert },
-  ],
-};
-
 export function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+
+  // Navigation per role
+  const roleNavItems = useMemo<Record<string, NavItem[]>>(() => ({
+    admin_kurir: [
+      { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true },
+      { path: '/admin/orders', label: 'Orders', icon: Package },
+      { path: '/admin/couriers', label: 'Couriers', icon: Users },
+      { path: '/admin/shifts', label: 'Shifts', icon: CalendarDays },
+      { path: '/admin/attendance', label: 'Kehadiran', icon: ClockIcon },
+      { path: '/admin/customers', label: 'Customers', icon: BookUser },
+      { path: '/admin/notifications', label: 'Notifikasi', icon: Bell },
+      { path: '/admin/settings', label: 'Settings', icon: Settings },
+    ],
+    owner: [
+      { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true },
+      { path: '/admin/finance', label: 'Keuangan', icon: DollarSign },
+      { path: '/admin/reports', label: 'Reports', icon: FileText },
+      { path: '/admin/settings', label: 'Settings', icon: Settings },
+    ],
+    finance: [
+      { path: '/admin/finance', label: 'Dashboard', icon: DollarSign, end: true },
+      { path: '/admin/finance/penagihan', label: 'Penagihan', icon: TrendingUp },
+      { path: '/admin/finance/analisa', label: 'Analisa', icon: BarChart3 },
+      { path: '/admin/orders', label: 'Orders', icon: Package },
+      { path: '/admin/reports', label: 'Reports', icon: FileText },
+      { path: '/admin/settings', label: 'Settings', icon: Settings },
+    ],
+    admin: [
+      { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true },
+      { path: '/admin/orders', label: 'Orders', icon: Package },
+      { path: '/admin/couriers', label: 'Couriers', icon: Users },
+      { path: '/admin/shifts', label: 'Shifts', icon: CalendarDays },
+      { path: '/admin/attendance', label: 'Kehadiran', icon: ClockIcon },
+      { path: '/admin/customers', label: 'Customers', icon: BookUser },
+      { path: '/admin/finance', label: 'Keuangan', icon: DollarSign },
+      { path: '/admin/reports', label: 'Reports', icon: FileText },
+      { path: '/admin/notifications', label: 'Notifikasi', icon: Bell },
+      { path: '/admin/settings', label: 'Settings', icon: Settings },
+      { path: '/admin/diagnostics', label: 'Diagnostics', icon: ShieldAlert },
+    ],
+  }), []);
 
   const isOnline = useNetworkStatus();
   const { overall } = useRealtimeHealth();
