@@ -52,6 +52,10 @@ export interface User {
   unpaid_amount?: number;
   is_priority_recovery?: boolean;
   shift_id?: string;
+  stay_zone_counter?: number;
+  last_stay_check?: string;
+  stay_activated_via_qr?: boolean;
+  current_basecamp_id?: string;
 }
 
 export interface CreateUserInput {
@@ -291,4 +295,28 @@ export interface CustomerChangeRequest {
   change_type?: 'address_add' | 'address_edit' | 'address_delete' | 'full_update';
   affected_address_id?: string;
   new_address?: CustomerAddress;
+}
+
+// STAY Monitoring types
+export interface Basecamp {
+  id: string;
+  name: string;
+  description?: string;
+  lat: number;
+  lng: number;
+  stay_radius_meters: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface StayQueryResult {
+  success: boolean;
+  message: string;
+  basecamp_id: string | null;
+}
+
+export interface StayUpdateResult {
+  status_changed: boolean;
+  new_status: string;
+  counter: number;
 }

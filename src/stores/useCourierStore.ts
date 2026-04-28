@@ -13,6 +13,7 @@ interface CourierState {
   rotateQueue: (assignedCourierId: string) => Promise<void>
   setCourierOffline: (courierId: string, reason: string) => Promise<void>
   setCourierOnline: (courierId: string, status: 'on' | 'stay') => Promise<void>
+  setCourierStay: (courierId: string, qrToken: string, lat: number, lng: number) => Promise<{ success: boolean; message: string; basecamp_id: string | null }>
   reset: () => void
 }
 
@@ -91,5 +92,24 @@ export const useCourierStore = create<CourierState>()((_set, get) => ({
       });
       // Silent fail, attendance can be manually added by admin if needed
     }
+  },
+
+  setCourierStay: async (courierId, qrToken, lat, lng) => {
+    const { data, error } = await supabase.rpc('verify_stay_qr', {
+      p_courier_id: courierId,
+      p_qr_token: qrToken,
+      p_courier_lat: lat,
+      p_courier_lng: lng
+    })
+
+    if (error) throw error
+    
+    // Result is an array of objects
+    const result = (data as any)[0]
+    if (!result.success) throw new Error(result.message)
+
+    // Sync profile to reflect status: 'stay'
+    await useUserStore.getState().fetchProfile(courierId)
+    return result
   },
 }))

@@ -10,6 +10,32 @@
 # Walkthrough - Enhanced Maintenance Security
 
 
+## Session Update: 2026-04-28 13:18:46
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 0
+- **Files**: `b/KNOWLEDGE_MAP.md, b/temp/TECHNICAL_SPEC_DETAILED.md`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 4
+- **Files**: `b/KNOWLEDGE_MAP.md, b/src/stores/useUserStore.ts, b/src/types/index.ts, b/src/pages/Orders.tsx`
+- **Overwrites**: `.filter(u => u.role === 'courier' && u.is_active === true && u.is_online === true), .sort((a, b) => ((a as any).queue_position ?? 999) - ((b as any).queue_position ?? 999));, set(state => ({, users: state.users.map(u => u.id === (newRec as any).id ? updatedUser : u)`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 4
+- **Files**: `b/KNOWLEDGE_MAP.md, b/src/stores/useUserStore.ts, b/src/pages/Orders.tsx, b/src/types/index.ts`
+- **Overwrites**: `.filter(u => u.role === 'courier' && u.is_active === true && u.is_online === true), .sort((a, b) => ((a as any).queue_position ?? 999) - ((b as any).queue_position ?? 999));, set(state => ({, users: state.users.map(u => u.id === (newRec as any).id ? updatedUser : u)`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 1
+- **Files**: `b/KNOWLEDGE_MAP.md, b/src/components/courier/QRScannerModal.tsx, b/src/pages/Couriers.tsx, b/src/components/admin/StayQRDisplay.tsx`
+- **Overwrites**: `const fetchTodayLogs = useCallback(async () => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 2
+- **Files**: `b/src/pages/Couriers.tsx, b/src/components/courier/QRScannerModal.tsx, b/KNOWLEDGE_MAP.md, b/package.json, b/src/pages/courier/CourierDashboard.tsx, b/package-lock.json, b/src/types/supabase.ts, b/src/components/admin/StayQRDisplay.tsx`
+- **Overwrites**: `<Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => setIsAddModalOpen(true)}>, const handleSetStay = async () => {`
+---
+
 ## Session Update: 2026-04-28 07:22:53
 - **Type**: auto_harvest
 - **Desc**: Changes detected via git diff. Overwritten potential functions: 4
