@@ -10,6 +10,811 @@
 # Walkthrough - Enhanced Maintenance Security
 
 
+## Session Update: 2026-04-30 07:56:31
+- **Type**: auto_harvest
+- **Desc**: Changes in 11 file(s): 3 logic, 1 added, 2 removed. Functions: catch, if, if, catch, catch, if. 8 chunk(s) unclassified.
+- **Files**: `src/hooks/useStayMonitor.ts, src/pages/Orders.tsx, src/services/api.ts, src/stores/useCourierStore.ts, src/stores/useOrderStore.ts, supabase/migrations/20260429_add_missing_profile_columns.sql, supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, supabase/migrations/20260429_create_attendance_logs.sql, supabase/migrations/20260429_fix_global_stay_radius.sql, supabase/migrations/20260429_fix_rls_profiles.sql, supabase/migrations/20260429_queue_functions_dump.sql`
+- **Overwrites**: `catch, if, if, catch, catch, if`
+- **Confidence**: 0.8
+- **Method**: heuristic
+- **Change Type**: logic
+---
+- **Type**: auto_harvest
+- **Desc**: Changes in 11 file(s): 3 logic, 1 added, 2 removed. Functions: if, catch, if, catch, if, catch. 8 chunk(s) unclassified.
+- **Files**: `src/hooks/useStayMonitor.ts, src/pages/Orders.tsx, src/services/api.ts, src/stores/useCourierStore.ts, src/stores/useOrderStore.ts, supabase/migrations/20260429_add_missing_profile_columns.sql, supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, supabase/migrations/20260429_create_attendance_logs.sql, supabase/migrations/20260429_fix_global_stay_radius.sql, supabase/migrations/20260429_fix_rls_profiles.sql, supabase/migrations/20260429_queue_functions_dump.sql`
+- **Overwrites**: `if, catch, if, catch, if, catch`
+- **Confidence**: 0.8
+- **Method**: heuristic
+- **Change Type**: logic
+---
+- **Type**: auto_harvest
+- **Desc**: Changes in 11 file(s): 3 logic, 1 added, 2 removed. Functions: if, catch, if, catch, if, catch. 8 chunk(s) unclassified.
+- **Files**: `src/hooks/useStayMonitor.ts, src/pages/Orders.tsx, src/services/api.ts, src/stores/useCourierStore.ts, src/stores/useOrderStore.ts, supabase/migrations/20260429_add_missing_profile_columns.sql, supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, supabase/migrations/20260429_create_attendance_logs.sql, supabase/migrations/20260429_fix_global_stay_radius.sql, supabase/migrations/20260429_fix_rls_profiles.sql, supabase/migrations/20260429_queue_functions_dump.sql`
+- **Overwrites**: `if, catch, if, catch, if, catch`
+- **Confidence**: 0.8
+- **Method**: heuristic
+- **Change Type**: logic
+---
+- **Type**: auto_harvest
+- **Desc**: Changes in 11 file(s): 3 logic, 1 added, 2 removed. Functions: catch, if, if, catch, catch, if. 8 chunk(s) unclassified.
+- **Files**: `src/hooks/useStayMonitor.ts, src/pages/Orders.tsx, src/services/api.ts, src/stores/useCourierStore.ts, src/stores/useOrderStore.ts, supabase/migrations/20260429_add_missing_profile_columns.sql, supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, supabase/migrations/20260429_create_attendance_logs.sql, supabase/migrations/20260429_fix_global_stay_radius.sql, supabase/migrations/20260429_fix_rls_profiles.sql, supabase/migrations/20260429_queue_functions_dump.sql`
+- **Overwrites**: `catch, if, if, catch, catch, if`
+- **Confidence**: 0.8
+- **Method**: heuristic
+- **Change Type**: logic
+---
+- **Type**: auto_harvest
+- **Desc**: Logic_change in Orders
+- **Files**: `src/pages/Orders.tsx`
+- **Overwrites**: `Orders`
+- **Confidence**: 1.0
+- **Method**: ast
+---
+- **Type**: auto_harvest
+- **Desc**: Logic_change in useStayMonitor
+- **Files**: `src/hooks/useStayMonitor.ts`
+- **Overwrites**: `useStayMonitor`
+- **Confidence**: 1.0
+- **Method**: ast
+---
+- **Type**: auto_harvest
+- **Desc**: Logic_change in Orders
+- **Files**: `src/pages/Orders.tsx`
+- **Overwrites**: `Orders`
+- **Confidence**: 1.0
+- **Method**: ast
+---
+- **Type**: auto_harvest
+- **Desc**: Logic_change in useStayMonitor
+- **Files**: `src/hooks/useStayMonitor.ts`
+- **Overwrites**: `useStayMonitor`
+- **Confidence**: 1.0
+- **Method**: ast
+---
+- **Type**: auto_harvest
+- **Desc**: Logic_change in Orders
+- **Files**: `src/pages/Orders.tsx`
+- **Overwrites**: `Orders`
+- **Confidence**: 1.0
+- **Method**: ast
+---
+- **Type**: auto_harvest
+- **Desc**: Logic_change in useStayMonitor
+- **Files**: `src/hooks/useStayMonitor.ts`
+- **Overwrites**: `useStayMonitor`
+- **Confidence**: 1.0
+- **Method**: ast
+---
+
+## Session Update: 2026-04-30 07:46:55
+- **Type**: auto_harvest
+- **Desc**: Changes in 11 file(s): 3 logic, 1 added, 2 removed. Functions: if, catch, if, catch, if, catch. 8 chunk(s) unclassified.
+- **Files**: `src/hooks/useStayMonitor.ts, src/pages/Orders.tsx, src/services/api.ts, src/stores/useCourierStore.ts, src/stores/useOrderStore.ts, supabase/migrations/20260429_add_missing_profile_columns.sql, supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, supabase/migrations/20260429_create_attendance_logs.sql, supabase/migrations/20260429_fix_global_stay_radius.sql, supabase/migrations/20260429_fix_rls_profiles.sql, supabase/migrations/20260429_queue_functions_dump.sql`
+- **Overwrites**: `if, catch, if, catch, if, catch`
+- **Confidence**: 0.8
+- **Method**: heuristic
+- **Change Type**: logic
+---
+- **Type**: auto_harvest
+- **Desc**: Changes in 11 file(s): 3 logic, 1 added, 2 removed. Functions: if, catch, if, catch, if, catch. 8 chunk(s) unclassified.
+- **Files**: `src/hooks/useStayMonitor.ts, src/pages/Orders.tsx, src/services/api.ts, src/stores/useCourierStore.ts, src/stores/useOrderStore.ts, supabase/migrations/20260429_add_missing_profile_columns.sql, supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, supabase/migrations/20260429_create_attendance_logs.sql, supabase/migrations/20260429_fix_global_stay_radius.sql, supabase/migrations/20260429_fix_rls_profiles.sql, supabase/migrations/20260429_queue_functions_dump.sql`
+- **Overwrites**: `if, catch, if, catch, if, catch`
+- **Confidence**: 0.8
+- **Method**: heuristic
+- **Change Type**: logic
+---
+- **Type**: auto_harvest
+- **Desc**: Changes in 11 file(s): 3 logic, 1 added, 2 removed. Functions: catch, if, if, catch, catch, if. 8 chunk(s) unclassified.
+- **Files**: `src/hooks/useStayMonitor.ts, src/pages/Orders.tsx, src/services/api.ts, src/stores/useCourierStore.ts, src/stores/useOrderStore.ts, supabase/migrations/20260429_add_missing_profile_columns.sql, supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, supabase/migrations/20260429_create_attendance_logs.sql, supabase/migrations/20260429_fix_global_stay_radius.sql, supabase/migrations/20260429_fix_rls_profiles.sql, supabase/migrations/20260429_queue_functions_dump.sql`
+- **Overwrites**: `catch, if, if, catch, catch, if`
+- **Confidence**: 0.8
+- **Method**: heuristic
+- **Change Type**: logic
+---
+- **Type**: auto_harvest
+- **Desc**: Logic_change in Orders
+- **Files**: `src/pages/Orders.tsx`
+- **Overwrites**: `Orders`
+- **Confidence**: 1.0
+- **Method**: ast
+---
+- **Type**: auto_harvest
+- **Desc**: Logic_change in useStayMonitor
+- **Files**: `src/hooks/useStayMonitor.ts`
+- **Overwrites**: `useStayMonitor`
+- **Confidence**: 1.0
+- **Method**: ast
+---
+- **Type**: auto_harvest
+- **Desc**: Logic_change in Orders
+- **Files**: `src/pages/Orders.tsx`
+- **Overwrites**: `Orders`
+- **Confidence**: 1.0
+- **Method**: ast
+---
+- **Type**: auto_harvest
+- **Desc**: Logic_change in useStayMonitor
+- **Files**: `src/hooks/useStayMonitor.ts`
+- **Overwrites**: `useStayMonitor`
+- **Confidence**: 1.0
+- **Method**: ast
+---
+- **Type**: auto_harvest
+- **Desc**: Logic_change in Orders
+- **Files**: `src/pages/Orders.tsx`
+- **Overwrites**: `Orders`
+- **Confidence**: 1.0
+- **Method**: ast
+---
+- **Type**: auto_harvest
+- **Desc**: Logic_change in useStayMonitor
+- **Files**: `src/hooks/useStayMonitor.ts`
+- **Overwrites**: `useStayMonitor`
+- **Confidence**: 1.0
+- **Method**: ast
+---
+- **Type**: unclassified
+- **Desc**: Files changed but no semantic function updates detected: src/hooks/useStayMonitor.ts, src/pages/Orders.tsx, src/services/api.ts, src/stores/useCourierStore.ts, src/stores/useOrderStore.ts, src/types/supabase.ts, supabase/migrations/20260429_add_missing_profile_columns.sql, supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, supabase/migrations/20260429_create_attendance_logs.sql, supabase/migrations/20260429_fix_global_stay_radius.sql, supabase/migrations/20260429_fix_rls_profiles.sql, supabase/migrations/20260429_queue_functions_dump.sql
+- **Files**: `src/hooks/useStayMonitor.ts, src/pages/Orders.tsx, src/services/api.ts, src/stores/useCourierStore.ts, src/stores/useOrderStore.ts, src/types/supabase.ts, supabase/migrations/20260429_add_missing_profile_columns.sql, supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, supabase/migrations/20260429_create_attendance_logs.sql, supabase/migrations/20260429_fix_global_stay_radius.sql, supabase/migrations/20260429_fix_rls_profiles.sql, supabase/migrations/20260429_queue_functions_dump.sql`
+- **Confidence**: 0.3
+- **Method**: heuristic
+---
+
+## Session Update: 2026-04-30 07:46:36
+- **Type**: auto_harvest
+- **Desc**: Changes in 11 file(s): 3 logic, 1 added, 2 removed. Functions: if, catch, if, catch, if, catch. 8 chunk(s) unclassified.
+- **Files**: `src/hooks/useStayMonitor.ts, src/pages/Orders.tsx, src/services/api.ts, src/stores/useCourierStore.ts, src/stores/useOrderStore.ts, supabase/migrations/20260429_add_missing_profile_columns.sql, supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, supabase/migrations/20260429_create_attendance_logs.sql, supabase/migrations/20260429_fix_global_stay_radius.sql, supabase/migrations/20260429_fix_rls_profiles.sql, supabase/migrations/20260429_queue_functions_dump.sql`
+- **Overwrites**: `if, catch, if, catch, if, catch`
+- **Confidence**: 0.8
+- **Method**: heuristic
+- **Change Type**: logic
+---
+- **Type**: auto_harvest
+- **Desc**: Changes in 11 file(s): 3 logic, 1 added, 2 removed. Functions: catch, if, if, catch, catch, if. 8 chunk(s) unclassified.
+- **Files**: `src/hooks/useStayMonitor.ts, src/pages/Orders.tsx, src/services/api.ts, src/stores/useCourierStore.ts, src/stores/useOrderStore.ts, supabase/migrations/20260429_add_missing_profile_columns.sql, supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, supabase/migrations/20260429_create_attendance_logs.sql, supabase/migrations/20260429_fix_global_stay_radius.sql, supabase/migrations/20260429_fix_rls_profiles.sql, supabase/migrations/20260429_queue_functions_dump.sql`
+- **Overwrites**: `catch, if, if, catch, catch, if`
+- **Confidence**: 0.8
+- **Method**: heuristic
+- **Change Type**: logic
+---
+- **Type**: auto_harvest
+- **Desc**: Logic_change in Orders
+- **Files**: `src/pages/Orders.tsx`
+- **Overwrites**: `Orders`
+- **Confidence**: 1.0
+- **Method**: ast
+---
+- **Type**: auto_harvest
+- **Desc**: Logic_change in useStayMonitor
+- **Files**: `src/hooks/useStayMonitor.ts`
+- **Overwrites**: `useStayMonitor`
+- **Confidence**: 1.0
+- **Method**: ast
+---
+- **Type**: auto_harvest
+- **Desc**: Logic_change in Orders
+- **Files**: `src/pages/Orders.tsx`
+- **Overwrites**: `Orders`
+- **Confidence**: 1.0
+- **Method**: ast
+---
+- **Type**: auto_harvest
+- **Desc**: Logic_change in useStayMonitor
+- **Files**: `src/hooks/useStayMonitor.ts`
+- **Overwrites**: `useStayMonitor`
+- **Confidence**: 1.0
+- **Method**: ast
+---
+- **Type**: auto_harvest
+- **Desc**: Logic_change in Orders
+- **Files**: `src/pages/Orders.tsx`
+- **Overwrites**: `Orders`
+- **Confidence**: 1.0
+- **Method**: ast
+---
+- **Type**: auto_harvest
+- **Desc**: Logic_change in useStayMonitor
+- **Files**: `src/hooks/useStayMonitor.ts`
+- **Overwrites**: `useStayMonitor`
+- **Confidence**: 1.0
+- **Method**: ast
+---
+- **Type**: unclassified
+- **Desc**: Files changed but no semantic function updates detected: src/hooks/useStayMonitor.ts, src/pages/Orders.tsx, src/services/api.ts, src/stores/useCourierStore.ts, src/stores/useOrderStore.ts, src/types/supabase.ts, supabase/migrations/20260429_add_missing_profile_columns.sql, supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, supabase/migrations/20260429_create_attendance_logs.sql, supabase/migrations/20260429_fix_global_stay_radius.sql, supabase/migrations/20260429_fix_rls_profiles.sql, supabase/migrations/20260429_queue_functions_dump.sql
+- **Files**: `src/hooks/useStayMonitor.ts, src/pages/Orders.tsx, src/services/api.ts, src/stores/useCourierStore.ts, src/stores/useOrderStore.ts, src/types/supabase.ts, supabase/migrations/20260429_add_missing_profile_columns.sql, supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, supabase/migrations/20260429_create_attendance_logs.sql, supabase/migrations/20260429_fix_global_stay_radius.sql, supabase/migrations/20260429_fix_rls_profiles.sql, supabase/migrations/20260429_queue_functions_dump.sql`
+- **Confidence**: 0.3
+- **Method**: heuristic
+---
+- **Type**: unclassified
+- **Desc**: Files changed but no semantic function updates detected: src/hooks/useStayMonitor.ts, src/pages/Orders.tsx, src/services/api.ts, src/stores/useCourierStore.ts, src/stores/useOrderStore.ts, src/types/supabase.ts, supabase/migrations/20260429_add_missing_profile_columns.sql, supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, supabase/migrations/20260429_create_attendance_logs.sql, supabase/migrations/20260429_fix_global_stay_radius.sql, supabase/migrations/20260429_fix_rls_profiles.sql, supabase/migrations/20260429_queue_functions_dump.sql
+- **Files**: `src/hooks/useStayMonitor.ts, src/pages/Orders.tsx, src/services/api.ts, src/stores/useCourierStore.ts, src/stores/useOrderStore.ts, src/types/supabase.ts, supabase/migrations/20260429_add_missing_profile_columns.sql, supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, supabase/migrations/20260429_create_attendance_logs.sql, supabase/migrations/20260429_fix_global_stay_radius.sql, supabase/migrations/20260429_fix_rls_profiles.sql, supabase/migrations/20260429_queue_functions_dump.sql`
+- **Confidence**: 0.3
+- **Method**: heuristic
+---
+
+## Session Update: 2026-04-30 07:38:21
+- **Type**: auto_harvest
+- **Desc**: Changes in 11 file(s): 3 logic, 1 added, 2 removed. Functions: catch, if, if, catch, catch, if. 8 chunk(s) unclassified.
+- **Files**: `src/hooks/useStayMonitor.ts, src/pages/Orders.tsx, src/services/api.ts, src/stores/useCourierStore.ts, src/stores/useOrderStore.ts, supabase/migrations/20260429_add_missing_profile_columns.sql, supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, supabase/migrations/20260429_create_attendance_logs.sql, supabase/migrations/20260429_fix_global_stay_radius.sql, supabase/migrations/20260429_fix_rls_profiles.sql, supabase/migrations/20260429_queue_functions_dump.sql`
+- **Overwrites**: `catch, if, if, catch, catch, if`
+- **Confidence**: 0.8
+- **Method**: heuristic
+- **Change Type**: logic
+---
+- **Type**: auto_harvest
+- **Desc**: Logic_change in Orders
+- **Files**: `src/pages/Orders.tsx`
+- **Overwrites**: `Orders`
+- **Confidence**: 1.0
+- **Method**: ast
+---
+- **Type**: auto_harvest
+- **Desc**: Logic_change in useStayMonitor
+- **Files**: `src/hooks/useStayMonitor.ts`
+- **Overwrites**: `useStayMonitor`
+- **Confidence**: 1.0
+- **Method**: ast
+---
+- **Type**: auto_harvest
+- **Desc**: Logic_change in Orders
+- **Files**: `src/pages/Orders.tsx`
+- **Overwrites**: `Orders`
+- **Confidence**: 1.0
+- **Method**: ast
+---
+- **Type**: auto_harvest
+- **Desc**: Logic_change in useStayMonitor
+- **Files**: `src/hooks/useStayMonitor.ts`
+- **Overwrites**: `useStayMonitor`
+- **Confidence**: 1.0
+- **Method**: ast
+---
+- **Type**: auto_harvest
+- **Desc**: Logic_change in Orders
+- **Files**: `src/pages/Orders.tsx`
+- **Overwrites**: `Orders`
+- **Confidence**: 1.0
+- **Method**: ast
+---
+- **Type**: auto_harvest
+- **Desc**: Logic_change in useStayMonitor
+- **Files**: `src/hooks/useStayMonitor.ts`
+- **Overwrites**: `useStayMonitor`
+- **Confidence**: 1.0
+- **Method**: ast
+---
+- **Type**: unclassified
+- **Desc**: Files changed but no semantic function updates detected: src/hooks/useStayMonitor.ts, src/pages/Orders.tsx, src/services/api.ts, src/stores/useCourierStore.ts, src/stores/useOrderStore.ts, src/types/supabase.ts, supabase/migrations/20260429_add_missing_profile_columns.sql, supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, supabase/migrations/20260429_create_attendance_logs.sql, supabase/migrations/20260429_fix_global_stay_radius.sql, supabase/migrations/20260429_fix_rls_profiles.sql, supabase/migrations/20260429_queue_functions_dump.sql
+- **Files**: `src/hooks/useStayMonitor.ts, src/pages/Orders.tsx, src/services/api.ts, src/stores/useCourierStore.ts, src/stores/useOrderStore.ts, src/types/supabase.ts, supabase/migrations/20260429_add_missing_profile_columns.sql, supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, supabase/migrations/20260429_create_attendance_logs.sql, supabase/migrations/20260429_fix_global_stay_radius.sql, supabase/migrations/20260429_fix_rls_profiles.sql, supabase/migrations/20260429_queue_functions_dump.sql`
+- **Confidence**: 0.3
+- **Method**: heuristic
+---
+- **Type**: unclassified
+- **Desc**: Files changed but no semantic function updates detected: src/hooks/useStayMonitor.ts, src/pages/Orders.tsx, src/services/api.ts, src/stores/useCourierStore.ts, src/stores/useOrderStore.ts, src/types/supabase.ts, supabase/migrations/20260429_add_missing_profile_columns.sql, supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, supabase/migrations/20260429_create_attendance_logs.sql, supabase/migrations/20260429_fix_global_stay_radius.sql, supabase/migrations/20260429_fix_rls_profiles.sql, supabase/migrations/20260429_queue_functions_dump.sql
+- **Files**: `src/hooks/useStayMonitor.ts, src/pages/Orders.tsx, src/services/api.ts, src/stores/useCourierStore.ts, src/stores/useOrderStore.ts, src/types/supabase.ts, supabase/migrations/20260429_add_missing_profile_columns.sql, supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, supabase/migrations/20260429_create_attendance_logs.sql, supabase/migrations/20260429_fix_global_stay_radius.sql, supabase/migrations/20260429_fix_rls_profiles.sql, supabase/migrations/20260429_queue_functions_dump.sql`
+- **Confidence**: 0.3
+- **Method**: heuristic
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 12
+- **Files**: `b/supabase/migrations/20260429_queue_functions_dump.sql, b/supabase/migrations/20260429_fix_rls_profiles.sql, b/src/pages/Orders.tsx, b/src/stores/useOrderStore.ts, b/supabase/migrations/20260429_add_missing_profile_columns.sql, b/supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, b/supabase/migrations/20260429_create_attendance_logs.sql, b/supabase/migrations/20260429_fix_global_stay_radius.sql, b/src/services/api.ts, b/src/stores/useCourierStore.ts, b/src/hooks/useStayMonitor.ts`
+- **Overwrites**: `const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);, assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {, rotateQueue: (assignedCourierId: string) => Promise<void>, rotateQueue: async (assignedCourierId) => {, assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>, assignCourier: async (orderId, courierId, courierName, userId, userName) => {, await withRetry(async () => {, set(state => ({, orders: state.orders.map(o => o.id === orderId ? {, const order = get().orders.find(o => o.id === orderId), }).catch(err => console.error('Mirror write error:', err)), onRetry: (attempt) => {`
+- **Confidence**: 0.5
+- **Method**: heuristic
+---
+
+## Session Update: 2026-04-30 07:16:25
+- **Type**: auto_harvest
+- **Desc**: Logic_change in Orders
+- **Files**: `src/pages/Orders.tsx`
+- **Overwrites**: `Orders`
+---
+- **Type**: auto_harvest
+- **Desc**: Logic_change in useStayMonitor
+- **Files**: `src/hooks/useStayMonitor.ts`
+- **Overwrites**: `useStayMonitor`
+---
+- **Type**: auto_harvest
+- **Desc**: Logic_change in Orders
+- **Files**: `src/pages/Orders.tsx`
+- **Overwrites**: `Orders`
+---
+- **Type**: auto_harvest
+- **Desc**: Logic_change in useStayMonitor
+- **Files**: `src/hooks/useStayMonitor.ts`
+- **Overwrites**: `useStayMonitor`
+---
+- **Type**: auto_harvest
+- **Desc**: Logic_change in Orders
+- **Files**: `src/pages/Orders.tsx`
+- **Overwrites**: `Orders`
+---
+- **Type**: auto_harvest
+- **Desc**: Logic_change in useStayMonitor
+- **Files**: `src/hooks/useStayMonitor.ts`
+- **Overwrites**: `useStayMonitor`
+---
+
+## Session Update: 2026-04-30 07:09:10
+- **Type**: auto_harvest
+- **Desc**: Logic_change in Orders
+- **Files**: `src/pages/Orders.tsx`
+- **Overwrites**: `Orders`
+---
+- **Type**: auto_harvest
+- **Desc**: Logic_change in useStayMonitor
+- **Files**: `src/hooks/useStayMonitor.ts`
+- **Overwrites**: `useStayMonitor`
+---
+- **Type**: auto_harvest
+- **Desc**: Logic_change in Orders
+- **Files**: `src/pages/Orders.tsx`
+- **Overwrites**: `Orders`
+---
+- **Type**: auto_harvest
+- **Desc**: Logic_change in useStayMonitor
+- **Files**: `src/hooks/useStayMonitor.ts`
+- **Overwrites**: `useStayMonitor`
+---
+
+## Session Update: 2026-04-30 05:36:16
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 12
+- **Files**: `b/supabase/migrations/20260429_queue_functions_dump.sql, b/supabase/migrations/20260429_fix_rls_profiles.sql, b/src/pages/Orders.tsx, b/src/stores/useOrderStore.ts, b/supabase/migrations/20260429_add_missing_profile_columns.sql, b/supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, b/supabase/migrations/20260429_create_attendance_logs.sql, b/supabase/migrations/20260429_fix_global_stay_radius.sql, b/src/services/api.ts, b/src/stores/useCourierStore.ts, b/src/hooks/useStayMonitor.ts`
+- **Overwrites**: `const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);, assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {, rotateQueue: (assignedCourierId: string) => Promise<void>, rotateQueue: async (assignedCourierId) => {, assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>, assignCourier: async (orderId, courierId, courierName, userId, userName) => {, await withRetry(async () => {, set(state => ({, orders: state.orders.map(o => o.id === orderId ? {, const order = get().orders.find(o => o.id === orderId), }).catch(err => console.error('Mirror write error:', err)), onRetry: (attempt) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: refactor(order): consolidate assignment flow with RPC and update stay monitoring
+
+- Replace assignCourier/rotateQueue with atomic assign_order_and_rotate RPC
+- Remove deprecated assignment logic from order/courier stores and API service
+- Update stay radius column references to stay_radius_meters
+- Add GPS verification for courier STAY via verify_stay_qr RPC
+- Add Supabase migrations for assignment, attendance, and profile/RLS fixes
+- Update generated Supabase TypeScript types
+
+
+- **Files**: `b/src/stores/useOrderStore.ts, b/supabase/migrations/20260429_create_attendance_logs.sql, b/src/hooks/useStayMonitor.ts, b/src/pages/Orders.tsx, b/supabase/migrations/20260429_fix_global_stay_radius.sql, b/src/services/api.ts, b/supabase/migrations/20260429_queue_functions_dump.sql, b/supabase/migrations/20260429_add_missing_profile_columns.sql, b/src/stores/useCourierStore.ts, b/supabase/migrations/20260429_fix_rls_profiles.sql, b/supabase/migrations/20260429_create_assign_and_rotate_rpc.sql`
+- **Overwrites**: `const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);, assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {, rotateQueue: (assignedCourierId: string) => Promise<void>, rotateQueue: async (assignedCourierId) => {, assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>, assignCourier: async (orderId, courierId, courierName, userId, userName) => {, await withRetry(async () => {, set(state => ({, orders: state.orders.map(o => o.id === orderId ? {, const order = get().orders.find(o => o.id === orderId), }).catch(err => console.error('Mirror write error:', err)), onRetry: (attempt) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: refactor(order): consolidate assignment flow with RPC and update stay monitoring
+
+- Replace assignCourier/rotateQueue with atomic assign_order_and_rotate RPC
+- Remove deprecated assignment logic from order/courier stores and API service
+- Update stay radius column references to stay_radius_meters
+- Add GPS verification for courier STAY via verify_stay_qr RPC
+- Add Supabase migrations for assignment, attendance, and profile/RLS fixes
+- Update generated Supabase TypeScript types
+
+
+- **Files**: `b/src/stores/useOrderStore.ts, b/src/stores/useCourierStore.ts, b/supabase/migrations/20260429_create_attendance_logs.sql, b/src/services/api.ts, b/supabase/migrations/20260429_add_missing_profile_columns.sql, b/supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, b/supabase/migrations/20260429_fix_global_stay_radius.sql, b/src/hooks/useStayMonitor.ts, b/src/pages/Orders.tsx, b/supabase/migrations/20260429_queue_functions_dump.sql, b/supabase/migrations/20260429_fix_rls_profiles.sql`
+- **Overwrites**: `const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);, assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {, rotateQueue: (assignedCourierId: string) => Promise<void>, rotateQueue: async (assignedCourierId) => {, assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>, assignCourier: async (orderId, courierId, courierName, userId, userName) => {, await withRetry(async () => {, set(state => ({, orders: state.orders.map(o => o.id === orderId ? {, const order = get().orders.find(o => o.id === orderId), }).catch(err => console.error('Mirror write error:', err)), onRetry: (attempt) => {`
+---
+- **Type**: manual
+- **Desc**: [ADR] Librarian Protocol is now fully automated and hardened.
+[FOCUS] Hardening complete. Finalizing project status.
+---
+- **Type**: auto_harvest
+- **Desc**: refactor(order): consolidate assignment flow with RPC and update stay monitoring
+
+- Replace assignCourier/rotateQueue with atomic assign_order_and_rotate RPC
+- Remove deprecated assignment logic from order/courier stores and API service
+- Update stay radius column references to stay_radius_meters
+- Add GPS verification for courier STAY via verify_stay_qr RPC
+- Add Supabase migrations for assignment, attendance, and profile/RLS fixes
+- Update generated Supabase TypeScript types
+
+
+- **Files**: `b/src/hooks/useStayMonitor.ts, b/src/stores/useCourierStore.ts, b/src/stores/useOrderStore.ts, b/supabase/migrations/20260429_create_attendance_logs.sql, b/supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, b/supabase/migrations/20260429_queue_functions_dump.sql, b/src/pages/Orders.tsx, b/supabase/migrations/20260429_fix_global_stay_radius.sql, b/supabase/migrations/20260429_add_missing_profile_columns.sql, b/src/services/api.ts, b/supabase/migrations/20260429_fix_rls_profiles.sql`
+- **Overwrites**: `const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);, assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {, rotateQueue: (assignedCourierId: string) => Promise<void>, rotateQueue: async (assignedCourierId) => {, assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>, assignCourier: async (orderId, courierId, courierName, userId, userName) => {, await withRetry(async () => {, set(state => ({, orders: state.orders.map(o => o.id === orderId ? {, const order = get().orders.find(o => o.id === orderId), }).catch(err => console.error('Mirror write error:', err)), onRetry: (attempt) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 12
+- **Files**: `b/supabase/migrations/20260429_create_attendance_logs.sql, b/supabase/migrations/20260429_add_missing_profile_columns.sql, b/src/hooks/useStayMonitor.ts, b/supabase/migrations/20260429_fix_rls_profiles.sql, b/supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, b/supabase/migrations/20260429_fix_global_stay_radius.sql, b/src/stores/useCourierStore.ts, b/src/pages/Orders.tsx, b/src/stores/useOrderStore.ts, b/src/services/api.ts, b/supabase/migrations/20260429_queue_functions_dump.sql`
+- **Overwrites**: `const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);, assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {, rotateQueue: (assignedCourierId: string) => Promise<void>, rotateQueue: async (assignedCourierId) => {, assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>, assignCourier: async (orderId, courierId, courierName, userId, userName) => {, await withRetry(async () => {, set(state => ({, orders: state.orders.map(o => o.id === orderId ? {, const order = get().orders.find(o => o.id === orderId), }).catch(err => console.error('Mirror write error:', err)), onRetry: (attempt) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 12
+- **Files**: `b/supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, b/supabase/migrations/20260429_fix_global_stay_radius.sql, b/supabase/migrations/20260429_queue_functions_dump.sql, b/src/stores/useOrderStore.ts, b/src/pages/Orders.tsx, b/src/stores/useCourierStore.ts, b/supabase/migrations/20260429_create_attendance_logs.sql, b/src/services/api.ts, b/supabase/migrations/20260429_add_missing_profile_columns.sql, b/src/hooks/useStayMonitor.ts, b/supabase/migrations/20260429_fix_rls_profiles.sql`
+- **Overwrites**: `const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);, assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {, rotateQueue: (assignedCourierId: string) => Promise<void>, rotateQueue: async (assignedCourierId) => {, assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>, assignCourier: async (orderId, courierId, courierName, userId, userName) => {, await withRetry(async () => {, set(state => ({, orders: state.orders.map(o => o.id === orderId ? {, const order = get().orders.find(o => o.id === orderId), }).catch(err => console.error('Mirror write error:', err)), onRetry: (attempt) => {`
+---
+- **Type**: legacy_backfill
+- **Desc**: # Walkthrough - Testing Chatty Librarian Protocol
+This is a test walkthrough.
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 12
+- **Files**: `b/src/hooks/useStayMonitor.ts, b/src/stores/useOrderStore.ts, b/supabase/migrations/20260429_add_missing_profile_columns.sql, b/src/pages/Orders.tsx, b/supabase/migrations/20260429_create_attendance_logs.sql, b/src/stores/useCourierStore.ts, b/src/services/api.ts, b/supabase/migrations/20260429_fix_rls_profiles.sql, b/supabase/migrations/20260429_queue_functions_dump.sql, b/supabase/migrations/20260429_fix_global_stay_radius.sql, b/supabase/migrations/20260429_create_assign_and_rotate_rpc.sql`
+- **Overwrites**: `const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);, assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {, rotateQueue: (assignedCourierId: string) => Promise<void>, rotateQueue: async (assignedCourierId) => {, assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>, assignCourier: async (orderId, courierId, courierName, userId, userName) => {, await withRetry(async () => {, set(state => ({, orders: state.orders.map(o => o.id === orderId ? {, const order = get().orders.find(o => o.id === orderId), }).catch(err => console.error('Mirror write error:', err)), onRetry: (attempt) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 12
+- **Files**: `b/src/pages/Orders.tsx, b/supabase/migrations/20260429_add_missing_profile_columns.sql, b/supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, b/src/stores/useOrderStore.ts, b/src/stores/useCourierStore.ts, b/supabase/migrations/20260429_queue_functions_dump.sql, b/supabase/migrations/20260429_create_attendance_logs.sql, b/supabase/migrations/20260429_fix_rls_profiles.sql, b/src/services/api.ts, b/src/hooks/useStayMonitor.ts, b/supabase/migrations/20260429_fix_global_stay_radius.sql`
+- **Overwrites**: `const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);, assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {, rotateQueue: (assignedCourierId: string) => Promise<void>, rotateQueue: async (assignedCourierId) => {, assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>, assignCourier: async (orderId, courierId, courierName, userId, userName) => {, await withRetry(async () => {, set(state => ({, orders: state.orders.map(o => o.id === orderId ? {, const order = get().orders.find(o => o.id === orderId), }).catch(err => console.error('Mirror write error:', err)), onRetry: (attempt) => {`
+---
+
+## Session Update: 2026-04-30 00:50:07
+- **Type**: auto_harvest
+- **Desc**: refactor(order): consolidate assignment flow with RPC and update stay monitoring
+
+- Replace assignCourier/rotateQueue with atomic assign_order_and_rotate RPC
+- Remove deprecated assignment logic from order/courier stores and API service
+- Update stay radius column references to stay_radius_meters
+- Add GPS verification for courier STAY via verify_stay_qr RPC
+- Add Supabase migrations for assignment, attendance, and profile/RLS fixes
+- Update generated Supabase TypeScript types
+
+
+- **Files**: `b/src/stores/useOrderStore.ts, b/supabase/migrations/20260429_create_attendance_logs.sql, b/src/hooks/useStayMonitor.ts, b/src/pages/Orders.tsx, b/supabase/migrations/20260429_fix_global_stay_radius.sql, b/src/services/api.ts, b/supabase/migrations/20260429_queue_functions_dump.sql, b/supabase/migrations/20260429_add_missing_profile_columns.sql, b/src/stores/useCourierStore.ts, b/supabase/migrations/20260429_fix_rls_profiles.sql, b/supabase/migrations/20260429_create_assign_and_rotate_rpc.sql`
+- **Overwrites**: `const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);, assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {, rotateQueue: (assignedCourierId: string) => Promise<void>, rotateQueue: async (assignedCourierId) => {, assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>, assignCourier: async (orderId, courierId, courierName, userId, userName) => {, await withRetry(async () => {, set(state => ({, orders: state.orders.map(o => o.id === orderId ? {, const order = get().orders.find(o => o.id === orderId), }).catch(err => console.error('Mirror write error:', err)), onRetry: (attempt) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: refactor(order): consolidate assignment flow with RPC and update stay monitoring
+
+- Replace assignCourier/rotateQueue with atomic assign_order_and_rotate RPC
+- Remove deprecated assignment logic from order/courier stores and API service
+- Update stay radius column references to stay_radius_meters
+- Add GPS verification for courier STAY via verify_stay_qr RPC
+- Add Supabase migrations for assignment, attendance, and profile/RLS fixes
+- Update generated Supabase TypeScript types
+
+
+- **Files**: `b/src/stores/useOrderStore.ts, b/src/stores/useCourierStore.ts, b/supabase/migrations/20260429_create_attendance_logs.sql, b/src/services/api.ts, b/supabase/migrations/20260429_add_missing_profile_columns.sql, b/supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, b/supabase/migrations/20260429_fix_global_stay_radius.sql, b/src/hooks/useStayMonitor.ts, b/src/pages/Orders.tsx, b/supabase/migrations/20260429_queue_functions_dump.sql, b/supabase/migrations/20260429_fix_rls_profiles.sql`
+- **Overwrites**: `const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);, assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {, rotateQueue: (assignedCourierId: string) => Promise<void>, rotateQueue: async (assignedCourierId) => {, assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>, assignCourier: async (orderId, courierId, courierName, userId, userName) => {, await withRetry(async () => {, set(state => ({, orders: state.orders.map(o => o.id === orderId ? {, const order = get().orders.find(o => o.id === orderId), }).catch(err => console.error('Mirror write error:', err)), onRetry: (attempt) => {`
+---
+- **Type**: manual
+- **Desc**: [ADR] Librarian Protocol is now fully automated and hardened.
+[FOCUS] Hardening complete. Finalizing project status.
+---
+- **Type**: auto_harvest
+- **Desc**: refactor(order): consolidate assignment flow with RPC and update stay monitoring
+
+- Replace assignCourier/rotateQueue with atomic assign_order_and_rotate RPC
+- Remove deprecated assignment logic from order/courier stores and API service
+- Update stay radius column references to stay_radius_meters
+- Add GPS verification for courier STAY via verify_stay_qr RPC
+- Add Supabase migrations for assignment, attendance, and profile/RLS fixes
+- Update generated Supabase TypeScript types
+
+
+- **Files**: `b/src/hooks/useStayMonitor.ts, b/src/stores/useCourierStore.ts, b/src/stores/useOrderStore.ts, b/supabase/migrations/20260429_create_attendance_logs.sql, b/supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, b/supabase/migrations/20260429_queue_functions_dump.sql, b/src/pages/Orders.tsx, b/supabase/migrations/20260429_fix_global_stay_radius.sql, b/supabase/migrations/20260429_add_missing_profile_columns.sql, b/src/services/api.ts, b/supabase/migrations/20260429_fix_rls_profiles.sql`
+- **Overwrites**: `const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);, assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {, rotateQueue: (assignedCourierId: string) => Promise<void>, rotateQueue: async (assignedCourierId) => {, assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>, assignCourier: async (orderId, courierId, courierName, userId, userName) => {, await withRetry(async () => {, set(state => ({, orders: state.orders.map(o => o.id === orderId ? {, const order = get().orders.find(o => o.id === orderId), }).catch(err => console.error('Mirror write error:', err)), onRetry: (attempt) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 12
+- **Files**: `b/supabase/migrations/20260429_create_attendance_logs.sql, b/supabase/migrations/20260429_add_missing_profile_columns.sql, b/src/hooks/useStayMonitor.ts, b/supabase/migrations/20260429_fix_rls_profiles.sql, b/supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, b/supabase/migrations/20260429_fix_global_stay_radius.sql, b/src/stores/useCourierStore.ts, b/src/pages/Orders.tsx, b/src/stores/useOrderStore.ts, b/src/services/api.ts, b/supabase/migrations/20260429_queue_functions_dump.sql`
+- **Overwrites**: `const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);, assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {, rotateQueue: (assignedCourierId: string) => Promise<void>, rotateQueue: async (assignedCourierId) => {, assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>, assignCourier: async (orderId, courierId, courierName, userId, userName) => {, await withRetry(async () => {, set(state => ({, orders: state.orders.map(o => o.id === orderId ? {, const order = get().orders.find(o => o.id === orderId), }).catch(err => console.error('Mirror write error:', err)), onRetry: (attempt) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 12
+- **Files**: `b/supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, b/supabase/migrations/20260429_fix_global_stay_radius.sql, b/supabase/migrations/20260429_queue_functions_dump.sql, b/src/stores/useOrderStore.ts, b/src/pages/Orders.tsx, b/src/stores/useCourierStore.ts, b/supabase/migrations/20260429_create_attendance_logs.sql, b/src/services/api.ts, b/supabase/migrations/20260429_add_missing_profile_columns.sql, b/src/hooks/useStayMonitor.ts, b/supabase/migrations/20260429_fix_rls_profiles.sql`
+- **Overwrites**: `const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);, assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {, rotateQueue: (assignedCourierId: string) => Promise<void>, rotateQueue: async (assignedCourierId) => {, assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>, assignCourier: async (orderId, courierId, courierName, userId, userName) => {, await withRetry(async () => {, set(state => ({, orders: state.orders.map(o => o.id === orderId ? {, const order = get().orders.find(o => o.id === orderId), }).catch(err => console.error('Mirror write error:', err)), onRetry: (attempt) => {`
+---
+- **Type**: legacy_backfill
+- **Desc**: # Walkthrough - Testing Chatty Librarian Protocol
+This is a test walkthrough.
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 12
+- **Files**: `b/src/hooks/useStayMonitor.ts, b/src/stores/useOrderStore.ts, b/supabase/migrations/20260429_add_missing_profile_columns.sql, b/src/pages/Orders.tsx, b/supabase/migrations/20260429_create_attendance_logs.sql, b/src/stores/useCourierStore.ts, b/src/services/api.ts, b/supabase/migrations/20260429_fix_rls_profiles.sql, b/supabase/migrations/20260429_queue_functions_dump.sql, b/supabase/migrations/20260429_fix_global_stay_radius.sql, b/supabase/migrations/20260429_create_assign_and_rotate_rpc.sql`
+- **Overwrites**: `const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);, assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {, rotateQueue: (assignedCourierId: string) => Promise<void>, rotateQueue: async (assignedCourierId) => {, assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>, assignCourier: async (orderId, courierId, courierName, userId, userName) => {, await withRetry(async () => {, set(state => ({, orders: state.orders.map(o => o.id === orderId ? {, const order = get().orders.find(o => o.id === orderId), }).catch(err => console.error('Mirror write error:', err)), onRetry: (attempt) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 12
+- **Files**: `b/src/pages/Orders.tsx, b/supabase/migrations/20260429_add_missing_profile_columns.sql, b/supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, b/src/stores/useOrderStore.ts, b/src/stores/useCourierStore.ts, b/supabase/migrations/20260429_queue_functions_dump.sql, b/supabase/migrations/20260429_create_attendance_logs.sql, b/supabase/migrations/20260429_fix_rls_profiles.sql, b/src/services/api.ts, b/src/hooks/useStayMonitor.ts, b/supabase/migrations/20260429_fix_global_stay_radius.sql`
+- **Overwrites**: `const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);, assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {, rotateQueue: (assignedCourierId: string) => Promise<void>, rotateQueue: async (assignedCourierId) => {, assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>, assignCourier: async (orderId, courierId, courierName, userId, userName) => {, await withRetry(async () => {, set(state => ({, orders: state.orders.map(o => o.id === orderId ? {, const order = get().orders.find(o => o.id === orderId), }).catch(err => console.error('Mirror write error:', err)), onRetry: (attempt) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 6
+- **Files**: `b/android/app/src/main/java/com/kurirdev/app/MainActivity.java, b/src/stores/useCourierStore.ts, b/android/app/src/main/AndroidManifest.xml, b/android/app/src/main/java/com/kurirdev/app/StayMonitoringService.kt, b/android/app/src/main/java/com/kurirdev/app/StayMonitorPlugin.kt, b/src/lib/stayMonitoring.ts, b/src/hooks/useStayMonitor.ts`
+- **Overwrites**: `function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {, const user = useUserStore.getState().users.find(u => u.id === courierId);, setCourierStay: (courierId: string, qrToken: string, lat: number, lng: number) => Promise<{ success: boolean; message: string; basecamp_id: string | null }>, reset: () => {, return users.filter(u =>, setCourierStay: async (courierId, qrToken, lat, lng) => {`
+---
+
+## Session Update: 2026-04-30 00:49:45
+- **Type**: auto_harvest
+- **Desc**: refactor(order): consolidate assignment flow with RPC and update stay monitoring
+
+- Replace assignCourier/rotateQueue with atomic assign_order_and_rotate RPC
+- Remove deprecated assignment logic from order/courier stores and API service
+- Update stay radius column references to stay_radius_meters
+- Add GPS verification for courier STAY via verify_stay_qr RPC
+- Add Supabase migrations for assignment, attendance, and profile/RLS fixes
+- Update generated Supabase TypeScript types
+
+
+- **Files**: `b/src/stores/useOrderStore.ts, b/src/stores/useCourierStore.ts, b/supabase/migrations/20260429_create_attendance_logs.sql, b/src/services/api.ts, b/supabase/migrations/20260429_add_missing_profile_columns.sql, b/supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, b/supabase/migrations/20260429_fix_global_stay_radius.sql, b/src/hooks/useStayMonitor.ts, b/src/pages/Orders.tsx, b/supabase/migrations/20260429_queue_functions_dump.sql, b/supabase/migrations/20260429_fix_rls_profiles.sql`
+- **Overwrites**: `const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);, assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {, rotateQueue: (assignedCourierId: string) => Promise<void>, rotateQueue: async (assignedCourierId) => {, assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>, assignCourier: async (orderId, courierId, courierName, userId, userName) => {, await withRetry(async () => {, set(state => ({, orders: state.orders.map(o => o.id === orderId ? {, const order = get().orders.find(o => o.id === orderId), }).catch(err => console.error('Mirror write error:', err)), onRetry: (attempt) => {`
+---
+- **Type**: manual
+- **Desc**: [ADR] Librarian Protocol is now fully automated and hardened.
+[FOCUS] Hardening complete. Finalizing project status.
+---
+- **Type**: auto_harvest
+- **Desc**: refactor(order): consolidate assignment flow with RPC and update stay monitoring
+
+- Replace assignCourier/rotateQueue with atomic assign_order_and_rotate RPC
+- Remove deprecated assignment logic from order/courier stores and API service
+- Update stay radius column references to stay_radius_meters
+- Add GPS verification for courier STAY via verify_stay_qr RPC
+- Add Supabase migrations for assignment, attendance, and profile/RLS fixes
+- Update generated Supabase TypeScript types
+
+
+- **Files**: `b/src/hooks/useStayMonitor.ts, b/src/stores/useCourierStore.ts, b/src/stores/useOrderStore.ts, b/supabase/migrations/20260429_create_attendance_logs.sql, b/supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, b/supabase/migrations/20260429_queue_functions_dump.sql, b/src/pages/Orders.tsx, b/supabase/migrations/20260429_fix_global_stay_radius.sql, b/supabase/migrations/20260429_add_missing_profile_columns.sql, b/src/services/api.ts, b/supabase/migrations/20260429_fix_rls_profiles.sql`
+- **Overwrites**: `const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);, assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {, rotateQueue: (assignedCourierId: string) => Promise<void>, rotateQueue: async (assignedCourierId) => {, assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>, assignCourier: async (orderId, courierId, courierName, userId, userName) => {, await withRetry(async () => {, set(state => ({, orders: state.orders.map(o => o.id === orderId ? {, const order = get().orders.find(o => o.id === orderId), }).catch(err => console.error('Mirror write error:', err)), onRetry: (attempt) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 12
+- **Files**: `b/supabase/migrations/20260429_create_attendance_logs.sql, b/supabase/migrations/20260429_add_missing_profile_columns.sql, b/src/hooks/useStayMonitor.ts, b/supabase/migrations/20260429_fix_rls_profiles.sql, b/supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, b/supabase/migrations/20260429_fix_global_stay_radius.sql, b/src/stores/useCourierStore.ts, b/src/pages/Orders.tsx, b/src/stores/useOrderStore.ts, b/src/services/api.ts, b/supabase/migrations/20260429_queue_functions_dump.sql`
+- **Overwrites**: `const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);, assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {, rotateQueue: (assignedCourierId: string) => Promise<void>, rotateQueue: async (assignedCourierId) => {, assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>, assignCourier: async (orderId, courierId, courierName, userId, userName) => {, await withRetry(async () => {, set(state => ({, orders: state.orders.map(o => o.id === orderId ? {, const order = get().orders.find(o => o.id === orderId), }).catch(err => console.error('Mirror write error:', err)), onRetry: (attempt) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 12
+- **Files**: `b/supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, b/supabase/migrations/20260429_fix_global_stay_radius.sql, b/supabase/migrations/20260429_queue_functions_dump.sql, b/src/stores/useOrderStore.ts, b/src/pages/Orders.tsx, b/src/stores/useCourierStore.ts, b/supabase/migrations/20260429_create_attendance_logs.sql, b/src/services/api.ts, b/supabase/migrations/20260429_add_missing_profile_columns.sql, b/src/hooks/useStayMonitor.ts, b/supabase/migrations/20260429_fix_rls_profiles.sql`
+- **Overwrites**: `const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);, assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {, rotateQueue: (assignedCourierId: string) => Promise<void>, rotateQueue: async (assignedCourierId) => {, assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>, assignCourier: async (orderId, courierId, courierName, userId, userName) => {, await withRetry(async () => {, set(state => ({, orders: state.orders.map(o => o.id === orderId ? {, const order = get().orders.find(o => o.id === orderId), }).catch(err => console.error('Mirror write error:', err)), onRetry: (attempt) => {`
+---
+- **Type**: legacy_backfill
+- **Desc**: # Walkthrough - Testing Chatty Librarian Protocol
+This is a test walkthrough.
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 12
+- **Files**: `b/src/hooks/useStayMonitor.ts, b/src/stores/useOrderStore.ts, b/supabase/migrations/20260429_add_missing_profile_columns.sql, b/src/pages/Orders.tsx, b/supabase/migrations/20260429_create_attendance_logs.sql, b/src/stores/useCourierStore.ts, b/src/services/api.ts, b/supabase/migrations/20260429_fix_rls_profiles.sql, b/supabase/migrations/20260429_queue_functions_dump.sql, b/supabase/migrations/20260429_fix_global_stay_radius.sql, b/supabase/migrations/20260429_create_assign_and_rotate_rpc.sql`
+- **Overwrites**: `const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);, assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {, rotateQueue: (assignedCourierId: string) => Promise<void>, rotateQueue: async (assignedCourierId) => {, assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>, assignCourier: async (orderId, courierId, courierName, userId, userName) => {, await withRetry(async () => {, set(state => ({, orders: state.orders.map(o => o.id === orderId ? {, const order = get().orders.find(o => o.id === orderId), }).catch(err => console.error('Mirror write error:', err)), onRetry: (attempt) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 12
+- **Files**: `b/src/pages/Orders.tsx, b/supabase/migrations/20260429_add_missing_profile_columns.sql, b/supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, b/src/stores/useOrderStore.ts, b/src/stores/useCourierStore.ts, b/supabase/migrations/20260429_queue_functions_dump.sql, b/supabase/migrations/20260429_create_attendance_logs.sql, b/supabase/migrations/20260429_fix_rls_profiles.sql, b/src/services/api.ts, b/src/hooks/useStayMonitor.ts, b/supabase/migrations/20260429_fix_global_stay_radius.sql`
+- **Overwrites**: `const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);, assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {, rotateQueue: (assignedCourierId: string) => Promise<void>, rotateQueue: async (assignedCourierId) => {, assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>, assignCourier: async (orderId, courierId, courierName, userId, userName) => {, await withRetry(async () => {, set(state => ({, orders: state.orders.map(o => o.id === orderId ? {, const order = get().orders.find(o => o.id === orderId), }).catch(err => console.error('Mirror write error:', err)), onRetry: (attempt) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 6
+- **Files**: `b/android/app/src/main/java/com/kurirdev/app/MainActivity.java, b/src/stores/useCourierStore.ts, b/android/app/src/main/AndroidManifest.xml, b/android/app/src/main/java/com/kurirdev/app/StayMonitoringService.kt, b/android/app/src/main/java/com/kurirdev/app/StayMonitorPlugin.kt, b/src/lib/stayMonitoring.ts, b/src/hooks/useStayMonitor.ts`
+- **Overwrites**: `function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {, const user = useUserStore.getState().users.find(u => u.id === courierId);, setCourierStay: (courierId: string, qrToken: string, lat: number, lng: number) => Promise<{ success: boolean; message: string; basecamp_id: string | null }>, reset: () => {, return users.filter(u =>, setCourierStay: async (courierId, qrToken, lat, lng) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 6
+- **Files**: `b/android/app/src/main/AndroidManifest.xml, b/src/hooks/useStayMonitor.ts, b/android/app/src/main/java/com/kurirdev/app/StayMonitoringService.kt, b/android/app/src/main/java/com/kurirdev/app/StayMonitorPlugin.kt, b/src/stores/useCourierStore.ts, b/src/lib/stayMonitoring.ts, b/android/app/src/main/java/com/kurirdev/app/MainActivity.java`
+- **Overwrites**: `function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {, const user = useUserStore.getState().users.find(u => u.id === courierId);, setCourierStay: (courierId: string, qrToken: string, lat: number, lng: number) => Promise<{ success: boolean; message: string; basecamp_id: string | null }>, reset: () => {, return users.filter(u =>, setCourierStay: async (courierId, qrToken, lat, lng) => {`
+---
+
+## Session Update: 2026-04-30 00:49:09
+- **Type**: auto_harvest
+- **Desc**: refactor(order): consolidate assignment flow with RPC and update stay monitoring
+
+- Replace assignCourier/rotateQueue with atomic assign_order_and_rotate RPC
+- Remove deprecated assignment logic from order/courier stores and API service
+- Update stay radius column references to stay_radius_meters
+- Add GPS verification for courier STAY via verify_stay_qr RPC
+- Add Supabase migrations for assignment, attendance, and profile/RLS fixes
+- Update generated Supabase TypeScript types
+
+
+- **Files**: `b/src/hooks/useStayMonitor.ts, b/src/stores/useCourierStore.ts, b/src/stores/useOrderStore.ts, b/supabase/migrations/20260429_create_attendance_logs.sql, b/supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, b/supabase/migrations/20260429_queue_functions_dump.sql, b/src/pages/Orders.tsx, b/supabase/migrations/20260429_fix_global_stay_radius.sql, b/supabase/migrations/20260429_add_missing_profile_columns.sql, b/src/services/api.ts, b/supabase/migrations/20260429_fix_rls_profiles.sql`
+- **Overwrites**: `const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);, assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {, rotateQueue: (assignedCourierId: string) => Promise<void>, rotateQueue: async (assignedCourierId) => {, assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>, assignCourier: async (orderId, courierId, courierName, userId, userName) => {, await withRetry(async () => {, set(state => ({, orders: state.orders.map(o => o.id === orderId ? {, const order = get().orders.find(o => o.id === orderId), }).catch(err => console.error('Mirror write error:', err)), onRetry: (attempt) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 12
+- **Files**: `b/supabase/migrations/20260429_create_attendance_logs.sql, b/supabase/migrations/20260429_add_missing_profile_columns.sql, b/src/hooks/useStayMonitor.ts, b/supabase/migrations/20260429_fix_rls_profiles.sql, b/supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, b/supabase/migrations/20260429_fix_global_stay_radius.sql, b/src/stores/useCourierStore.ts, b/src/pages/Orders.tsx, b/src/stores/useOrderStore.ts, b/src/services/api.ts, b/supabase/migrations/20260429_queue_functions_dump.sql`
+- **Overwrites**: `const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);, assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {, rotateQueue: (assignedCourierId: string) => Promise<void>, rotateQueue: async (assignedCourierId) => {, assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>, assignCourier: async (orderId, courierId, courierName, userId, userName) => {, await withRetry(async () => {, set(state => ({, orders: state.orders.map(o => o.id === orderId ? {, const order = get().orders.find(o => o.id === orderId), }).catch(err => console.error('Mirror write error:', err)), onRetry: (attempt) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 12
+- **Files**: `b/supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, b/supabase/migrations/20260429_fix_global_stay_radius.sql, b/supabase/migrations/20260429_queue_functions_dump.sql, b/src/stores/useOrderStore.ts, b/src/pages/Orders.tsx, b/src/stores/useCourierStore.ts, b/supabase/migrations/20260429_create_attendance_logs.sql, b/src/services/api.ts, b/supabase/migrations/20260429_add_missing_profile_columns.sql, b/src/hooks/useStayMonitor.ts, b/supabase/migrations/20260429_fix_rls_profiles.sql`
+- **Overwrites**: `const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);, assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {, rotateQueue: (assignedCourierId: string) => Promise<void>, rotateQueue: async (assignedCourierId) => {, assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>, assignCourier: async (orderId, courierId, courierName, userId, userName) => {, await withRetry(async () => {, set(state => ({, orders: state.orders.map(o => o.id === orderId ? {, const order = get().orders.find(o => o.id === orderId), }).catch(err => console.error('Mirror write error:', err)), onRetry: (attempt) => {`
+---
+- **Type**: legacy_backfill
+- **Desc**: # Walkthrough - Testing Chatty Librarian Protocol
+This is a test walkthrough.
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 12
+- **Files**: `b/src/hooks/useStayMonitor.ts, b/src/stores/useOrderStore.ts, b/supabase/migrations/20260429_add_missing_profile_columns.sql, b/src/pages/Orders.tsx, b/supabase/migrations/20260429_create_attendance_logs.sql, b/src/stores/useCourierStore.ts, b/src/services/api.ts, b/supabase/migrations/20260429_fix_rls_profiles.sql, b/supabase/migrations/20260429_queue_functions_dump.sql, b/supabase/migrations/20260429_fix_global_stay_radius.sql, b/supabase/migrations/20260429_create_assign_and_rotate_rpc.sql`
+- **Overwrites**: `const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);, assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {, rotateQueue: (assignedCourierId: string) => Promise<void>, rotateQueue: async (assignedCourierId) => {, assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>, assignCourier: async (orderId, courierId, courierName, userId, userName) => {, await withRetry(async () => {, set(state => ({, orders: state.orders.map(o => o.id === orderId ? {, const order = get().orders.find(o => o.id === orderId), }).catch(err => console.error('Mirror write error:', err)), onRetry: (attempt) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 12
+- **Files**: `b/src/pages/Orders.tsx, b/supabase/migrations/20260429_add_missing_profile_columns.sql, b/supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, b/src/stores/useOrderStore.ts, b/src/stores/useCourierStore.ts, b/supabase/migrations/20260429_queue_functions_dump.sql, b/supabase/migrations/20260429_create_attendance_logs.sql, b/supabase/migrations/20260429_fix_rls_profiles.sql, b/src/services/api.ts, b/src/hooks/useStayMonitor.ts, b/supabase/migrations/20260429_fix_global_stay_radius.sql`
+- **Overwrites**: `const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);, assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {, rotateQueue: (assignedCourierId: string) => Promise<void>, rotateQueue: async (assignedCourierId) => {, assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>, assignCourier: async (orderId, courierId, courierName, userId, userName) => {, await withRetry(async () => {, set(state => ({, orders: state.orders.map(o => o.id === orderId ? {, const order = get().orders.find(o => o.id === orderId), }).catch(err => console.error('Mirror write error:', err)), onRetry: (attempt) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 6
+- **Files**: `b/android/app/src/main/java/com/kurirdev/app/MainActivity.java, b/src/stores/useCourierStore.ts, b/android/app/src/main/AndroidManifest.xml, b/android/app/src/main/java/com/kurirdev/app/StayMonitoringService.kt, b/android/app/src/main/java/com/kurirdev/app/StayMonitorPlugin.kt, b/src/lib/stayMonitoring.ts, b/src/hooks/useStayMonitor.ts`
+- **Overwrites**: `function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {, const user = useUserStore.getState().users.find(u => u.id === courierId);, setCourierStay: (courierId: string, qrToken: string, lat: number, lng: number) => Promise<{ success: boolean; message: string; basecamp_id: string | null }>, reset: () => {, return users.filter(u =>, setCourierStay: async (courierId, qrToken, lat, lng) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 6
+- **Files**: `b/android/app/src/main/AndroidManifest.xml, b/src/hooks/useStayMonitor.ts, b/android/app/src/main/java/com/kurirdev/app/StayMonitoringService.kt, b/android/app/src/main/java/com/kurirdev/app/StayMonitorPlugin.kt, b/src/stores/useCourierStore.ts, b/src/lib/stayMonitoring.ts, b/android/app/src/main/java/com/kurirdev/app/MainActivity.java`
+- **Overwrites**: `function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {, const user = useUserStore.getState().users.find(u => u.id === courierId);, setCourierStay: (courierId: string, qrToken: string, lat: number, lng: number) => Promise<{ success: boolean; message: string; basecamp_id: string | null }>, reset: () => {, return users.filter(u =>, setCourierStay: async (courierId, qrToken, lat, lng) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 0
+- **Files**: `b/KNOWLEDGE_MAP.md, b/temp/TECHNICAL_SPEC_DETAILED.md`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 4
+- **Files**: `b/KNOWLEDGE_MAP.md, b/src/stores/useUserStore.ts, b/src/types/index.ts, b/src/pages/Orders.tsx`
+- **Overwrites**: `.filter(u => u.role === 'courier' && u.is_active === true && u.is_online === true), .sort((a, b) => ((a as any).queue_position ?? 999) - ((b as any).queue_position ?? 999));, set(state => ({, users: state.users.map(u => u.id === (newRec as any).id ? updatedUser : u)`
+---
+
+## Session Update: 2026-04-30 00:47:00
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 12
+- **Files**: `b/supabase/migrations/20260429_create_attendance_logs.sql, b/supabase/migrations/20260429_add_missing_profile_columns.sql, b/src/hooks/useStayMonitor.ts, b/supabase/migrations/20260429_fix_rls_profiles.sql, b/supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, b/supabase/migrations/20260429_fix_global_stay_radius.sql, b/src/stores/useCourierStore.ts, b/src/pages/Orders.tsx, b/src/stores/useOrderStore.ts, b/src/services/api.ts, b/supabase/migrations/20260429_queue_functions_dump.sql`
+- **Overwrites**: `const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);, assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {, rotateQueue: (assignedCourierId: string) => Promise<void>, rotateQueue: async (assignedCourierId) => {, assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>, assignCourier: async (orderId, courierId, courierName, userId, userName) => {, await withRetry(async () => {, set(state => ({, orders: state.orders.map(o => o.id === orderId ? {, const order = get().orders.find(o => o.id === orderId), }).catch(err => console.error('Mirror write error:', err)), onRetry: (attempt) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 12
+- **Files**: `b/supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, b/supabase/migrations/20260429_fix_global_stay_radius.sql, b/supabase/migrations/20260429_queue_functions_dump.sql, b/src/stores/useOrderStore.ts, b/src/pages/Orders.tsx, b/src/stores/useCourierStore.ts, b/supabase/migrations/20260429_create_attendance_logs.sql, b/src/services/api.ts, b/supabase/migrations/20260429_add_missing_profile_columns.sql, b/src/hooks/useStayMonitor.ts, b/supabase/migrations/20260429_fix_rls_profiles.sql`
+- **Overwrites**: `const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);, assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {, rotateQueue: (assignedCourierId: string) => Promise<void>, rotateQueue: async (assignedCourierId) => {, assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>, assignCourier: async (orderId, courierId, courierName, userId, userName) => {, await withRetry(async () => {, set(state => ({, orders: state.orders.map(o => o.id === orderId ? {, const order = get().orders.find(o => o.id === orderId), }).catch(err => console.error('Mirror write error:', err)), onRetry: (attempt) => {`
+---
+- **Type**: legacy_backfill
+- **Desc**: # Walkthrough - Testing Chatty Librarian Protocol
+This is a test walkthrough.
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 12
+- **Files**: `b/src/hooks/useStayMonitor.ts, b/src/stores/useOrderStore.ts, b/supabase/migrations/20260429_add_missing_profile_columns.sql, b/src/pages/Orders.tsx, b/supabase/migrations/20260429_create_attendance_logs.sql, b/src/stores/useCourierStore.ts, b/src/services/api.ts, b/supabase/migrations/20260429_fix_rls_profiles.sql, b/supabase/migrations/20260429_queue_functions_dump.sql, b/supabase/migrations/20260429_fix_global_stay_radius.sql, b/supabase/migrations/20260429_create_assign_and_rotate_rpc.sql`
+- **Overwrites**: `const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);, assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {, rotateQueue: (assignedCourierId: string) => Promise<void>, rotateQueue: async (assignedCourierId) => {, assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>, assignCourier: async (orderId, courierId, courierName, userId, userName) => {, await withRetry(async () => {, set(state => ({, orders: state.orders.map(o => o.id === orderId ? {, const order = get().orders.find(o => o.id === orderId), }).catch(err => console.error('Mirror write error:', err)), onRetry: (attempt) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 12
+- **Files**: `b/src/pages/Orders.tsx, b/supabase/migrations/20260429_add_missing_profile_columns.sql, b/supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, b/src/stores/useOrderStore.ts, b/src/stores/useCourierStore.ts, b/supabase/migrations/20260429_queue_functions_dump.sql, b/supabase/migrations/20260429_create_attendance_logs.sql, b/supabase/migrations/20260429_fix_rls_profiles.sql, b/src/services/api.ts, b/src/hooks/useStayMonitor.ts, b/supabase/migrations/20260429_fix_global_stay_radius.sql`
+- **Overwrites**: `const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);, assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {, rotateQueue: (assignedCourierId: string) => Promise<void>, rotateQueue: async (assignedCourierId) => {, assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>, assignCourier: async (orderId, courierId, courierName, userId, userName) => {, await withRetry(async () => {, set(state => ({, orders: state.orders.map(o => o.id === orderId ? {, const order = get().orders.find(o => o.id === orderId), }).catch(err => console.error('Mirror write error:', err)), onRetry: (attempt) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 6
+- **Files**: `b/android/app/src/main/java/com/kurirdev/app/MainActivity.java, b/src/stores/useCourierStore.ts, b/android/app/src/main/AndroidManifest.xml, b/android/app/src/main/java/com/kurirdev/app/StayMonitoringService.kt, b/android/app/src/main/java/com/kurirdev/app/StayMonitorPlugin.kt, b/src/lib/stayMonitoring.ts, b/src/hooks/useStayMonitor.ts`
+- **Overwrites**: `function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {, const user = useUserStore.getState().users.find(u => u.id === courierId);, setCourierStay: (courierId: string, qrToken: string, lat: number, lng: number) => Promise<{ success: boolean; message: string; basecamp_id: string | null }>, reset: () => {, return users.filter(u =>, setCourierStay: async (courierId, qrToken, lat, lng) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 6
+- **Files**: `b/android/app/src/main/AndroidManifest.xml, b/src/hooks/useStayMonitor.ts, b/android/app/src/main/java/com/kurirdev/app/StayMonitoringService.kt, b/android/app/src/main/java/com/kurirdev/app/StayMonitorPlugin.kt, b/src/stores/useCourierStore.ts, b/src/lib/stayMonitoring.ts, b/android/app/src/main/java/com/kurirdev/app/MainActivity.java`
+- **Overwrites**: `function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {, const user = useUserStore.getState().users.find(u => u.id === courierId);, setCourierStay: (courierId: string, qrToken: string, lat: number, lng: number) => Promise<{ success: boolean; message: string; basecamp_id: string | null }>, reset: () => {, return users.filter(u =>, setCourierStay: async (courierId, qrToken, lat, lng) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 0
+- **Files**: `b/KNOWLEDGE_MAP.md, b/temp/TECHNICAL_SPEC_DETAILED.md`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 4
+- **Files**: `b/KNOWLEDGE_MAP.md, b/src/stores/useUserStore.ts, b/src/types/index.ts, b/src/pages/Orders.tsx`
+- **Overwrites**: `.filter(u => u.role === 'courier' && u.is_active === true && u.is_online === true), .sort((a, b) => ((a as any).queue_position ?? 999) - ((b as any).queue_position ?? 999));, set(state => ({, users: state.users.map(u => u.id === (newRec as any).id ? updatedUser : u)`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 4
+- **Files**: `b/KNOWLEDGE_MAP.md, b/src/stores/useUserStore.ts, b/src/pages/Orders.tsx, b/src/types/index.ts`
+- **Overwrites**: `.filter(u => u.role === 'courier' && u.is_active === true && u.is_online === true), .sort((a, b) => ((a as any).queue_position ?? 999) - ((b as any).queue_position ?? 999));, set(state => ({, users: state.users.map(u => u.id === (newRec as any).id ? updatedUser : u)`
+---
+
+## Session Update: 2026-04-30 00:42:29
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 12
+- **Files**: `b/supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, b/supabase/migrations/20260429_fix_global_stay_radius.sql, b/supabase/migrations/20260429_queue_functions_dump.sql, b/src/stores/useOrderStore.ts, b/src/pages/Orders.tsx, b/src/stores/useCourierStore.ts, b/supabase/migrations/20260429_create_attendance_logs.sql, b/src/services/api.ts, b/supabase/migrations/20260429_add_missing_profile_columns.sql, b/src/hooks/useStayMonitor.ts, b/supabase/migrations/20260429_fix_rls_profiles.sql`
+- **Overwrites**: `const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);, assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {, rotateQueue: (assignedCourierId: string) => Promise<void>, rotateQueue: async (assignedCourierId) => {, assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>, assignCourier: async (orderId, courierId, courierName, userId, userName) => {, await withRetry(async () => {, set(state => ({, orders: state.orders.map(o => o.id === orderId ? {, const order = get().orders.find(o => o.id === orderId), }).catch(err => console.error('Mirror write error:', err)), onRetry: (attempt) => {`
+---
+- **Type**: legacy_backfill
+- **Desc**: # Walkthrough - Testing Chatty Librarian Protocol
+This is a test walkthrough.
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 12
+- **Files**: `b/src/hooks/useStayMonitor.ts, b/src/stores/useOrderStore.ts, b/supabase/migrations/20260429_add_missing_profile_columns.sql, b/src/pages/Orders.tsx, b/supabase/migrations/20260429_create_attendance_logs.sql, b/src/stores/useCourierStore.ts, b/src/services/api.ts, b/supabase/migrations/20260429_fix_rls_profiles.sql, b/supabase/migrations/20260429_queue_functions_dump.sql, b/supabase/migrations/20260429_fix_global_stay_radius.sql, b/supabase/migrations/20260429_create_assign_and_rotate_rpc.sql`
+- **Overwrites**: `const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);, assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {, rotateQueue: (assignedCourierId: string) => Promise<void>, rotateQueue: async (assignedCourierId) => {, assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>, assignCourier: async (orderId, courierId, courierName, userId, userName) => {, await withRetry(async () => {, set(state => ({, orders: state.orders.map(o => o.id === orderId ? {, const order = get().orders.find(o => o.id === orderId), }).catch(err => console.error('Mirror write error:', err)), onRetry: (attempt) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 12
+- **Files**: `b/src/pages/Orders.tsx, b/supabase/migrations/20260429_add_missing_profile_columns.sql, b/supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, b/src/stores/useOrderStore.ts, b/src/stores/useCourierStore.ts, b/supabase/migrations/20260429_queue_functions_dump.sql, b/supabase/migrations/20260429_create_attendance_logs.sql, b/supabase/migrations/20260429_fix_rls_profiles.sql, b/src/services/api.ts, b/src/hooks/useStayMonitor.ts, b/supabase/migrations/20260429_fix_global_stay_radius.sql`
+- **Overwrites**: `const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);, assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {, rotateQueue: (assignedCourierId: string) => Promise<void>, rotateQueue: async (assignedCourierId) => {, assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>, assignCourier: async (orderId, courierId, courierName, userId, userName) => {, await withRetry(async () => {, set(state => ({, orders: state.orders.map(o => o.id === orderId ? {, const order = get().orders.find(o => o.id === orderId), }).catch(err => console.error('Mirror write error:', err)), onRetry: (attempt) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 6
+- **Files**: `b/android/app/src/main/java/com/kurirdev/app/MainActivity.java, b/src/stores/useCourierStore.ts, b/android/app/src/main/AndroidManifest.xml, b/android/app/src/main/java/com/kurirdev/app/StayMonitoringService.kt, b/android/app/src/main/java/com/kurirdev/app/StayMonitorPlugin.kt, b/src/lib/stayMonitoring.ts, b/src/hooks/useStayMonitor.ts`
+- **Overwrites**: `function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {, const user = useUserStore.getState().users.find(u => u.id === courierId);, setCourierStay: (courierId: string, qrToken: string, lat: number, lng: number) => Promise<{ success: boolean; message: string; basecamp_id: string | null }>, reset: () => {, return users.filter(u =>, setCourierStay: async (courierId, qrToken, lat, lng) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 6
+- **Files**: `b/android/app/src/main/AndroidManifest.xml, b/src/hooks/useStayMonitor.ts, b/android/app/src/main/java/com/kurirdev/app/StayMonitoringService.kt, b/android/app/src/main/java/com/kurirdev/app/StayMonitorPlugin.kt, b/src/stores/useCourierStore.ts, b/src/lib/stayMonitoring.ts, b/android/app/src/main/java/com/kurirdev/app/MainActivity.java`
+- **Overwrites**: `function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {, const user = useUserStore.getState().users.find(u => u.id === courierId);, setCourierStay: (courierId: string, qrToken: string, lat: number, lng: number) => Promise<{ success: boolean; message: string; basecamp_id: string | null }>, reset: () => {, return users.filter(u =>, setCourierStay: async (courierId, qrToken, lat, lng) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 0
+- **Files**: `b/KNOWLEDGE_MAP.md, b/temp/TECHNICAL_SPEC_DETAILED.md`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 4
+- **Files**: `b/KNOWLEDGE_MAP.md, b/src/stores/useUserStore.ts, b/src/types/index.ts, b/src/pages/Orders.tsx`
+- **Overwrites**: `.filter(u => u.role === 'courier' && u.is_active === true && u.is_online === true), .sort((a, b) => ((a as any).queue_position ?? 999) - ((b as any).queue_position ?? 999));, set(state => ({, users: state.users.map(u => u.id === (newRec as any).id ? updatedUser : u)`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 4
+- **Files**: `b/KNOWLEDGE_MAP.md, b/src/stores/useUserStore.ts, b/src/pages/Orders.tsx, b/src/types/index.ts`
+- **Overwrites**: `.filter(u => u.role === 'courier' && u.is_active === true && u.is_online === true), .sort((a, b) => ((a as any).queue_position ?? 999) - ((b as any).queue_position ?? 999));, set(state => ({, users: state.users.map(u => u.id === (newRec as any).id ? updatedUser : u)`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 1
+- **Files**: `b/KNOWLEDGE_MAP.md, b/src/components/courier/QRScannerModal.tsx, b/src/pages/Couriers.tsx, b/src/components/admin/StayQRDisplay.tsx`
+- **Overwrites**: `const fetchTodayLogs = useCallback(async () => {`
+---
+
+## Session Update: 2026-04-30 00:42:05
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 12
+- **Files**: `b/src/hooks/useStayMonitor.ts, b/src/stores/useOrderStore.ts, b/supabase/migrations/20260429_add_missing_profile_columns.sql, b/src/pages/Orders.tsx, b/supabase/migrations/20260429_create_attendance_logs.sql, b/src/stores/useCourierStore.ts, b/src/services/api.ts, b/supabase/migrations/20260429_fix_rls_profiles.sql, b/supabase/migrations/20260429_queue_functions_dump.sql, b/supabase/migrations/20260429_fix_global_stay_radius.sql, b/supabase/migrations/20260429_create_assign_and_rotate_rpc.sql`
+- **Overwrites**: `const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);, assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {, rotateQueue: (assignedCourierId: string) => Promise<void>, rotateQueue: async (assignedCourierId) => {, assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>, assignCourier: async (orderId, courierId, courierName, userId, userName) => {, await withRetry(async () => {, set(state => ({, orders: state.orders.map(o => o.id === orderId ? {, const order = get().orders.find(o => o.id === orderId), }).catch(err => console.error('Mirror write error:', err)), onRetry: (attempt) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 12
+- **Files**: `b/src/pages/Orders.tsx, b/supabase/migrations/20260429_add_missing_profile_columns.sql, b/supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, b/src/stores/useOrderStore.ts, b/src/stores/useCourierStore.ts, b/supabase/migrations/20260429_queue_functions_dump.sql, b/supabase/migrations/20260429_create_attendance_logs.sql, b/supabase/migrations/20260429_fix_rls_profiles.sql, b/src/services/api.ts, b/src/hooks/useStayMonitor.ts, b/supabase/migrations/20260429_fix_global_stay_radius.sql`
+- **Overwrites**: `const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);, assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {, rotateQueue: (assignedCourierId: string) => Promise<void>, rotateQueue: async (assignedCourierId) => {, assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>, assignCourier: async (orderId, courierId, courierName, userId, userName) => {, await withRetry(async () => {, set(state => ({, orders: state.orders.map(o => o.id === orderId ? {, const order = get().orders.find(o => o.id === orderId), }).catch(err => console.error('Mirror write error:', err)), onRetry: (attempt) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 6
+- **Files**: `b/android/app/src/main/java/com/kurirdev/app/MainActivity.java, b/src/stores/useCourierStore.ts, b/android/app/src/main/AndroidManifest.xml, b/android/app/src/main/java/com/kurirdev/app/StayMonitoringService.kt, b/android/app/src/main/java/com/kurirdev/app/StayMonitorPlugin.kt, b/src/lib/stayMonitoring.ts, b/src/hooks/useStayMonitor.ts`
+- **Overwrites**: `function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {, const user = useUserStore.getState().users.find(u => u.id === courierId);, setCourierStay: (courierId: string, qrToken: string, lat: number, lng: number) => Promise<{ success: boolean; message: string; basecamp_id: string | null }>, reset: () => {, return users.filter(u =>, setCourierStay: async (courierId, qrToken, lat, lng) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 6
+- **Files**: `b/android/app/src/main/AndroidManifest.xml, b/src/hooks/useStayMonitor.ts, b/android/app/src/main/java/com/kurirdev/app/StayMonitoringService.kt, b/android/app/src/main/java/com/kurirdev/app/StayMonitorPlugin.kt, b/src/stores/useCourierStore.ts, b/src/lib/stayMonitoring.ts, b/android/app/src/main/java/com/kurirdev/app/MainActivity.java`
+- **Overwrites**: `function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {, const user = useUserStore.getState().users.find(u => u.id === courierId);, setCourierStay: (courierId: string, qrToken: string, lat: number, lng: number) => Promise<{ success: boolean; message: string; basecamp_id: string | null }>, reset: () => {, return users.filter(u =>, setCourierStay: async (courierId, qrToken, lat, lng) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 0
+- **Files**: `b/KNOWLEDGE_MAP.md, b/temp/TECHNICAL_SPEC_DETAILED.md`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 4
+- **Files**: `b/KNOWLEDGE_MAP.md, b/src/stores/useUserStore.ts, b/src/types/index.ts, b/src/pages/Orders.tsx`
+- **Overwrites**: `.filter(u => u.role === 'courier' && u.is_active === true && u.is_online === true), .sort((a, b) => ((a as any).queue_position ?? 999) - ((b as any).queue_position ?? 999));, set(state => ({, users: state.users.map(u => u.id === (newRec as any).id ? updatedUser : u)`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 4
+- **Files**: `b/KNOWLEDGE_MAP.md, b/src/stores/useUserStore.ts, b/src/pages/Orders.tsx, b/src/types/index.ts`
+- **Overwrites**: `.filter(u => u.role === 'courier' && u.is_active === true && u.is_online === true), .sort((a, b) => ((a as any).queue_position ?? 999) - ((b as any).queue_position ?? 999));, set(state => ({, users: state.users.map(u => u.id === (newRec as any).id ? updatedUser : u)`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 1
+- **Files**: `b/KNOWLEDGE_MAP.md, b/src/components/courier/QRScannerModal.tsx, b/src/pages/Couriers.tsx, b/src/components/admin/StayQRDisplay.tsx`
+- **Overwrites**: `const fetchTodayLogs = useCallback(async () => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 2
+- **Files**: `b/src/pages/Couriers.tsx, b/src/components/courier/QRScannerModal.tsx, b/KNOWLEDGE_MAP.md, b/package.json, b/src/pages/courier/CourierDashboard.tsx, b/package-lock.json, b/src/types/supabase.ts, b/src/components/admin/StayQRDisplay.tsx`
+- **Overwrites**: `<Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => setIsAddModalOpen(true)}>, const handleSetStay = async () => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 16
+- **Files**: `b/src/components/settings/BusinessTab.tsx, b/src/pages/finance/FinancePenagihan.tsx, b/src/pages/Orders.tsx, b/src/pages/courier/CourierEarnings.tsx, b/src/pages/Reports.tsx, b/src/pages/finance/FinanceDashboard.tsx, b/src/pages/courier/CourierDashboard.tsx, b/src/pages/Dashboard.tsx, b/src/stores/useOrderStore.ts, b/src/pages/Couriers.tsx, b/src/lib/calcEarning.test.ts, b/src/stores/useSettingsStore.ts, b/supabase/migrations/20240421000000_deduction_logic.sql, b/KNOWLEDGE_MAP.md, b/src/lib/calcEarning.ts, b/src/pages/finance/FinanceAnalisa.tsx, b/src/pages/Settings.tsx, b/src/lib/orderCache.ts`
+- **Overwrites**: `onSaveSettings: (data: { commission_rate: number; commission_threshold: number }) => void;, const handleSave = () => {, onChange={e => setForm(prev => ({ ...prev, commission_rate: Number(e.target.value) }))}, onChange={e => {, setForm(prev => ({ ...prev, commission_threshold: val }));, describe('calcCourierEarning', () => {, it('should prioritize applied_commission_rate from order snapshot', () => {, it('should prioritize applied_commission_threshold from order snapshot', () => {, // total_fee (15k) <= threshold (20k) => 100% = 15000, it('should add extraTitik and extraBeban to the total', () => {, it('should handle zero extra fees properly', () => {, describe('calcAdminEarning', () => {, it('should return 0 if total_fee <= threshold', () => {, it('should return remaining percentage if total_fee > threshold', () => {, it('should prioritize snapshot rate and threshold', () => {, it('should not include extra courier fees in admin earning', () => {`
+---
+
+## Session Update: 2026-04-30 00:23:32
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 12
+- **Files**: `b/src/pages/Orders.tsx, b/supabase/migrations/20260429_add_missing_profile_columns.sql, b/supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, b/src/stores/useOrderStore.ts, b/src/stores/useCourierStore.ts, b/supabase/migrations/20260429_queue_functions_dump.sql, b/supabase/migrations/20260429_create_attendance_logs.sql, b/supabase/migrations/20260429_fix_rls_profiles.sql, b/src/services/api.ts, b/src/hooks/useStayMonitor.ts, b/supabase/migrations/20260429_fix_global_stay_radius.sql`
+- **Overwrites**: `const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);, assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {, rotateQueue: (assignedCourierId: string) => Promise<void>, rotateQueue: async (assignedCourierId) => {, assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>, assignCourier: async (orderId, courierId, courierName, userId, userName) => {, await withRetry(async () => {, set(state => ({, orders: state.orders.map(o => o.id === orderId ? {, const order = get().orders.find(o => o.id === orderId), }).catch(err => console.error('Mirror write error:', err)), onRetry: (attempt) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 6
+- **Files**: `b/android/app/src/main/java/com/kurirdev/app/MainActivity.java, b/src/stores/useCourierStore.ts, b/android/app/src/main/AndroidManifest.xml, b/android/app/src/main/java/com/kurirdev/app/StayMonitoringService.kt, b/android/app/src/main/java/com/kurirdev/app/StayMonitorPlugin.kt, b/src/lib/stayMonitoring.ts, b/src/hooks/useStayMonitor.ts`
+- **Overwrites**: `function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {, const user = useUserStore.getState().users.find(u => u.id === courierId);, setCourierStay: (courierId: string, qrToken: string, lat: number, lng: number) => Promise<{ success: boolean; message: string; basecamp_id: string | null }>, reset: () => {, return users.filter(u =>, setCourierStay: async (courierId, qrToken, lat, lng) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 6
+- **Files**: `b/android/app/src/main/AndroidManifest.xml, b/src/hooks/useStayMonitor.ts, b/android/app/src/main/java/com/kurirdev/app/StayMonitoringService.kt, b/android/app/src/main/java/com/kurirdev/app/StayMonitorPlugin.kt, b/src/stores/useCourierStore.ts, b/src/lib/stayMonitoring.ts, b/android/app/src/main/java/com/kurirdev/app/MainActivity.java`
+- **Overwrites**: `function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {, const user = useUserStore.getState().users.find(u => u.id === courierId);, setCourierStay: (courierId: string, qrToken: string, lat: number, lng: number) => Promise<{ success: boolean; message: string; basecamp_id: string | null }>, reset: () => {, return users.filter(u =>, setCourierStay: async (courierId, qrToken, lat, lng) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 0
+- **Files**: `b/KNOWLEDGE_MAP.md, b/temp/TECHNICAL_SPEC_DETAILED.md`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 4
+- **Files**: `b/KNOWLEDGE_MAP.md, b/src/stores/useUserStore.ts, b/src/types/index.ts, b/src/pages/Orders.tsx`
+- **Overwrites**: `.filter(u => u.role === 'courier' && u.is_active === true && u.is_online === true), .sort((a, b) => ((a as any).queue_position ?? 999) - ((b as any).queue_position ?? 999));, set(state => ({, users: state.users.map(u => u.id === (newRec as any).id ? updatedUser : u)`
+---
+
 ## Session Update: 2026-04-29 11:27:46
 - **Type**: auto_harvest
 - **Desc**: Changes detected via git diff. Overwritten potential functions: 6
