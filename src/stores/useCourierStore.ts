@@ -8,7 +8,7 @@ import { stayNative } from '@/lib/stayMonitoring'
 interface BasecampRow {
   lat: number
   lng: number
-  radius_m: number
+  stay_radius_meters: number
 }
 
 interface CourierState {
@@ -18,7 +18,6 @@ interface CourierState {
   updateCourierStatus: (id: string, data: Partial<Courier>) => Promise<void>
   removeCourier: (id: string) => Promise<void>
   getAvailableCouriers: () => Courier[]
-  rotateQueue: (assignedCourierId: string) => Promise<void>
   setCourierOffline: (courierId: string, reason: string) => Promise<void>
   setCourierOnline: (courierId: string, status: 'on' | 'stay') => Promise<void>
   setCourierStay: (courierId: string, qrToken: string) => Promise<{ success: boolean; basecamp_id: string | null }>
@@ -54,16 +53,6 @@ export const useCourierStore = create<CourierState>()((_set, get) => ({
     return users.filter(u => u.role === 'courier' && u.is_active && u.is_online) as Courier[]
   },
 
-  rotateQueue: async (assignedCourierId) => {
-    const { error } = await supabase.rpc('rotate_courier_queue', {
-      target_user_id: assignedCourierId
-    })
-    if (error) {
-      console.error('Failed to rotate queue:', error)
-      await useUserStore.getState().fetchUsers()
-    }
-  },
-
   setCourierOffline: async (courierId, reason) => {
     // is_online diurus trigger — cukup kirim courier_status
     await useUserStore.getState().updateUser(courierId, {
@@ -84,10 +73,33 @@ export const useCourierStore = create<CourierState>()((_set, get) => ({
   },
 
   setCourierStay: async (courierId, qrToken) => {
-    // Signature benar: hanya p_token dan p_courier_id
+    // Get current GPS position for stay verification
+    // Explicit initialization to avoid "used before assigned" TypeScript error in strict mode
+    let coords: GeolocationCoordinates = undefined!
+
+    try {
+      // Use Capacitor Geolocation plugin for native GPS access
+      // Destructure coords directly to avoid intermediate position variable
+      const { coords: positionCoords } = await Geolocation.getCurrentPosition({
+        enableHighAccuracy: true,
+        timeout: 10000,
+      })
+      coords = positionCoords
+    } catch (geoError: any) {
+      console.error('Failed to get GPS position:', geoError)
+      // Handle permission denied error specifically
+      if (geoError?.message?.toLowerCase().includes('permission')) {
+        throw new Error('Izin lokasi ditolak. Mohon izinkan akses lokasi di pengaturan aplikasi.')
+      }
+      throw new Error('Gagal mendapatkan lokasi GPS. Pastikan GPS aktif dan izin lokasi diberikan.')
+    }
+
+    // Call RPC with correct parameters matching SQL function signature
     const { data, error } = await supabase.rpc('verify_stay_qr', {
-      p_token: qrToken,
       p_courier_id: courierId,
+      p_qr_token: qrToken,
+      p_courier_lat: coords.latitude,
+      p_courier_lng: coords.longitude,
     })
     if (error) throw error
 
@@ -99,7 +111,7 @@ export const useCourierStore = create<CourierState>()((_set, get) => ({
       const [bcResult, settingsResult] = await Promise.all([
         supabase
           .from('basecamps' as any)
-          .select('lat, lng, radius_m')
+          .select('lat, lng, stay_radius_meters')
           .eq('id', result.basecamp_id)
           .single() as unknown as Promise<{ data: BasecampRow | null; error: any }>,
         supabase
@@ -117,7 +129,7 @@ export const useCourierStore = create<CourierState>()((_set, get) => ({
         stayNative.start({
           lat: bc.lat,
           lng: bc.lng,
-          radius: bc.radius_m,
+          radius: bc.stay_radius_meters,
           basecampId: result.basecamp_id,
           supabaseUrl,
           supabaseAnonKey,

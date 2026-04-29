@@ -94,11 +94,6 @@ export const ordersApi = {
     return response.data;
   },
 
-  assignCourier: async (orderId: number, courierId: number): Promise<ApiResponse<Order>> => {
-    const response = await api.put(`/orders/${orderId}/assign`, { courier_id: courierId });
-    return response.data;
-  },
-
   cancelOrder: async (orderId: number, reason: string): Promise<ApiResponse<Order>> => {
     const response = await api.put(`/orders/${orderId}/cancel`, { reason });
     return response.data;

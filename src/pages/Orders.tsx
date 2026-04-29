@@ -46,8 +46,8 @@ import { Share } from '@capacitor/share'
 
 // Stores & Types
 import { useOrderStore, type OrderState } from '@/stores/useOrderStore';
-import { useCourierStore } from '@/stores/useCourierStore';
 import { useUserStore } from '@/stores/useUserStore';
+import { supabase } from '@/lib/supabaseClient';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { useCustomerStore } from '@/stores/useCustomerStore';
 import { InvoiceTemplate } from '@/components/orders/InvoiceTemplate';
@@ -66,11 +66,9 @@ export function Orders() {
   const fetchInitialOrders = useOrderStore((state: OrderState) => state.fetchInitialOrders);
   const fetchOrdersByDateRange = useOrderStore((state: OrderState) => state.fetchOrdersByDateRange);
   const addOrder = useOrderStore((state: OrderState) => state.addOrder);
-  const assignCourier = useOrderStore((state: OrderState) => state.assignCourier);
   const cancelOrder = useOrderStore((state: OrderState) => state.cancelOrder);
   const updateOrder = useOrderStore((state: OrderState) => state.updateOrder);
   const settleOrder = useOrderStore((state: OrderState) => state.settleOrder);
-  const { rotateQueue } = useCourierStore();
   const { users } = useUserStore();
   const { user } = useAuth();
   const { commission_rate, commission_threshold, commission_type, courier_instructions } = useSettingsStore();
@@ -449,18 +447,29 @@ export function Orders() {
     if (courier) {
       setIsAssigning(true);
       try {
-        // 1. Simpan instruksi (notes) ke order jika ada perubahan
-        if (instructions !== undefined && instructions !== selectedOrder.notes) {
-          await updateOrder(selectedOrder.id, { notes: instructions });
-        }
+        // Call consolidated RPC for atomic assignment + queue rotation
+        const { error } = await supabase.rpc('assign_order_and_rotate', {
+          p_order_id: selectedOrder.id,
+          p_courier_id: courier.id,
+          p_courier_name: courier.name,
+          p_admin_id: user?.id,
+          p_admin_name: user?.name,
+          p_notes: instructions
+        });
 
-        // 2. Lakukan assignment
-        await assignCourier(selectedOrder.id, courier.id, courier.name, user?.id || '', user?.name || 'Admin');
-        await rotateQueue(courier.id);
+        if (error) throw error;
 
         setIsOrderModalOpen(false);
-      } catch (error) {
-        console.error("Assignment failed:", error);
+      } catch (error: any) {
+        if (error.message?.includes('tidak tersedia')) {
+          const addToast = useToastStore.getState().addToast;
+          addToast('Order sudah di-assign oleh admin lain. Refresh halaman.', 'error');
+          await useOrderStore.getState().fetchOrders();
+        } else {
+          const addToast = useToastStore.getState().addToast;
+          addToast('Gagal assign kurir. Coba lagi.', 'error');
+          console.error('Assignment error:', error);
+        }
       } finally {
         setIsAssigning(false);
       }

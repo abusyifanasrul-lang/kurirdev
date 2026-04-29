@@ -46,7 +46,6 @@ export interface OrderState {
   
   addOrder: (order: Order) => Promise<void>
   updateOrderStatus: (orderId: string, status: OrderStatus, userId: string, userName: string, notes?: string) => Promise<void>
-  assignCourier: (orderId: string, courierId: string, courierName: string, userId: string, userName: string) => Promise<void>
   cancelOrder: (orderId: string, reason: string, userId: string, userName: string, cancelReasonType?: string) => Promise<void>
   updateOrder: (orderId: string, updates: Partial<Order>) => Promise<void>
   updateBiayaTambahan: (orderId: string, titik: number, beban: { nama: string; biaya: number }[]) => Promise<void>
@@ -817,76 +816,6 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
       addToast(`Gagal memperbarui status order: ${error.message}`, 'error', 5000)
     } finally {
       setSyncing(orderId, false)
-      if (retryToastId) removeToast(retryToastId)
-    }
-  },
-
-  assignCourier: async (orderId, courierId, courierName, userId, userName) => {
-    const addToast = useToastStore.getState().addToast
-    const removeToast = useToastStore.getState().removeToast
-    let retryToastId: string | undefined
-    try {
-      await withRetry(async () => {
-        const { error } = await (supabase.from('orders') as any)
-          .update({ 
-            status: 'assigned', 
-            courier_id: courierId,
-            assigned_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            assigned_by: userId,
-            assigner_name: userName,
-            courier_name: courierName
-          })
-          .eq('id', orderId)
-        if (error) throw error
-
-        // Move courier to end of FIFO queue
-        const { error: rpcError } = await (supabase.rpc as any)('rotate_courier_queue', { p_courier_id: courierId })
-        if (rpcError) console.error('FIFO rotation error:', rpcError)
-
-        await (supabase.from('tracking_logs') as any).insert({
-          order_id: orderId,
-          status: 'assigned',
-          changed_by: userId,
-          changed_by_name: userName,
-          notes: `Assigned to ${courierName}`
-        })
-        set(state => ({
-          orders: state.orders.map(o => o.id === orderId ? { 
-            ...o, 
-            status: 'assigned', 
-            courier_id: courierId,
-            assigned_at: new Date().toISOString(),
-            assigned_by: userId,
-            assigner_name: userName,
-            courier_name: courierName
-          } : o)
-        }))
-        const order = get().orders.find(o => o.id === orderId)
-        if (order) {
-          const { moveToLocalDB } = await import('@/lib/orderCache')
-          moveToLocalDB({
-            ...order,
-            status: 'assigned',
-            courier_id: courierId,
-            assigned_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }).catch(err => console.error('Mirror write error:', err))
-        }
-      }, {
-        onRetry: (attempt) => {
-          if (!retryToastId) {
-            retryToastId = addToast(`Gagal menetapkan kurir... Mencoba kembali (${attempt}/3)`, 'loading', 0)
-          } else {
-            useToastStore.getState().updateToast(retryToastId, {
-              message: `Menetapkan ${courierName}... (${attempt}/3)`
-            })
-          }
-        }
-      })
-    } catch (error: any) {
-      addToast(`Gagal menetapkan kurir: ${error.message}`, 'error', 5000)
-    } finally {
       if (retryToastId) removeToast(retryToastId)
     }
   },

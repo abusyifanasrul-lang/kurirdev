@@ -14,7 +14,7 @@ interface UseStayMonitorOptions {
 interface BasecampRow {
   lat: number
   lng: number
-  radius_m: number
+  stay_radius_meters: number
 }
 
 export function useStayMonitor({ courierId, isStay, onRevoked }: UseStayMonitorOptions) {
@@ -40,7 +40,7 @@ export function useStayMonitor({ courierId, isStay, onRevoked }: UseStayMonitorO
         const [bcResult, settingsResult] = await Promise.all([
           supabase
             .from('basecamps' as any)
-            .select('lat, lng, radius_m')
+             .select('lat, lng, stay_radius_meters')
             .eq('id', profile.stay_basecamp_id)
             .single() as unknown as Promise<{ data: BasecampRow | null; error: any }>,
           supabase
@@ -58,7 +58,7 @@ export function useStayMonitor({ courierId, isStay, onRevoked }: UseStayMonitorO
           stayNative.start({
             lat: bc.lat,
             lng: bc.lng,
-            radius: bc.radius_m,
+             radius: bc.stay_radius_meters,
             basecampId: profile.stay_basecamp_id,
             supabaseUrl,
             supabaseAnonKey,
