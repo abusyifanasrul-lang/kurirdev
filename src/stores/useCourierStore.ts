@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { supabase } from '@/lib/supabaseClient'
 import { Courier } from '@/types'
 import { useUserStore } from './useUserStore'
+import { stayNative } from '@/lib/stayMonitoring'
 
 interface CourierState {
   readonly couriers: Courier[]
@@ -13,7 +14,7 @@ interface CourierState {
   rotateQueue: (assignedCourierId: string) => Promise<void>
   setCourierOffline: (courierId: string, reason: string) => Promise<void>
   setCourierOnline: (courierId: string, status: 'on' | 'stay') => Promise<void>
-  setCourierStay: (courierId: string, qrToken: string, lat: number, lng: number) => Promise<{ success: boolean; message: string; basecamp_id: string | null }>
+  setCourierStay: (courierId: string, qrToken: string) => Promise<{ success: boolean; basecamp_id: string | null }>
   reset: () => void
 }
 
@@ -22,15 +23,11 @@ export const useCourierStore = create<CourierState>()((_set, get) => ({
     return useUserStore.getState().users.filter(u => u.role === 'courier') as Courier[]
   },
 
-  reset: () => {
-    // No local state to reset, data comes from useUserStore
-  },
+  reset: () => {},
 
   addCourier: async (courier, password) => {
     const result = await useUserStore.getState().addUser({ ...courier, password })
-    if (!result.success) {
-      throw new Error(result.error || 'Gagal membuat akun kurir')
-    }
+    if (!result.success) throw new Error(result.error || 'Gagal membuat akun kurir')
   },
 
   updateCourier: async (id, data) => {
@@ -47,69 +44,73 @@ export const useCourierStore = create<CourierState>()((_set, get) => ({
 
   getAvailableCouriers: () => {
     const { users } = useUserStore.getState()
-    return users.filter(u =>
-      u.role === 'courier' && u.is_active && u.is_online
-    ) as Courier[]
+    return users.filter(u => u.role === 'courier' && u.is_active && u.is_online) as Courier[]
   },
 
   rotateQueue: async (assignedCourierId) => {
     const { error } = await supabase.rpc('rotate_courier_queue', {
       p_courier_id: assignedCourierId
     })
-    
     if (error) {
       console.error('Failed to rotate queue:', error)
-      // Fallback to fetch latest to stay in sync if RPC fails
       await useUserStore.getState().fetchUsers()
     }
   },
 
   setCourierOffline: async (courierId, reason) => {
-    const userStore = useUserStore.getState()
-    
-    // Trigger in DB will handle queue exit logic
-    await userStore.updateUser(courierId, {
-      is_online: false,
+    // is_online diurus trigger — cukup kirim courier_status
+    await useUserStore.getState().updateUser(courierId, {
       courier_status: 'off',
       off_reason: reason,
     })
+    stayNative.stop()
   },
 
   setCourierOnline: async (courierId, status) => {
-    const userStore = useUserStore.getState()
-    
-    // Trigger in DB will handle queue entry (FIFO timestamp)
-    await userStore.updateUser(courierId, {
-      is_online: true,
+    // is_online diurus trigger — cukup kirim courier_status
+    await useUserStore.getState().updateUser(courierId, {
       courier_status: status,
       off_reason: '',
     })
-
-    // Priority 2: Record attendance check-in
-    if (status === 'on' || status === 'stay') {
-      await supabase.rpc('record_courier_checkin', { 
-        p_courier_id: courierId 
-      });
-      // Silent fail, attendance can be manually added by admin if needed
-    }
+    await supabase.rpc('record_courier_checkin', { p_courier_id: courierId })
+    if (status === 'on') stayNative.stop()
   },
 
-  setCourierStay: async (courierId, qrToken, lat, lng) => {
+  setCourierStay: async (courierId, qrToken) => {
+    // Signature benar: hanya p_token dan p_courier_id
     const { data, error } = await supabase.rpc('verify_stay_qr', {
+      p_token: qrToken,
       p_courier_id: courierId,
-      p_qr_token: qrToken,
-      p_courier_lat: lat,
-      p_courier_lng: lng
     })
-
     if (error) throw error
-    
-    // Result is an array of objects
-    const result = (data as any)[0]
-    if (!result.success) throw new Error(result.message)
 
-    // Sync profile to reflect status: 'stay'
+    const result = data as { success: boolean; basecamp_id: string | null; error?: string }
+    if (!result.success) throw new Error(result.error || 'QR tidak valid')
+
+    if (result.basecamp_id) {
+      // Ambil koordinat basecamp + service_secret untuk native service
+      const [{ data: bc }, { data: settings }] = await Promise.all([
+        supabase.from('basecamps').select('lat, lng, radius_m').eq('id', result.basecamp_id).single(),
+        supabase.from('settings').select('service_secret').eq('id', 'global').single(),
+      ])
+
+      const { supabaseUrl, supabaseAnonKey } = await import('@/lib/supabaseClient')
+
+      if (bc && settings) {
+        stayNative.start({
+          lat: bc.lat,
+          lng: bc.lng,
+          radius: bc.radius_m,
+          basecampId: result.basecamp_id,
+          supabaseUrl,
+          supabaseAnonKey,
+          serviceSecret: settings.service_secret,
+          courierId,
+        })
+      }
+    }
+
     await useUserStore.getState().fetchProfile(courierId)
-    return result
+    return { success: true, basecamp_id: result.basecamp_id }
   },
 }))

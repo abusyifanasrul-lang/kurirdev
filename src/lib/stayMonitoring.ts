@@ -1,75 +1,75 @@
-import { supabase } from './supabaseClient';
-import { useUserStore } from '@/stores/useUserStore';
-import { StayUpdateResult } from '@/types';
+import { Capacitor, registerPlugin } from '@capacitor/core'
 
-/**
- * Calculates distance between two coordinates in meters (Haversine formula)
- */
-function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371000; // Earth radius in meters
-  const dLat = (lat2 - lat1) * (Math.PI / 180);
-  const dLon = (lon2 - lon1) * (Math.PI / 180);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
+interface StayMonitorNative {
+  startMonitoring(options: {
+    lat: number
+    lng: number
+    radius: number
+    basecampId: string
+    supabaseUrl: string
+    supabaseAnonKey: string
+    serviceSecret: string
+    courierId: string
+  }): Promise<void>
+  stopMonitoring(): Promise<void>
+  isRunning(): Promise<{ running: boolean }>
 }
 
-/**
- * Validates courier presence in basecamp and updates counter in database.
- * Phase 1: Manual/Scheduled trigger from UI components.
- */
-export async function checkStayPresence(
-  courierId: string,
-  currentLat: number,
-  currentLng: number,
-  accuracy: number | null = null
-): Promise<StayUpdateResult> {
-  const user = useUserStore.getState().users.find(u => u.id === courierId);
-  
-  if (!user || user.courier_status !== 'stay' || !user.current_basecamp_id) {
-    return { 
-      status_changed: false, 
-      new_status: user?.courier_status || 'off', 
-      counter: user?.stay_zone_counter || 0 
-    };
-  }
+const StayMonitor = registerPlugin<StayMonitorNative>('StayMonitor')
 
-  // 1. Fetch basecamp config
-  // Note: In production, this should ideally be cached in a store to avoid frequent DB hits
-  const { data: basecamp, error: bcError } = await supabase
-    .from('basecamps')
-    .select('lat, lng, stay_radius_meters')
-    .eq('id', user.current_basecamp_id)
-    .single();
-
-  if (bcError || !basecamp) {
-    throw new Error('Basecamp tidak ditemukan atau tidak aktif');
-  }
-
-  // 2. Local distance check (pre-validation)
-  const distance = calculateDistance(currentLat, currentLng, Number(basecamp.lat), Number(basecamp.lng));
-  const inZone = distance <= basecamp.stay_radius_meters;
-
-  // 3. Update counter in DB via RPC
-  const { data, error: rpcError } = await supabase.rpc('update_stay_counter', {
-    p_courier_id: courierId,
-    p_in_zone: inZone,
-    p_distance: distance,
-    p_accuracy: accuracy
-  });
-
-  if (rpcError) throw rpcError;
-
-  // result is an array of objects from RETURNS TABLE
-  const result = (data as any)[0] as StayUpdateResult;
-  
-  // 4. Sync profile if status changed (e.g. auto-revoked to 'on')
-  if (result.status_changed) {
-    await useUserStore.getState().fetchProfile(courierId);
-  }
-
-  return result;
+export interface StayNativeEvent {
+  type: 'update' | 'revoked'
+  inZone: boolean
+  counter: number
+  distance: number
+  basecampId: string
+  timestamp: number
 }
+
+class StayNativeBridge {
+  private listener: ((evt: StayNativeEvent) => void) | null = null
+
+  constructor() {
+    if (typeof window !== 'undefined') {
+      ;(window as any).__STAY_NATIVE_CALLBACK = (data: StayNativeEvent) => {
+        this.listener?.(data)
+      }
+    }
+  }
+
+  start(options: {
+    lat: number
+    lng: number
+    radius: number
+    basecampId: string
+    supabaseUrl: string
+    supabaseAnonKey: string
+    serviceSecret: string
+    courierId: string
+  }): void {
+    if (Capacitor.getPlatform() !== 'android') return
+    StayMonitor.startMonitoring(options).catch(err =>
+      console.error('[StayNative] start error:', err)
+    )
+  }
+
+  stop(): void {
+    if (Capacitor.getPlatform() !== 'android') return
+    StayMonitor.stopMonitoring().catch(err =>
+      console.error('[StayNative] stop error:', err)
+    )
+  }
+
+  async isRunning(): Promise<boolean> {
+    if (Capacitor.getPlatform() !== 'android') return false
+    const { running } = await StayMonitor.isRunning()
+    return running
+  }
+
+  onUpdate(callback: (evt: StayNativeEvent) => void): () => void {
+    this.listener = callback
+    return () => { this.listener = null }
+  }
+}
+
+export const stayNative = new StayNativeBridge()
