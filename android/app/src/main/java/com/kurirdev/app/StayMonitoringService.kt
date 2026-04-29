@@ -69,7 +69,7 @@ class StayMonitoringService : Service() {
                 courierId     = intent.getStringExtra(EXTRA_COURIER_ID) ?: ""
                 outZoneCounter = 0
 
-                wakeLock?.acquire()
+                wakeLock?.acquire(8 * 60 * 60 * 1000L) // Max 8 jam shift
                 startForeground(NOTIF_ID, buildNotification("Monitoring lokasi STAY aktif"))
                 startLocationTracking()
                 isRunning = true
@@ -129,25 +129,38 @@ class StayMonitoringService : Service() {
         if (supabaseUrl.isEmpty() || supabaseKey.isEmpty() || serviceSecret.isEmpty() || courierId.isEmpty()) return
 
         Thread {
-            try {
-                val url = java.net.URL("$supabaseUrl/rest/v1/rpc/revoke_stay_by_service")
-                val conn = url.openConnection() as java.net.HttpURLConnection
-                conn.requestMethod = "POST"
-                conn.setRequestProperty("apikey", supabaseKey)
-                conn.setRequestProperty("Authorization", "Bearer $supabaseKey")
-                conn.setRequestProperty("Content-Type", "application/json")
-                conn.doOutput = true
+            var attempts = 0
+            val maxAttempts = 3
+            while (attempts < maxAttempts) {
+                try {
+                    val url = java.net.URL("$supabaseUrl/rest/v1/rpc/revoke_stay_by_service")
+                    val conn = url.openConnection() as java.net.HttpURLConnection
+                    conn.connectTimeout = 15_000
+                    conn.readTimeout = 10_000
+                    conn.requestMethod = "POST"
+                    conn.setRequestProperty("apikey", supabaseKey)
+                    conn.setRequestProperty("Authorization", "Bearer $supabaseKey")
+                    conn.setRequestProperty("Content-Type", "application/json")
+                    conn.doOutput = true
 
-                val body = JSONObject().apply {
-                    put("p_courier_id", courierId)
-                    put("p_secret", serviceSecret)
+                    val body = JSONObject().apply {
+                        put("p_courier_id", courierId)
+                        put("p_secret", serviceSecret)
+                    }
+
+                    conn.outputStream.use { it.write(body.toString().toByteArray()) }
+                    val code = conn.responseCode
+                    android.util.Log.d("StayMonitor", "Revocation response: $code (attempt ${attempts + 1})")
+                    conn.disconnect()
+
+                    if (code in 200..299) break // Success, stop retrying
+                    attempts++
+                    if (attempts < maxAttempts) Thread.sleep(2_000L * attempts) // Backoff
+                } catch (e: Exception) {
+                    android.util.Log.e("StayMonitor", "Revocation failed (attempt ${attempts + 1})", e)
+                    attempts++
+                    if (attempts < maxAttempts) Thread.sleep(2_000L * attempts)
                 }
-
-                conn.outputStream.use { it.write(body.toString().toByteArray()) }
-                android.util.Log.d("StayMonitor", "Revocation response: ${conn.responseCode}")
-                conn.disconnect()
-            } catch (e: Exception) {
-                e.printStackTrace()
             }
         }.start()
     }

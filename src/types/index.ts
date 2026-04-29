@@ -52,10 +52,8 @@ export interface User {
   unpaid_amount?: number;
   is_priority_recovery?: boolean;
   shift_id?: string;
-  stay_zone_counter?: number;
-  last_stay_check?: string;
-  stay_activated_via_qr?: boolean;
-  current_basecamp_id?: string;
+  gps_consecutive_out?: number;
+  stay_basecamp_id?: string;
 }
 
 export interface CreateUserInput {

@@ -41,7 +41,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(StayMonitorPlugin.class);
         IntentFilter filter = new IntentFilter("com.kurirdev.STAY_NATIVE_EVENT");
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(stayReceiver, filter, Context.RECEIVER_EXPORTED);
+            registerReceiver(stayReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
         } else {
             registerReceiver(stayReceiver, filter);
         }

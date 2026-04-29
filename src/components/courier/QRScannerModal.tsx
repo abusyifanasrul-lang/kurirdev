@@ -22,7 +22,7 @@ import { Capacitor } from '@capacitor/core';
 import { BarcodeScanner, BarcodeFormat } from '@capacitor-mlkit/barcode-scanning';
 import jsQR from 'jsqr';
 import { X, RefreshCw, AlertTriangle, CheckCircle } from 'lucide-react';
-import { supabase } from '@/lib/supabaseClient';
+import { useCourierStore } from '@/stores/useCourierStore';
 import { useSessionStore } from '@/stores/useSessionStore';
 import './qr-scanner.css';
 
@@ -106,26 +106,13 @@ export function QRScannerModal({ isOpen, onClose, courierId }: QRScannerModalPro
     setScanState('verifying');
 
     try {
-      const { data, error } = await supabase.rpc('verify_stay_qr', {
-        p_token: token,
-        p_courier_id: courierId,
-      });
+      // M2 Fix: Delegasi ke store yang menangani RPC + native service start
+      const result = await useCourierStore.getState().setCourierStay(courierId, token);
 
-      if (error) {
-        setScanState('error');
-        setErrorMessage(error.message || 'Gagal verifikasi. Coba lagi.');
-        isProcessingRef.current = false;
-        return;
-      }
-
-      type VerifyResult = { success: boolean; message?: string; error?: string };
-      const result = data as VerifyResult | null;
-
-      if (result?.success) {
+      if (result.success) {
         setScanState('success');
-        setSuccessMessage(result.message || 'Status STAY aktif!');
+        setSuccessMessage('Status STAY aktif!');
 
-        // ─── FIX #3: Pakai selector, bukan getState() ─────────────────────
         updateUser({
           is_online: true,
           courier_status: 'stay',
@@ -134,12 +121,12 @@ export function QRScannerModal({ isOpen, onClose, courierId }: QRScannerModalPro
         setTimeout(() => onClose(), 2000);
       } else {
         setScanState('error');
-        setErrorMessage(result?.error || 'QR Code tidak valid.');
+        setErrorMessage('QR Code tidak valid.');
         isProcessingRef.current = false;
       }
-    } catch {
+    } catch (err: any) {
       setScanState('error');
-      setErrorMessage('Koneksi gagal. Periksa internet kamu.');
+      setErrorMessage(err?.message || 'Koneksi gagal. Periksa internet kamu.');
       isProcessingRef.current = false;
     }
   }, [courierId, onClose, stopScanner, updateUser]);
@@ -237,8 +224,9 @@ export function QRScannerModal({ isOpen, onClose, courierId }: QRScannerModalPro
 
     await BarcodeScanner.removeAllListeners();
     await BarcodeScanner.addListener('barcodesScanned', result => {
-      if (result.barcode?.rawValue) {
-        handleVerify(result.barcode.rawValue);
+      const first = result.barcodes?.[0];
+      if (first?.rawValue) {
+        handleVerify(first.rawValue);
       }
     });
 

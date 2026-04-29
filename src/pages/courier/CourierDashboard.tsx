@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useStayMonitor } from '@/hooks/useStayMonitor';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, AlertTriangle, DollarSign, CheckCircle, Clock, Package } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
@@ -40,6 +41,16 @@ export function CourierDashboard() {
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   const courierStatus = (liveUser as any)?.courier_status ?? (isOnline ? 'on' : 'off');
+
+  // M1 Fix: Mount STAY monitoring hook — handles auto-resume & native revocation events
+  useStayMonitor({
+    courierId: user?.id ?? '',
+    isStay: courierStatus === 'stay',
+    onRevoked: useCallback(() => {
+      // Force re-fetch profile to sync UI after native revocation
+      if (user?.id) subscribeProfile(user.id);
+    }, [user?.id, subscribeProfile]),
+  });
 
   useEffect(() => {
     if (!user?.id) return;

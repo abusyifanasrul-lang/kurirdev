@@ -4,6 +4,13 @@ import { Courier } from '@/types'
 import { useUserStore } from './useUserStore'
 import { stayNative } from '@/lib/stayMonitoring'
 
+// Explicit types for DB columns not yet in generated Supabase types
+interface BasecampRow {
+  lat: number
+  lng: number
+  radius_m: number
+}
+
 interface CourierState {
   readonly couriers: Courier[]
   addCourier: (courier: Courier, password: string) => Promise<void>
@@ -49,7 +56,7 @@ export const useCourierStore = create<CourierState>()((_set, get) => ({
 
   rotateQueue: async (assignedCourierId) => {
     const { error } = await supabase.rpc('rotate_courier_queue', {
-      p_courier_id: assignedCourierId
+      target_user_id: assignedCourierId
     })
     if (error) {
       console.error('Failed to rotate queue:', error)
@@ -72,7 +79,7 @@ export const useCourierStore = create<CourierState>()((_set, get) => ({
       courier_status: status,
       off_reason: '',
     })
-    await supabase.rpc('record_courier_checkin', { p_courier_id: courierId })
+    // Check-in recorded via DB trigger — no need for separate RPC
     if (status === 'on') stayNative.stop()
   },
 
@@ -89,11 +96,21 @@ export const useCourierStore = create<CourierState>()((_set, get) => ({
 
     if (result.basecamp_id) {
       // Ambil koordinat basecamp + service_secret untuk native service
-      const [{ data: bc }, { data: settings }] = await Promise.all([
-        supabase.from('basecamps').select('lat, lng, radius_m').eq('id', result.basecamp_id).single(),
-        supabase.from('settings').select('service_secret').eq('id', 'global').single(),
+      const [bcResult, settingsResult] = await Promise.all([
+        supabase
+          .from('basecamps' as any)
+          .select('lat, lng, radius_m')
+          .eq('id', result.basecamp_id)
+          .single() as unknown as Promise<{ data: BasecampRow | null; error: any }>,
+        supabase
+          .from('settings' as any)
+          .select('service_secret')
+          .eq('id', 'global')
+          .single() as unknown as Promise<{ data: { service_secret: string } | null; error: any }>,
       ])
 
+      const bc = bcResult.data
+      const settings = settingsResult.data
       const { supabaseUrl, supabaseAnonKey } = await import('@/lib/supabaseClient')
 
       if (bc && settings) {
@@ -110,7 +127,7 @@ export const useCourierStore = create<CourierState>()((_set, get) => ({
       }
     }
 
-    await useUserStore.getState().fetchProfile(courierId)
+    await useUserStore.getState().fetchUsers()
     return { success: true, basecamp_id: result.basecamp_id }
   },
 }))

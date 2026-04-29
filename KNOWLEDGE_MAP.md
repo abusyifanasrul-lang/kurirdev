@@ -10,6 +10,58 @@
 # Walkthrough - Enhanced Maintenance Security
 
 
+## Session Update: 2026-04-29 11:27:46
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 6
+- **Files**: `b/android/app/src/main/java/com/kurirdev/app/MainActivity.java, b/src/stores/useCourierStore.ts, b/android/app/src/main/AndroidManifest.xml, b/android/app/src/main/java/com/kurirdev/app/StayMonitoringService.kt, b/android/app/src/main/java/com/kurirdev/app/StayMonitorPlugin.kt, b/src/lib/stayMonitoring.ts, b/src/hooks/useStayMonitor.ts`
+- **Overwrites**: `function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {, const user = useUserStore.getState().users.find(u => u.id === courierId);, setCourierStay: (courierId: string, qrToken: string, lat: number, lng: number) => Promise<{ success: boolean; message: string; basecamp_id: string | null }>, reset: () => {, return users.filter(u =>, setCourierStay: async (courierId, qrToken, lat, lng) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 6
+- **Files**: `b/android/app/src/main/AndroidManifest.xml, b/src/hooks/useStayMonitor.ts, b/android/app/src/main/java/com/kurirdev/app/StayMonitoringService.kt, b/android/app/src/main/java/com/kurirdev/app/StayMonitorPlugin.kt, b/src/stores/useCourierStore.ts, b/src/lib/stayMonitoring.ts, b/android/app/src/main/java/com/kurirdev/app/MainActivity.java`
+- **Overwrites**: `function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {, const user = useUserStore.getState().users.find(u => u.id === courierId);, setCourierStay: (courierId: string, qrToken: string, lat: number, lng: number) => Promise<{ success: boolean; message: string; basecamp_id: string | null }>, reset: () => {, return users.filter(u =>, setCourierStay: async (courierId, qrToken, lat, lng) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 0
+- **Files**: `b/KNOWLEDGE_MAP.md, b/temp/TECHNICAL_SPEC_DETAILED.md`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 4
+- **Files**: `b/KNOWLEDGE_MAP.md, b/src/stores/useUserStore.ts, b/src/types/index.ts, b/src/pages/Orders.tsx`
+- **Overwrites**: `.filter(u => u.role === 'courier' && u.is_active === true && u.is_online === true), .sort((a, b) => ((a as any).queue_position ?? 999) - ((b as any).queue_position ?? 999));, set(state => ({, users: state.users.map(u => u.id === (newRec as any).id ? updatedUser : u)`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 4
+- **Files**: `b/KNOWLEDGE_MAP.md, b/src/stores/useUserStore.ts, b/src/pages/Orders.tsx, b/src/types/index.ts`
+- **Overwrites**: `.filter(u => u.role === 'courier' && u.is_active === true && u.is_online === true), .sort((a, b) => ((a as any).queue_position ?? 999) - ((b as any).queue_position ?? 999));, set(state => ({, users: state.users.map(u => u.id === (newRec as any).id ? updatedUser : u)`
+---
+
+## Session Update: 2026-04-29 08:12:44
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 6
+- **Files**: `b/android/app/src/main/AndroidManifest.xml, b/src/hooks/useStayMonitor.ts, b/android/app/src/main/java/com/kurirdev/app/StayMonitoringService.kt, b/android/app/src/main/java/com/kurirdev/app/StayMonitorPlugin.kt, b/src/stores/useCourierStore.ts, b/src/lib/stayMonitoring.ts, b/android/app/src/main/java/com/kurirdev/app/MainActivity.java`
+- **Overwrites**: `function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {, const user = useUserStore.getState().users.find(u => u.id === courierId);, setCourierStay: (courierId: string, qrToken: string, lat: number, lng: number) => Promise<{ success: boolean; message: string; basecamp_id: string | null }>, reset: () => {, return users.filter(u =>, setCourierStay: async (courierId, qrToken, lat, lng) => {`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 0
+- **Files**: `b/KNOWLEDGE_MAP.md, b/temp/TECHNICAL_SPEC_DETAILED.md`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 4
+- **Files**: `b/KNOWLEDGE_MAP.md, b/src/stores/useUserStore.ts, b/src/types/index.ts, b/src/pages/Orders.tsx`
+- **Overwrites**: `.filter(u => u.role === 'courier' && u.is_active === true && u.is_online === true), .sort((a, b) => ((a as any).queue_position ?? 999) - ((b as any).queue_position ?? 999));, set(state => ({, users: state.users.map(u => u.id === (newRec as any).id ? updatedUser : u)`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 4
+- **Files**: `b/KNOWLEDGE_MAP.md, b/src/stores/useUserStore.ts, b/src/pages/Orders.tsx, b/src/types/index.ts`
+- **Overwrites**: `.filter(u => u.role === 'courier' && u.is_active === true && u.is_online === true), .sort((a, b) => ((a as any).queue_position ?? 999) - ((b as any).queue_position ?? 999));, set(state => ({, users: state.users.map(u => u.id === (newRec as any).id ? updatedUser : u)`
+---
+- **Type**: auto_harvest
+- **Desc**: Changes detected via git diff. Overwritten potential functions: 1
+- **Files**: `b/KNOWLEDGE_MAP.md, b/src/components/courier/QRScannerModal.tsx, b/src/pages/Couriers.tsx, b/src/components/admin/StayQRDisplay.tsx`
+- **Overwrites**: `const fetchTodayLogs = useCallback(async () => {`
+---
+
 ## Session Update: 2026-04-28 13:18:46
 - **Type**: auto_harvest
 - **Desc**: Changes detected via git diff. Overwritten potential functions: 0

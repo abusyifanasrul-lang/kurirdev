@@ -10,6 +10,13 @@ interface UseStayMonitorOptions {
   onRevoked?: () => void
 }
 
+// Explicit types for DB columns not yet in generated Supabase types
+interface BasecampRow {
+  lat: number
+  lng: number
+  radius_m: number
+}
+
 export function useStayMonitor({ courierId, isStay, onRevoked }: UseStayMonitorOptions) {
   const outCounterRef = useRef(0)
 
@@ -26,15 +33,25 @@ export function useStayMonitor({ courierId, isStay, onRevoked }: UseStayMonitorO
           .from('profiles')
           .select('stay_basecamp_id')
           .eq('id', courierId)
-          .single()
+          .single() as { data: { stay_basecamp_id: string | null } | null; error: any }
 
         if (!profile?.stay_basecamp_id) return
 
-        const [{ data: bc }, { data: settings }] = await Promise.all([
-          supabase.from('basecamps').select('lat, lng, radius_m').eq('id', profile.stay_basecamp_id).single(),
-          supabase.from('settings').select('service_secret').eq('id', 'global').single(),
+        const [bcResult, settingsResult] = await Promise.all([
+          supabase
+            .from('basecamps' as any)
+            .select('lat, lng, radius_m')
+            .eq('id', profile.stay_basecamp_id)
+            .single() as unknown as Promise<{ data: BasecampRow | null; error: any }>,
+          supabase
+            .from('settings' as any)
+            .select('service_secret')
+            .eq('id', 'global')
+            .single() as unknown as Promise<{ data: { service_secret: string } | null; error: any }>,
         ])
 
+        const bc = bcResult.data
+        const settings = settingsResult.data
         const { supabaseUrl, supabaseAnonKey } = await import('@/lib/supabaseClient')
 
         if (bc && settings) {
@@ -70,17 +87,18 @@ export function useStayMonitor({ courierId, isStay, onRevoked }: UseStayMonitorO
               courier_status: 'on',
               stay_basecamp_id: null,
               gps_consecutive_out: 0,
-            })
+            } as any)
             .eq('id', courierId)
 
           if (error) throw error
 
-          await useUserStore.getState().fetchProfile(courierId)
+          // Refresh user data in store
+          await useUserStore.getState().fetchUsers()
 
-          useToastStore.getState().addToast({
-            type: 'warning',
-            message: 'Status STAY dicabut — kamu terdeteksi keluar area basecamp 5 menit berturut-turut',
-          })
+          useToastStore.getState().addToast(
+            'Status STAY dicabut — kamu terdeteksi keluar area basecamp 5 menit berturut-turut',
+            'warning',
+          )
 
           onRevoked?.()
         } catch (err) {
