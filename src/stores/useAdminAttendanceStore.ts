@@ -113,12 +113,14 @@ export const useAdminAttendanceStore = create<AdminAttendanceStore>((set, get) =
   },
 
   subscribeToday: () => {
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
     const channel = supabase
       .channel('attendance-today')
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'shift_attendance',
+        filter: `date=eq.${today}`,  // ✅ hanya trigger untuk hari ini
       }, () => {
         // Saat ada perubahan attendance, refresh keduanya
         get().fetchTodayLogs();
