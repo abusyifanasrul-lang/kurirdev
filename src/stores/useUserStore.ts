@@ -333,9 +333,7 @@ export const useUserStore = create<UserState>()((set, get) => ({
             const existingUsers = get().users
             const existingUser = existingUsers.find(u => u.id === id)
             
-            let updatedUser: User = existingUser 
-              ? { ...existingUser, ...payload.new } 
-              : mapProfileToUser(payload.new)
+            const updatedUser: User = mapProfileToUser(payload.new, existingUser)
 
             set(state => ({
               users: state.users.map(u => u.id === id ? updatedUser : u)

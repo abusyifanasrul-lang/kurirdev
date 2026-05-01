@@ -25,7 +25,7 @@ export function CourierDashboard() {
   const { activeOrdersByCourier } = useOrderStore();
 
   const { setCourierOffline, setCourierOnline } = useCourierStore();
-  const { users, subscribeProfile } = useUserStore();
+  const { users, subscribeProfile, fetchProfile } = useUserStore();
   const { user: currentUser } = useSessionStore();
   const { commission_rate, commission_threshold, commission_type } = useSettingsStore();
 
@@ -47,9 +47,10 @@ export function CourierDashboard() {
     courierId: user?.id ?? '',
     isStay: courierStatus === 'stay',
     onRevoked: useCallback(() => {
-      // Force re-fetch profile to sync UI after native revocation
-      if (user?.id) subscribeProfile(user.id);
-    }, [user?.id, subscribeProfile]),
+      // Re-fetch profile to sync UI after native revocation
+      // Gunakan fetchProfile (one-shot) bukan subscribeProfile (subscription) untuk avoid leak
+      if (user?.id) fetchProfile(user.id);
+    }, [user?.id, fetchProfile]),
   });
 
   useEffect(() => {

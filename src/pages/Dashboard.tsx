@@ -385,8 +385,25 @@ export function Dashboard() {
                     const activeCouriers = users.filter(u => u.role === 'courier' && u.is_active)
                     const onlineQueue = [...activeCouriers.filter(u => u.is_online)]
                       .sort((a, b) => {
-                        const timeA = (a as any).queue_joined_at ? new Date((a as any).queue_joined_at).getTime() : Infinity;
-                        const timeB = (b as any).queue_joined_at ? new Date((b as any).queue_joined_at).getTime() : Infinity;
+                        const getTier = (u: any) => {
+                          if (u.is_priority_recovery) return 1;  // Tier 1: recovery priority
+                          if (u.courier_status === 'stay') return 2;  // Tier 2: stay
+                          const activeCount = activeOrdersByCourier.filter(
+                            o => o.courier_id === u.id && !['delivered', 'cancelled'].includes(o.status)
+                          ).length;
+                          if (activeCount === 0) return 3;  // Tier 3: idle, no orders
+                          if (activeCount === 1) return 4;  // Tier 4: has 1 active order
+                          return 5;                          // Tier 5: has 2+ active orders
+                        };
+                        const tierA = getTier(a);
+                        const tierB = getTier(b);
+                        if (tierA !== tierB) return tierA - tierB;
+                        const timeA = (a as any).queue_joined_at
+                          ? new Date((a as any).queue_joined_at).getTime()
+                          : Infinity;
+                        const timeB = (b as any).queue_joined_at
+                          ? new Date((b as any).queue_joined_at).getTime()
+                          : Infinity;
                         if (timeA !== timeB) return timeA - timeB;
                         return a.id.localeCompare(b.id);
                       })
