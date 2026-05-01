@@ -37,18 +37,36 @@ interface UserState {
 
 const mapProfileToUser = (profile: any, existingUser?: User): User => {
   const base = existingUser ? { ...existingUser } : {} as User;
+
+  // Resolve merged values first so we can compute derived fields
+  const role = (profile.role !== undefined ? profile.role : base.role) as UserRole;
+  const is_active = profile.is_active !== undefined ? profile.is_active : (base.is_active ?? true);
+  const courier_status = profile.courier_status !== undefined ? profile.courier_status : base.courier_status;
+
+  // Mirror backend trigger logic (handle_courier_queue_sync) to guarantee consistency.
+  // Supabase Realtime with REPLICA IDENTITY DEFAULT only sends columns changed by the
+  // client UPDATE, NOT columns modified by server-side triggers. So is_online from the
+  // trigger will NOT appear in the Realtime payload — we must compute it here.
+  let computed_is_online: boolean;
+  if (role === 'courier') {
+    computed_is_online = is_active === true && (courier_status === 'on' || courier_status === 'stay');
+  } else {
+    // Non-courier users: use whatever the DB says (or fall back to existing state)
+    computed_is_online = profile.is_online !== undefined ? profile.is_online : (base.is_online ?? false);
+  }
+
   
   return {
     ...base,
     id: profile.id || base.id,
     name: profile.name !== undefined ? profile.name : base.name,
     email: profile.email !== undefined ? profile.email : (base.email || ''),
-    role: profile.role !== undefined ? profile.role as UserRole : base.role,
+    role,
     phone: profile.phone !== undefined ? profile.phone : base.phone,
-    is_active: profile.is_active !== undefined ? profile.is_active : (base.is_active ?? true),
-    is_online: profile.is_online !== undefined ? profile.is_online : base.is_online,
+    is_active,
+    is_online: computed_is_online,
     fcm_token: profile.fcm_token !== undefined ? profile.fcm_token : base.fcm_token,
-    courier_status: profile.courier_status !== undefined ? profile.courier_status : base.courier_status,
+    courier_status,
     off_reason: profile.off_reason !== undefined ? profile.off_reason : base.off_reason,
     vehicle_type: profile.vehicle_type !== undefined ? profile.vehicle_type : base.vehicle_type,
     plate_number: profile.plate_number !== undefined ? profile.plate_number : base.plate_number,

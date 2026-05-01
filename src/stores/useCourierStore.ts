@@ -54,8 +54,8 @@ export const useCourierStore = create<CourierState>()((_set, get) => ({
   },
 
   setCourierOffline: async (courierId, reason) => {
-    // is_online diurus trigger — cukup kirim courier_status
     await useUserStore.getState().updateUser(courierId, {
+      // is_online: false,  ← HAPUS INI, trigger security menolak
       courier_status: 'off',
       off_reason: reason,
     })
@@ -63,12 +63,11 @@ export const useCourierStore = create<CourierState>()((_set, get) => ({
   },
 
   setCourierOnline: async (courierId, status) => {
-    // is_online diurus trigger — cukup kirim courier_status
     await useUserStore.getState().updateUser(courierId, {
+      // is_online: true,   ← HAPUS INI
       courier_status: status,
       off_reason: '',
     })
-    // Check-in recorded via DB trigger — no need for separate RPC
     if (status === 'on') stayNative.stop()
   },
 
