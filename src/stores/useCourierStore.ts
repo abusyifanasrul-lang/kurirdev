@@ -6,9 +6,9 @@ import { stayNative } from '@/lib/stayMonitoring'
 
 // Explicit types for DB columns not yet in generated Supabase types
 interface BasecampRow {
-  lat: number
-  lng: number
-  stay_radius_meters: number
+  latitude: number
+  longitude: number
+  radius_meters: number
 }
 
 interface CourierState {
@@ -64,41 +64,22 @@ export const useCourierStore = create<CourierState>()((_set, get) => ({
 
   setCourierOnline: async (courierId, status) => {
     await useUserStore.getState().updateUser(courierId, {
-      // is_online: true,   ← HAPUS INI
       courier_status: status,
       off_reason: '',
     })
     if (status === 'on') stayNative.stop()
+
+    // Catat kehadiran (silent fail — tidak blocking)
+    await supabase.rpc('record_courier_checkin', {
+      p_courier_id: courierId
+    }).catch(() => {}) // jika gagal, admin bisa input manual
   },
 
   setCourierStay: async (courierId, qrToken) => {
-    // Get current GPS position for stay verification
-    // Explicit initialization to avoid "used before assigned" TypeScript error in strict mode
-    let coords: GeolocationCoordinates = undefined!
-
-    try {
-      // Use Capacitor Geolocation plugin for native GPS access
-      // Destructure coords directly to avoid intermediate position variable
-      const { coords: positionCoords } = await Geolocation.getCurrentPosition({
-        enableHighAccuracy: true,
-        timeout: 10000,
-      })
-      coords = positionCoords
-    } catch (geoError: any) {
-      console.error('Failed to get GPS position:', geoError)
-      // Handle permission denied error specifically
-      if (geoError?.message?.toLowerCase().includes('permission')) {
-        throw new Error('Izin lokasi ditolak. Mohon izinkan akses lokasi di pengaturan aplikasi.')
-      }
-      throw new Error('Gagal mendapatkan lokasi GPS. Pastikan GPS aktif dan izin lokasi diberikan.')
-    }
-
     // Call RPC with correct parameters matching SQL function signature
     const { data, error } = await supabase.rpc('verify_stay_qr', {
+      p_token: qrToken,
       p_courier_id: courierId,
-      p_qr_token: qrToken,
-      p_courier_lat: coords.latitude,
-      p_courier_lng: coords.longitude,
     })
     if (error) throw error
 
@@ -110,7 +91,7 @@ export const useCourierStore = create<CourierState>()((_set, get) => ({
       const [bcResult, settingsResult] = await Promise.all([
         supabase
           .from('basecamps' as any)
-          .select('lat, lng, stay_radius_meters')
+          .select('latitude, longitude, radius_meters')
           .eq('id', result.basecamp_id)
           .single() as unknown as Promise<{ data: BasecampRow | null; error: any }>,
         supabase
@@ -126,9 +107,9 @@ export const useCourierStore = create<CourierState>()((_set, get) => ({
 
       if (bc && settings) {
         stayNative.start({
-          lat: bc.lat,
-          lng: bc.lng,
-          radius: bc.stay_radius_meters,
+          lat: bc.latitude,
+          lng: bc.longitude,
+          radius: bc.radius_meters,
           basecampId: result.basecamp_id,
           supabaseUrl,
           supabaseAnonKey,

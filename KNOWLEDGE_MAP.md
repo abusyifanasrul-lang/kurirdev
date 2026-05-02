@@ -10,6 +10,85 @@
 # Walkthrough - Enhanced Maintenance Security
 
 
+## Session Update: 2026-05-02 21:26:34
+- **Type**: auto_harvest
+- **Desc**: Changes in 3 file(s): 1 added. Functions: getTier. 2 chunk(s) unclassified.
+- **Files**: `src/pages/Dashboard.tsx, src/pages/courier/CourierDashboard.tsx, src/stores/useUserStore.ts`
+- **Overwrites**: `getTier`
+- **Confidence**: 0.9
+- **Method**: heuristic
+- **Change Type**: added
+---
+- **Type**: auto_harvest
+- **Desc**: Changes in 3 file(s): 1 added. Functions: getTier. 2 chunk(s) unclassified.
+- **Files**: `src/pages/Dashboard.tsx, src/pages/courier/CourierDashboard.tsx, src/stores/useUserStore.ts`
+- **Overwrites**: `getTier`
+- **Confidence**: 0.9
+- **Method**: heuristic
+- **Change Type**: added
+---
+- **Type**: auto_harvest
+- **Desc**: Changes in 9 file(s): 1 added. Functions: invoke_process_alpha. 8 chunk(s) unclassified.
+- **Files**: `src/stores/useAdminAttendanceStore.ts, supabase/config.toml, supabase/functions/process-alpha/deno.json, supabase/functions/process-alpha/index.ts, supabase/migrations/20260429_cron_process_alpha.sql, supabase/migrations/20260429_fix_complete_order_fine_validation.sql, supabase/migrations/20260429_fix_get_missing_couriers.sql, supabase/migrations/20260429_fix_process_shift_alpha.sql, supabase/migrations/20260429_fix_record_courier_checkin.sql`
+- **Overwrites**: `invoke_process_alpha`
+- **Confidence**: 0.9
+- **Method**: heuristic
+- **Change Type**: added
+---
+- **Type**: auto_harvest
+- **Desc**: Changes in 11 file(s): 3 logic, 1 added, 2 removed. Functions: catch, if, if, catch, catch, if. 8 chunk(s) unclassified.
+- **Files**: `src/hooks/useStayMonitor.ts, src/pages/Orders.tsx, src/services/api.ts, src/stores/useCourierStore.ts, src/stores/useOrderStore.ts, supabase/migrations/20260429_add_missing_profile_columns.sql, supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, supabase/migrations/20260429_create_attendance_logs.sql, supabase/migrations/20260429_fix_global_stay_radius.sql, supabase/migrations/20260429_fix_rls_profiles.sql, supabase/migrations/20260429_queue_functions_dump.sql`
+- **Overwrites**: `catch, if, if, catch, catch, if`
+- **Confidence**: 0.8
+- **Method**: heuristic
+- **Change Type**: logic
+---
+- **Type**: auto_harvest
+- **Desc**: Changes in 11 file(s): 3 logic, 1 added, 2 removed. Functions: if, catch, if, catch, if, catch. 8 chunk(s) unclassified.
+- **Files**: `src/hooks/useStayMonitor.ts, src/pages/Orders.tsx, src/services/api.ts, src/stores/useCourierStore.ts, src/stores/useOrderStore.ts, supabase/migrations/20260429_add_missing_profile_columns.sql, supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, supabase/migrations/20260429_create_attendance_logs.sql, supabase/migrations/20260429_fix_global_stay_radius.sql, supabase/migrations/20260429_fix_rls_profiles.sql, supabase/migrations/20260429_queue_functions_dump.sql`
+- **Overwrites**: `if, catch, if, catch, if, catch`
+- **Confidence**: 0.8
+- **Method**: heuristic
+- **Change Type**: logic
+---
+- **Type**: auto_harvest
+- **Desc**: Changes in 11 file(s): 3 logic, 1 added, 2 removed. Functions: if, catch, if, catch, if, catch. 8 chunk(s) unclassified.
+- **Files**: `src/hooks/useStayMonitor.ts, src/pages/Orders.tsx, src/services/api.ts, src/stores/useCourierStore.ts, src/stores/useOrderStore.ts, supabase/migrations/20260429_add_missing_profile_columns.sql, supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, supabase/migrations/20260429_create_attendance_logs.sql, supabase/migrations/20260429_fix_global_stay_radius.sql, supabase/migrations/20260429_fix_rls_profiles.sql, supabase/migrations/20260429_queue_functions_dump.sql`
+- **Overwrites**: `if, catch, if, catch, if, catch`
+- **Confidence**: 0.8
+- **Method**: heuristic
+- **Change Type**: logic
+---
+- **Type**: auto_harvest
+- **Desc**: Changes in 11 file(s): 3 logic, 1 added, 2 removed. Functions: catch, if, if, catch, catch, if. 8 chunk(s) unclassified.
+- **Files**: `src/hooks/useStayMonitor.ts, src/pages/Orders.tsx, src/services/api.ts, src/stores/useCourierStore.ts, src/stores/useOrderStore.ts, supabase/migrations/20260429_add_missing_profile_columns.sql, supabase/migrations/20260429_create_assign_and_rotate_rpc.sql, supabase/migrations/20260429_create_attendance_logs.sql, supabase/migrations/20260429_fix_global_stay_radius.sql, supabase/migrations/20260429_fix_rls_profiles.sql, supabase/migrations/20260429_queue_functions_dump.sql`
+- **Overwrites**: `catch, if, if, catch, catch, if`
+- **Confidence**: 0.8
+- **Method**: heuristic
+- **Change Type**: logic
+---
+- **Type**: auto_harvest
+- **Desc**: Logic_change in Orders
+- **Files**: `src/pages/Orders.tsx`
+- **Overwrites**: `Orders`
+- **Confidence**: 1.0
+- **Method**: ast
+---
+- **Type**: auto_harvest
+- **Desc**: Logic_change in useStayMonitor
+- **Files**: `src/hooks/useStayMonitor.ts`
+- **Overwrites**: `useStayMonitor`
+- **Confidence**: 1.0
+- **Method**: ast
+---
+- **Type**: auto_harvest
+- **Desc**: Logic_change in Orders
+- **Files**: `src/pages/Orders.tsx`
+- **Overwrites**: `Orders`
+- **Confidence**: 1.0
+- **Method**: ast
+---
+
 ## Session Update: 2026-05-01 10:07:16
 - **Type**: auto_harvest
 - **Desc**: Changes in 3 file(s): 1 added. Functions: getTier. 2 chunk(s) unclassified.
