@@ -11,6 +11,24 @@ const settingsRefs = new Map<string, number>()
 
 export type { CourierInstruction }
 
+interface Basecamp {
+  id: string
+  name: string
+  address: string
+  latitude: number
+  longitude: number
+  radius_meters: number
+  is_active: boolean
+}
+
+interface Holiday {
+  id: string
+  date: string
+  name: string
+  is_national: boolean
+  is_active: boolean
+}
+
 interface BusinessSettings {
   commission_rate: number
   commission_threshold: number
@@ -23,6 +41,8 @@ interface BusinessSettings {
   fine_late_major_amount: number
   fine_alpha_amount: number
   billing_start_day: number
+  basecamps: Basecamp[]
+  holidays: Holiday[]
 }
 
 interface SettingsStore extends BusinessSettings {
@@ -30,6 +50,14 @@ interface SettingsStore extends BusinessSettings {
   addCourierInstruction: (instruction: Omit<CourierInstruction, 'id'>) => void
   updateCourierInstruction: (id: string, instruction: Partial<CourierInstruction>) => void
   deleteCourierInstruction: (id: string) => void
+  fetchBasecamps: () => Promise<void>
+  addBasecamp: (basecamp: Omit<Basecamp, 'id'>) => Promise<void>
+  updateBasecamp: (id: string, basecamp: Partial<Omit<Basecamp, 'id'>>) => Promise<void>
+  deleteBasecamp: (id: string) => Promise<void>
+  fetchHolidays: () => Promise<void>
+  addHoliday: (holiday: Omit<Holiday, 'id'>) => Promise<void>
+  updateHoliday: (id: string, holiday: Partial<Omit<Holiday, 'id'>>) => Promise<void>
+  deleteHoliday: (id: string) => Promise<void>
   fetchSettings: () => Promise<void>
   subscribeSettings: () => (() => void)
   unsubscribeSettings: () => void
@@ -60,6 +88,8 @@ export const useSettingsStore = create<SettingsStore>()(
       fine_late_major_amount: 30000,
       fine_alpha_amount: 50000,
       billing_start_day: 1,
+      basecamps: [],
+      holidays: [],
       realtimeStatus: {},
       _resyncLock: null,
 
@@ -78,6 +108,158 @@ export const useSettingsStore = create<SettingsStore>()(
       deleteCourierInstruction: (id) => set((state) => ({
         courier_instructions: state.courier_instructions.filter(item => item.id !== id)
       })),
+
+      fetchBasecamps: async () => {
+        const { data, error } = await supabase
+          .from('basecamps')
+          .select('*')
+          .order('name', { ascending: true })
+        
+        if (error) {
+          console.error('Error fetching basecamps:', error)
+          return
+        }
+        
+        set({ basecamps: data || [] })
+      },
+
+      addBasecamp: async (basecamp) => {
+        console.log('[Store] Adding basecamp:', basecamp);
+        const { data, error } = await supabase
+          .from('basecamps')
+          .insert([basecamp])
+          .select()
+          .single()
+        
+        if (error) {
+          console.error('[Store] Error adding basecamp:', error);
+          console.error('[Store] Error details:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+          });
+          throw error
+        }
+        
+        console.log('[Store] Basecamp added successfully:', data);
+        set((state) => ({
+          basecamps: [...state.basecamps, data]
+        }))
+      },
+
+      updateBasecamp: async (id, basecamp) => {
+        const { data, error } = await supabase
+          .from('basecamps')
+          .update(basecamp)
+          .eq('id', id)
+          .select()
+          .single()
+        
+        if (error) {
+          console.error('Error updating basecamp:', error)
+          throw error
+        }
+        
+        set((state) => ({
+          basecamps: state.basecamps.map((b) => (b.id === id ? data : b))
+        }))
+      },
+
+      deleteBasecamp: async (id) => {
+        const { error } = await supabase
+          .from('basecamps')
+          .delete()
+          .eq('id', id)
+        
+        if (error) {
+          console.error('Error deleting basecamp:', error)
+          throw error
+        }
+        
+        set((state) => ({
+          basecamps: state.basecamps.filter((b) => b.id !== id)
+        }))
+      },
+
+      fetchHolidays: async () => {
+        console.log('[Store] Fetching holidays');
+        const { data, error } = await supabase
+          .from('holidays')
+          .select('*')
+          .order('date', { ascending: false })
+        
+        if (error) {
+          console.error('[Store] Error fetching holidays:', error)
+          return
+        }
+        
+        console.log('[Store] Holidays fetched:', data?.length || 0);
+        set({ holidays: data || [] })
+      },
+
+      addHoliday: async (holiday) => {
+        console.log('[Store] Adding holiday:', holiday);
+        const { data, error } = await supabase
+          .from('holidays')
+          .insert([holiday])
+          .select()
+          .single()
+        
+        if (error) {
+          console.error('[Store] Error adding holiday:', error);
+          console.error('[Store] Error details:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+          });
+          throw error
+        }
+        
+        console.log('[Store] Holiday added successfully:', data);
+        set((state) => ({
+          holidays: [data, ...state.holidays]
+        }))
+      },
+
+      updateHoliday: async (id, holiday) => {
+        console.log('[Store] Updating holiday:', id, holiday);
+        const { data, error } = await supabase
+          .from('holidays')
+          .update(holiday)
+          .eq('id', id)
+          .select()
+          .single()
+        
+        if (error) {
+          console.error('[Store] Error updating holiday:', error)
+          throw error
+        }
+        
+        console.log('[Store] Holiday updated successfully:', data);
+        set((state) => ({
+          holidays: state.holidays.map((h) => (h.id === id ? data : h))
+        }))
+      },
+
+      deleteHoliday: async (id) => {
+        console.log('[Store] Deleting holiday:', id);
+        const { error } = await supabase
+          .from('holidays')
+          .delete()
+          .eq('id', id)
+        
+        if (error) {
+          console.error('[Store] Error deleting holiday:', error)
+          throw error
+        }
+        
+        console.log('[Store] Holiday deleted successfully');
+        set((state) => ({
+          holidays: state.holidays.filter((h) => h.id !== id)
+        }))
+      },
 
       fetchSettings: async () => {
         const { data, error } = await supabase.from('settings').select('*').single() as { data: any, error: any }
@@ -237,13 +419,15 @@ export const useSettingsStore = create<SettingsStore>()(
         fine_late_major_amount: 30000,
         fine_alpha_amount: 50000,
         billing_start_day: 1,
+        basecamps: [],
+        holidays: [],
         realtimeStatus: {},
       }))
     }),
     {
       name: 'business-settings',
       storage: createJSONStorage(() => localStorage),
-      version: 7,
+      version: 9,
       migrate: (persistedState: any, version: number) => {
         const iconNameToEmoji: Record<string, string> = {
           'CheckCircle': '✅', 'Search': '🔍', 'ShoppingCart': '🛒',
@@ -264,6 +448,12 @@ export const useSettingsStore = create<SettingsStore>()(
         }
         if (version < 6) {
           persistedState.operational_timezone = persistedState.operational_timezone || 'Asia/Jakarta'
+        }
+        if (version < 8) {
+          persistedState.basecamps = persistedState.basecamps || []
+        }
+        if (version < 9) {
+          persistedState.holidays = persistedState.holidays || []
         }
         return persistedState
       }

@@ -70,6 +70,7 @@ const mapProfileToUser = (profile: any, existingUser?: User): User => {
     off_reason: profile.off_reason !== undefined ? profile.off_reason : base.off_reason,
     vehicle_type: profile.vehicle_type !== undefined ? profile.vehicle_type : base.vehicle_type,
     plate_number: profile.plate_number !== undefined ? profile.plate_number : base.plate_number,
+    shift_id: profile.shift_id !== undefined ? profile.shift_id : base.shift_id,
     queue_position: profile.queue_position !== undefined ? profile.queue_position : base.queue_position,
     queue_joined_at: profile.queue_joined_at !== undefined ? profile.queue_joined_at : base.queue_joined_at,
     cancel_count: profile.cancel_count !== undefined ? profile.cancel_count : base.cancel_count,

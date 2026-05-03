@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, lazy, Suspense } from 'react';
-import { Plus, Eye, EyeOff, ToggleLeft, ToggleRight, TrendingUp, Package, DollarSign, Phone, Mail, Award, Hash, Search, QrCode, RefreshCw, AlertCircle, Clock } from 'lucide-react';
+import { Plus, Eye, EyeOff, ToggleLeft, ToggleRight, TrendingUp, Package, DollarSign, Phone, Mail, Award, Hash, Search, QrCode, RefreshCw, AlertCircle, Clock, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 import { Header } from '@/components/layout/Header';
 import { Card, StatCard } from '@/components/ui/Card';
@@ -32,10 +32,11 @@ import { useShiftStore } from '@/stores/useShiftStore';
 import { useAttendanceStore } from '@/stores/useAttendanceStore';
 import { calcCourierEarning, calcAdminEarning } from '@/lib/calcEarning';
 import { getUnpaidOrdersByCourier, getOrdersForWeek } from '@/lib/orderCache';
+import { useToastStore } from '@/stores/useToastStore';
 
 export function Couriers() {
   const { addCourier, updateCourier } = useCourierStore();
-  const { users } = useUserStore();
+  const { users, updateUser } = useUserStore();
   const couriers = users.filter(u => u.role === 'courier') as Courier[];
   const { orders, activeOrdersByCourier, getOrdersByCourier, settleOrder, fetchInitialOrders } = useOrderStore();
   const { commission_rate, commission_threshold, commission_type } = useSettingsStore();
@@ -44,6 +45,7 @@ export function Couriers() {
   const { fetchCourierAttendance } = useAttendanceStore();
   const { user } = useAuth();
   const isFinance = user?.role === 'finance' || user?.role === 'owner';
+  const { addToast } = useToastStore();
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isPerformanceModalOpen, setIsPerformanceModalOpen] = useState(false);
@@ -56,6 +58,7 @@ export function Couriers() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showQRModal, setShowQRModal] = useState(false);
   const [courierAttendance, setCourierAttendance] = useState<any[]>([]);
+  const [isUpdatingShift, setIsUpdatingShift] = useState(false);
 
   const filteredCouriers = useMemo(() => {
     return couriers.filter(c => 
@@ -242,6 +245,35 @@ export function Couriers() {
       currency: 'IDR',
       minimumFractionDigits: 0,
     }).format(value);
+  };
+
+  const handleShiftChange = async (courierId: string, newShiftId: string) => {
+    setIsUpdatingShift(true);
+    const loadingToast = addToast('Memperbarui kelompok shift...', 'loading', 0);
+
+    try {
+      const result = await updateUser(courierId, { shift_id: newShiftId || null });
+      
+      if (result.success) {
+        addToast('Kelompok shift berhasil diperbarui', 'success', 3000);
+        
+        // Update selectedCourier state
+        if (selectedCourier && selectedCourier.id === courierId) {
+          setSelectedCourier({
+            ...selectedCourier,
+            shift_id: newShiftId || null
+          });
+        }
+      } else {
+        throw new Error(result.error || 'Gagal memperbarui shift');
+      }
+    } catch (error: any) {
+      addToast(error.message || 'Gagal memperbarui kelompok shift', 'error', 5000);
+    } finally {
+      setIsUpdatingShift(false);
+      // Remove loading toast
+      useToastStore.getState().removeToast(loadingToast);
+    }
   };
 
   return (
@@ -724,6 +756,44 @@ export function Couriers() {
                     </div>
                   ))
                 )}
+              </div>
+            </div>
+
+            {/* Kelompok Shift Assignment */}
+            <div className="border-t pt-6">
+              <h4 className="text-sm font-medium text-gray-600 flex items-center gap-2 mb-3">
+                <Calendar className="w-4 h-4" /> Kelompok Shift
+              </h4>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-2">
+                      Shift Saat Ini
+                    </label>
+                    <select
+                      value={selectedCourier.shift_id || ''}
+                      onChange={(e) => handleShiftChange(selectedCourier.id, e.target.value)}
+                      disabled={isUpdatingShift}
+                      className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm"
+                    >
+                      <option value="">-- Belum Ditentukan --</option>
+                      {shifts
+                        .filter(s => s.is_active)
+                        .map(shift => (
+                          <option key={shift.id} value={shift.id}>
+                            {shift.name} ({shift.start_time.substring(0, 5)} - {shift.end_time.substring(0, 5)})
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                  <div className="flex items-start gap-2 text-xs text-blue-700 bg-blue-100 p-2 rounded">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    <p>
+                      Kelompok shift menentukan jam masuk untuk sistem absensi. 
+                      Kurir tanpa shift tidak akan tercatat absensinya.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
 
