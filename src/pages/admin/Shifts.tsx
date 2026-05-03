@@ -78,6 +78,7 @@ export default function Shifts() {
   const [swapFormData, setSwapFormData] = useState<ShiftSwapFormData>(initialSwapFormData);
   const [shiftSwaps, setShiftSwaps] = useState<ShiftSwap[]>([]);
   const [isLoadingSwaps, setIsLoadingSwaps] = useState(false);
+  const [isSubmittingSwap, setIsSubmittingSwap] = useState(false);
 
   const couriers = useMemo(() => {
     const filtered = users.filter(u => u.role === 'courier');
@@ -293,6 +294,13 @@ export default function Shifts() {
       return;
     }
 
+    // Prevent double submission
+    if (isSubmittingSwap) {
+      return;
+    }
+
+    setIsSubmittingSwap(true);
+
     // Check for existing swaps on the same date
     const { data: existingSwaps, error: checkError } = await supabase
       .from('shift_overrides')
@@ -302,11 +310,13 @@ export default function Shifts() {
 
     if (checkError) {
       addToast('Gagal memeriksa data tukar shift', 'error', 3000);
+      setIsSubmittingSwap(false);
       return;
     }
 
     if (existingSwaps && existingSwaps.length > 0) {
       addToast('Salah satu kurir sudah memiliki tukar shift di tanggal ini', 'error', 3000);
+      setIsSubmittingSwap(false);
       return;
     }
 
@@ -382,14 +392,22 @@ export default function Shifts() {
       // Schedule reminder notifications (1 hour before shift starts)
       // Courier 1 reminder (for shift 2)
       if (shift2) {
-        const reminderTime1 = new Date(`${date}T${shift2.start_time}`);
-        reminderTime1.setHours(reminderTime1.getHours() - 1); // 1 hour before
+        // Parse shift start time and create proper datetime in local timezone
+        const shiftDateTime1 = new Date(`${date}T${shift2.start_time}`);
+        const reminderTime1 = new Date(shiftDateTime1.getTime() - 60 * 60 * 1000); // 1 hour before
+        
+        // Format shift start time for display in local timezone
+        const shiftStartDisplay1 = shiftDateTime1.toLocaleTimeString('id-ID', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        });
 
-        await supabase.from('scheduled_notifications').insert({
+        const { error: schedError1 } = await supabase.from('scheduled_notifications').insert({
           user_id: courier1_id,
           scheduled_at: reminderTime1.toISOString(),
           title: '⏰ Pengingat Tukar Shift',
-          message: `Halo ${courier1.name}! Ingat ya, hari ini Anda tukar shift dengan ${courier2.name}. Shift Anda dimulai jam ${shift2.start_time.substring(0, 5)} (${shift2.name}). Jangan lupa check-in!`,
+          message: `Halo ${courier1.name}! Ingat ya, hari ini Anda tukar shift dengan ${courier2.name}. Shift Anda dimulai jam ${shiftStartDisplay1} (${shift2.name}). Jangan lupa check-in!`,
           type: 'shift_swap_reminder',
           data: {
             type: 'shift_swap_reminder',
@@ -400,18 +418,30 @@ export default function Shifts() {
             partner_name: courier2.name
           }
         });
+        
+        if (schedError1) {
+          console.error('Error scheduling reminder for courier 1:', schedError1);
+        }
       }
 
       // Courier 2 reminder (for shift 1)
       if (shift1) {
-        const reminderTime2 = new Date(`${date}T${shift1.start_time}`);
-        reminderTime2.setHours(reminderTime2.getHours() - 1); // 1 hour before
+        // Parse shift start time and create proper datetime in local timezone
+        const shiftDateTime2 = new Date(`${date}T${shift1.start_time}`);
+        const reminderTime2 = new Date(shiftDateTime2.getTime() - 60 * 60 * 1000); // 1 hour before
+        
+        // Format shift start time for display in local timezone
+        const shiftStartDisplay2 = shiftDateTime2.toLocaleTimeString('id-ID', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        });
 
-        await supabase.from('scheduled_notifications').insert({
+        const { error: schedError2 } = await supabase.from('scheduled_notifications').insert({
           user_id: courier2_id,
           scheduled_at: reminderTime2.toISOString(),
           title: '⏰ Pengingat Tukar Shift',
-          message: `Halo ${courier2.name}! Ingat ya, hari ini Anda tukar shift dengan ${courier1.name}. Shift Anda dimulai jam ${shift1.start_time.substring(0, 5)} (${shift1.name}). Jangan lupa check-in!`,
+          message: `Halo ${courier2.name}! Ingat ya, hari ini Anda tukar shift dengan ${courier1.name}. Shift Anda dimulai jam ${shiftStartDisplay2} (${shift1.name}). Jangan lupa check-in!`,
           type: 'shift_swap_reminder',
           data: {
             type: 'shift_swap_reminder',
@@ -422,6 +452,10 @@ export default function Shifts() {
             partner_name: courier1.name
           }
         });
+        
+        if (schedError2) {
+          console.error('Error scheduling reminder for courier 2:', schedError2);
+        }
       }
 
       addToast('Tukar shift berhasil disimpan', 'success', 3000);
@@ -437,6 +471,7 @@ export default function Shifts() {
       addToast(error.message || 'Gagal menyimpan tukar shift', 'error', 5000);
     } finally {
       useToastStore.getState().removeToast(loadingToast);
+      setIsSubmittingSwap(false);
     }
   };
 
@@ -1188,10 +1223,10 @@ export default function Shifts() {
                 </button>
                 <button
                   onClick={handleSaveSwap}
-                  disabled={!swapFormData.date || !swapFormData.courier1_id || !swapFormData.courier2_id}
+                  disabled={!swapFormData.date || !swapFormData.courier1_id || !swapFormData.courier2_id || isSubmittingSwap}
                   className="flex-[2] px-6 py-4 bg-orange-500 text-white rounded-2xl font-bold shadow-lg shadow-orange-500/20 hover:bg-orange-600 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Simpan Tukar Shift
+                  {isSubmittingSwap ? 'Menyimpan...' : 'Simpan Tukar Shift'}
                 </button>
               </div>
             </div>
