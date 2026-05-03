@@ -1249,13 +1249,15 @@ CREATE TABLE basecamps (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name         TEXT,
   address      TEXT,
-  lat          NUMERIC,    -- PENTING: nama kolom 'lat' bukan 'latitude'
-  lng          NUMERIC,    -- PENTING: nama kolom 'lng' bukan 'longitude'
-  radius_m     INTEGER,    -- PENTING: nama kolom 'radius_m' bukan 'radius_meters'
+  lat          NUMERIC,    -- ✅ VERIFIED: nama kolom 'lat' (bukan 'latitude')
+  lng          NUMERIC,    -- ✅ VERIFIED: nama kolom 'lng' (bukan 'longitude')
+  radius_m     INTEGER,    -- ✅ VERIFIED: nama kolom 'radius_m' (bukan 'radius_meters')
   is_active    BOOLEAN DEFAULT true,
   created_at   TIMESTAMPTZ DEFAULT NOW(),
   updated_at   TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- ✅ STATUS (2026-05-03): 1 basecamp exists in production database
 
 -- Token QR untuk verifikasi STAY
 CREATE TABLE stay_qr_tokens (
@@ -1381,8 +1383,9 @@ late_fine_active     BOOLEAN        -- denda per-order aktif hari ini
 permit_count_no_swap INT DEFAULT 0  -- counter izin tanpa pengganti
 
 -- GPS STAY
-stay_basecamp_id     UUID           -- FK ke basecamps
-gps_consecutive_out  INT DEFAULT 0  -- counter keluar berturut-turut
+stay_basecamp_id     UUID           -- ✅ RENAMED from current_basecamp_id (2026-05-03)
+gps_consecutive_out  INT DEFAULT 0  -- ✅ RENAMED from stay_zone_counter (2026-05-03)
+                                    -- CHECK constraint: (gps_consecutive_out >= 0 AND gps_consecutive_out <= 5)
 
 -- Keuangan
 unpaid_amount        BIGINT         -- saldo belum disetor
@@ -1418,7 +1421,7 @@ commission_rate          INT     DEFAULT 80
 commission_threshold     INT     DEFAULT 5000
 commission_type          VARCHAR DEFAULT 'percentage'
 operational_area         TEXT    DEFAULT 'Sengkang, Wajo'
-operational_timezone     TEXT    DEFAULT 'Asia/Jakarta'
+operational_timezone     TEXT    DEFAULT 'Asia/Jakarta'  -- ✅ ADDED 2026-05-03
 courier_instructions     JSONB   DEFAULT '[]'
 
 -- Parameter denda (ditambahkan sesi ini)
@@ -1427,7 +1430,7 @@ fine_late_major_minutes  INT     DEFAULT 60
 fine_late_major_amount   INT     DEFAULT 30000
 fine_alpha_amount        INT     DEFAULT 50000
 billing_start_day        INT     DEFAULT 1
-stay_radius_meters       INT     DEFAULT 10  -- GPS STAY
+radius_m                 INT     DEFAULT 10  -- ✅ RENAMED from stay_radius_meters (2026-05-03)
 ```
 
 ---
@@ -1467,6 +1470,7 @@ stay_radius_meters       INT     DEFAULT 10  -- GPS STAY
 | `src/pages/admin/Shifts.tsx` | UI CRUD shift (baru) |
 | `src/pages/finance/FinancePenagihan.tsx` | `getAdminEarning`, denda flat di settlement |
 | `src/components/settings/BusinessTab.tsx` | UI parameter denda |
+| `src/components/settings/GeneralOpsTab.tsx` | ✅ UPDATED: Basecamp CRUD + Holiday management (2026-05-03) |
 | `src/pages/Settings.tsx` | Sync fine fields ke DB |
 | `src/stores/useCourierStore.ts` | Hapus `rotateQueue`, tambah `record_courier_checkin` |
 | `src/stores/useOrderStore.ts` | Hapus `assignCourier` (diganti RPC atomic) |
@@ -1477,7 +1481,11 @@ stay_radius_meters       INT     DEFAULT 10  -- GPS STAY
 | `src/hooks/useStayMonitor.ts` | Hook GPS STAY (dibangun sesi lain, terverifikasi) |
 | `src/lib/stayMonitoring.ts` | Bridge ke Android native service |
 | `src/components/admin/StayQRDisplay.tsx` | QR rotating + realtime log scan |
-| `src/types/index.ts` | Tambah `fine_deducted`, `queue_joined_at`, dll |
+| `src/types/index.ts` | Tambah `fine_deducted`, `queue_joined_at`, dll + ✅ UPDATED: Basecamp interface (2026-05-03) |
+| `src/types/supabase.ts` | ✅ UPDATED: basecamps & settings table types (2026-05-03) |
+| `src/stores/useCourierStore.ts` | ✅ UPDATED: BasecampRow interface + queries (2026-05-03) |
+| `src/stores/useSettingsStore.ts` | ✅ UPDATED: Basecamp interface (2026-05-03) |
+| `src/hooks/useStayMonitor.ts` | ✅ UPDATED: BasecampRow interface + queries (2026-05-03) |
 | `supabase/functions/process-alpha/index.ts` | Edge Function cron: reset flags + deteksi alpha |
 
 ---
@@ -1513,9 +1521,11 @@ stay_radius_meters       INT     DEFAULT 10  -- GPS STAY
 
 9. Kolom basecamps: lat, lng, radius_m (BUKAN latitude/longitude/radius_meters)
    Alasan: sudah ada data dan kode yang menggunakan nama ini
+   Status: ✅ VERIFIED database + frontend (2026-05-03)
 
 10. verify_stay_qr signature: (p_token TEXT, p_courier_id UUID)
     Alasan: versi final setelah QA audit, parameter lat/lng dihapus
+    Status: ✅ VERIFIED only correct signature exists (2026-05-03)
 ```
 
 ### Yang Ditolak — Alasan
@@ -1532,37 +1542,75 @@ stay_radius_meters       INT     DEFAULT 10  -- GPS STAY
 
 ## 12. Item Pre-Deployment
 
-### 🔴 Kritis — Harus Difix Sebelum Go-Live
+### ✅ Kritis — SUDAH DIFIX (2026-05-03)
 
-| # | Issue | Fix |
-|---|-------|-----|
-| 1 | `complete_order` tidak validasi `late_fine_active` relevan untuk hari ini | Tambah pengecekan `shift_attendance` di `CURRENT_DATE` dengan `fine_type='per_order'` |
-| 2 | `process_shift_alpha` tidak handle Shift D (overnight) dengan benar | `v_shift_end = CURRENT_DATE + INTERVAL '1 day' + shift.end_time` untuk is_overnight=true |
-| 3 | Tabel `basecamps` kosong | Owner harus input koordinat basecamp sebelum go-live |
+| # | Issue | Status | Tanggal Fix |
+|---|-------|--------|-------------|
+| 1 | `complete_order` tidak validasi `late_fine_active` relevan untuk hari ini | ✅ FIXED | 2026-05-03 |
+| 2 | `process_shift_alpha` tidak handle Shift D (overnight) dengan benar | ✅ FIXED | 2026-04-29 |
+| 3 | Tabel `basecamps` kosong | ✅ FIXED | 2026-05-03 (1 basecamp exists) |
+| 4 | Kolom database tidak sesuai dokumentasi | ✅ FIXED | 2026-05-03 (migration applied) |
+| 5 | Frontend menggunakan nama kolom lama | ✅ FIXED | 2026-05-03 (46 changes applied) |
 
-### 🟠 Penting — Direkomendasikan Sebelum Go-Live
+### 🟠 Penting — SUDAH DIFIX (2026-05-03)
 
-| # | Issue | Fix |
-|---|-------|-----|
-| 4 | `get_missing_couriers` tidak cek `shift_overrides` | Tambah LEFT JOIN ke shift_overrides untuk handle tukar shift |
-| 5 | `record_courier_checkin` INSERT pakai `CURRENT_DATE` bukan tanggal lokal | Ganti dengan `v_now_local::DATE` |
-| 6 | Auth check di `reset_daily_fine_flags` dan `get_courier_fines` kurang ketat | Tambah validasi role di awal fungsi |
+| # | Issue | Status | Tanggal Fix |
+|---|-------|--------|-------------|
+| 6 | `get_missing_couriers` tidak cek `shift_overrides` | ✅ FIXED | 2026-05-03 |
+| 7 | `get_missing_couriers` tidak cek `day_off` | ✅ FIXED | 2026-05-03 |
+| 8 | `record_courier_checkin` INSERT pakai `CURRENT_DATE` bukan tanggal lokal | ✅ FIXED | 2026-05-03 |
+| 9 | `settings.operational_timezone` column missing | ✅ FIXED | 2026-05-03 |
+| 10 | `profiles.day_off` column missing | ✅ FIXED | 2026-05-03 |
+| 11 | Old `verify_stay_qr` function signature exists | ✅ FIXED | 2026-05-03 |
 
-### 🟡 Minor — Bisa Post-Launch
+### 🟢 Minor — Status Update (2026-05-03)
 
-| # | Item |
-|---|------|
-| 7 | UI untuk CRUD basecamps belum ada (saat ini hanya via SQL) |
-| 8 | UI untuk menetapkan hari libur belum ada |
-| 9 | UI untuk tukar shift (shift_overrides) belum ada |
-| 10 | Notifikasi ke kurir saat STAY dicabut otomatis belum ada |
-| 11 | Pagination di semua halaman list belum ada |
-| 12 | Retry mechanism di Edge Function process-alpha belum ada |
-| 13 | UI untuk melihat tier_change_log (debug antrian) belum ada |
+| # | Item | Status |
+|---|------|--------|
+| 12 | UI untuk CRUD basecamps | ✅ DONE (GeneralOpsTab.tsx) |
+| 13 | UI untuk menetapkan hari libur | ✅ DONE (GeneralOpsTab.tsx) |
+| 14 | UI untuk tukar shift (shift_overrides) | ⏳ TODO |
+| 15 | Notifikasi ke kurir saat STAY dicabut otomatis | ⏳ TODO |
+| 16 | Pagination di semua halaman list | ⏳ TODO |
+| 17 | Retry mechanism di Edge Function process-alpha | ⏳ TODO |
+| 18 | UI untuk melihat tier_change_log (debug antrian) | ⏳ TODO |
 
 ---
 
-*Dokumen ini merepresentasikan state sistem pada akhir sesi April 2026.*  
+## 13. Changelog & Verification History
+
+### 2026-05-03: Database Schema Verification & Frontend Sync
+
+**Database Changes Applied:**
+- ✅ Migration: `20260503_fix_column_names_and_add_missing_columns.sql`
+- ✅ Renamed: `basecamps.stay_radius_meters` → `basecamps.radius_m`
+- ✅ Renamed: `profiles.current_basecamp_id` → `profiles.stay_basecamp_id`
+- ✅ Renamed: `profiles.stay_zone_counter` → `profiles.gps_consecutive_out`
+- ✅ Added: `settings.operational_timezone` (value: 'Asia/Makassar')
+- ✅ Added: `profiles.day_off` (for regular day off tracking)
+- ✅ Dropped: Old `verify_stay_qr(uuid, text, numeric, numeric)` signature
+
+**Frontend Changes Applied:**
+- ✅ Updated 6 files, 46 replacements total
+- ✅ All TypeScript types synchronized with database schema
+- ✅ Build verification: PASSED (no compilation errors)
+- ✅ Verification: No old column names remain (excluding external APIs)
+
+**Documentation:**
+- ✅ `temp/Database_Verification_Checklist.md` - Complete verification with before/after tables
+- ✅ `temp/Database_Verification_Report.md` - Detailed comparison results
+- ✅ `temp/Function_Comparison_Report.md` - RPC function verification
+- ✅ `temp/Frontend_Column_Rename_Diff.md` - Complete diff of all changes
+- ✅ `temp/Frontend_Column_Rename_Applied.md` - Application summary
+
+**Status:** Database and frontend are now 100% synchronized and match technical documentation.
+
+---
+
+*Dokumen ini merepresentasikan state sistem pada 3 Mei 2026.*  
+*Terakhir diverifikasi: 2026-05-03*  
+*Database: bunycotovavltxmutier (Supabase)*  
+
 *Untuk pertanyaan teknis, rujuk ke masing-masing RPC source di database dengan query:*  
 ```sql
 SELECT proname, prosrc FROM pg_proc WHERE proname = '[nama_fungsi]';

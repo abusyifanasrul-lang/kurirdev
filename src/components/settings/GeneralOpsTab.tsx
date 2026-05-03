@@ -11,9 +11,9 @@ interface Basecamp {
   id: string;
   name: string;
   address: string;
-  latitude: number;
-  longitude: number;
-  radius_meters: number;
+  lat: number;
+  lng: number;
+  radius_m: number;
   is_active: boolean;
 }
 
@@ -55,9 +55,9 @@ export function GeneralOpsTab({
   const [basecampForm, setBasecampForm] = useState({
     name: '',
     address: '',
-    latitude: 0,
-    longitude: 0,
-    radius_meters: 10,
+    lat: 0,
+    lng: 0,
+    radius_m: 10,
     is_active: true,
   });
 
@@ -89,9 +89,9 @@ export function GeneralOpsTab({
       setBasecampForm({
         name: basecamp.name,
         address: basecamp.address,
-        latitude: basecamp.latitude,
-        longitude: basecamp.longitude,
-        radius_meters: basecamp.radius_meters,
+        lat: basecamp.lat,
+        lng: basecamp.lng,
+        radius_m: basecamp.radius_m,
         is_active: basecamp.is_active,
       });
     } else {
@@ -99,9 +99,9 @@ export function GeneralOpsTab({
       setBasecampForm({
         name: '',
         address: '',
-        latitude: 0,
-        longitude: 0,
-        radius_meters: 10,
+        lat: 0,
+        lng: 0,
+        radius_m: 10,
         is_active: true,
       });
     }
@@ -118,7 +118,7 @@ export function GeneralOpsTab({
       addToast('Alamat harus diisi', 'warning');
       return;
     }
-    if (basecampForm.latitude === 0 || basecampForm.longitude === 0) {
+    if (basecampForm.lat === 0 || basecampForm.lng === 0) {
       addToast('Koordinat latitude dan longitude harus diisi dengan benar', 'warning');
       return;
     }
@@ -150,9 +150,9 @@ export function GeneralOpsTab({
       setBasecampForm({
         name: '',
         address: '',
-        latitude: 0,
-        longitude: 0,
-        radius_meters: 10,
+        lat: 0,
+        lng: 0,
+        radius_m: 10,
         is_active: true,
       });
     } catch (error) {
@@ -496,7 +496,7 @@ export function GeneralOpsTab({
                           </div>
                           <p className="text-xs text-gray-500 mt-0.5">{basecamp.address}</p>
                           <p className="text-[11px] text-gray-400 mt-1">
-                            📍 {basecamp.latitude.toFixed(6)}, {basecamp.longitude.toFixed(6)} • Radius: {basecamp.radius_meters}m
+                            📍 {basecamp.lat.toFixed(6)}, {basecamp.lng.toFixed(6)} • Radius: {basecamp.radius_m}m
                           </p>
                         </div>
                       </div>
@@ -683,24 +683,24 @@ export function GeneralOpsTab({
               label="Latitude"
               type="number"
               step="0.000001"
-              value={basecampForm.latitude}
-              onChange={(e) => setBasecampForm({ ...basecampForm, latitude: parseFloat(e.target.value) || 0 })}
+              value={basecampForm.lat}
+              onChange={(e) => setBasecampForm({ ...basecampForm, lat: parseFloat(e.target.value) || 0 })}
               placeholder="-4.123456"
             />
             <Input
               label="Longitude"
               type="number"
               step="0.000001"
-              value={basecampForm.longitude}
-              onChange={(e) => setBasecampForm({ ...basecampForm, longitude: parseFloat(e.target.value) || 0 })}
+              value={basecampForm.lng}
+              onChange={(e) => setBasecampForm({ ...basecampForm, lng: parseFloat(e.target.value) || 0 })}
               placeholder="119.123456"
             />
           </div>
           <Input
             label="Radius (meter)"
             type="number"
-            value={basecampForm.radius_meters}
-            onChange={(e) => setBasecampForm({ ...basecampForm, radius_meters: parseInt(e.target.value) || 10 })}
+            value={basecampForm.radius_m}
+            onChange={(e) => setBasecampForm({ ...basecampForm, radius_m: parseInt(e.target.value) || 10 })}
             helperText="Jarak maksimal kurir dari titik basecamp untuk scan QR (default: 10 meter)"
           />
           <div className="flex items-center gap-3">

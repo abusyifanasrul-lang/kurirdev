@@ -302,7 +302,7 @@ export interface Basecamp {
   description?: string;
   lat: number;
   lng: number;
-  stay_radius_meters: number;
+  radius_m: number;
   is_active: boolean;
   created_at: string;
 }

@@ -15,9 +15,9 @@ interface Basecamp {
   id: string
   name: string
   address: string
-  latitude: number
-  longitude: number
-  radius_meters: number
+  lat: number
+  lng: number
+  radius_m: number
   is_active: boolean
 }
 

@@ -6,9 +6,9 @@ import { stayNative } from '@/lib/stayMonitoring'
 
 // Explicit types for DB columns not yet in generated Supabase types
 interface BasecampRow {
-  latitude: number
-  longitude: number
-  radius_meters: number
+  lat: number
+  lng: number
+  radius_m: number
 }
 
 interface CourierState {
@@ -91,7 +91,7 @@ export const useCourierStore = create<CourierState>()((_set, get) => ({
       const [bcResult, settingsResult] = await Promise.all([
         supabase
           .from('basecamps' as any)
-          .select('latitude, longitude, radius_meters')
+          .select('lat, lng, radius_m')
           .eq('id', result.basecamp_id)
           .single() as unknown as Promise<{ data: BasecampRow | null; error: any }>,
         supabase
@@ -107,9 +107,9 @@ export const useCourierStore = create<CourierState>()((_set, get) => ({
 
       if (bc && settings) {
         stayNative.start({
-          lat: bc.latitude,
-          lng: bc.longitude,
-          radius: bc.radius_meters,
+          lat: bc.lat,
+          lng: bc.lng,
+          radius: bc.radius_m,
           basecampId: result.basecamp_id,
           supabaseUrl,
           supabaseAnonKey,
