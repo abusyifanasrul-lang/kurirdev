@@ -2,8 +2,8 @@ name: Supabase Daily Backup
 
 on:
   schedule:
-    - cron: '0 17 * * *'
-  workflow_dispatch: 
+    - cron: '0 17 * * *' # Otomatis jam 12 malam WIB
+  workflow_dispatch: # Tombol manual
 
 jobs:
   backup:
@@ -19,16 +19,11 @@ jobs:
 
       - name: Dump Database
         run: |
-          # Menggunakan IPv4 dan opsi -h secara eksplisit untuk keamanan
-          pg_dump "${{ secrets.DB_URL }}" > backup_$(date +%Y-%m-%d).sql
-        env:
-          # Memaksa PostgreSQL menggunakan IPv4 jika memungkinkan
-          PGOPTIONS: "-c statement_timeout=60000" 
+          pg_dump "${{ secrets.DB_URL }}" > backup.sql
 
       - name: Upload Backup to GitHub
-        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: db-backup
-          path: backup_*.sql
+          path: backup.sql
           retention-days: 30
