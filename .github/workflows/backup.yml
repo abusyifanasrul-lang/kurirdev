@@ -2,7 +2,7 @@ name: Supabase Daily Backup
 
 on:
   schedule:
-    - cron: '0 17 * * *' # Jam 12 malam WIB
+    - cron: '0 17 * * *'
   workflow_dispatch: 
 
 jobs:
@@ -19,9 +19,11 @@ jobs:
 
       - name: Dump Database
         run: |
-          pg_dump "${{ secrets.DB_URL }}" > backup_$(date +%Y-%m-%d).sql
+          # Perintah ini akan menampilkan error jika gagal koneksi
+          pg_dump "${{ secrets.DB_URL }}" > backup_$(date +%Y-%m-%d).sql 2> error_log.txt || (cat error_log.txt && exit 1)
 
       - name: Upload Backup to GitHub
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: db-backup
