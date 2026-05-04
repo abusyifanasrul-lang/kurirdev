@@ -3,7 +3,7 @@ name: Supabase Daily Backup
 on:
   schedule:
     - cron: '0 17 * * *'
-  workflow_dispatch: 
+  workflow_dispatch:
 
 jobs:
   backup:
@@ -12,14 +12,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install PostgreSQL Client
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y postgresql-client
+      - name: Install Supabase CLI
+        run: npm install -g supabase
 
       - name: Dump Database
         run: |
-          # Menggunakan koneksi pooling port 6543
-          pg_dump "${{ secrets.DB_URL }}" > backup.sql
+          supabase db dump \
+            --project-ref bunycotovavltxmutier \
+            > backup.sql
         env:
-          PGSSLMODE: 'require' # Supabase pooling mewajibkan SSL aktif
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Upload Backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup
+          path: backup.sql
+          retention-days: 30
