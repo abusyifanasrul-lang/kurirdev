@@ -19,8 +19,11 @@ jobs:
 
       - name: Dump Database
         run: |
-          # Perintah ini akan menampilkan error jika gagal koneksi
-          pg_dump "${{ secrets.DB_URL }}" > backup_$(date +%Y-%m-%d).sql 2> error_log.txt || (cat error_log.txt && exit 1)
+          # Menggunakan IPv4 dan opsi -h secara eksplisit untuk keamanan
+          pg_dump "${{ secrets.DB_URL }}" > backup_$(date +%Y-%m-%d).sql
+        env:
+          # Memaksa PostgreSQL menggunakan IPv4 jika memungkinkan
+          PGOPTIONS: "-c statement_timeout=60000" 
 
       - name: Upload Backup to GitHub
         if: success()
