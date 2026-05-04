@@ -19,7 +19,7 @@ jobs:
 
       - name: Dump Database
         run: |
-          # Menggunakan port 6543 dan menonaktifkan pemeriksaan SSL sertifikat untuk kelancaran dump
+          # Menggunakan koneksi pooling port 6543
           pg_dump "${{ secrets.DB_URL }}" > backup.sql
         env:
-          PGSSLMODE: 'disable' # Membantu menghindari error handshake SSL pada port pooling
+          PGSSLMODE: 'require' # Supabase pooling mewajibkan SSL aktif
