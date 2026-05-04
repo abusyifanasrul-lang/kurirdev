@@ -6,6 +6,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Settings, MapPin, Clock, Plus, Edit3, Trash2, Calendar } from 'lucide-react';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { useToastStore } from '@/stores/useToastStore';
+import { useActiveBasecamp } from '@/hooks/useActiveBasecamp';
 
 interface Basecamp {
   id: string;
@@ -47,6 +48,8 @@ export function GeneralOpsTab({
   // Basecamp state
   const { basecamps, fetchBasecamps, addBasecamp, updateBasecamp, deleteBasecamp, holidays, fetchHolidays, addHoliday, updateHoliday, deleteHoliday } = useSettingsStore();
   const { addToast } = useToastStore();
+  const { activeBasecampId, setActiveBasecamp } = useActiveBasecamp();
+  const [selectedBasecampId, setSelectedBasecampId] = useState(activeBasecampId || '');
   const [isBasecampModalOpen, setIsBasecampModalOpen] = useState(false);
   const [editingBasecamp, setEditingBasecamp] = useState<Basecamp | null>(null);
   const [isSavingBasecamp, setIsSavingBasecamp] = useState(false);
@@ -79,8 +82,19 @@ export function GeneralOpsTab({
     fetchHolidays();
   }, [fetchBasecamps, fetchHolidays]);
 
+  useEffect(() => {
+    setSelectedBasecampId(activeBasecampId || '');
+  }, [activeBasecampId]);
+
   const handleSave = () => {
     onSaveSettings(form);
+  };
+
+  const handleSaveActiveBasecamp = () => {
+    if (selectedBasecampId) {
+      setActiveBasecamp(selectedBasecampId);
+      addToast('Konfigurasi basecamp berhasil disimpan!', 'success');
+    }
   };
 
   const openBasecampModal = (basecamp?: Basecamp) => {
@@ -443,6 +457,53 @@ export function GeneralOpsTab({
                 </select>
                 <p className="mt-2 text-[11px] text-amber-700 leading-relaxed">
                   Menentukan hari pertama dalam satu minggu untuk filter laporan "Minggu Ini" dan perhitungan insentif mingguan kurir.
+                </p>
+              </div>
+            </div>
+
+            {/* Section 3.5: Konfigurasi Instance Basecamp */}
+            <div className="bg-teal-50/50 border border-teal-100 p-5 rounded-2xl relative overflow-hidden group mt-6">
+              <h4 className="text-sm font-bold text-teal-800 mb-4 flex items-center gap-2">
+                <div className="bg-teal-100 p-1.5 rounded-lg">
+                  <MapPin className="h-4 w-4" />
+                </div>
+                📍 Konfigurasi Instance Basecamp
+              </h4>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-teal-900/60 uppercase tracking-widest mb-2 px-1">
+                    Basecamp Aktif untuk Instance Ini
+                  </label>
+                  <select
+                    className="w-full px-4 py-3 bg-white border border-teal-200 rounded-xl focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 outline-none transition-all appearance-none text-gray-900 font-semibold shadow-sm"
+                    value={selectedBasecampId}
+                    onChange={(e) => setSelectedBasecampId(e.target.value)}
+                  >
+                    <option value="">-- Pilih Basecamp --</option>
+                    {basecamps.filter(b => b.is_active).map(basecamp => (
+                      <option key={basecamp.id} value={basecamp.id}>
+                        {basecamp.name}
+                      </option>
+                    ))}
+                  </select>
+                  {basecamps.filter(b => b.is_active).length === 0 && (
+                    <p className="mt-2 text-xs text-red-600">
+                      Belum ada basecamp aktif. Tambah basecamp terlebih dahulu.
+                    </p>
+                  )}
+                </div>
+
+                <Button
+                  onClick={handleSaveActiveBasecamp}
+                  disabled={!selectedBasecampId}
+                  className="w-full bg-teal-600 hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Simpan Konfigurasi
+                </Button>
+
+                <p className="text-[11px] text-teal-700 leading-relaxed">
+                  Instance aplikasi ini akan generate QR code untuk basecamp yang dipilih di atas.
                 </p>
               </div>
             </div>

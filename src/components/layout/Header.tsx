@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/context/AuthContext';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import { useNavigate } from 'react-router-dom';
+import { BasecampIndicator } from './BasecampIndicator';
 
 interface HeaderProps {
   title: string;
@@ -39,18 +40,23 @@ export function Header({
     <header className="bg-white border-b border-gray-200 px-4 lg:px-8 py-4">
       <div className="flex items-center justify-between gap-4">
         {/* Title Section */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
           {onMenuClick && (
             <button
               onClick={onMenuClick}
-              className="lg:hidden p-2 -ml-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="lg:hidden p-2 -ml-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
             >
               <Menu className="h-5 w-5 text-gray-600" />
             </button>
           )}
-          <div>
-            <h1 className="text-xl lg:text-2xl font-bold text-gray-900">{title}</h1>
-            {subtitle && <p className="text-xs lg:text-sm font-medium text-gray-600 mt-0.5">{subtitle}</p>}
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl lg:text-2xl font-bold text-gray-900 truncate">{title}</h1>
+            {subtitle && <p className="text-xs lg:text-sm font-medium text-gray-600 mt-0.5 truncate">{subtitle}</p>}
+          </div>
+          
+          {/* Basecamp Indicator - Mobile Only */}
+          <div className="lg:hidden flex-shrink-0">
+            <BasecampIndicator />
           </div>
         </div>
 

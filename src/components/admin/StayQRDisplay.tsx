@@ -3,6 +3,9 @@ import { QRCodeSVG } from 'qrcode.react';
 import { RefreshCw, Clock, CheckCircle, Users } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
+import { useActiveBasecamp } from '@/hooks/useActiveBasecamp';
+import { BasecampSelectionModal } from './BasecampSelectionModal';
+import { useToastStore } from '@/stores/useToastStore';
 
 interface StayLog {
   id: string;
@@ -12,6 +15,8 @@ interface StayLog {
 
 export function StayQRDisplay() {
   const { user } = useAuth();
+  const { activeBasecampId, activeBasecamp } = useActiveBasecamp();
+  const { addToast } = useToastStore();
   const [activeToken, setActiveToken] = useState<string | null>(null);
   const [tokenId, setTokenId] = useState<string | null>(null);
   const [expiresAt, setExpiresAt] = useState<Date | null>(null);
@@ -19,13 +24,24 @@ export function StayQRDisplay() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [todayLogs, setTodayLogs] = useState<StayLog[]>([]);
   const [lastScannedBy, setLastScannedBy] = useState<string | null>(null);
+  const [showBasecampModal, setShowBasecampModal] = useState(false);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const isGeneratingRef = useRef(false);
 
   const QR_EXPIRY_MINUTES = 5;
 
-  const generateNewToken = useCallback(async () => {
+  const generateNewToken = useCallback(async (basecampId?: string) => {
     if (!user?.id || isGeneratingRef.current) return;
+
+    // Check if we have an active basecamp
+    const targetBasecampId = basecampId || activeBasecampId;
+    
+    if (!targetBasecampId) {
+      // Show modal to select basecamp
+      setShowBasecampModal(true);
+      return;
+    }
+
     isGeneratingRef.current = true;
     setIsGenerating(true);
     setLastScannedBy(null);
@@ -40,23 +56,39 @@ export function StayQRDisplay() {
           token,
           created_by: user.id,
           expires_at: expires.toISOString(),
+          basecamp_id: targetBasecampId, // ✅ Added!
         })
         .select('id')
         .single();
 
       if (error) {
         console.error('Failed to generate QR token:', error);
+        
+        // Enhanced error handling
+        if (error.code === '42501') {
+          addToast('Anda tidak memiliki izin untuk generate QR. Hubungi administrator.', 'error');
+        } else if (error.message.includes('basecamp_id')) {
+          addToast('Basecamp belum dipilih. Silakan pilih basecamp terlebih dahulu.', 'error');
+        } else if (error.message.includes('network')) {
+          addToast('Gagal generate QR. Periksa koneksi internet Anda.', 'error');
+        } else {
+          addToast(`Gagal generate QR: ${error.message}`, 'error');
+        }
         return;
       }
 
       setActiveToken(token);
       setTokenId(data.id);
       setExpiresAt(expires);
+      addToast('QR token berhasil di-generate!', 'success');
+    } catch (err) {
+      console.error('Error generating QR:', err);
+      addToast('Terjadi kesalahan saat generate QR', 'error');
     } finally {
       setIsGenerating(false);
       isGeneratingRef.current = false;
     }
-  }, [user?.id]);
+  }, [user?.id, activeBasecampId, addToast]);
 
   // Countdown timer
   useEffect(() => {
@@ -251,6 +283,13 @@ export function StayQRDisplay() {
           )}
         </div>
       </div>
+
+      {/* Basecamp Selection Modal */}
+      <BasecampSelectionModal
+        isOpen={showBasecampModal}
+        onClose={() => setShowBasecampModal(false)}
+        onSelect={(basecampId) => generateNewToken(basecampId)}
+      />
     </div>
   );
 }

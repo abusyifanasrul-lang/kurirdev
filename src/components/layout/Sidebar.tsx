@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/context/AuthContext';
+import { BasecampIndicator } from './BasecampIndicator';
 
 interface NavItem {
   path: string;
@@ -155,6 +156,12 @@ export function Sidebar() {
             <p className="text-xs text-gray-400 truncate">{user?.email || 'admin@delivery.com'}</p>
           </div>
         </div>
+        
+        {/* Basecamp Indicator */}
+        <div className="mt-3 mb-2">
+          <BasecampIndicator />
+        </div>
+        
         <button
           onClick={handleLogout}
           className="flex items-center gap-3 w-full px-4 py-3 mt-2 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors"
