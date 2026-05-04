@@ -53,7 +53,8 @@ export interface User {
   is_priority_recovery?: boolean;
   shift_id?: string;
   gps_consecutive_out?: number;
-  stay_basecamp_id?: string;
+  stay_basecamp_id?: string | null;
+  day_off?: string | null;
 }
 
 export interface CreateUserInput {

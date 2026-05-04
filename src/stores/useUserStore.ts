@@ -55,7 +55,6 @@ const mapProfileToUser = (profile: any, existingUser?: User): User => {
     computed_is_online = profile.is_online !== undefined ? profile.is_online : (base.is_online ?? false);
   }
 
-  
   return {
     ...base,
     id: profile.id || base.id,
@@ -81,6 +80,9 @@ const mapProfileToUser = (profile: any, existingUser?: User): User => {
     unpaid_count: profile.unpaid_count !== undefined ? profile.unpaid_count : base.unpaid_count,
     unpaid_amount: profile.unpaid_amount !== undefined ? profile.unpaid_amount : base.unpaid_amount,
     is_priority_recovery: profile.is_priority_recovery !== undefined ? profile.is_priority_recovery : base.is_priority_recovery,
+    stay_basecamp_id: profile.stay_basecamp_id !== undefined ? profile.stay_basecamp_id : (base.stay_basecamp_id ?? null),
+    gps_consecutive_out: profile.gps_consecutive_out !== undefined ? profile.gps_consecutive_out : (base.gps_consecutive_out ?? 0),
+    day_off: profile.day_off !== undefined ? profile.day_off : (base.day_off ?? null),
   };
 };
 
