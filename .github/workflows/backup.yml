@@ -2,15 +2,15 @@ name: Supabase Daily Backup
 
 on:
   schedule:
-    - cron: '0 0 * * *' # Berjalan setiap hari jam 00:00 UTC (07:00 WIB)
-  workflow_dispatch: # Memungkinkan jalankan manual kapan saja dari tab Actions
+    - cron: '0 17 * * *' # Jam 12 malam WIB
+  workflow_dispatch: 
 
 jobs:
   backup:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install PostgreSQL Client
         run: |
@@ -19,14 +19,11 @@ jobs:
 
       - name: Dump Database
         run: |
-          # Menggunakan pg_dump dengan koneksi URL dari Secrets
           pg_dump "${{ secrets.DB_URL }}" > backup_$(date +%Y-%m-%d).sql
-        env:
-          PGPASSWORD: ${{ secrets.DB_PASSWORD }} # Opsi tambahan jika URL tidak menyertakan password
 
       - name: Upload Backup to GitHub
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: db-backup
           path: backup_*.sql
-          retention-days: 7 # File disimpan di GitHub selama 7 hari
+          retention-days: 30
