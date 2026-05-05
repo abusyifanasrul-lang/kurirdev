@@ -197,7 +197,7 @@ export function StayQRDisplay() {
             <p className="text-xs text-gray-500 mt-0.5">Kurir scan QR ini untuk aktivasi STAY</p>
           </div>
           <button
-            onClick={generateNewToken}
+            onClick={() => generateNewToken()}
             disabled={isGenerating}
             className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-teal-700 bg-teal-50 rounded-lg hover:bg-teal-100 transition-colors disabled:opacity-50"
           >

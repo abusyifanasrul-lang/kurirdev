@@ -11,7 +11,7 @@ import { useActiveBasecamp } from '@/hooks/useActiveBasecamp';
 interface Basecamp {
   id: string;
   name: string;
-  address: string;
+  description: string;
   lat: number;
   lng: number;
   radius_m: number;
@@ -57,7 +57,7 @@ export function GeneralOpsTab({
   const [basecampToDelete, setBasecampToDelete] = useState<string | null>(null);
   const [basecampForm, setBasecampForm] = useState({
     name: '',
-    address: '',
+    description: '',
     lat: 0,
     lng: 0,
     radius_m: 10,
@@ -102,7 +102,7 @@ export function GeneralOpsTab({
       setEditingBasecamp(basecamp);
       setBasecampForm({
         name: basecamp.name,
-        address: basecamp.address,
+        description: basecamp.description || '',
         lat: basecamp.lat,
         lng: basecamp.lng,
         radius_m: basecamp.radius_m,
@@ -112,7 +112,7 @@ export function GeneralOpsTab({
       setEditingBasecamp(null);
       setBasecampForm({
         name: '',
-        address: '',
+        description: '',
         lat: 0,
         lng: 0,
         radius_m: 10,
@@ -128,8 +128,8 @@ export function GeneralOpsTab({
       addToast('Nama basecamp harus diisi', 'warning');
       return;
     }
-    if (!basecampForm.address.trim()) {
-      addToast('Alamat harus diisi', 'warning');
+    if (!basecampForm.description.trim()) {
+      addToast('Deskripsi harus diisi', 'warning');
       return;
     }
     if (basecampForm.lat === 0 || basecampForm.lng === 0) {
@@ -163,7 +163,7 @@ export function GeneralOpsTab({
       setEditingBasecamp(null);
       setBasecampForm({
         name: '',
-        address: '',
+        description: '',
         lat: 0,
         lng: 0,
         radius_m: 10,
@@ -555,7 +555,7 @@ export function GeneralOpsTab({
                               </span>
                             )}
                           </div>
-                          <p className="text-xs text-gray-500 mt-0.5">{basecamp.address}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">{basecamp.description}</p>
                           <p className="text-[11px] text-gray-400 mt-1">
                             📍 {basecamp.lat.toFixed(6)}, {basecamp.lng.toFixed(6)} • Radius: {basecamp.radius_m}m
                           </p>
@@ -730,13 +730,13 @@ export function GeneralOpsTab({
             placeholder="Contoh: Basecamp Utama"
           />
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Alamat</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Deskripsi</label>
             <textarea
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all"
               rows={3}
-              value={basecampForm.address}
-              onChange={(e) => setBasecampForm({ ...basecampForm, address: e.target.value })}
-              placeholder="Alamat lengkap basecamp"
+              value={basecampForm.description}
+              onChange={(e) => setBasecampForm({ ...basecampForm, description: e.target.value })}
+              placeholder="Deskripsi atau alamat basecamp"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">

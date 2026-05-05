@@ -25,6 +25,7 @@ import { useAuth } from '@/context/AuthContext';
 import { getRoleLabel, getRoleBadgeColor } from '@/types';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useRealtimeHealth } from '@/hooks/useRealtimeHealth';
+import { BasecampIndicator } from './BasecampIndicator';
 
 interface NavItem {
   path: string;
@@ -162,6 +163,7 @@ export function Layout() {
         </div>
 
         <div className="flex items-center gap-2">
+          <BasecampIndicator />
           <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", roleBadgeColor)}>
             {roleLabel}
           </span>
@@ -257,6 +259,11 @@ export function Layout() {
 
         {/* User section */}
         <div className="p-4 border-t border-white/10">
+          {/* Basecamp Indicator - Desktop */}
+          <div className="mb-3">
+            <BasecampIndicator />
+          </div>
+          
           <div className="flex items-center gap-3 px-4 py-3 bg-white/5 rounded-2xl">
             <div className={cn(
               "w-10 h-10 rounded-full flex items-center justify-center font-semibold text-white shadow-sm",
