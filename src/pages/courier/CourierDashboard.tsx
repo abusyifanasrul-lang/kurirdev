@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useStayMonitor } from '@/hooks/useStayMonitor';
 import { useNavigate } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
 import { ChevronRight, AlertTriangle, DollarSign, CheckCircle, Clock, Package } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/utils/cn';
 import { Badge } from '@/components/ui/Badge';
 import { QRScannerModal } from '@/components/courier/QRScannerModal';
+import { PermissionOnboarding } from '@/components/courier/PermissionOnboarding';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useCourierStore } from '@/stores/useCourierStore';
 import { useAuth } from '@/context/AuthContext';
@@ -18,11 +20,16 @@ import { Order } from '@/types';
 import { getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
 
 import { AttendanceWidget } from '@/components/courier/AttendanceWidget';
+import { DebugPanel } from '@/components/courier/DebugPanel';
+
+const ONBOARDING_KEY = 'courier_permissions_onboarded';
 
 export function CourierDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { activeOrdersByCourier } = useOrderStore();
+
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const { setCourierOffline, setCourierOnline } = useCourierStore();
   const { users, subscribeProfile, fetchProfile } = useUserStore();
@@ -52,6 +59,21 @@ export function CourierDashboard() {
       if (user?.id) fetchProfile(user.id);
     }, [user?.id, fetchProfile]),
   });
+
+  // Check if onboarding needed (Native only)
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    
+    const hasOnboarded = localStorage.getItem(ONBOARDING_KEY);
+    if (!hasOnboarded) {
+      setShowOnboarding(true);
+    }
+  }, []);
+
+  const handleOnboardingComplete = () => {
+    localStorage.setItem(ONBOARDING_KEY, 'true');
+    setShowOnboarding(false);
+  };
 
   useEffect(() => {
     if (!user?.id) return;
@@ -162,6 +184,9 @@ export function CourierDashboard() {
 
   return (
     <div className="space-y-6 p-1">
+      {/* Permission Onboarding (First time only, Native only) */}
+      {showOnboarding && <PermissionOnboarding onComplete={handleOnboardingComplete} />}
+
       {/* Attendance Status Widget */}
       {user?.id && (
         <AttendanceWidget 
@@ -412,6 +437,9 @@ export function CourierDashboard() {
           courierId={user.id}
         />
       )}
+
+      {/* Debug Panel - Floating Button */}
+      <DebugPanel />
     </div>
   );
 }

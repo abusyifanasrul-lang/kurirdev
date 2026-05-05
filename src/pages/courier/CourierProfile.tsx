@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { requestFCMPermission } from '@/lib/fcm';
+import { usePermissions } from '@/hooks/usePermissions';
 import {
   Mail,
   Phone,
@@ -13,7 +14,10 @@ import {
   AlertCircle,
   Bell,
   User as UserIcon,
-  Hash
+  Hash,
+  MapPin,
+  Camera as CameraIcon,
+  Settings as SettingsIcon
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/context/AuthContext';
@@ -29,6 +33,7 @@ export function CourierProfile() {
   const { couriers } = useCourierStore();
   const { users } = useUserStore();
   const { user: currentUser } = useSessionStore();
+  const { permissions, checkPermissions, openSettings } = usePermissions();
 
   // Real-time suspended check from useUserStore
   const liveUser = users.find((u: any) => u.id === currentUser?.id);
@@ -363,6 +368,15 @@ export function CourierProfile() {
                 Izinkan
               </button>
             )}
+            {notifPermission === 'denied' && Capacitor.isNativePlatform() && (
+              <button
+                onClick={openSettings}
+                className="text-xs font-semibold text-red-600 bg-red-50 px-3 py-1.5 rounded-full hover:bg-red-100 flex items-center gap-1"
+              >
+                <SettingsIcon className="h-3 w-3" />
+                Buka
+              </button>
+            )}
           </div>
 
           {/* Warning jika diblokir */}
@@ -372,21 +386,20 @@ export function CourierProfile() {
                 ⚠️ Notifikasi order diblokir!
               </p>
               <p className="text-xs text-red-600">
-                Kamu tidak akan mendapat notifikasi saat ada order baru. Aktifkan notifikasi dengan langkah berikut:
+                Kamu tidak akan mendapat notifikasi saat ada order baru. {Capacitor.isNativePlatform() ? 'Ketuk tombol "Buka" untuk mengaktifkan di pengaturan.' : 'Aktifkan notifikasi dengan langkah berikut:'}
               </p>
-              <div className="text-xs text-red-700 space-y-1 bg-white rounded-lg p-2 border border-red-100">
-                <p className="font-semibold mb-1">Di Chrome Android:</p>
-                <p>1. Ketuk ikon 🔒 di address bar browser</p>
-                <p>2. Ketuk "Izin situs"</p>
-                <p>3. Aktifkan <span className="font-semibold">Notifikasi</span></p>
-                <p className="font-semibold mt-2 mb-1">Atau via Pengaturan HP:</p>
-                <p>1. Buka <span className="font-semibold">Pengaturan</span> HP</p>
-                <p>2. Cari & ketuk <span className="font-semibold">Aplikasi → Chrome</span></p>
-                <p>3. Ketuk <span className="font-semibold">Notifikasi</span> → Aktifkan</p>
-              </div>
-              <p className="text-xs text-red-500 italic">
-                Setelah mengaktifkan, muat ulang halaman ini.
-              </p>
+              {!Capacitor.isNativePlatform() && (
+                <div className="text-xs text-red-700 space-y-1 bg-white rounded-lg p-2 border border-red-100">
+                  <p className="font-semibold mb-1">Di Chrome Android:</p>
+                  <p>1. Ketuk ikon 🔒 di address bar browser</p>
+                  <p>2. Ketuk "Izin situs"</p>
+                  <p>3. Aktifkan <span className="font-semibold">Notifikasi</span></p>
+                  <p className="font-semibold mt-2 mb-1">Atau via Pengaturan HP:</p>
+                  <p>1. Buka <span className="font-semibold">Pengaturan</span> HP</p>
+                  <p>2. Cari & ketuk <span className="font-semibold">Aplikasi → Chrome</span></p>
+                  <p>3. Ketuk <span className="font-semibold">Notifikasi</span> → Aktifkan</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -399,6 +412,116 @@ export function CourierProfile() {
             </div>
           )}
         </div>
+
+        {/* Location Permission — Status (Native only) */}
+        {Capacitor.isNativePlatform() && (
+          <div className="flex flex-col">
+            <div className="flex items-center justify-between p-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                  permissions.location === 'granted' ? 'bg-emerald-50' :
+                  permissions.location === 'denied' ? 'bg-red-50' : 'bg-yellow-50'
+                }`}>
+                  <MapPin className={`h-5 w-5 ${
+                    permissions.location === 'granted' ? 'text-emerald-600' :
+                    permissions.location === 'denied' ? 'text-red-500' : 'text-yellow-500'
+                  }`} />
+                </div>
+                <div className="text-left">
+                  <p className="font-semibold text-gray-900">Akses Lokasi</p>
+                  <p className={`text-sm font-semibold ${
+                    permissions.location === 'granted' ? 'text-emerald-600' :
+                    permissions.location === 'denied' ? 'text-red-500' : 'text-yellow-500'
+                  }`}>
+                    {permissions.location === 'granted' ? '✅ Diizinkan' :
+                     permissions.location === 'denied' ? '❌ Diblokir' : '⚠️ Belum diizinkan'}
+                  </p>
+                </div>
+              </div>
+              {permissions.location === 'denied' && (
+                <button
+                  onClick={openSettings}
+                  className="text-xs font-semibold text-red-600 bg-red-50 px-3 py-1.5 rounded-full hover:bg-red-100 flex items-center gap-1"
+                >
+                  <SettingsIcon className="h-3 w-3" />
+                  Buka
+                </button>
+              )}
+            </div>
+
+            {permissions.location === 'denied' && (
+              <div className="mx-4 mb-4 p-3 bg-red-50 border border-red-200 rounded-xl">
+                <p className="text-sm font-semibold text-red-700 mb-1">
+                  ⚠️ Akses lokasi diblokir!
+                </p>
+                <p className="text-xs text-red-600">
+                  Fitur STAY monitoring tidak akan berfungsi. Ketuk tombol "Buka" untuk mengaktifkan di pengaturan.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Camera Permission — Status (Native only) */}
+        {Capacitor.isNativePlatform() && (
+          <div className="flex flex-col">
+            <div className="flex items-center justify-between p-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                  permissions.camera === 'granted' ? 'bg-emerald-50' :
+                  permissions.camera === 'denied' ? 'bg-red-50' : 'bg-yellow-50'
+                }`}>
+                  <CameraIcon className={`h-5 w-5 ${
+                    permissions.camera === 'granted' ? 'text-emerald-600' :
+                    permissions.camera === 'denied' ? 'text-red-500' : 'text-yellow-500'
+                  }`} />
+                </div>
+                <div className="text-left">
+                  <p className="font-semibold text-gray-900">Akses Kamera</p>
+                  <p className={`text-sm font-semibold ${
+                    permissions.camera === 'granted' ? 'text-emerald-600' :
+                    permissions.camera === 'denied' ? 'text-red-500' : 'text-yellow-500'
+                  }`}>
+                    {permissions.camera === 'granted' ? '✅ Diizinkan' :
+                     permissions.camera === 'denied' ? '❌ Diblokir' : '⚠️ Belum diizinkan'}
+                  </p>
+                </div>
+              </div>
+              {permissions.camera === 'denied' && (
+                <button
+                  onClick={openSettings}
+                  className="text-xs font-semibold text-red-600 bg-red-50 px-3 py-1.5 rounded-full hover:bg-red-100 flex items-center gap-1"
+                >
+                  <SettingsIcon className="h-3 w-3" />
+                  Buka
+                </button>
+              )}
+            </div>
+
+            {permissions.camera === 'denied' && (
+              <div className="mx-4 mb-4 p-3 bg-red-50 border border-red-200 rounded-xl">
+                <p className="text-sm font-semibold text-red-700 mb-1">
+                  ⚠️ Akses kamera diblokir!
+                </p>
+                <p className="text-xs text-red-600">
+                  Tidak bisa scan QR code untuk aktivasi STAY. Ketuk tombol "Buka" untuk mengaktifkan di pengaturan.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Refresh Permissions Button */}
+        {Capacitor.isNativePlatform() && (
+          <div className="p-4">
+            <button
+              onClick={checkPermissions}
+              className="w-full py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-all active:scale-95 text-sm"
+            >
+              🔄 Refresh Status Izin
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Logout Button */}

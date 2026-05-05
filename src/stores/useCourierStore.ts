@@ -4,13 +4,6 @@ import { Courier } from '@/types'
 import { useUserStore } from './useUserStore'
 import { stayNative } from '@/lib/stayMonitoring'
 
-// Explicit types for DB columns not yet in generated Supabase types
-interface BasecampRow {
-  lat: number
-  lng: number
-  radius_m: number
-}
-
 interface CourierState {
   readonly couriers: Courier[]
   addCourier: (courier: Courier, password: string) => Promise<void>
@@ -90,22 +83,37 @@ export const useCourierStore = create<CourierState>()((_set, get) => ({
       // Ambil koordinat basecamp + service_secret untuk native service
       const [bcResult, settingsResult] = await Promise.all([
         supabase
-          .from('basecamps' as any)
+          .from('basecamps')
           .select('lat, lng, radius_m')
           .eq('id', result.basecamp_id)
-          .single() as unknown as Promise<{ data: BasecampRow | null; error: any }>,
+          .single(),
         supabase
-          .from('settings' as any)
+          .from('settings')
           .select('service_secret')
           .eq('id', 'global')
-          .single() as unknown as Promise<{ data: { service_secret: string } | null; error: any }>,
+          .single(),
       ])
+
+      // Log errors for debugging
+      if (bcResult.error) {
+        console.error('[setCourierStay] Failed to fetch basecamp:', bcResult.error)
+      }
+      if (settingsResult.error) {
+        console.error('[setCourierStay] Failed to fetch settings:', settingsResult.error)
+      }
 
       const bc = bcResult.data
       const settings = settingsResult.data
       const { supabaseUrl, supabaseAnonKey } = await import('@/lib/supabaseClient')
 
       if (bc && settings) {
+        console.log('[setCourierStay] Starting native service with basecamp:', {
+          basecampId: result.basecamp_id,
+          lat: bc.lat,
+          lng: bc.lng,
+          radius: bc.radius_m,
+        })
+        
         stayNative.start({
           lat: bc.lat,
           lng: bc.lng,
@@ -116,6 +124,8 @@ export const useCourierStore = create<CourierState>()((_set, get) => ({
           serviceSecret: settings.service_secret,
           courierId,
         })
+      } else {
+        console.error('[setCourierStay] Missing data - bc:', !!bc, 'settings:', !!settings)
       }
     }
 
