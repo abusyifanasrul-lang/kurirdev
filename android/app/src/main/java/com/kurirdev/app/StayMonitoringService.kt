@@ -43,7 +43,9 @@ class StayMonitoringService : Service() {
         const val EXTRA_SERVICE_SECRET = "serviceSecret"
         const val EXTRA_COURIER_ID    = "courierId"
         const val MAX_ACCURACY_M      = 50f
-        const val INTERVAL_MS         = 60_000L
+        // GPS check interval: 30 seconds (detection window: 30s × 5 = 2.5 minutes)
+        // Reduced from 60s to improve queue fairness while maintaining GPS error tolerance
+        const val INTERVAL_MS         = 30_000L
         const val CONSECUTIVE_LIMIT   = 5
         @Volatile var isRunning       = false
     }
@@ -69,6 +71,8 @@ class StayMonitoringService : Service() {
                 courierId     = intent.getStringExtra(EXTRA_COURIER_ID) ?: ""
                 outZoneCounter = 0
 
+                android.util.Log.d("StayMonitor", "Starting monitoring with interval=30s, threshold=5 (2.5 min detection window)")
+                
                 wakeLock?.acquire(8 * 60 * 60 * 1000L) // Max 8 jam shift
                 startForeground(NOTIF_ID, buildNotification("Monitoring lokasi STAY aktif"))
                 startLocationTracking()
