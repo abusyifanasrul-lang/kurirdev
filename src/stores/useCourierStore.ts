@@ -63,9 +63,14 @@ export const useCourierStore = create<CourierState>()((_set, get) => ({
     if (status === 'on') stayNative.stop()
 
     // Catat kehadiran (silent fail — tidak blocking)
-    await supabase.rpc('record_courier_checkin', {
-      p_courier_id: courierId
-    }).catch(() => {}) // jika gagal, admin bisa input manual
+    try {
+      await supabase.rpc('record_courier_checkin', {
+        p_courier_id: courierId
+      })
+    } catch (err) {
+      console.warn('[setCourierOnline] Failed to record checkin:', err)
+      // jika gagal, admin bisa input manual
+    }
   },
 
   setCourierStay: async (courierId, qrToken) => {
