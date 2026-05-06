@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "pwa:build": "npm run build && npx cap copy",
-    "pwa:sync": "npm run build && npx cap sync"
+    "pwa:sync": "npm run build && npx cap sync && node scripts/post-cap-sync.cjs",
+    "cap:sync": "npx cap sync && node scripts/post-cap-sync.cjs"
   },
   "dependencies": {
     "@capacitor-mlkit/barcode-scanning": "^8.0.1",
