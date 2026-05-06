@@ -74,6 +74,10 @@ export const useCourierStore = create<CourierState>()((_set, get) => ({
   },
 
   setCourierStay: async (courierId, qrToken) => {
+    // CRITICAL: Stop any existing service first to prevent multiple instances
+    console.log('[setCourierStay] Stopping any existing service first...')
+    stayNative.stop()
+    
     // Call RPC with correct parameters matching SQL function signature
     const { data, error } = await supabase.rpc('verify_stay_qr', {
       p_token: qrToken,
@@ -112,13 +116,14 @@ export const useCourierStore = create<CourierState>()((_set, get) => ({
       const { supabaseUrl, supabaseAnonKey } = await import('@/lib/supabaseClient')
 
       if (bc && settings) {
-        console.log('[setCourierStay] Starting native service with basecamp:', {
+        console.log('[setCourierStay] Starting NEW native service with basecamp:', {
           basecampId: result.basecamp_id,
           lat: bc.lat,
           lng: bc.lng,
           radius: bc.radius_m,
         })
         
+        // stayNative.start() already has 500ms delay after stop
         stayNative.start({
           lat: bc.lat,
           lng: bc.lng,

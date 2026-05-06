@@ -109,10 +109,18 @@ public class StayMonitorPlugin extends Plugin {
 
     @PluginMethod
     public void stopMonitoring(PluginCall call) {
-        Log.i(TAG, "🛑 Stopping monitoring");
-        Intent intent = new Intent(getContext(), StayMonitoringService.class);
-        intent.setAction(StayMonitoringService.ACTION_STOP);
-        getContext().startService(intent);
+        Log.i(TAG, "🛑 Stopping monitoring - sending ACTION_STOP and stopService");
+        
+        // Send ACTION_STOP to trigger cleanup
+        Intent stopIntent = new Intent(getContext(), StayMonitoringService.class);
+        stopIntent.setAction(StayMonitoringService.ACTION_STOP);
+        getContext().startService(stopIntent);
+        
+        // Also call stopService to force stop
+        Intent serviceIntent = new Intent(getContext(), StayMonitoringService.class);
+        getContext().stopService(serviceIntent);
+        
+        Log.i(TAG, "✅ Stop commands sent");
         call.resolve();
     }
 

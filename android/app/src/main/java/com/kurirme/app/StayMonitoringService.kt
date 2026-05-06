@@ -3,6 +3,7 @@ package com.kurirme.app
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
@@ -33,7 +34,8 @@ class StayMonitoringService : Service() {
 
     companion object {
         const val TAG                 = "StayMonitorService"
-        const val CHANNEL_ID          = "stay_monitoring"
+        // Updated channel ID to v10 to force reset system-level settings for the notification
+        const val CHANNEL_ID          = "stay_monitoring_v10"
         const val NOTIF_ID            = 2001
         const val ACTION_START        = "START_STAY"
         const val ACTION_STOP         = "STOP_STAY"
@@ -45,7 +47,7 @@ class StayMonitoringService : Service() {
         const val EXTRA_SB_KEY        = "supabaseAnonKey"
         const val EXTRA_SERVICE_SECRET = "serviceSecret"
         const val EXTRA_COURIER_ID    = "courierId"
-        const val MAX_ACCURACY_M      = 60f
+        const val MAX_ACCURACY_M      = 50f
         const val INTERVAL_MS         = 30_000L
         const val CONSECUTIVE_LIMIT   = 5
         @JvmField
@@ -58,18 +60,26 @@ class StayMonitoringService : Service() {
         createNotificationChannel()
         val pm = getSystemService(POWER_SERVICE) as PowerManager
         wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "KurirMe:StayLock")
-        Log.d(TAG, "Service Created")
+        Log.i(TAG, "✅ Service Created")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val action = intent?.action
-        Log.d(TAG, "onStartCommand: action=$action")
+        Log.i(TAG, "onStartCommand: action=$action, isRunning=$isRunning")
 
         when (action) {
             ACTION_START -> {
+                // CRITICAL: If already running, stop first to prevent multiple instances
+                if (isRunning) {
+                    Log.w(TAG, "⚠️ Service already running! Stopping old instance first...")
+                    cleanup()
+                    // Small delay to ensure cleanup completes
+                    Thread.sleep(300)
+                }
+                
                 basecampLat   = intent.getDoubleExtra(EXTRA_LAT, 0.0)
                 basecampLng   = intent.getDoubleExtra(EXTRA_LNG, 0.0)
-                radiusMeters  = intent.getIntExtra(EXTRA_RADIUS, 10)
+                radiusMeters  = intent.getIntExtra(EXTRA_RADIUS, 15)
                 basecampId    = intent.getStringExtra(EXTRA_BASECAMP_ID) ?: ""
                 supabaseUrl   = intent.getStringExtra(EXTRA_SB_URL) ?: ""
                 supabaseKey   = intent.getStringExtra(EXTRA_SB_KEY) ?: ""
@@ -77,7 +87,7 @@ class StayMonitoringService : Service() {
                 courierId     = intent.getStringExtra(EXTRA_COURIER_ID) ?: ""
                 outZoneCounter = 0
 
-                Log.i(TAG, "Starting monitoring: Basecamp($basecampLat, $basecampLng), Radius=$radiusMeters")
+                Log.i(TAG, "🚀 Monitoring Start: BC($basecampLat, $basecampLng) R=$radiusMeters Courier=$courierId")
                 
                 if (wakeLock?.isHeld == false) {
                     wakeLock?.acquire(8 * 60 * 60 * 1000L)
@@ -94,13 +104,13 @@ class StayMonitoringService : Service() {
                     startLocationTracking()
                     isRunning = true
                 } catch (e: Exception) {
-                    Log.e(TAG, "Failed to start foreground service", e)
+                    Log.e(TAG, "❌ Failed to start foreground service", e)
                     stopSelf()
                     return START_NOT_STICKY
                 }
             }
             ACTION_STOP -> {
-                Log.i(TAG, "Stopping monitoring service")
+                Log.i(TAG, "🛑 Stopping monitoring service")
                 cleanup()
                 return START_NOT_STICKY
             }
@@ -109,16 +119,33 @@ class StayMonitoringService : Service() {
     }
 
     private fun startLocationTracking() {
+        Log.i(TAG, "📡 Requesting high-accuracy GPS updates (Interval: ${INTERVAL_MS}ms)")
+        
         val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, INTERVAL_MS)
-            .setMinUpdateIntervalMillis(20_000)
+            .setMinUpdateIntervalMillis(15_000)
+            .setMaxUpdateDelayMillis(0) // Crucial: Do not batch updates
+            .setGranularity(Granularity.GRANULARITY_FINE)
             .setWaitForAccurateLocation(false)
             .build()
 
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
-                result.lastLocation?.let { 
-                    Log.d(TAG, "Location Update: ${it.latitude}, ${it.longitude} (acc: ${it.accuracy}m)")
-                    evaluateLocation(it) 
+                // CRITICAL: Use locations (plural) to get ALL new locations, not just last cached one
+                val locations = result.locations
+                if (locations.isNotEmpty()) {
+                    // Get the MOST RECENT location (last in list)
+                    val loc = locations.last()
+                    Log.i(TAG, "📍 GPS UPDATE: Lat=${loc.latitude}, Lng=${loc.longitude}, Acc=${loc.accuracy.toInt()}m, Time=${loc.time}")
+                    evaluateLocation(loc)
+                } else {
+                    Log.w(TAG, "📍 GPS UPDATE: No locations in result")
+                }
+            }
+
+            override fun onLocationAvailability(avail: LocationAvailability) {
+                Log.i(TAG, "📡 GPS Availability: ${avail.isLocationAvailable}")
+                if (!avail.isLocationAvailable) {
+                    Log.e(TAG, "❌ GPS NOT AVAILABLE - location updates may not work!")
                 }
             }
         }
@@ -126,40 +153,39 @@ class StayMonitoringService : Service() {
         try {
             fusedLocationClient.requestLocationUpdates(request, locationCallback!!, mainLooper)
         } catch (e: SecurityException) {
-            Log.e(TAG, "Location permission missing", e)
+            Log.e(TAG, "❌ Permission error during tracking request", e)
             broadcast("error", false, 0, 0f)
             cleanup()
         }
     }
 
     private fun evaluateLocation(loc: Location) {
-        // Ignore very inaccurate locations to prevent false out-of-zone events
-        if (loc.accuracy > MAX_ACCURACY_M) {
-            Log.w(TAG, "Ignoring inaccurate location: ${loc.accuracy}m")
-            return
-        }
-
         val dist = FloatArray(1)
         Location.distanceBetween(loc.latitude, loc.longitude, basecampLat, basecampLng, dist)
-
         val rawDist = dist[0]
-        // Subtract accuracy to be lenient (best-case distance)
-        val effectiveDist = Math.max(0f, rawDist - loc.accuracy)
-        val inZone = effectiveDist <= radiusMeters
 
-        Log.i(TAG, "Evaluation: dist=${rawDist.toInt()}m, effective=${effectiveDist.toInt()}m, inZone=$inZone, counter=$outZoneCounter")
+        // CRITICAL: If accuracy is poor, we MUST still evaluate but log warning
+        // DO NOT skip evaluation or counter will keep running from old state
+        if (loc.accuracy > MAX_ACCURACY_M) {
+            Log.w(TAG, "⚠️ Low accuracy (${loc.accuracy.toInt()}m) - evaluation may be inaccurate")
+        }
+
+        // STRICT LOGIC: Raw distance must be within radius
+        val inZone = rawDist <= radiusMeters
+
+        Log.i(TAG, "📊 EVAL: Dist=${rawDist.toInt()}m | Limit=${radiusMeters}m | InZone=$inZone | Counter=$outZoneCounter | Acc=${loc.accuracy.toInt()}m")
 
         if (inZone) {
-            if (outZoneCounter > 0) Log.i(TAG, "Back in zone. Counter reset.")
+            if (outZoneCounter > 0) Log.i(TAG, "✅ User returned to zone. Resetting counter.")
             outZoneCounter = 0
             broadcast("update", true, 0, rawDist)
         } else {
             outZoneCounter++
-            Log.w(TAG, "Out of zone! Counter=$outZoneCounter/$CONSECUTIVE_LIMIT")
+            Log.w(TAG, "🚨 OUT OF ZONE! ($outZoneCounter/$CONSECUTIVE_LIMIT)")
             broadcast("update", false, outZoneCounter, rawDist)
             
             if (outZoneCounter >= CONSECUTIVE_LIMIT) {
-                Log.e(TAG, "Consecutive limit reached. Revoking stay.")
+                Log.e(TAG, "🔥 CONSECUTIVE LIMIT REACHED. Revoking STAY status.")
                 broadcast("revoked", false, outZoneCounter, rawDist)
                 performRevocation()
                 cleanup()
@@ -168,8 +194,8 @@ class StayMonitoringService : Service() {
     }
 
     private fun performRevocation() {
-        if (supabaseUrl.isEmpty() || supabaseKey.isEmpty() || serviceSecret.isEmpty() || courierId.isEmpty()) {
-            Log.e(TAG, "Cannot revoke: Missing configuration")
+        if (supabaseUrl.isEmpty() || supabaseKey.isEmpty()) {
+            Log.e(TAG, "❌ Revocation aborted: Missing Supabase config")
             return
         }
 
@@ -195,17 +221,17 @@ class StayMonitoringService : Service() {
 
                     conn.outputStream.use { it.write(body.toString().toByteArray()) }
                     val code = conn.responseCode
-                    Log.d(TAG, "Revocation HTTP Response: $code")
+                    Log.i(TAG, "☁️ Supabase RPC Response: $code")
                     conn.disconnect()
 
                     if (code in 200..299) {
-                        Log.i(TAG, "Successfully revoked stay via Supabase RPC")
+                        Log.i(TAG, "✅ Revocation successful")
                         break
                     }
                     attempts++
                     if (attempts < maxAttempts) Thread.sleep(2_000L * attempts)
                 } catch (e: Exception) {
-                    Log.e(TAG, "Revocation attempt $attempts failed", e)
+                    Log.e(TAG, "☁️ Supabase request error", e)
                     attempts++
                     if (attempts < maxAttempts) Thread.sleep(2_000L * attempts)
                 }
@@ -230,26 +256,51 @@ class StayMonitoringService : Service() {
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(CHANNEL_ID, "Stay Monitor", NotificationManager.IMPORTANCE_LOW).apply {
-                description = "GPS monitoring kurir STAY"
-                setShowBadge(false)
+            val channel = NotificationChannel(CHANNEL_ID, "Stay Monitoring", NotificationManager.IMPORTANCE_HIGH).apply {
+                description = "Monitoring status STAY kurir"
+                setShowBadge(true)
+                setSound(null, null)
+                enableVibration(false)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             }
-            (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).createNotificationChannel(channel)
+            val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+            manager.createNotificationChannel(channel)
         }
     }
 
-    private fun buildNotification(text: String): Notification =
-        NotificationCompat.Builder(this, CHANNEL_ID)
+    private fun buildNotification(text: String): Notification {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            this, 0, intent,
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0
+        )
+
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("KurirMe: STAY")
             .setContentText(text)
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-            .setOngoing(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setOngoing(true) 
+            .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
-            .build()
+            .setContentIntent(pendingIntent)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setAutoCancel(false)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            builder.setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
+        }
+
+        val notification = builder.build()
+        // Force the flags at the bit level to ensure persistence as much as possible on newer Androids
+        notification.flags = notification.flags or Notification.FLAG_ONGOING_EVENT or Notification.FLAG_NO_CLEAR
+        
+        return notification
+    }
 
     private fun cleanup() {
-        Log.d(TAG, "Cleaning up service resources")
+        Log.i(TAG, "🧹 Cleanup: Releasing tracking and wake lock")
         locationCallback?.let { fusedLocationClient.removeLocationUpdates(it) }
         locationCallback = null
         wakeLock?.let { if (it.isHeld) it.release() }
@@ -258,8 +309,13 @@ class StayMonitoringService : Service() {
         stopSelf()
     }
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        Log.w(TAG, "⚠️ Task removed. Service is still running in foreground.")
+    }
+
     override fun onDestroy() {
-        Log.d(TAG, "onDestroy")
+        Log.i(TAG, "Service Destroyed")
         super.onDestroy()
         cleanup()
     }

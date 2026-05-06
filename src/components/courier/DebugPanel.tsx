@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Bug, X, Trash2, Copy, CheckCircle, Smartphone, Wifi, User, Shield } from 'lucide-react';
+import { Bug, X, Trash2, Copy, CheckCircle, Smartphone, Wifi, User, Shield, MapPin, Navigation } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { Capacitor } from '@capacitor/core';
 import { Device } from '@capacitor/device';
 import { Network } from '@capacitor/network';
 import { useAuth } from '@/context/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
+import { stayNative, StayNativeEvent } from '@/lib/stayMonitoring';
 
 interface LogEntry {
   timestamp: string;
@@ -26,6 +27,13 @@ interface SystemInfo {
   networkType: string;
 }
 
+interface GPSLog {
+  timestamp: number;
+  distance: number;
+  inZone: boolean;
+  counter: number;
+}
+
 export function DebugPanel() {
   const { user } = useAuth();
   const { permissions } = usePermissions();
@@ -34,6 +42,8 @@ export function DebugPanel() {
   const [copied, setCopied] = useState(false);
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
   const [showSystemInfo, setShowSystemInfo] = useState(false);
+  const [gpsLogs, setGpsLogs] = useState<GPSLog[]>([]);
+  const [showGPSMonitor, setShowGPSMonitor] = useState(false);
 
   // Collect system info
   useEffect(() => {
@@ -73,6 +83,28 @@ export function DebugPanel() {
     };
 
     collectSystemInfo();
+  }, []);
+
+  // Listen to STAY native events for GPS monitoring
+  useEffect(() => {
+    const unsubscribe = stayNative.onUpdate((event: StayNativeEvent) => {
+      // Add GPS log entry
+      setGpsLogs(prev => [...prev.slice(-19), {
+        timestamp: event.timestamp,
+        distance: event.distance,
+        inZone: event.inZone,
+        counter: event.counter,
+      }]);
+
+      // Also log to console for debugging
+      if (event.type === 'update') {
+        console.log(`[GPS] 📍 Distance: ${event.distance.toFixed(1)}m | InZone: ${event.inZone} | Counter: ${event.counter}`);
+      } else if (event.type === 'revoked') {
+        console.error(`[GPS] 🚨 STAY REVOKED - Out of zone for ${event.counter} checks`);
+      }
+    });
+
+    return unsubscribe;
   }, []);
 
   useEffect(() => {
@@ -241,13 +273,20 @@ Camera: ${permissions.camera}
             </div>
 
             {/* Actions */}
-            <div className="flex gap-2 p-4 border-b border-gray-100">
+            <div className="flex gap-2 p-4 border-b border-gray-100 flex-wrap">
               <button
                 onClick={() => setShowSystemInfo(!showSystemInfo)}
                 className="flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-600 rounded-xl text-xs font-bold hover:bg-purple-100 transition-colors"
               >
                 <Smartphone className="h-4 w-4" />
                 System Info
+              </button>
+              <button
+                onClick={() => setShowGPSMonitor(!showGPSMonitor)}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl text-xs font-bold hover:bg-emerald-100 transition-colors"
+              >
+                <Navigation className="h-4 w-4" />
+                GPS Monitor
               </button>
               <button
                 onClick={clearLogs}
@@ -273,6 +312,65 @@ Camera: ${permissions.camera}
                 )}
               </button>
             </div>
+
+            {/* GPS Monitor Panel */}
+            {showGPSMonitor && (
+              <div className="p-4 bg-emerald-50 border-b border-emerald-100 space-y-3">
+                <div className="flex items-center gap-2 mb-3">
+                  <Navigation className="h-5 w-5 text-emerald-600" />
+                  <span className="text-sm font-bold text-emerald-900">GPS Monitoring (Last 20 updates)</span>
+                </div>
+                
+                {gpsLogs.length === 0 ? (
+                  <div className="bg-white rounded-lg p-4 border border-emerald-200 text-center">
+                    <MapPin className="h-8 w-8 mx-auto mb-2 text-emerald-300" />
+                    <p className="text-xs font-bold text-emerald-700">No GPS data yet</p>
+                    <p className="text-[10px] text-emerald-600 mt-1">Scan QR to activate STAY monitoring</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {gpsLogs.slice().reverse().map((gpsLog, idx) => (
+                      <div
+                        key={idx}
+                        className={cn(
+                          "bg-white rounded-lg p-3 border-2 font-mono text-xs",
+                          gpsLog.inZone ? "border-emerald-300" : "border-red-300"
+                        )}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[10px] text-gray-500">
+                            {new Date(gpsLog.timestamp).toLocaleTimeString()}
+                          </span>
+                          <span className={cn(
+                            "px-2 py-0.5 rounded-full text-[10px] font-bold",
+                            gpsLog.inZone ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
+                          )}>
+                            {gpsLog.inZone ? '✅ IN ZONE' : '❌ OUT OF ZONE'}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <p className="text-[10px] text-gray-500 mb-0.5">Distance</p>
+                            <p className="text-sm font-bold text-gray-900">{gpsLog.distance.toFixed(1)}m</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-gray-500 mb-0.5">Out Counter</p>
+                            <p className={cn(
+                              "text-sm font-bold",
+                              gpsLog.counter === 0 ? "text-emerald-600" :
+                              gpsLog.counter < 3 ? "text-yellow-600" :
+                              "text-red-600"
+                            )}>
+                              {gpsLog.counter}/5
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* System Info Panel */}
             {showSystemInfo && systemInfo && (

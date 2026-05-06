@@ -27,12 +27,19 @@ export interface StayNativeEvent {
 }
 
 class StayNativeBridge {
-  private listener: ((evt: StayNativeEvent) => void) | null = null
+  private listeners: Set<(evt: StayNativeEvent) => void> = new Set()
 
   constructor() {
     if (typeof window !== 'undefined') {
       ;(window as any).__STAY_NATIVE_CALLBACK = (data: StayNativeEvent) => {
-        this.listener?.(data)
+        // Broadcast to ALL listeners
+        this.listeners.forEach(listener => {
+          try {
+            listener(data)
+          } catch (error) {
+            console.error('[StayNative] Listener error:', error)
+          }
+        })
       }
     }
   }
@@ -48,9 +55,18 @@ class StayNativeBridge {
     courierId: string
   }): void {
     if (Capacitor.getPlatform() !== 'android') return
-    StayMonitor.startMonitoring(options).catch(err =>
-      console.error('[StayNative] start error:', err)
-    )
+    
+    // CRITICAL: Stop any existing service first
+    console.log('[StayNative] Stopping existing service before starting new one...')
+    this.stop()
+    
+    // Small delay to ensure stop completes
+    setTimeout(() => {
+      console.log('[StayNative] Starting new service...')
+      StayMonitor.startMonitoring(options).catch(err =>
+        console.error('[StayNative] start error:', err)
+      )
+    }, 500)
   }
 
   stop(): void {
@@ -67,8 +83,14 @@ class StayNativeBridge {
   }
 
   onUpdate(callback: (evt: StayNativeEvent) => void): () => void {
-    this.listener = callback
-    return () => { this.listener = null }
+    this.listeners.add(callback)
+    console.log(`[StayNative] Listener added. Total listeners: ${this.listeners.size}`)
+    
+    // Return unsubscribe function
+    return () => {
+      this.listeners.delete(callback)
+      console.log(`[StayNative] Listener removed. Total listeners: ${this.listeners.size}`)
+    }
   }
 }
 
