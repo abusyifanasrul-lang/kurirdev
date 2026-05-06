@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.location.Location
 import android.os.Build
 import android.os.IBinder
@@ -43,8 +44,6 @@ class StayMonitoringService : Service() {
         const val EXTRA_SERVICE_SECRET = "serviceSecret"
         const val EXTRA_COURIER_ID    = "courierId"
         const val MAX_ACCURACY_M      = 50f
-        // GPS check interval: 30 seconds (detection window: 30s × 5 = 2.5 minutes)
-        // Reduced from 60s to improve queue fairness while maintaining GPS error tolerance
         const val INTERVAL_MS         = 30_000L
         const val CONSECUTIVE_LIMIT   = 5
         @JvmField
@@ -72,12 +71,26 @@ class StayMonitoringService : Service() {
                 courierId     = intent.getStringExtra(EXTRA_COURIER_ID) ?: ""
                 outZoneCounter = 0
 
-                android.util.Log.d("StayMonitor", "Starting monitoring with interval=30s, threshold=5 (2.5 min detection window)")
+                android.util.Log.d("StayMonitor", "Starting monitoring service...")
                 
-                wakeLock?.acquire(8 * 60 * 60 * 1000L) // Max 8 jam shift
-                startForeground(NOTIF_ID, buildNotification("Monitoring lokasi STAY aktif"))
-                startLocationTracking()
-                isRunning = true
+                wakeLock?.acquire(8 * 60 * 60 * 1000L)
+                
+                val notification = buildNotification("Monitoring lokasi STAY aktif")
+                
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        startForeground(NOTIF_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION)
+                    } else {
+                        startForeground(NOTIF_ID, notification)
+                    }
+                    startLocationTracking()
+                    isRunning = true
+                } catch (e: Exception) {
+                    android.util.Log.e("StayMonitor", "Failed to start foreground service", e)
+                    // If startForeground fails, we must stop the service to avoid "Context.startForegroundService() did not then call Service.startForeground()"
+                    stopSelf()
+                    return START_NOT_STICKY
+                }
             }
             ACTION_STOP -> {
                 cleanup()
@@ -102,6 +115,7 @@ class StayMonitoringService : Service() {
         try {
             fusedLocationClient.requestLocationUpdates(request, locationCallback!!, mainLooper)
         } catch (e: SecurityException) {
+            android.util.Log.e("StayMonitor", "Location permission missing", e)
             broadcast("error", false, 0, 0f)
             cleanup()
         }
@@ -155,14 +169,14 @@ class StayMonitoringService : Service() {
 
                     conn.outputStream.use { it.write(body.toString().toByteArray()) }
                     val code = conn.responseCode
-                    android.util.Log.d("StayMonitor", "Revocation response: $code (attempt ${attempts + 1})")
+                    android.util.Log.d("StayMonitor", "Revocation response: $code")
                     conn.disconnect()
 
-                    if (code in 200..299) break // Success, stop retrying
+                    if (code in 200..299) break
                     attempts++
-                    if (attempts < maxAttempts) Thread.sleep(2_000L * attempts) // Backoff
+                    if (attempts < maxAttempts) Thread.sleep(2_000L * attempts)
                 } catch (e: Exception) {
-                    android.util.Log.e("StayMonitor", "Revocation failed (attempt ${attempts + 1})", e)
+                    android.util.Log.e("StayMonitor", "Revocation failed", e)
                     attempts++
                     if (attempts < maxAttempts) Thread.sleep(2_000L * attempts)
                 }
@@ -196,7 +210,7 @@ class StayMonitoringService : Service() {
         NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("KurirMe: STAY")
             .setContentText(text)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()

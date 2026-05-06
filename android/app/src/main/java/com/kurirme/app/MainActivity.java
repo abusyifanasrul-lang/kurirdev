@@ -39,14 +39,11 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         
-        // Register plugin AFTER super.onCreate() when bridge is ready
-        try {
-            registerPlugin(StayMonitorPlugin.class);
-            Log.i(TAG, "✅ StayMonitorPlugin registered successfully");
-        } catch (Exception e) {
-            Log.e(TAG, "❌ Failed to register StayMonitorPlugin", e);
-        }
+        // Manual registration for custom internal plugins
+        registerPlugin(StayMonitorPlugin.class);
         
+        Log.i(TAG, "✅ StayMonitorPlugin registered via onCreate");
+
         IntentFilter filter = new IntentFilter("com.kurirme.STAY_NATIVE_EVENT");
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(stayReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
