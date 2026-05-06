@@ -1,4 +1,4 @@
-package com.kurirdev.app
+package com.kurirme.app
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -56,7 +56,7 @@ class StayMonitoringService : Service() {
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         createNotificationChannel()
         val pm = getSystemService(POWER_SERVICE) as PowerManager
-        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "KurirDev:StayLock")
+        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "KurirMe:StayLock")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -179,7 +179,7 @@ class StayMonitoringService : Service() {
             put("basecampId", basecampId)
             put("timestamp", System.currentTimeMillis())
         }
-        sendBroadcast(Intent("com.kurirdev.STAY_NATIVE_EVENT").putExtra("data", data.toString()))
+        sendBroadcast(Intent("com.kurirme.STAY_NATIVE_EVENT").putExtra("data", data.toString()))
     }
 
     private fun createNotificationChannel() {
@@ -194,7 +194,7 @@ class StayMonitoringService : Service() {
 
     private fun buildNotification(text: String): Notification =
         NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("KurirDev: STAY")
+            .setContentTitle("KurirMe: STAY")
             .setContentText(text)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setOngoing(true)

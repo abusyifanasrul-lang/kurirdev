@@ -1,4 +1,4 @@
-package com.kurirdev.app;
+package com.kurirme.app;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -47,7 +47,7 @@ public class MainActivity extends BridgeActivity {
             Log.e(TAG, "❌ Failed to register StayMonitorPlugin", e);
         }
         
-        IntentFilter filter = new IntentFilter("com.kurirdev.STAY_NATIVE_EVENT");
+        IntentFilter filter = new IntentFilter("com.kurirme.STAY_NATIVE_EVENT");
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(stayReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
         } else {

@@ -1,4 +1,4 @@
-package com.kurirdev.app;
+package com.kurirme.app;
 
 import android.content.Intent;
 import android.os.Build;
@@ -27,7 +27,7 @@ public class StayMonitorPlugin extends Plugin {
         Double lat = call.getDouble("lat");
         Double lng = call.getDouble("lng");
         Integer radius = call.getInt("radius", 10);
-        String basecampId = call.getString("basecampId", "");
+        String basecampId = call.getString("basecampId");
         String supabaseUrl = call.getString("supabaseUrl", "");
         String supabaseKey = call.getString("supabaseAnonKey", "");
         String serviceSecret = call.getString("serviceSecret", "");

@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.kurirdev.app',
+  appId: 'com.kurirme.app',
   appName: 'KurirMe',
   webDir: 'dist',
   plugins: {
