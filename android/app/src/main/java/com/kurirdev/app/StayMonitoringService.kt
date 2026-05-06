@@ -47,6 +47,7 @@ class StayMonitoringService : Service() {
         // Reduced from 60s to improve queue fairness while maintaining GPS error tolerance
         const val INTERVAL_MS         = 30_000L
         const val CONSECUTIVE_LIMIT   = 5
+        @JvmField
         @Volatile var isRunning       = false
     }
 
