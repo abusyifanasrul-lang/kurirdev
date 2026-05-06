@@ -20,6 +20,14 @@ import com.getcapacitor.annotation.Permission;
         @Permission(
             alias = "location",
             strings = { Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION }
+        ),
+        @Permission(
+            alias = "backgroundLocation",
+            strings = { Manifest.permission.ACCESS_BACKGROUND_LOCATION }
+        ),
+        @Permission(
+            alias = "notifications",
+            strings = { Manifest.permission.POST_NOTIFICATIONS }
         )
     }
 )
@@ -37,16 +45,23 @@ public class StayMonitorPlugin extends Plugin {
     public void startMonitoring(PluginCall call) {
         Log.i(TAG, "📍 startMonitoring called");
 
-        // Check for location permissions first
+        // Check for basic location permissions
         if (getPermissionState("location") != PermissionState.GRANTED) {
-            call.reject("Location permission not granted. Please request permissions first.");
+            call.reject("Location permission not granted. Please request 'location' permission.");
             return;
+        }
+
+        // On Android 10+, background monitoring works best with ACCESS_BACKGROUND_LOCATION
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            if (getPermissionState("backgroundLocation") != PermissionState.GRANTED) {
+                Log.w(TAG, "⚠️ Background location not granted. Service may be restricted when app is closed.");
+            }
         }
 
         // Check for FOREGROUND_SERVICE_LOCATION on Android 14+
         if (Build.VERSION.SDK_INT >= 34) {
             if (ContextCompat.checkSelfPermission(getContext(), "android.permission.FOREGROUND_SERVICE_LOCATION") != PackageManager.PERMISSION_GRANTED) {
-                call.reject("FOREGROUND_SERVICE_LOCATION permission not granted");
+                call.reject("Missing FOREGROUND_SERVICE_LOCATION manifest declaration.");
                 return;
             }
         }
@@ -65,7 +80,7 @@ public class StayMonitorPlugin extends Plugin {
             return;
         }
 
-        Log.i(TAG, "🚀 Starting service with basecamp: " + basecampId + ", radius: " + radius);
+        Log.i(TAG, "🚀 Starting service for basecamp: " + basecampId + " (Radius: " + radius + "m)");
 
         Intent intent = new Intent(getContext(), StayMonitoringService.class);
         intent.setAction(StayMonitoringService.ACTION_START);
@@ -84,7 +99,7 @@ public class StayMonitorPlugin extends Plugin {
             } else {
                 getContext().startService(intent);
             }
-            Log.i(TAG, "✅ Service start command sent");
+            Log.i(TAG, "✅ Service start successful");
             call.resolve();
         } catch (Exception e) {
             Log.e(TAG, "❌ Failed to start service: " + e.getMessage());
@@ -94,23 +109,17 @@ public class StayMonitorPlugin extends Plugin {
 
     @PluginMethod
     public void stopMonitoring(PluginCall call) {
-        Log.i(TAG, "🛑 stopMonitoring called");
-        
+        Log.i(TAG, "🛑 Stopping monitoring");
         Intent intent = new Intent(getContext(), StayMonitoringService.class);
         intent.setAction(StayMonitoringService.ACTION_STOP);
         getContext().startService(intent);
-        
-        Log.i(TAG, "✅ Service stop command sent");
         call.resolve();
     }
 
     @PluginMethod
     public void isRunning(PluginCall call) {
-        boolean running = StayMonitoringService.isRunning;
-        Log.i(TAG, "❓ isRunning called, result: " + running);
-        
         JSObject ret = new JSObject();
-        ret.put("running", running);
+        ret.put("running", StayMonitoringService.isRunning);
         call.resolve(ret);
     }
 }
