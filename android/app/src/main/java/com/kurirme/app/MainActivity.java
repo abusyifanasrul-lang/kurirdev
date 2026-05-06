@@ -37,12 +37,12 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        
-        // Manual registration for custom internal plugins
+        // Register plugins BEFORE calling super.onCreate
         registerPlugin(StayMonitorPlugin.class);
         
-        Log.i(TAG, "✅ StayMonitorPlugin registered via onCreate");
+        super.onCreate(savedInstanceState);
+        
+        Log.i(TAG, "✅ StayMonitorPlugin registered and bridge initialized");
 
         IntentFilter filter = new IntentFilter("com.kurirme.STAY_NATIVE_EVENT");
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
