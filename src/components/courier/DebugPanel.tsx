@@ -44,6 +44,18 @@ export function DebugPanel() {
   const [showSystemInfo, setShowSystemInfo] = useState(false);
   const [gpsLogs, setGpsLogs] = useState<GPSLog[]>([]);
   const [showGPSMonitor, setShowGPSMonitor] = useState(false);
+  
+  // QR & STAY Monitor Toggle (default: disabled for queue testing)
+  const [qrStayEnabled, setQrStayEnabled] = useState(() => {
+    const saved = localStorage.getItem('qr_stay_enabled');
+    return saved === 'true';
+  });
+
+  // Save toggle state to localStorage
+  useEffect(() => {
+    localStorage.setItem('qr_stay_enabled', qrStayEnabled.toString());
+    (window as any).__QR_STAY_ENABLED = qrStayEnabled;
+  }, [qrStayEnabled]);
 
   // Collect system info
   useEffect(() => {
@@ -274,6 +286,18 @@ Camera: ${permissions.camera}
 
             {/* Actions */}
             <div className="flex gap-2 p-4 border-b border-gray-100 flex-wrap">
+              <button
+                onClick={() => setQrStayEnabled(!qrStayEnabled)}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-colors",
+                  qrStayEnabled 
+                    ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100" 
+                    : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+                )}
+              >
+                <Shield className="h-4 w-4" />
+                QR/STAY: {qrStayEnabled ? 'ON' : 'OFF'}
+              </button>
               <button
                 onClick={() => setShowSystemInfo(!showSystemInfo)}
                 className="flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-600 rounded-xl text-xs font-bold hover:bg-purple-100 transition-colors"

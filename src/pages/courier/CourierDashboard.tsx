@@ -161,6 +161,14 @@ export function CourierDashboard() {
 
   const handleSetStay = () => {
     if (!user?.id || isSuspended || isUpdatingStatus) return;
+    
+    // Check if QR/STAY is enabled
+    const qrStayEnabled = (window as any).__QR_STAY_ENABLED ?? false;
+    if (!qrStayEnabled) {
+      alert('QR/STAY Monitor dinonaktifkan untuk testing. Aktifkan di Debug Panel.');
+      return;
+    }
+    
     // Open QR scanner for Stay verification (attendance)
     setShowQRScanner(true);
   };
