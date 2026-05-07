@@ -11,10 +11,13 @@ import android.location.Location
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
+import android.os.SystemClock
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.google.android.gms.location.*
 import org.json.JSONObject
+import kotlin.math.max
+import kotlin.math.min
 
 class StayMonitoringService : Service() {
 
@@ -24,7 +27,7 @@ class StayMonitoringService : Service() {
 
     private var basecampLat   = 0.0
     private var basecampLng   = 0.0
-    private var radiusMeters  = 10
+    private var radiusMeters  = 15
     private var basecampId    = ""
     private var supabaseUrl   = ""
     private var supabaseKey   = ""
@@ -32,10 +35,14 @@ class StayMonitoringService : Service() {
     private var courierId     = ""
     private var outZoneCounter = 0
 
+    // GPS Smoothing (EMA) state
+    private var smoothedLat = 0.0
+    private var smoothedLng = 0.0
+    private var hasSmoothedLocation = false
+
     companion object {
         const val TAG                 = "StayMonitorService"
-        // Updated channel ID to v10 to force reset system-level settings for the notification
-        const val CHANNEL_ID          = "stay_monitoring_v10"
+        const val CHANNEL_ID          = "stay_monitoring_v14"
         const val NOTIF_ID            = 2001
         const val ACTION_START        = "START_STAY"
         const val ACTION_STOP         = "STOP_STAY"
@@ -47,9 +54,14 @@ class StayMonitoringService : Service() {
         const val EXTRA_SB_KEY        = "supabaseAnonKey"
         const val EXTRA_SERVICE_SECRET = "serviceSecret"
         const val EXTRA_COURIER_ID    = "courierId"
-        const val MAX_ACCURACY_M      = 50f
-        const val INTERVAL_MS         = 30_000L
-        const val CONSECUTIVE_LIMIT   = 5
+        
+        // Configuration Constants
+        const val MAX_ACCURACY_THRESHOLD = 150f   // Ignore points > 150m accuracy
+        const val STALE_THRESHOLD_NANOS  = 60_000_000_000L // 60 seconds
+        const val INTERVAL_MS            = 30_000L
+        const val MIN_UPDATE_INTERVAL_MS = 10_000L
+        const val CONSECUTIVE_LIMIT      = 4      // Approx 2 minutes of "Definitely Outside"
+        
         @JvmField
         @Volatile var isRunning       = false
     }
@@ -69,12 +81,9 @@ class StayMonitoringService : Service() {
 
         when (action) {
             ACTION_START -> {
-                // CRITICAL: If already running, stop first to prevent multiple instances
                 if (isRunning) {
-                    Log.w(TAG, "⚠️ Service already running! Stopping old instance first...")
-                    cleanup()
-                    // Small delay to ensure cleanup completes
-                    Thread.sleep(300)
+                    Log.w(TAG, "⚠️ Service already running! Restarting tracking...")
+                    cleanupTracking()
                 }
                 
                 basecampLat   = intent.getDoubleExtra(EXTRA_LAT, 0.0)
@@ -86,6 +95,7 @@ class StayMonitoringService : Service() {
                 serviceSecret = intent.getStringExtra(EXTRA_SERVICE_SECRET) ?: ""
                 courierId     = intent.getStringExtra(EXTRA_COURIER_ID) ?: ""
                 outZoneCounter = 0
+                hasSmoothedLocation = false
 
                 Log.i(TAG, "🚀 Monitoring Start: BC($basecampLat, $basecampLng) R=$radiusMeters Courier=$courierId")
                 
@@ -122,64 +132,102 @@ class StayMonitoringService : Service() {
         Log.i(TAG, "📡 Requesting high-accuracy GPS updates (Interval: ${INTERVAL_MS}ms)")
         
         val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, INTERVAL_MS)
-            .setMinUpdateIntervalMillis(15_000)
-            .setMaxUpdateDelayMillis(0) // Crucial: Do not batch updates
+            .setMinUpdateIntervalMillis(MIN_UPDATE_INTERVAL_MS)
+            .setMaxUpdateDelayMillis(0)
             .setGranularity(Granularity.GRANULARITY_FINE)
             .setWaitForAccurateLocation(false)
+            .setMinUpdateDistanceMeters(3f) 
+            .setMaxUpdateAgeMillis(60_000)  
             .build()
 
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
-                // CRITICAL: Use locations (plural) to get ALL new locations, not just last cached one
                 val locations = result.locations
                 if (locations.isNotEmpty()) {
-                    // Get the MOST RECENT location (last in list)
                     val loc = locations.last()
-                    Log.i(TAG, "📍 GPS UPDATE: Lat=${loc.latitude}, Lng=${loc.longitude}, Acc=${loc.accuracy.toInt()}m, Time=${loc.time}")
-                    evaluateLocation(loc)
-                } else {
-                    Log.w(TAG, "📍 GPS UPDATE: No locations in result")
+                    
+                    // 1. Stale Location Detection
+                    val locationAge = SystemClock.elapsedRealtimeNanos() - loc.elapsedRealtimeNanos
+                    if (locationAge > STALE_THRESHOLD_NANOS) {
+                        Log.w(TAG, "⚠️ Stale location skipped: ${locationAge / 1_000_000_000}s old")
+                        return
+                    }
+
+                    // 2. Dynamic EMA Smoothing
+                    val alpha = calculateAlpha(loc.accuracy)
+                    if (!hasSmoothedLocation) {
+                        smoothedLat = loc.latitude
+                        smoothedLng = loc.longitude
+                        hasSmoothedLocation = true
+                    } else {
+                        smoothedLat = (loc.latitude * alpha) + (smoothedLat * (1.0 - alpha))
+                        smoothedLng = (loc.longitude * alpha) + (smoothedLng * (1.0 - alpha))
+                    }
+
+                    val smoothedLoc = Location(loc).apply {
+                        latitude = smoothedLat
+                        longitude = smoothedLng
+                    }
+
+                    Log.i(TAG, "📍 GPS UPDATE: Smooth=(${String.format("%.6f", smoothedLoc.latitude)}, ${String.format("%.6f", smoothedLoc.longitude)}) Acc=${loc.accuracy.toInt()}m Alpha=$alpha")
+                    evaluateLocation(smoothedLoc, loc.accuracy)
                 }
             }
 
             override fun onLocationAvailability(avail: LocationAvailability) {
                 Log.i(TAG, "📡 GPS Availability: ${avail.isLocationAvailable}")
-                if (!avail.isLocationAvailable) {
-                    Log.e(TAG, "❌ GPS NOT AVAILABLE - location updates may not work!")
-                }
             }
         }
 
         try {
             fusedLocationClient.requestLocationUpdates(request, locationCallback!!, mainLooper)
         } catch (e: SecurityException) {
-            Log.e(TAG, "❌ Permission error during tracking request", e)
+            Log.e(TAG, "❌ Permission error", e)
             broadcast("error", false, 0, 0f)
             cleanup()
         }
     }
 
-    private fun evaluateLocation(loc: Location) {
+    private fun calculateAlpha(accuracy: Float): Double {
+        return when {
+            accuracy < 20f -> 0.6  // Good accuracy -> more responsive
+            accuracy < 50f -> 0.4  // Medium accuracy -> balanced
+            else -> 0.2            // Poor accuracy -> more smoothing
+        }
+    }
+
+    private fun evaluateLocation(loc: Location, accuracy: Float) {
+        if (accuracy > MAX_ACCURACY_THRESHOLD) {
+            Log.w(TAG, "⚠️ Ignoring point: Low accuracy (${accuracy.toInt()}m)")
+            return
+        }
+
         val dist = FloatArray(1)
         Location.distanceBetween(loc.latitude, loc.longitude, basecampLat, basecampLng, dist)
         val rawDist = dist[0]
 
-        // CRITICAL: If accuracy is poor, we MUST still evaluate but log warning
-        // DO NOT skip evaluation or counter will keep running from old state
-        if (loc.accuracy > MAX_ACCURACY_M) {
-            Log.w(TAG, "⚠️ Low accuracy (${loc.accuracy.toInt()}m) - evaluation may be inaccurate")
+        // 3. Hysteresis & Uncertain Zone Logic
+        // IN -> OUT: must be definitely outside the error circle
+        val definitelyOutside = (rawDist - accuracy) > radiusMeters
+        
+        // OUT -> IN: more tolerant reset with dynamic buffer
+        val resetBuffer = min(15f, max(5f, accuracy * 0.3f))
+        val resetThreshold = radiusMeters.toFloat() + resetBuffer
+        val definitelyInside = rawDist < resetThreshold
+
+        val currentState = when {
+            rawDist <= radiusMeters -> "INSIDE"
+            definitelyOutside -> "OUTSIDE"
+            else -> "UNCERTAIN"
         }
 
-        // STRICT LOGIC: Raw distance must be within radius
-        val inZone = rawDist <= radiusMeters
+        Log.i(TAG, "📊 EVAL: Dist=${rawDist.toInt()}m | Acc=${accuracy.toInt()}m | State=$currentState | Counter=$outZoneCounter/$CONSECUTIVE_LIMIT")
 
-        Log.i(TAG, "📊 EVAL: Dist=${rawDist.toInt()}m | Limit=${radiusMeters}m | InZone=$inZone | Counter=$outZoneCounter | Acc=${loc.accuracy.toInt()}m")
-
-        if (inZone) {
-            if (outZoneCounter > 0) Log.i(TAG, "✅ User returned to zone. Resetting counter.")
+        if (definitelyInside) {
+            if (outZoneCounter > 0) Log.i(TAG, "✅ User back in zone. Resetting counter.")
             outZoneCounter = 0
             broadcast("update", true, 0, rawDist)
-        } else {
+        } else if (definitelyOutside) {
             outZoneCounter++
             Log.w(TAG, "🚨 OUT OF ZONE! ($outZoneCounter/$CONSECUTIVE_LIMIT)")
             broadcast("update", false, outZoneCounter, rawDist)
@@ -190,6 +238,10 @@ class StayMonitoringService : Service() {
                 performRevocation()
                 cleanup()
             }
+        } else {
+            // UNCERTAIN ZONE: Freeze counter, let GPS stabilize
+            Log.i(TAG, "⚠️ Uncertain Zone: Holding counter at $outZoneCounter")
+            broadcast("update", outZoneCounter == 0, outZoneCounter, rawDist)
         }
     }
 
@@ -231,7 +283,7 @@ class StayMonitoringService : Service() {
                     attempts++
                     if (attempts < maxAttempts) Thread.sleep(2_000L * attempts)
                 } catch (e: Exception) {
-                    Log.e(TAG, "☁️ Supabase request error", e)
+                    Log.e(TAG, "☁️ Supabase error", e)
                     attempts++
                     if (attempts < maxAttempts) Thread.sleep(2_000L * attempts)
                 }
@@ -241,29 +293,31 @@ class StayMonitoringService : Service() {
 
     private fun broadcast(type: String, inZone: Boolean, counter: Int, distance: Float) {
         val data = JSONObject().apply {
-            put("type", type)
-            put("inZone", inZone)
-            put("counter", counter)
-            put("distance", distance)
-            put("basecampId", basecampId)
+            put("type", type); put("inZone", inZone); put("counter", counter)
+            put("distance", distance); put("basecampId", basecampId)
             put("timestamp", System.currentTimeMillis())
         }
-        val intent = Intent("com.kurirme.STAY_NATIVE_EVENT")
-        intent.putExtra("data", data.toString())
-        intent.setPackage(packageName)
+        val intent = Intent("com.kurirme.STAY_NATIVE_EVENT").apply {
+            putExtra("data", data.toString())
+            setPackage(packageName)
+        }
         sendBroadcast(intent)
     }
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(CHANNEL_ID, "Stay Monitoring", NotificationManager.IMPORTANCE_HIGH).apply {
+            val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+            listOf("stay_monitoring_v11", "stay_monitoring_v12", "stay_monitoring_v13").forEach {
+                manager.deleteNotificationChannel(it)
+            }
+            
+            val channel = NotificationChannel(CHANNEL_ID, "Stay Monitoring", NotificationManager.IMPORTANCE_LOW).apply {
                 description = "Monitoring status STAY kurir"
-                setShowBadge(true)
+                setShowBadge(false)
                 setSound(null, null)
                 enableVibration(false)
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             }
-            val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
             manager.createNotificationChannel(channel)
         }
     }
@@ -282,27 +336,30 @@ class StayMonitoringService : Service() {
             .setContentText(text)
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
             .setOngoing(true) 
-            .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setContentIntent(pendingIntent)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setAutoCancel(false)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             builder.setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
         }
 
         val notification = builder.build()
-        // Force the flags at the bit level to ensure persistence as much as possible on newer Androids
         notification.flags = notification.flags or Notification.FLAG_ONGOING_EVENT or Notification.FLAG_NO_CLEAR
         
         return notification
     }
 
-    private fun cleanup() {
-        Log.i(TAG, "🧹 Cleanup: Releasing tracking and wake lock")
+    private fun cleanupTracking() {
         locationCallback?.let { fusedLocationClient.removeLocationUpdates(it) }
         locationCallback = null
+    }
+
+    private fun cleanup() {
+        Log.i(TAG, "🧹 Cleanup: Stopping service")
+        cleanupTracking()
         wakeLock?.let { if (it.isHeld) it.release() }
         isRunning = false
         stopForeground(STOP_FOREGROUND_REMOVE)

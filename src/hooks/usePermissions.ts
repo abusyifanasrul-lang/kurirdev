@@ -80,7 +80,7 @@ export function usePermissions() {
     }
   };
 
-  // Request Location Permission
+  // Request Location Permission (Foreground only)
   const requestLocation = async (): Promise<boolean> => {
     if (!Capacitor.isNativePlatform()) return false;
 
@@ -97,6 +97,27 @@ export function usePermissions() {
     } catch (error) {
       console.error('[usePermissions] Error requesting location:', error);
       return false;
+    }
+  };
+
+  // Request Background Location Permission (Two-step flow for Android 10+)
+  const requestBackgroundLocation = async (): Promise<boolean> => {
+    if (!Capacitor.isNativePlatform()) return false;
+
+    try {
+      // Call the native plugin method that handles two-step flow
+      const { StayMonitor } = await import('@/lib/stayMonitoring');
+      await StayMonitor.requestBackgroundLocation();
+      
+      // Re-check permissions after request
+      await checkPermissions();
+      
+      return permissions.location === 'granted';
+    } catch (error) {
+      console.error('[usePermissions] Error requesting background location:', error);
+      
+      // Fallback to standard location request if plugin method fails
+      return await requestLocation();
     }
   };
 
@@ -153,6 +174,7 @@ export function usePermissions() {
     checkPermissions,
     requestNotification,
     requestLocation,
+    requestBackgroundLocation,
     requestCamera,
     requestAll,
     openSettings,

@@ -13,6 +13,7 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.annotation.Permission;
+import com.getcapacitor.annotation.PermissionCallback;
 
 @CapacitorPlugin(
     name = "StayMonitor",
@@ -39,6 +40,63 @@ public class StayMonitorPlugin extends Plugin {
     public void load() {
         super.load();
         Log.i(TAG, "✅ StayMonitorPlugin loaded successfully");
+    }
+
+    /**
+     * Issue #1: Background Location Permission
+     * Custom method to handle the two-step permission flow for Android 10+
+     */
+    @PluginMethod
+    public void requestBackgroundLocation(PluginCall call) {
+        Log.i(TAG, "📍 requestBackgroundLocation called");
+        
+        // Step 1: Check if foreground location is granted
+        if (getPermissionState("location") != PermissionState.GRANTED) {
+            Log.i(TAG, "Foreground location not granted, requesting...");
+            requestPermissionForAlias("location", call, "locationPermsCallback");
+        } else {
+            // Foreground already granted, request background
+            Log.i(TAG, "Foreground location already granted, checking background...");
+            checkAndRequestBackgroundLocation(call);
+        }
+    }
+
+    @PermissionCallback
+    private void locationPermsCallback(PluginCall call) {
+        if (getPermissionState("location") == PermissionState.GRANTED) {
+            Log.i(TAG, "Foreground location granted in callback, checking background...");
+            checkAndRequestBackgroundLocation(call);
+        } else {
+            Log.e(TAG, "Foreground location denied");
+            call.reject("Foreground location permission denied");
+        }
+    }
+
+    private void checkAndRequestBackgroundLocation(PluginCall call) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            if (getPermissionState("backgroundLocation") != PermissionState.GRANTED) {
+                Log.i(TAG, "Requesting background location (ACCESS_BACKGROUND_LOCATION)...");
+                requestPermissionForAlias("backgroundLocation", call, "backgroundLocationPermsCallback");
+            } else {
+                Log.i(TAG, "Background location already granted");
+                call.resolve();
+            }
+        } else {
+            // Android 9 and below don't need separate background permission
+            Log.i(TAG, "Android < 10, background location implied");
+            call.resolve();
+        }
+    }
+
+    @PermissionCallback
+    private void backgroundLocationPermsCallback(PluginCall call) {
+        if (getPermissionState("backgroundLocation") == PermissionState.GRANTED) {
+            Log.i(TAG, "✅ Background location permission granted");
+            call.resolve();
+        } else {
+            Log.e(TAG, "❌ Background location permission denied");
+            call.reject("Background location permission denied");
+        }
     }
 
     @PluginMethod
@@ -109,18 +167,10 @@ public class StayMonitorPlugin extends Plugin {
 
     @PluginMethod
     public void stopMonitoring(PluginCall call) {
-        Log.i(TAG, "🛑 Stopping monitoring - sending ACTION_STOP and stopService");
-        
-        // Send ACTION_STOP to trigger cleanup
-        Intent stopIntent = new Intent(getContext(), StayMonitoringService.class);
-        stopIntent.setAction(StayMonitoringService.ACTION_STOP);
-        getContext().startService(stopIntent);
-        
-        // Also call stopService to force stop
-        Intent serviceIntent = new Intent(getContext(), StayMonitoringService.class);
-        getContext().stopService(serviceIntent);
-        
-        Log.i(TAG, "✅ Stop commands sent");
+        Log.i(TAG, "🛑 Stopping monitoring");
+        Intent intent = new Intent(getContext(), StayMonitoringService.class);
+        intent.setAction(StayMonitoringService.ACTION_STOP);
+        getContext().startService(intent);
         call.resolve();
     }
 

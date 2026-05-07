@@ -10,7 +10,7 @@ interface PermissionOnboardingProps {
 type OnboardingStep = 'notification' | 'location' | 'camera' | 'complete';
 
 export function PermissionOnboarding({ onComplete }: PermissionOnboardingProps) {
-  const { permissions, requestNotification, requestLocation, requestCamera, checkPermissions } = usePermissions();
+  const { permissions, requestNotification, requestBackgroundLocation, requestCamera, checkPermissions } = usePermissions();
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('notification');
   const [isRequesting, setIsRequesting] = useState(false);
   const [showLocationWarning, setShowLocationWarning] = useState(false);
@@ -35,7 +35,7 @@ export function PermissionOnboarding({ onComplete }: PermissionOnboardingProps) 
 
   const handleRequestLocation = async () => {
     setIsRequesting(true);
-    const granted = await requestLocation();
+    const granted = await requestBackgroundLocation();
     setIsRequesting(false);
     
     if (granted) {

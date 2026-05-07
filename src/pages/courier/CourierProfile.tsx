@@ -33,7 +33,7 @@ export function CourierProfile() {
   const { couriers } = useCourierStore();
   const { users } = useUserStore();
   const { user: currentUser } = useSessionStore();
-  const { permissions, checkPermissions, openSettings } = usePermissions();
+  const { permissions, checkPermissions, requestNotification, requestBackgroundLocation, requestCamera, openSettings } = usePermissions();
 
   // Real-time suspended check from useUserStore
   const liveUser = users.find((u: any) => u.id === currentUser?.id);
@@ -416,7 +416,21 @@ export function CourierProfile() {
         {/* Location Permission — Status (Native only) */}
         {Capacitor.isNativePlatform() && (
           <div className="flex flex-col">
-            <div className="flex items-center justify-between p-4">
+            <button
+              onClick={async () => {
+                if (permissions.location === 'prompt') {
+                  await requestBackgroundLocation();
+                  await checkPermissions();
+                } else if (permissions.location === 'denied') {
+                  await openSettings();
+                }
+              }}
+              disabled={permissions.location === 'granted'}
+              className={cn(
+                "w-full flex items-center justify-between p-4 transition-colors text-left",
+                permissions.location === 'granted' ? "cursor-default" : "hover:bg-gray-50 active:bg-gray-100"
+              )}
+            >
               <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
                   permissions.location === 'granted' ? 'bg-emerald-50' :
@@ -436,18 +450,23 @@ export function CourierProfile() {
                     {permissions.location === 'granted' ? '✅ Diizinkan' :
                      permissions.location === 'denied' ? '❌ Diblokir' : '⚠️ Belum diizinkan'}
                   </p>
+                  {permissions.location === 'prompt' && (
+                    <p className="text-xs text-gray-500 mt-0.5">Ketuk untuk mengaktifkan</p>
+                  )}
                 </div>
               </div>
               {permissions.location === 'denied' && (
-                <button
-                  onClick={openSettings}
-                  className="text-xs font-semibold text-red-600 bg-red-50 px-3 py-1.5 rounded-full hover:bg-red-100 flex items-center gap-1"
-                >
+                <div className="flex items-center gap-1 text-xs font-semibold text-red-600 bg-red-50 px-3 py-1.5 rounded-full">
                   <SettingsIcon className="h-3 w-3" />
                   Buka
-                </button>
+                </div>
               )}
-            </div>
+              {permissions.location === 'prompt' && (
+                <div className="flex items-center gap-1 text-xs font-semibold text-yellow-600 bg-yellow-50 px-3 py-1.5 rounded-full">
+                  Izinkan
+                </div>
+              )}
+            </button>
 
             {permissions.location === 'denied' && (
               <div className="mx-4 mb-4 p-3 bg-red-50 border border-red-200 rounded-xl">
@@ -455,7 +474,15 @@ export function CourierProfile() {
                   ⚠️ Akses lokasi diblokir!
                 </p>
                 <p className="text-xs text-red-600">
-                  Fitur STAY monitoring tidak akan berfungsi. Ketuk tombol "Buka" untuk mengaktifkan di pengaturan.
+                  Fitur STAY monitoring tidak akan berfungsi. Ketuk item di atas untuk membuka pengaturan.
+                </p>
+              </div>
+            )}
+
+            {permissions.location === 'prompt' && (
+              <div className="mx-4 mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
+                <p className="text-xs text-yellow-700">
+                  Ketuk item di atas untuk mengaktifkan akses lokasi. Pastikan pilih <span className="font-bold">"Izinkan sepanjang waktu"</span> agar STAY monitoring berfungsi.
                 </p>
               </div>
             )}
@@ -465,7 +492,21 @@ export function CourierProfile() {
         {/* Camera Permission — Status (Native only) */}
         {Capacitor.isNativePlatform() && (
           <div className="flex flex-col">
-            <div className="flex items-center justify-between p-4">
+            <button
+              onClick={async () => {
+                if (permissions.camera === 'prompt') {
+                  await requestCamera();
+                  await checkPermissions();
+                } else if (permissions.camera === 'denied') {
+                  await openSettings();
+                }
+              }}
+              disabled={permissions.camera === 'granted'}
+              className={cn(
+                "w-full flex items-center justify-between p-4 transition-colors text-left",
+                permissions.camera === 'granted' ? "cursor-default" : "hover:bg-gray-50 active:bg-gray-100"
+              )}
+            >
               <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
                   permissions.camera === 'granted' ? 'bg-emerald-50' :
@@ -485,18 +526,23 @@ export function CourierProfile() {
                     {permissions.camera === 'granted' ? '✅ Diizinkan' :
                      permissions.camera === 'denied' ? '❌ Diblokir' : '⚠️ Belum diizinkan'}
                   </p>
+                  {permissions.camera === 'prompt' && (
+                    <p className="text-xs text-gray-500 mt-0.5">Ketuk untuk mengaktifkan</p>
+                  )}
                 </div>
               </div>
               {permissions.camera === 'denied' && (
-                <button
-                  onClick={openSettings}
-                  className="text-xs font-semibold text-red-600 bg-red-50 px-3 py-1.5 rounded-full hover:bg-red-100 flex items-center gap-1"
-                >
+                <div className="flex items-center gap-1 text-xs font-semibold text-red-600 bg-red-50 px-3 py-1.5 rounded-full">
                   <SettingsIcon className="h-3 w-3" />
                   Buka
-                </button>
+                </div>
               )}
-            </div>
+              {permissions.camera === 'prompt' && (
+                <div className="flex items-center gap-1 text-xs font-semibold text-yellow-600 bg-yellow-50 px-3 py-1.5 rounded-full">
+                  Izinkan
+                </div>
+              )}
+            </button>
 
             {permissions.camera === 'denied' && (
               <div className="mx-4 mb-4 p-3 bg-red-50 border border-red-200 rounded-xl">
@@ -504,7 +550,15 @@ export function CourierProfile() {
                   ⚠️ Akses kamera diblokir!
                 </p>
                 <p className="text-xs text-red-600">
-                  Tidak bisa scan QR code untuk aktivasi STAY. Ketuk tombol "Buka" untuk mengaktifkan di pengaturan.
+                  Tidak bisa scan QR code untuk aktivasi STAY. Ketuk item di atas untuk membuka pengaturan.
+                </p>
+              </div>
+            )}
+
+            {permissions.camera === 'prompt' && (
+              <div className="mx-4 mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
+                <p className="text-xs text-yellow-700">
+                  Ketuk item di atas untuk mengaktifkan akses kamera agar bisa scan QR code.
                 </p>
               </div>
             )}
