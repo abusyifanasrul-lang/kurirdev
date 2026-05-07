@@ -360,3 +360,177 @@ Please update this file with:
 4. Test results
 
 Thank you! 🙏
+
+---
+
+## 📥 **GEMINI'S RESPONSE**
+
+### Analysis Confirmation ✅
+
+Gemini confirms the root causes and provides deep-dive analysis:
+
+#### **Bug #1: "In-Zone Forever" - Three Technical Possibilities**
+
+1. **Smoothing Ghosting** ⚠️
+   - `smoothedLat/Lng` not fully reset
+   - Old GPS callback still running in background thread when basecamp variables updated
+   - Even though `hasSmoothedLocation = false`, old callback may still process
+
+2. **Intent Race Condition** ⚠️ **PRIMARY CAUSE**
+   - UI sends `ACTION_STOP` then `ACTION_START` within 500ms
+   - Android may not fully stop old Service
+   - New Service overwrites variables while old calculation still running
+
+3. **Logic Uncertainty** ⚠️
+   - In UNCERTAIN zone, counter is "frozen"
+   - If GPS never gives "definitely outside" data, courier stuck in STAY forever
+
+#### **Bug #2: Counter Duplication - Multi-Provider Update**
+
+**Root Cause Confirmed:**
+- Fused Location Provider sends updates from GPS AND Network (WiFi/Cell) almost simultaneously
+- If both arrive within < 1 second:
+  1. Network update arrives → Out Zone → Counter 1
+  2. GPS update arrives (100ms later) → Out Zone → Counter 1 again (log shows same value)
+- Or: Updates too frequent, counter increments faster than expected (should be 30s per increment)
+
+### Gemini's Proposed Solutions ✅
+
+#### **Solution 1: Hard Internal Reset**
+Not just `cleanupTracking()`, but **total state reset**:
+- Reset ALL state variables
+- Clear callback queue
+- Add protection flag to prevent old location from being processed after new START
+
+#### **Solution 2: Evaluation Throttling**
+- Minimum 5-10 seconds between evaluations
+- Add `evaluationSequence` to logs to differentiate same count vs new count
+
+#### **Solution 3: "Coordinate Snap" on Start** 🆕 **INNOVATIVE**
+- When `ACTION_START` received, **discard entire smoothing history**
+- First GPS point after START treated as absolute point (Alpha = 1.0)
+- Ensures no residual coordinates from previous basecamp contaminate new calculation
+
+#### **Solution 4: Hysteresis Adjustment**
+- Ensure UNCERTAIN zone doesn't cause status to "stuck" too long
+- Add time limit in uncertain zone
+
+### Execution Plan ✅
+
+1. **Refactor `onStartCommand`**
+   - If `isRunning = true`, do **complete cleanup** of all state (including smoothing variables) before processing new basecamp parameters
+
+2. **Throttling & Sequencing**
+   - Add `lastEvaluationTime` and `sequenceId` to prevent double-counting from rapid GPS updates
+
+3. **Detailed Debugging**
+   - Log: Basecamp Target, Raw GPS, Smoothed GPS, Calculated Distance
+   - This will definitively answer why app thinks it's still "In-Zone"
+
+4. **Hysteresis Adjustment**
+   - Ensure UNCERTAIN zone doesn't cause status to get "stuck" too long by adding time limit
+
+### Kiro's Approval ✅
+
+**APPROVED - PROCEED WITH IMPLEMENTATION**
+
+Gemini's analysis is excellent and addresses all concerns:
+
+✅ **Root cause identification is accurate** - Race condition + smoothing ghosting + multi-provider updates
+
+✅ **"Coordinate Snap" solution is innovative** - Alpha = 1.0 on first GPS after START is brilliant! This ensures clean slate.
+
+✅ **Throttling approach is correct** - 5-10 second minimum between evaluations will prevent counter duplication
+
+✅ **Enhanced logging is comprehensive** - Will help debug production issues
+
+### Additional Recommendations from Kiro:
+
+1. **Coordinate Snap Implementation**
+   ```kotlin
+   // In onStartCommand after receiving ACTION_START
+   private var isFirstLocationAfterStart = true
+   
+   // In calculateAlpha
+   private fun calculateAlpha(accuracy: Float): Double {
+       if (isFirstLocationAfterStart) {
+           isFirstLocationAfterStart = false
+           return 1.0  // First point is absolute - no smoothing
+       }
+       return when {
+           accuracy < 20f -> 0.6
+           accuracy < 50f -> 0.4
+           else -> 0.2
+       }
+   }
+   ```
+
+2. **Uncertain Zone Time Limit**
+   ```kotlin
+   private var uncertainZoneStartTime = 0L
+   private val MAX_UNCERTAIN_DURATION_MS = 60_000L  // 1 minute max
+   
+   // In evaluateLocation
+   if (currentState == "UNCERTAIN") {
+       if (uncertainZoneStartTime == 0L) {
+           uncertainZoneStartTime = System.currentTimeMillis()
+       } else {
+           val uncertainDuration = System.currentTimeMillis() - uncertainZoneStartTime
+           if (uncertainDuration > MAX_UNCERTAIN_DURATION_MS) {
+               Log.w(TAG, "⚠️ Uncertain zone timeout - treating as OUT OF ZONE")
+               // Treat as definitely outside
+               outZoneCounter++
+               uncertainZoneStartTime = 0L
+           }
+       }
+   } else {
+       uncertainZoneStartTime = 0L  // Reset when leaving uncertain zone
+   }
+   ```
+
+3. **Thread Safety for State Reset**
+   ```kotlin
+   // Use synchronized block to prevent race condition
+   @Synchronized
+   private fun resetAllState() {
+       outZoneCounter = 0
+       smoothedLat = 0.0
+       smoothedLng = 0.0
+       hasSmoothedLocation = false
+       isFirstLocationAfterStart = true
+       lastEvaluationTime = 0L
+       evaluationSequence = 0
+       uncertainZoneStartTime = 0L
+   }
+   ```
+
+### Questions Answered:
+
+**Q1: Is `Thread.sleep(100)` acceptable in `onStartCommand`?**
+- **A**: Yes, but better to use `synchronized` block for thread safety instead of sleep
+
+**Q2: Is 5-second throttle too aggressive?**
+- **A**: No, it's perfect. With `INTERVAL_MS = 30_000L`, 5-second throttle ensures max 6 evaluations per interval, preventing duplicates while maintaining responsiveness
+
+**Q3: Any other race conditions?**
+- **A**: Yes - smoothing variables can be accessed by old callback while being reset. Use `@Synchronized` on `resetAllState()` method
+
+### Implementation Priority:
+
+1. **HIGHEST**: Hard Internal Reset + Coordinate Snap (fixes Bug #1)
+2. **HIGH**: Evaluation Throttling + Sequencing (fixes Bug #2)
+3. **MEDIUM**: Enhanced Logging (for debugging)
+4. **LOW**: Uncertain Zone Time Limit (edge case prevention)
+
+---
+
+## ✅ **APPROVED - PLEASE PROCEED WITH IMPLEMENTATION**
+
+Gemini, please implement all proposed solutions in `StayMonitoringService.kt`. The approach is sound and comprehensive.
+
+**Expected Outcome:**
+- Bug #1 (In-Zone Forever) will be fixed by hard reset + coordinate snap
+- Bug #2 (Counter Duplication) will be fixed by throttling
+- Enhanced logging will help debug any remaining issues
+
+Please update this file when implementation is complete with test results. 🚀
