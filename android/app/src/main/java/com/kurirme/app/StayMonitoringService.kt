@@ -39,6 +39,15 @@ class StayMonitoringService : Service() {
     private var smoothedLat = 0.0
     private var smoothedLng = 0.0
     private var hasSmoothedLocation = false
+    private var isFirstLocationAfterStart = true  // Coordinate Snap flag
+
+    // Evaluation throttling state (Bug Fix #2)
+    private var lastEvaluationTime = 0L
+    private var evaluationSequence = 0
+
+    // Uncertain zone timeout state (Bug Fix #1 - Edge Case)
+    private var uncertainZoneStartTime = 0L
+    private val MAX_UNCERTAIN_DURATION_MS = 60_000L  // 1 minute max
 
     companion object {
         const val TAG                 = "StayMonitorService"
@@ -61,6 +70,7 @@ class StayMonitoringService : Service() {
         const val INTERVAL_MS            = 30_000L
         const val MIN_UPDATE_INTERVAL_MS = 10_000L
         const val CONSECUTIVE_LIMIT      = 4      // Approx 2 minutes of "Definitely Outside"
+        const val EVALUATION_THROTTLE_MS = 5_000L // 5 seconds minimum between evaluations (Bug Fix #2)
         
         @JvmField
         @Volatile var isRunning       = false
@@ -81,23 +91,50 @@ class StayMonitoringService : Service() {
 
         when (action) {
             ACTION_START -> {
+                // Extract new basecamp coordinates
+                val newLat = intent.getDoubleExtra(EXTRA_LAT, 0.0)
+                val newLng = intent.getDoubleExtra(EXTRA_LNG, 0.0)
+                
+                // BUG FIX #1: Detect basecamp change and force hard reset
                 if (isRunning) {
-                    Log.w(TAG, "⚠️ Service already running! Restarting tracking...")
+                    Log.w(TAG, "⚠️ Service already running! Performing HARD RESET...")
+                    
+                    // Detect basecamp change for logging
+                    if (basecampLat != 0.0 && basecampLng != 0.0) {
+                        val dist = FloatArray(1)
+                        Location.distanceBetween(basecampLat, basecampLng, newLat, newLng, dist)
+                        if (dist[0] > 10) {
+                            Log.w(TAG, "🚨 BASECAMP CHANGED! Distance: ${dist[0].toInt()}m")
+                            Log.i(TAG, "   Old Basecamp: (${String.format("%.6f", basecampLat)}, ${String.format("%.6f", basecampLng)})")
+                            Log.i(TAG, "   New Basecamp: (${String.format("%.6f", newLat)}, ${String.format("%.6f", newLng)})")
+                        }
+                    }
+                    
+                    // CRITICAL: Complete cleanup before restart
                     cleanupTracking()
+                    
+                    // Small delay to ensure cleanup completes
+                    try {
+                        Thread.sleep(100)
+                    } catch (e: InterruptedException) {
+                        Log.w(TAG, "Sleep interrupted during cleanup")
+                    }
                 }
                 
-                basecampLat   = intent.getDoubleExtra(EXTRA_LAT, 0.0)
-                basecampLng   = intent.getDoubleExtra(EXTRA_LNG, 0.0)
+                // Reset ALL state variables (synchronized for thread safety)
+                resetAllState()
+                
+                // Set new basecamp parameters
+                basecampLat   = newLat
+                basecampLng   = newLng
                 radiusMeters  = intent.getIntExtra(EXTRA_RADIUS, 15)
                 basecampId    = intent.getStringExtra(EXTRA_BASECAMP_ID) ?: ""
                 supabaseUrl   = intent.getStringExtra(EXTRA_SB_URL) ?: ""
                 supabaseKey   = intent.getStringExtra(EXTRA_SB_KEY) ?: ""
                 serviceSecret = intent.getStringExtra(EXTRA_SERVICE_SECRET) ?: ""
                 courierId     = intent.getStringExtra(EXTRA_COURIER_ID) ?: ""
-                outZoneCounter = 0
-                hasSmoothedLocation = false
 
-                Log.i(TAG, "🚀 Monitoring Start: BC($basecampLat, $basecampLng) R=$radiusMeters Courier=$courierId")
+                Log.i(TAG, "🚀 Monitoring Start: BC(${String.format("%.6f", basecampLat)}, ${String.format("%.6f", basecampLng)}) R=${radiusMeters}m Courier=$courierId")
                 
                 if (wakeLock?.isHeld == false) {
                     wakeLock?.acquire(8 * 60 * 60 * 1000L)
@@ -128,6 +165,23 @@ class StayMonitoringService : Service() {
         return START_STICKY
     }
 
+    /**
+     * BUG FIX #1: Thread-safe state reset
+     * Resets ALL state variables to prevent contamination from previous basecamp
+     */
+    @Synchronized
+    private fun resetAllState() {
+        Log.i(TAG, "🔄 Resetting ALL state variables")
+        outZoneCounter = 0
+        smoothedLat = 0.0
+        smoothedLng = 0.0
+        hasSmoothedLocation = false
+        isFirstLocationAfterStart = true  // Enable Coordinate Snap
+        lastEvaluationTime = 0L
+        evaluationSequence = 0
+        uncertainZoneStartTime = 0L
+    }
+
     private fun startLocationTracking() {
         Log.i(TAG, "📡 Requesting high-accuracy GPS updates (Interval: ${INTERVAL_MS}ms)")
         
@@ -153,12 +207,13 @@ class StayMonitoringService : Service() {
                         return
                     }
 
-                    // 2. Dynamic EMA Smoothing
+                    // 2. Dynamic EMA Smoothing with Coordinate Snap
                     val alpha = calculateAlpha(loc.accuracy)
                     if (!hasSmoothedLocation) {
                         smoothedLat = loc.latitude
                         smoothedLng = loc.longitude
                         hasSmoothedLocation = true
+                        Log.i(TAG, "🎯 Initial smoothed position set: (${String.format("%.6f", smoothedLat)}, ${String.format("%.6f", smoothedLng)})")
                     } else {
                         smoothedLat = (loc.latitude * alpha) + (smoothedLat * (1.0 - alpha))
                         smoothedLng = (loc.longitude * alpha) + (smoothedLng * (1.0 - alpha))
@@ -169,8 +224,8 @@ class StayMonitoringService : Service() {
                         longitude = smoothedLng
                     }
 
-                    Log.i(TAG, "📍 GPS UPDATE: Smooth=(${String.format("%.6f", smoothedLoc.latitude)}, ${String.format("%.6f", smoothedLoc.longitude)}) Acc=${loc.accuracy.toInt()}m Alpha=$alpha")
-                    evaluateLocation(smoothedLoc, loc.accuracy)
+                    Log.i(TAG, "📍 GPS UPDATE: Raw=(${String.format("%.6f", loc.latitude)}, ${String.format("%.6f", loc.longitude)}) Smooth=(${String.format("%.6f", smoothedLoc.latitude)}, ${String.format("%.6f", smoothedLoc.longitude)}) Acc=${loc.accuracy.toInt()}m Alpha=${String.format("%.2f", alpha)}")
+                    evaluateLocation(smoothedLoc, loc.accuracy, loc.latitude, loc.longitude)
                 }
             }
 
@@ -188,7 +243,19 @@ class StayMonitoringService : Service() {
         }
     }
 
+    /**
+     * BUG FIX #1: Coordinate Snap - First GPS point after START uses Alpha = 1.0
+     * This ensures clean slate with no contamination from previous basecamp
+     */
     private fun calculateAlpha(accuracy: Float): Double {
+        // Coordinate Snap: First location after START is absolute (no smoothing)
+        if (isFirstLocationAfterStart) {
+            isFirstLocationAfterStart = false
+            Log.i(TAG, "🎯 COORDINATE SNAP: First GPS point - using Alpha=1.0 (no smoothing)")
+            return 1.0
+        }
+        
+        // Dynamic alpha based on accuracy
         return when {
             accuracy < 20f -> 0.6  // Good accuracy -> more responsive
             accuracy < 50f -> 0.4  // Medium accuracy -> balanced
@@ -196,21 +263,37 @@ class StayMonitoringService : Service() {
         }
     }
 
-    private fun evaluateLocation(loc: Location, accuracy: Float) {
+    /**
+     * BUG FIX #2: Evaluation with throttling to prevent counter duplication
+     * BUG FIX #1: Enhanced logging to debug "In-Zone Forever" issue
+     */
+    private fun evaluateLocation(loc: Location, accuracy: Float, rawLat: Double, rawLng: Double) {
+        // BUG FIX #2: Evaluation throttling
+        evaluationSequence++
+        val now = System.currentTimeMillis()
+        val timeSinceLastEval = now - lastEvaluationTime
+        
+        // Skip if evaluation too soon (prevent counter duplication from multi-provider updates)
+        if (lastEvaluationTime > 0 && timeSinceLastEval < EVALUATION_THROTTLE_MS) {
+            Log.w(TAG, "⚠️ EVAL #$evaluationSequence SKIPPED: Too soon (${timeSinceLastEval}ms < ${EVALUATION_THROTTLE_MS}ms)")
+            return
+        }
+        
+        lastEvaluationTime = now
+        
+        // Filter out extremely low accuracy points
         if (accuracy > MAX_ACCURACY_THRESHOLD) {
-            Log.w(TAG, "⚠️ Ignoring point: Low accuracy (${accuracy.toInt()}m)")
+            Log.w(TAG, "⚠️ EVAL #$evaluationSequence SKIPPED: Low accuracy (${accuracy.toInt()}m > ${MAX_ACCURACY_THRESHOLD.toInt()}m)")
             return
         }
 
+        // Calculate distance using smoothed coordinates
         val dist = FloatArray(1)
         Location.distanceBetween(loc.latitude, loc.longitude, basecampLat, basecampLng, dist)
         val rawDist = dist[0]
 
-        // 3. Hysteresis & Uncertain Zone Logic
-        // IN -> OUT: must be definitely outside the error circle
+        // Hysteresis & Uncertain Zone Logic
         val definitelyOutside = (rawDist - accuracy) > radiusMeters
-        
-        // OUT -> IN: more tolerant reset with dynamic buffer
         val resetBuffer = min(15f, max(5f, accuracy * 0.3f))
         val resetThreshold = radiusMeters.toFloat() + resetBuffer
         val definitelyInside = rawDist < resetThreshold
@@ -221,14 +304,23 @@ class StayMonitoringService : Service() {
             else -> "UNCERTAIN"
         }
 
-        Log.i(TAG, "📊 EVAL: Dist=${rawDist.toInt()}m | Acc=${accuracy.toInt()}m | State=$currentState | Counter=$outZoneCounter/$CONSECUTIVE_LIMIT")
+        // BUG FIX #1: Enhanced logging for debugging
+        Log.i(TAG, "📊 EVAL #$evaluationSequence (${timeSinceLastEval}ms since last):")
+        Log.i(TAG, "   Basecamp: (${String.format("%.6f", basecampLat)}, ${String.format("%.6f", basecampLng)}) R=${radiusMeters}m")
+        Log.i(TAG, "   Raw GPS:  (${String.format("%.6f", rawLat)}, ${String.format("%.6f", rawLng)})")
+        Log.i(TAG, "   Smoothed: (${String.format("%.6f", loc.latitude)}, ${String.format("%.6f", loc.longitude)})")
+        Log.i(TAG, "   Distance: ${rawDist.toInt()}m | Accuracy: ${accuracy.toInt()}m | State: $currentState")
+        Log.i(TAG, "   Counter: $outZoneCounter/$CONSECUTIVE_LIMIT | Reset Buffer: ${resetBuffer.toInt()}m")
 
+        // State machine logic
         if (definitelyInside) {
             if (outZoneCounter > 0) Log.i(TAG, "✅ User back in zone. Resetting counter.")
             outZoneCounter = 0
+            uncertainZoneStartTime = 0L  // Reset uncertain zone timer
             broadcast("update", true, 0, rawDist)
         } else if (definitelyOutside) {
             outZoneCounter++
+            uncertainZoneStartTime = 0L  // Reset uncertain zone timer
             Log.w(TAG, "🚨 OUT OF ZONE! ($outZoneCounter/$CONSECUTIVE_LIMIT)")
             broadcast("update", false, outZoneCounter, rawDist)
             
@@ -239,9 +331,29 @@ class StayMonitoringService : Service() {
                 cleanup()
             }
         } else {
-            // UNCERTAIN ZONE: Freeze counter, let GPS stabilize
-            Log.i(TAG, "⚠️ Uncertain Zone: Holding counter at $outZoneCounter")
-            broadcast("update", outZoneCounter == 0, outZoneCounter, rawDist)
+            // UNCERTAIN ZONE: Freeze counter, but add timeout to prevent infinite stuck
+            if (uncertainZoneStartTime == 0L) {
+                uncertainZoneStartTime = now
+                Log.i(TAG, "⚠️ Entering UNCERTAIN Zone: Holding counter at $outZoneCounter")
+            } else {
+                val uncertainDuration = now - uncertainZoneStartTime
+                if (uncertainDuration > MAX_UNCERTAIN_DURATION_MS) {
+                    Log.w(TAG, "⏰ UNCERTAIN Zone TIMEOUT (${uncertainDuration / 1000}s) - treating as OUT OF ZONE")
+                    outZoneCounter++
+                    uncertainZoneStartTime = 0L
+                    broadcast("update", false, outZoneCounter, rawDist)
+                    
+                    if (outZoneCounter >= CONSECUTIVE_LIMIT) {
+                        Log.e(TAG, "🔥 CONSECUTIVE LIMIT REACHED (via uncertain timeout). Revoking STAY status.")
+                        broadcast("revoked", false, outZoneCounter, rawDist)
+                        performRevocation()
+                        cleanup()
+                    }
+                } else {
+                    Log.i(TAG, "⚠️ Still in UNCERTAIN Zone: Holding counter at $outZoneCounter (${uncertainDuration / 1000}s elapsed)")
+                    broadcast("update", outZoneCounter == 0, outZoneCounter, rawDist)
+                }
+            }
         }
     }
 

@@ -361,7 +361,7 @@ Camera: ${permissions.camera}
                               gpsLog.counter < 3 ? "text-yellow-600" :
                               "text-red-600"
                             )}>
-                              {gpsLog.counter}/5
+                              {gpsLog.counter}/4
                             </p>
                           </div>
                         </div>
