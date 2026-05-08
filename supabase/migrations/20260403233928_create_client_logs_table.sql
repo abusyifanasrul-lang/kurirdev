@@ -8,12 +8,9 @@ CREATE TABLE IF NOT EXISTS client_logs (
   user_id UUID REFERENCES auth.users(id),
   url TEXT
 );
-
 -- Basic RLS: Anyone can insert, only admins can read.
 ALTER TABLE client_logs ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY "Enable insert for all" ON client_logs FOR INSERT WITH CHECK (true);
 CREATE POLICY "Enable read for admins" ON client_logs FOR SELECT USING (
   auth.jwt() ->> 'role' = 'admin'
 );
-;

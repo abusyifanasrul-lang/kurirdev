@@ -5,7 +5,6 @@ DROP FUNCTION IF EXISTS public.verify_stay_qr(UUID, TEXT, DECIMAL, DECIMAL) CASC
 DROP FUNCTION IF EXISTS public.update_stay_counter(UUID, BOOLEAN, FLOAT, FLOAT) CASCADE;
 DROP TABLE IF EXISTS public.stay_qr_tokens CASCADE;
 DROP TABLE IF EXISTS public.basecamps CASCADE;
-
 -- ============================================================================
 -- 1. CREATE TABLE: basecamps
 -- ============================================================================
@@ -22,7 +21,6 @@ CREATE TABLE public.basecamps (
   created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL
 );
 CREATE INDEX idx_basecamps_active ON public.basecamps(is_active) WHERE is_active = true;
-
 -- ============================================================================
 -- 2. CREATE TABLE: stay_qr_tokens (CORRECTED SCHEMA)
 -- ============================================================================
@@ -40,7 +38,6 @@ CREATE TABLE public.stay_qr_tokens (
 );
 CREATE INDEX idx_stay_qr_tokens_token ON public.stay_qr_tokens(token);
 CREATE INDEX idx_stay_qr_tokens_expires ON public.stay_qr_tokens(expires_at) WHERE is_used = false;
-
 -- ============================================================================
 -- 3. ALTER TABLE: profiles — add stay monitoring fields
 -- ============================================================================
@@ -49,7 +46,6 @@ ADD COLUMN IF NOT EXISTS stay_zone_counter INT DEFAULT 0 CHECK (stay_zone_counte
 ADD COLUMN IF NOT EXISTS last_stay_check TIMESTAMPTZ,
 ADD COLUMN IF NOT EXISTS stay_activated_via_qr BOOLEAN DEFAULT false,
 ADD COLUMN IF NOT EXISTS current_basecamp_id UUID REFERENCES public.basecamps(id) ON DELETE SET NULL;
-
 -- ============================================================================
 -- 4. CREATE RPC: verify_stay_qr
 -- ============================================================================
@@ -138,7 +134,6 @@ BEGIN
   RETURN QUERY SELECT true, 'Status STAY aktif', v_basecamp.id;
 END;
 $$;
-
 -- ============================================================================
 -- 5. CREATE RPC: update_stay_counter
 -- ============================================================================
@@ -216,7 +211,6 @@ BEGIN
   END IF;
 END;
 $$;
-
 -- ============================================================================
 -- 6. SEED: Default basecamp
 -- ============================================================================
@@ -230,7 +224,6 @@ VALUES (
   15,
   true
 );
-
 -- ============================================================================
 -- 7. RLS POLICIES
 -- ============================================================================
@@ -241,7 +234,6 @@ DROP POLICY IF EXISTS "basecamps_write_admin" ON public.basecamps;
 CREATE POLICY "basecamps_write_admin" ON public.basecamps FOR ALL USING (
   auth.uid() IN (SELECT id FROM public.profiles WHERE role IN ('owner', 'admin_kurir'))
 );
-
 ALTER TABLE public.stay_qr_tokens ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "qr_tokens_select_auth" ON public.stay_qr_tokens;
 CREATE POLICY "qr_tokens_select_auth" ON public.stay_qr_tokens FOR SELECT USING (auth.role() = 'authenticated');

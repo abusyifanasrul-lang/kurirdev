@@ -1,4 +1,3 @@
-
 -- Table for QR tokens used in Stay verification
 CREATE TABLE public.stay_qr_tokens (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -10,13 +9,10 @@ CREATE TABLE public.stay_qr_tokens (
     used_by     UUID REFERENCES public.profiles(id),
     used_at     TIMESTAMPTZ
 );
-
 -- Index for fast active-token lookup
 CREATE INDEX idx_stay_qr_active ON public.stay_qr_tokens (token) WHERE is_used = false;
-
 -- RLS
 ALTER TABLE public.stay_qr_tokens ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY "Admin can manage stay tokens"
     ON public.stay_qr_tokens
     FOR ALL
@@ -29,7 +25,6 @@ CREATE POLICY "Admin can manage stay tokens"
         (SELECT role FROM public.profiles WHERE id = auth.uid())
         IN ('admin', 'admin_kurir', 'owner')
     );
-
 CREATE POLICY "Couriers can read stay tokens"
     ON public.stay_qr_tokens
     FOR SELECT
@@ -37,4 +32,3 @@ CREATE POLICY "Couriers can read stay tokens"
     USING (
         (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'courier'
     );
-;

@@ -5,4 +5,3 @@ ON public.tracking_logs
 FOR INSERT
 TO authenticated
 WITH CHECK (true);
-;

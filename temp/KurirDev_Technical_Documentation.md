@@ -78,10 +78,15 @@ Prinsip FIFO: Di dalam tier yang sama, siapa yang masuk lebih dulu = lebih depan
 | Tier | Kondisi | Alasan Bisnis |
 |------|---------|---------------|
 | **1** | `is_priority_recovery = true` | Order satu-satunya baru di-cancel → kurir dirugikan, harus dilindungi |
-| **2** | `courier_status = 'stay'` AND tidak ada order aktif | Hadir fisik di basecamp (verifikasi QR), siap lebih cepat |
+| **2** | `courier_status = 'stay'` AND tidak ada order yang sedang diantar (`picked_up`/`in_transit`) | Hadir fisik di basecamp (verifikasi QR), siap lebih cepat. Order pending tidak mengurangi prioritas STAY. |
 | **3** | `courier_status = 'on'` AND `order = 0` | Kurir idle normal |
 | **4** | `courier_status = 'on'` AND semua order berstatus `pending` | Punya order tapi sedang nunggu di merchant |
 | **5** | `courier_status = 'on'` AND ada order aktif (`picked_up`/`in_transit`) | Sedang sibuk |
+
+**Catatan Penting Tier 2**:
+- STAY + 0 order → Tier 2 ✅
+- STAY + order pending → Tier 2 ✅ (kurir menunggu di basecamp sambil merchant proses order)
+- STAY + order in_transit/picked_up → Tier 5 ⚠️ (kurir sudah meninggalkan basecamp, status STAY hanya lag GPS sementara)
 
 **Tier Khusus "Out of Shift":** Kurir yang ON di luar jam shiftnya mendapat flag `out_of_shift`. Tidak masuk antrian normal, hanya bisa di-assign manual oleh admin.
 
@@ -209,26 +214,37 @@ const availableCouriers = useMemo(() => {
 
   return courierList.sort((a, b) => {
     const getTier = (u: any) => {
-      // Tier 1: Cancel boost
+      // Tier 1: Cancel boost always wins
       if (u.is_priority_recovery) return 1;
-      
-      // Tier 2: STAY (hadir di basecamp)
-      if (u.courier_status === 'stay') return 2;
       
       // Hitung komposisi order aktif
       const activeOrders = activeOrdersByCourier.filter(o => 
         o.courier_id === u.id && !['cancelled', 'delivered'].includes(o.status)
       );
-      const pendingOnly = activeOrders.every(o => 
-        ['pending', 'assigned'].includes(o.status)
-      );
-      const hasActiveRunning = activeOrders.some(o => 
+      
+      const hasRunningOrder = activeOrders.some(o => 
         ['picked_up', 'in_transit'].includes(o.status)
       );
-
+      
+      // Tier 2: STAY at basecamp (but not if actively delivering)
+      if (u.courier_status === 'stay') {
+        // STAY + actively delivering = Tier 5 (courier left basecamp, GPS lag)
+        if (hasRunningOrder) return 5;
+        // STAY + idle or pending = Tier 2 (physically at basecamp)
+        return 2;
+      }
+      
+      // Tier 3: ON and idle
       if (u.courier_status === 'on' && activeOrders.length === 0) return 3;
+      
+      // Tier 4: ON with ALL orders pending (none picked up yet)
+      const pendingOnly = activeOrders.length > 0 && activeOrders.every(o => 
+        ['pending', 'assigned'].includes(o.status)
+      );
       if (u.courier_status === 'on' && pendingOnly) return 4;
-      if (u.courier_status === 'on' && hasActiveRunning) return 5;
+      
+      // Tier 5: ON with active running orders
+      if (u.courier_status === 'on') return 5;
       
       return 6; // fallback
     };

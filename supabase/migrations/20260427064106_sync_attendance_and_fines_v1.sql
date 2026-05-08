@@ -79,7 +79,6 @@ BEGIN
   END IF;
 END;
 $function$;
-
 -- 2. Update handle_courier_queue_sync with Attendance logic
 CREATE OR REPLACE FUNCTION public.handle_courier_queue_sync()
 RETURNS trigger AS $$
@@ -208,4 +207,3 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
-;

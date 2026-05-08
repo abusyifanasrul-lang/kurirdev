@@ -22,4 +22,4 @@ BEGIN
 
   RETURN jsonb_build_object('success', true);
 END;
-$function$;;
+$function$;

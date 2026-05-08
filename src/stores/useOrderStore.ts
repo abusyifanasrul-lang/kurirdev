@@ -98,6 +98,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
         .from('orders')
         .select(`
           *,
+          is_waiting,
           courier:profiles!courier_id(name, vehicle_type, plate_number),
           assigner:profiles!assigned_by(name)
         `)
@@ -121,6 +122,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
         .from('orders')
         .select(`
           *,
+          is_waiting,
           courier:profiles!courier_id(name, vehicle_type, plate_number),
           assigner:profiles!assigned_by(name)
         `)
@@ -151,6 +153,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
         .from('orders')
         .select(`
           *,
+          is_waiting,
           courier:profiles!courier_id(name, vehicle_type, plate_number),
           assigner:profiles!assigned_by(name)
         `)
@@ -212,6 +215,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
         .from('orders')
         .select(`
           *,
+          is_waiting,
           courier:profiles!courier_id(name, vehicle_type, plate_number),
           assigner:profiles!assigned_by(name)
         `)
@@ -300,6 +304,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
       const activeStatuses = ['pending', 'assigned', 'picked_up', 'in_transit']
       let activeQuery = supabase.from('orders').select(`
         *,
+        is_waiting,
         courier:profiles!courier_id(name, vehicle_type, plate_number),
         assigner:profiles!assigned_by(name)
       `).in('status', activeStatuses)
@@ -321,6 +326,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
       let finalQuery = supabase.from('orders')
         .select(`
           *,
+          is_waiting,
           courier:profiles!courier_id(name, vehicle_type, plate_number),
           assigner:profiles!assigned_by(name)
         `)
@@ -557,6 +563,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     const fetchCurrent = async () => {
       const { data } = await supabase.from('orders').select(`
         *,
+        is_waiting,
         courier:profiles!courier_id(name, vehicle_type, plate_number),
         assigner:profiles!assigned_by(name)
       `).eq('id', orderId).single()

@@ -2,7 +2,6 @@
 -- We saw 4 versions. Let's drop them to be sure.
 DROP FUNCTION IF EXISTS public.complete_order(uuid, uuid, text, integer, integer, text, text);
 DROP FUNCTION IF EXISTS public.complete_order(uuid, uuid, text, text, integer, integer, text);
-
 -- 2. RECREATE AUTHORITATIVE complete_order
 -- Matches frontend call: p_order_id, p_user_id, p_user_name, p_notes, p_commission_rate, p_commission_threshold, p_commission_type
 CREATE OR REPLACE FUNCTION public.complete_order(
@@ -76,9 +75,9 @@ BEGIN
   END IF;
 END;
 $$;
-
 -- 3. NORMALIZE rotate_courier_queue
-DROP FUNCTION IF EXISTS public.rotate_courier_queue(uuid); -- Drop old version with target_user_id name
+DROP FUNCTION IF EXISTS public.rotate_courier_queue(uuid);
+-- Drop old version with target_user_id name
 CREATE OR REPLACE FUNCTION public.rotate_courier_queue(p_courier_id uuid)
 RETURNS void
 LANGUAGE plpgsql
@@ -89,7 +88,6 @@ BEGIN
   WHERE id = p_courier_id;
 END;
 $$;
-
 -- 4. REFACTOR tier_change_log TABLE
 ALTER TABLE public.tier_change_log 
 ADD COLUMN IF NOT EXISTS tier_before INT,
@@ -99,7 +97,6 @@ ADD COLUMN IF NOT EXISTS queue_joined_at_after TIMESTAMPTZ,
 ADD COLUMN IF NOT EXISTS trigger_source TEXT,
 ADD COLUMN IF NOT EXISTS source_id UUID,
 ADD COLUMN IF NOT EXISTS context JSONB;
-
 -- 5. REFINE handle_courier_queue_sync TRIGGER
 CREATE OR REPLACE FUNCTION public.handle_courier_queue_sync()
 RETURNS trigger AS $$
@@ -189,4 +186,3 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
-;

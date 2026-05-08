@@ -1,10 +1,8 @@
 -- Tambah kolom service secret di settings
 ALTER TABLE settings 
   ADD COLUMN IF NOT EXISTS service_secret TEXT DEFAULT gen_random_uuid()::text;
-
 -- Pastikan record global punya secret (jika kolom baru dibuat dan default belum diaplikasikan ke baris eksis)
 UPDATE settings SET service_secret = gen_random_uuid()::text WHERE service_secret IS NULL;
-
 -- RPC revoke_stay_by_service
 CREATE OR REPLACE FUNCTION revoke_stay_by_service(
   p_courier_id UUID,
@@ -34,6 +32,5 @@ BEGIN
   RETURN jsonb_build_object('success', true);
 END;
 $$;
-
 -- Pastikan anon bisa memanggil RPC ini (SECURITY DEFINER yang protect adalah secret-nya)
-GRANT EXECUTE ON FUNCTION revoke_stay_by_service(UUID, TEXT) TO anon, authenticated;;
+GRANT EXECUTE ON FUNCTION revoke_stay_by_service(UUID, TEXT) TO anon, authenticated;

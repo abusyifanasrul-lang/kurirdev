@@ -45,10 +45,11 @@ export function DebugPanel() {
   const [gpsLogs, setGpsLogs] = useState<GPSLog[]>([]);
   const [showGPSMonitor, setShowGPSMonitor] = useState(false);
   
-  // QR & STAY Monitor Toggle (default: disabled for queue testing)
+  // QR & STAY Monitor Toggle (default: ENABLED for normal use, can be disabled for testing)
   const [qrStayEnabled, setQrStayEnabled] = useState(() => {
     const saved = localStorage.getItem('qr_stay_enabled');
-    return saved === 'true';
+    // Default TRUE if not set (normal operation)
+    return saved === null ? true : saved === 'true';
   });
 
   // Save toggle state to localStorage

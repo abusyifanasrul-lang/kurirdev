@@ -65,4 +65,4 @@ BEGIN
     WHERE id = v_order.courier_id;
   END IF;
 END;
-$$ LANGUAGE plpgsql;;
+$$ LANGUAGE plpgsql;

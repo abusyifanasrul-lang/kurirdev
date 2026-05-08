@@ -75,7 +75,6 @@ BEGIN
   RETURN jsonb_build_object('alpha_count', v_alpha_count, 'processed_at', NOW());
 END;
 $$;
-
 -- RPC: Ambil ringkasan denda per kurir per periode
 CREATE OR REPLACE FUNCTION public.get_courier_fines(
   p_courier_id UUID,
@@ -115,7 +114,6 @@ BEGIN
   ORDER BY sa.date DESC;
 END;
 $$;
-
 -- RPC: Admin cancel/reverse denda di shift_attendance
 CREATE OR REPLACE FUNCTION public.cancel_attendance_fine(
   p_attendance_id UUID,
@@ -145,4 +143,4 @@ BEGIN
 
   RETURN jsonb_build_object('success', true);
 END;
-$$;;
+$$;

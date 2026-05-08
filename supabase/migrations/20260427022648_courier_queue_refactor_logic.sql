@@ -11,7 +11,6 @@ BEGIN
   WHERE id = target_user_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
 -- Update handle_courier_queue_sync with mirroring and O(1) logic
 CREATE OR REPLACE FUNCTION public.handle_courier_queue_sync()
 RETURNS TRIGGER AS $$
@@ -82,4 +81,3 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
-;

@@ -40,4 +40,4 @@ BEGIN
     )
   ORDER BY s.start_time, p.name;
 END;
-$$;;
+$$;

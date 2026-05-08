@@ -265,20 +265,36 @@ export function Orders() {
     return courierList.sort((a, b) => {
       // Helper to determine priority tier (Lower is higher priority)
       const getTier = (u: any) => {
+        // Tier 1: Cancel boost always wins
         if (u.is_priority_recovery) return 1;
-        if (u.courier_status === 'stay') return 2;
         
         // Count active orders from the store
         const activeOrders = activeOrdersByCourier.filter(o => 
           o.courier_id === u.id && !['cancelled', 'delivered'].includes(o.status)
         );
         
+        const hasRunningOrder = activeOrders.some(o => 
+          ['picked_up', 'in_transit'].includes(o.status)
+        );
+        
+        // Tier 2: STAY at basecamp (but not if actively delivering)
+        if (u.courier_status === 'stay') {
+          // STAY + actively delivering = Tier 5 (courier left basecamp, GPS lag)
+          if (hasRunningOrder) return 5;
+          // STAY + idle or pending = Tier 2 (physically at basecamp)
+          return 2;
+        }
+        
+        // Tier 3: ON and idle
         if (u.courier_status === 'on' && activeOrders.length === 0) return 3;
         
-        // Tier 4: Has pending orders (not yet picked up)
-        if (u.courier_status === 'on' && activeOrders.some(o => o.status === 'pending' || o.status === 'assigned')) return 4;
+        // Tier 4: ON with ALL orders waiting (is_waiting flag = true)
+        const waitingOnly = activeOrders.length > 0 && activeOrders.every(o => 
+          o.is_waiting === true
+        );
+        if (u.courier_status === 'on' && waitingOnly) return 4;
         
-        // Tier 5: Only has non-pending orders (already picked up/in transit)
+        // Tier 5: ON with active running orders
         if (u.courier_status === 'on') return 5;
         
         return 6; // Default fallback
@@ -289,7 +305,29 @@ export function Orders() {
 
       if (tierA !== tierB) return tierA - tierB;
       
-      // Secondary sort: FIFO (queue_joined_at)
+      // Sub-tier sorting for Tier 2 (STAY): workload-based
+      if (tierA === 2 && tierB === 2) {
+        const activeOrdersA = activeOrdersByCourier.filter(o => 
+          o.courier_id === a.id && !['cancelled', 'delivered'].includes(o.status)
+        );
+        const activeOrdersB = activeOrdersByCourier.filter(o => 
+          o.courier_id === b.id && !['cancelled', 'delivered'].includes(o.status)
+        );
+        
+        // 1. Fewer orders = higher priority
+        if (activeOrdersA.length !== activeOrdersB.length) {
+          return activeOrdersA.length - activeOrdersB.length;
+        }
+        
+        // 2. If same count, waiting orders = higher priority
+        if (activeOrdersA.length > 0) {
+          const waitingOnlyA = activeOrdersA.every(o => o.is_waiting === true);
+          const waitingOnlyB = activeOrdersB.every(o => o.is_waiting === true);
+          if (waitingOnlyA !== waitingOnlyB) return waitingOnlyA ? -1 : 1;
+        }
+      }
+      
+      // FIFO for same tier + same workload
       const timeA = a.queue_joined_at ? new Date(a.queue_joined_at).getTime() : Infinity;
       const timeB = b.queue_joined_at ? new Date(b.queue_joined_at).getTime() : Infinity;
       

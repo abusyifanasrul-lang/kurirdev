@@ -2,11 +2,9 @@
 ALTER TABLE public.profiles 
 ADD COLUMN IF NOT EXISTS queue_joined_at TIMESTAMPTZ,
 ADD COLUMN IF NOT EXISTS cancel_count INT DEFAULT 0;
-
 ALTER TABLE public.orders
 ADD COLUMN IF NOT EXISTS queue_position_at_assign INT,
 ADD COLUMN IF NOT EXISTS fine_deducted INT DEFAULT 0;
-
 -- Create Tier Change Log for audit trail
 CREATE TABLE IF NOT EXISTS public.tier_change_log (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -18,7 +16,6 @@ CREATE TABLE IF NOT EXISTS public.tier_change_log (
     reason TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
-
 -- Create Courier Warnings table
 CREATE TABLE IF NOT EXISTS public.courier_warnings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -29,7 +26,6 @@ CREATE TABLE IF NOT EXISTS public.courier_warnings (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     created_by UUID REFERENCES public.profiles(id)
 );
-
 -- Phase 2: Data Backfill
 -- Set queue_joined_at for currently online couriers based on their current sequence
 -- This preserves the existing order during migration
@@ -42,4 +38,3 @@ UPDATE public.profiles p
 SET queue_joined_at = (NOW() - (seq * interval '1 second'))
 FROM courier_queue cq
 WHERE p.id = cq.id;
-;

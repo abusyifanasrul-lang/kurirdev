@@ -1,6 +1,5 @@
 -- 1. Add is_priority_recovery to profiles
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS is_priority_recovery BOOLEAN DEFAULT false;
-
 -- 2. Function to handle order cancellation priority
 CREATE OR REPLACE FUNCTION public.handle_order_cancellation_priority()
 RETURNS trigger
@@ -29,14 +28,12 @@ BEGIN
     RETURN NEW;
 END;
 $$;
-
 -- 3. Trigger on orders table
 DROP TRIGGER IF EXISTS tr_order_cancellation_priority ON public.orders;
 CREATE TRIGGER tr_order_cancellation_priority
 AFTER UPDATE OF status ON public.orders
 FOR EACH ROW
 EXECUTE FUNCTION public.handle_order_cancellation_priority();
-
 -- 4. Update rotate_courier_queue to reset priority
 CREATE OR REPLACE FUNCTION public.rotate_courier_queue(target_user_id uuid)
  RETURNS void
@@ -76,4 +73,3 @@ BEGIN
   END IF;
 END;
 $function$;
-;

@@ -1,5 +1,4 @@
 DROP FUNCTION IF EXISTS public.verify_stay_qr(uuid,text,numeric,numeric);
-
 CREATE OR REPLACE FUNCTION public.verify_stay_qr(
     p_courier_id uuid,
     p_qr_token text,
@@ -60,4 +59,4 @@ BEGIN
 
     RETURN jsonb_build_object('success', true, 'basecamp_id', v_basecamp_id);
 END;
-$function$;;
+$function$;

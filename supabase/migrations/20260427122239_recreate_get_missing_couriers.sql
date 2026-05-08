@@ -1,6 +1,5 @@
 -- Drop existing function with default parameter
 DROP FUNCTION IF EXISTS public.get_missing_couriers(DATE);
-
 -- Recreate with explicit DATE parameter (no default)
 CREATE OR REPLACE FUNCTION public.get_missing_couriers(p_date DATE)
 RETURNS TABLE (
@@ -37,4 +36,4 @@ BEGIN
     )
     AND NOT (p.day_off = TRIM(TO_CHAR(p_date, 'Day')));
 END;
-$$;;
+$$;

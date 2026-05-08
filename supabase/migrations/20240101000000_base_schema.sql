@@ -4,7 +4,6 @@
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
 -- 1. Create Profiles Table (Linked to auth.users)
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
@@ -30,7 +29,6 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
-
 -- 2. Create Customers Table
 CREATE TABLE IF NOT EXISTS public.customers (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -42,7 +40,6 @@ CREATE TABLE IF NOT EXISTS public.customers (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
-
 -- 3. Create Settings Table (Global Configs)
 CREATE TABLE IF NOT EXISTS public.settings (
   id VARCHAR(50) PRIMARY KEY DEFAULT 'global',
@@ -51,7 +48,6 @@ CREATE TABLE IF NOT EXISTS public.settings (
   courier_instructions JSONB DEFAULT '[]'::JSONB,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
-
 -- 4. Create Orders Table
 CREATE TABLE IF NOT EXISTS public.orders (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -85,7 +81,6 @@ CREATE TABLE IF NOT EXISTS public.orders (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
-
 -- 5. Create Tracking Logs Table
 CREATE TABLE IF NOT EXISTS public.tracking_logs (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -96,8 +91,6 @@ CREATE TABLE IF NOT EXISTS public.tracking_logs (
   notes TEXT,
   changed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
-
-
 -- =========================================
 -- DATABASE FUNCTIONS & TRIGGERS
 -- =========================================
@@ -110,12 +103,10 @@ BEGIN
    RETURN NEW;
 END;
 $$ language 'plpgsql';
-
 CREATE TRIGGER update_profiles_modtime BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_customers_modtime BEFORE UPDATE ON public.customers FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_orders_modtime BEFORE UPDATE ON public.orders FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_settings_modtime BEFORE UPDATE ON public.settings FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
 -- Function to securely fetch user role without recursive RLS locks
 CREATE OR REPLACE FUNCTION public.get_auth_user_role()
 RETURNS text
@@ -123,12 +114,10 @@ LANGUAGE sql SECURITY DEFINER SET search_path = public
 AS $$
   SELECT role FROM profiles WHERE id = auth.uid();
 $$;
-
 -- ATOMIC RPC for Completing an Order (Delivered)
 -- Cleanup for both VARCHAR and TEXT versions to prevent overloading
 DROP FUNCTION IF EXISTS public.complete_order(uuid, uuid, character varying, text, integer, integer);
 DROP FUNCTION IF EXISTS public.complete_order(uuid, uuid, text, text, integer, integer);
-
 CREATE OR REPLACE FUNCTION public.complete_order(
   p_order_id UUID, 
   p_user_id UUID, 
@@ -189,7 +178,6 @@ BEGIN
 
 END;
 $$;
-
 -- ATOMIC RPC for Marking Order as Paid
 CREATE OR REPLACE FUNCTION public.mark_order_paid(
   p_order_id UUID
@@ -239,8 +227,6 @@ BEGIN
 
 END;
 $$;
-
-
 -- =========================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
 -- =========================================
@@ -250,22 +236,18 @@ ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tracking_logs ENABLE ROW LEVEL SECURITY;
-
 -- 1. PROFILES POLICIES
 DROP POLICY IF EXISTS "Public profiles are viewable by everyone logged in" ON profiles;
 CREATE POLICY "Public profiles are viewable by everyone logged in" ON profiles
   FOR SELECT USING (auth.role() = 'authenticated');
-
 DROP POLICY IF EXISTS "Users can insert their own profile" ON profiles;
 CREATE POLICY "Users can insert their own profile" ON profiles
   FOR INSERT WITH CHECK (auth.uid() = id);
-
 DROP POLICY IF EXISTS "Users can update own profile, Owners/Admins can update anyone" ON profiles;
 CREATE POLICY "Users can update own profile, Owners/Admins can update anyone" ON profiles
   FOR UPDATE USING (
     auth.uid() = id OR public.get_auth_user_role() IN ('owner', 'admin_kurir')
   );
-
 -- 2. ORDERS POLICIES
 DROP POLICY IF EXISTS "Admins, Owners, and Finance can read all orders" ON orders;
 CREATE POLICY "Admins, Owners, and Finance can read all orders" ON orders
@@ -273,13 +255,11 @@ CREATE POLICY "Admins, Owners, and Finance can read all orders" ON orders
     public.get_auth_user_role() IN ('owner', 'admin_kurir', 'finance') OR 
     courier_id = auth.uid()
   );
-
 DROP POLICY IF EXISTS "Admins and Owners can insert orders" ON orders;
 CREATE POLICY "Admins and Owners can insert orders" ON orders
   FOR INSERT WITH CHECK (
     public.get_auth_user_role() IN ('owner', 'admin_kurir')
   );
-
 DROP POLICY IF EXISTS "Admins, Owners update anywhere, Couriers update own orders" ON orders;
 CREATE POLICY "Admins, Owners update anywhere, Couriers update own orders" ON orders
   FOR UPDATE USING (
@@ -287,30 +267,24 @@ CREATE POLICY "Admins, Owners update anywhere, Couriers update own orders" ON or
     (public.get_auth_user_role() = 'finance' AND payment_status = 'unpaid') OR
     (courier_id = auth.uid() AND status IN ('assigned', 'picked_up', 'in_transit'))
   );
-
 -- 3. CUSTOMERS POLICIES
 DROP POLICY IF EXISTS "Admins and Owners manage customers, Couriers read" ON customers;
 CREATE POLICY "Admins and Owners manage customers, Couriers read" ON customers
   FOR ALL USING (auth.role() = 'authenticated');
-
 -- 4. SETTINGS POLICIES
 DROP POLICY IF EXISTS "Anyone logged in can read settings" ON settings;
 CREATE POLICY "Anyone logged in can read settings" ON settings
   FOR SELECT USING (auth.role() = 'authenticated');
-
 DROP POLICY IF EXISTS "Only Owners can update settings" ON settings;
 CREATE POLICY "Only Owners can update settings" ON settings
   FOR UPDATE USING (public.get_auth_user_role() = 'owner');
-
 -- 5. TRACKING LOGS
 DROP POLICY IF EXISTS "Logs are readable by auth users" ON tracking_logs;
 CREATE POLICY "Logs are readable by auth users" ON tracking_logs
   FOR SELECT USING (auth.role() = 'authenticated');
-
 DROP POLICY IF EXISTS "System inserts logs" ON tracking_logs;
 CREATE POLICY "System inserts logs" ON tracking_logs
   FOR INSERT WITH CHECK (auth.role() = 'authenticated');
-
 -- 6. Create Notifications Table
 CREATE TABLE IF NOT EXISTS public.notifications (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -323,21 +297,16 @@ CREATE TABLE IF NOT EXISTS public.notifications (
   is_read BOOLEAN DEFAULT false,
   sent_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
-
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
-
 DROP POLICY IF EXISTS "Users can read own notifications" ON notifications;
 CREATE POLICY "Users can read own notifications" ON notifications
   FOR SELECT USING (user_id = auth.uid() OR public.get_auth_user_role() IN ('owner', 'admin_kurir'));
-
 DROP POLICY IF EXISTS "System and Admins can insert notifications" ON notifications;
 CREATE POLICY "System and Admins can insert notifications" ON notifications
   FOR INSERT WITH CHECK (auth.role() = 'authenticated');
-
 DROP POLICY IF EXISTS "Users can update own notifications" ON notifications;
 CREATE POLICY "Users can update own notifications" ON notifications
   FOR UPDATE USING (user_id = auth.uid());
-
 -- 7. Create Customer Change Requests Table
 CREATE TABLE IF NOT EXISTS public.customer_change_requests (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -359,21 +328,16 @@ CREATE TABLE IF NOT EXISTS public.customer_change_requests (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
-
 ALTER TABLE public.customer_change_requests ENABLE ROW LEVEL SECURITY;
-
 DROP POLICY IF EXISTS "Anyone logged in can read customer_change_requests" ON customer_change_requests;
 CREATE POLICY "Anyone logged in can read customer_change_requests" ON customer_change_requests
   FOR SELECT USING (auth.role() = 'authenticated');
-
 DROP POLICY IF EXISTS "Couriers can insert requests" ON customer_change_requests;
 CREATE POLICY "Couriers can insert requests" ON customer_change_requests
   FOR INSERT WITH CHECK (auth.role() = 'authenticated');
-
 DROP POLICY IF EXISTS "Admins and Owners can update requests" ON customer_change_requests;
 CREATE POLICY "Admins and Owners can update requests" ON customer_change_requests
   FOR UPDATE USING (public.get_auth_user_role() IN ('owner', 'admin_kurir'));
-
 -- Initial Insert for Settings
 INSERT INTO public.settings (id, commission_rate, commission_threshold, courier_instructions) 
 VALUES (
@@ -381,12 +345,10 @@ VALUES (
   '[{"id": "1", "icon": "✅", "label": "Barang sudah siap, langsung ambil", "instruction": "Barang sudah siap, langsung ambil!"}, {"id": "2", "icon": "🔍", "label": "Cek dulu ke penjual sebelum ambil", "instruction": "Cek dulu ke penjual sebelum ambil"}, {"id": "3", "icon": "🛒", "label": "Kurir yang pesan di tempat", "instruction": "Kamu yang pesan di tempat"}, {"id": "4", "icon": "📍", "label": "Minta kurir update posisi", "instruction": "Admin minta update posisimu"}, {"id": "5", "icon": "🔍", "label": "Cek kondisi barang saat diterima", "instruction": "Cek kondisi barang saat diterima"}]'::JSONB
 ) 
 ON CONFLICT DO NOTHING;
-
 -- Grant necessary permissions to service_role to ensure Edge Functions can operate
 GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;
 GRANT ALL ON ALL ROUTINES IN SCHEMA public TO service_role;
-
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO postgres, anon, authenticated, service_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO postgres, anon, authenticated, service_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO postgres, anon, authenticated, service_role;

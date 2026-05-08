@@ -1,4 +1,3 @@
-
 CREATE OR REPLACE FUNCTION public.verify_stay_qr(
     p_token TEXT,
     p_courier_id UUID
@@ -66,4 +65,3 @@ BEGIN
     );
 END;
 $$;
-;

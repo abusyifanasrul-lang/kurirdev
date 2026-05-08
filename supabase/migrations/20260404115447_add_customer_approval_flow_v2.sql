@@ -12,10 +12,8 @@ CREATE TABLE IF NOT EXISTS public.customer_change_requests (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
-
 -- Enable RLS
 ALTER TABLE public.customer_change_requests ENABLE ROW LEVEL SECURITY;
-
 -- Change Request Policies
 DO $$ 
 BEGIN
@@ -31,7 +29,6 @@ BEGIN
     CREATE POLICY "Only admins can update requests" ON public.customer_change_requests
       FOR UPDATE USING (public.get_auth_user_role() IN ('owner', 'admin_kurir', 'admin'));
 END $$;
-
 -- Update Customers RLS (Harden it)
 DO $$ 
 BEGIN
@@ -45,7 +42,6 @@ BEGIN
     CREATE POLICY "Only admins/owners can insert/update/delete customers" ON public.customers
       FOR ALL USING (public.get_auth_user_role() IN ('owner', 'admin_kurir', 'admin'));
 END $$;
-
 -- Trigger for customer_change_requests updated_at
 DO $$ 
 BEGIN
@@ -55,4 +51,3 @@ BEGIN
         FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
     END IF;
 END $$;
-;

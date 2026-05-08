@@ -74,6 +74,17 @@ export const useCourierStore = create<CourierState>()((_set, get) => ({
   },
 
   setCourierStay: async (courierId, qrToken) => {
+    // VALIDATION: Check for running orders
+    const { activeOrdersByCourier } = await import('@/stores/useOrderStore').then(m => m.useOrderStore.getState());
+    const runningOrders = activeOrdersByCourier.filter(o => 
+      o.courier_id === courierId && 
+      ['picked_up', 'in_transit'].includes(o.status)
+    );
+    
+    if (runningOrders.length > 0) {
+      throw new Error('Tidak bisa STAY. Selesaikan order yang sedang diantar terlebih dahulu.');
+    }
+    
     // CRITICAL: Stop any existing service first to prevent multiple instances
     console.log('[setCourierStay] Stopping any existing service first...')
     stayNative.stop()

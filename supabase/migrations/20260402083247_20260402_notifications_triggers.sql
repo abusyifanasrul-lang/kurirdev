@@ -1,6 +1,5 @@
 -- Enable necessary extensions if not yet checked
 CREATE EXTENSION IF NOT EXISTS pg_net;
-
 -- 1. Function: orders -> notifications (Automation)
 CREATE OR REPLACE FUNCTION handle_order_notification()
 RETURNS TRIGGER AS $$
@@ -36,15 +35,12 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
 -- 2. Trigger: orders status update
 DROP TRIGGER IF EXISTS trigger_handle_order_notification ON public.orders;
 CREATE TRIGGER trigger_handle_order_notification
 AFTER UPDATE OF status ON public.orders
 FOR EACH ROW
 EXECUTE FUNCTION handle_order_notification();
-
-
 -- 3. Function: notifications -> FCM Edge Function (Delivery)
 CREATE OR REPLACE FUNCTION notify_courier_on_insert()
 RETURNS TRIGGER AS $$
@@ -66,11 +62,9 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
 -- 4. Trigger: notifications INSERT
 DROP TRIGGER IF EXISTS trigger_notify_courier_on_insert ON public.notifications;
 CREATE TRIGGER trigger_notify_courier_on_insert
 AFTER INSERT ON public.notifications
 FOR EACH ROW
 EXECUTE FUNCTION notify_courier_on_insert();
-;

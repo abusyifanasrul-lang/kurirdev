@@ -3,7 +3,6 @@ ALTER TABLE orders
 ADD COLUMN IF NOT EXISTS assigned_by UUID REFERENCES auth.users(id),
 ADD COLUMN IF NOT EXISTS cancelled_by UUID REFERENCES auth.users(id),
 ADD COLUMN IF NOT EXISTS payment_confirmed_by UUID REFERENCES auth.users(id);
-
 -- 2. Fungsi RPC atomik untuk menyelesaikan order dan mencatat log tracking
 CREATE OR REPLACE FUNCTION complete_order(
   p_order_id UUID,
@@ -28,4 +27,4 @@ BEGIN
   INSERT INTO tracking_logs (order_id, status, changed_by, changed_by_name, notes)
   VALUES (p_order_id, 'delivered', p_user_id, p_user_name, p_notes);
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

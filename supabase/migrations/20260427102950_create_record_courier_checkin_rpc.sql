@@ -68,4 +68,4 @@ BEGIN
     'needs_admin_review', v_late_minutes > 0
   );
 END;
-$$;;
+$$;

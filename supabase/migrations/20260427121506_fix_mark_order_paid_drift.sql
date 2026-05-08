@@ -63,4 +63,4 @@ BEGIN
   WHERE id = p_order_id;
 
 END;
-$$;;
+$$;

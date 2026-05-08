@@ -10,7 +10,6 @@ CREATE TABLE IF NOT EXISTS shifts (
   is_active    BOOLEAN DEFAULT true,
   created_at   TIMESTAMPTZ DEFAULT NOW()
 );
-
 -- Seed 4 shift awal
 INSERT INTO shifts (name, start_time, end_time, is_overnight) 
 SELECT * FROM (VALUES
@@ -20,7 +19,6 @@ SELECT * FROM (VALUES
   ('Shift D', '18:45'::TIME, '06:00'::TIME, true)
 ) AS t(name, start_time, end_time, is_overnight)
 WHERE NOT EXISTS (SELECT 1 FROM shifts WHERE name = t.name);
-
 -- Assignment kurir ke shift (permanen, jarang berubah)
 CREATE TABLE IF NOT EXISTS courier_shifts (
   id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -30,7 +28,6 @@ CREATE TABLE IF NOT EXISTS courier_shifts (
   effective_to   DATE,               -- NULL = berlaku selamanya
   UNIQUE(courier_id, effective_from)
 );
-
 -- Override tukar shift per tanggal (tidak permanen)
 CREATE TABLE IF NOT EXISTS shift_overrides (
   id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -41,7 +38,6 @@ CREATE TABLE IF NOT EXISTS shift_overrides (
   created_by             UUID REFERENCES profiles(id),
   created_at             TIMESTAMPTZ DEFAULT NOW()
 );
-
 -- Catatan kehadiran & denda harian
 CREATE TABLE IF NOT EXISTS shift_attendance (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -65,7 +61,6 @@ CREATE TABLE IF NOT EXISTS shift_attendance (
   notes             TEXT,
   UNIQUE(courier_id, date)
 );
-
 -- Hari libur
 CREATE TABLE IF NOT EXISTS holidays (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -76,7 +71,6 @@ CREATE TABLE IF NOT EXISTS holidays (
   set_by      UUID REFERENCES profiles(id),
   set_at      TIMESTAMPTZ
 );
-
 -- STEP 2: Tambah Kolom ke Tabel settings
 
 ALTER TABLE settings
@@ -85,7 +79,6 @@ ALTER TABLE settings
   ADD COLUMN IF NOT EXISTS fine_late_major_amount   INT DEFAULT 30000,
   ADD COLUMN IF NOT EXISTS fine_alpha_amount        INT DEFAULT 50000,
   ADD COLUMN IF NOT EXISTS billing_start_day        INT DEFAULT 1;
-
 -- Update row global dengan nilai default
 UPDATE settings SET
   fine_late_minor_amount  = 1000,
@@ -94,14 +87,12 @@ UPDATE settings SET
   fine_alpha_amount       = 50000,
   billing_start_day       = 1
 WHERE id = 'global';
-
 -- STEP 3: Tambah Kolom ke profiles
 
 ALTER TABLE profiles
   ADD COLUMN IF NOT EXISTS shift_id UUID REFERENCES shifts(id),
   ADD COLUMN IF NOT EXISTS late_fine_active BOOLEAN DEFAULT false,
   ADD COLUMN IF NOT EXISTS permit_count_no_swap INT DEFAULT 0;
-
 -- Tambah kolom fine_deducted ke orders (diperlukan untuk Step 4)
 ALTER TABLE orders
-  ADD COLUMN IF NOT EXISTS fine_deducted INT DEFAULT 0;;
+  ADD COLUMN IF NOT EXISTS fine_deducted INT DEFAULT 0;

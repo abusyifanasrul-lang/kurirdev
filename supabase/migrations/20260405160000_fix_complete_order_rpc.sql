@@ -59,7 +59,6 @@ BEGIN
 
 END;
 $$;
-
 -- ATOMIC RPC for Marking Order as Paid
 CREATE OR REPLACE FUNCTION public.mark_order_paid(
   p_order_id UUID
@@ -108,4 +107,4 @@ BEGIN
   UPDATE public.orders SET payment_status = 'paid', updated_at = NOW() WHERE id = p_order_id;
 
 END;
-$$;;
+$$;

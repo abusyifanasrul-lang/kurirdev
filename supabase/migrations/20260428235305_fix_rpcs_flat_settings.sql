@@ -24,7 +24,6 @@ BEGIN
   RETURN jsonb_build_object('success', true);
 END;
 $function$;
-
 -- Fix verify_stay_qr
 CREATE OR REPLACE FUNCTION public.verify_stay_qr(
     p_courier_id uuid,
@@ -81,4 +80,4 @@ BEGIN
 
     RETURN jsonb_build_object('success', true, 'basecamp_id', v_basecamp_id);
 END;
-$function$;;
+$function$;

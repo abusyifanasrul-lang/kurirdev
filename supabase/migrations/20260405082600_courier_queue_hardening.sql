@@ -46,7 +46,6 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
-
 -- Trigger to call the function
 -- We only trigger when the status columns change to avoid unnecessary overhead and recursion
 DROP TRIGGER IF EXISTS on_courier_status_change ON public.profiles;
@@ -55,7 +54,6 @@ CREATE TRIGGER on_courier_status_change
   ON public.profiles
   FOR EACH ROW
   EXECUTE FUNCTION public.handle_courier_queue_sync();
-
 -- Function to rotate courier to the end of the queue (called via RPC after assignment)
 CREATE OR REPLACE FUNCTION public.rotate_courier_queue(target_user_id UUID)
 RETURNS VOID AS $$
@@ -88,4 +86,3 @@ BEGIN
   END IF;
 END;
 $$ LANGUAGE plpgsql;
-;

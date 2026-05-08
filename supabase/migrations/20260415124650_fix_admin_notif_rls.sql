@@ -8,7 +8,6 @@ USING (
   OR 
   (get_auth_user_role() = ANY (ARRAY['owner'::text, 'admin_kurir'::text, 'admin'::text]))
 );
-
 -- 2. Update UPDATE policy
 DROP POLICY IF EXISTS "notifications_update" ON "public"."notifications";
 CREATE POLICY "notifications_update" ON "public"."notifications"
@@ -23,4 +22,4 @@ WITH CHECK (
   (user_id = auth.uid()) 
   OR 
   (get_auth_user_role() = ANY (ARRAY['owner'::text, 'admin_kurir'::text, 'admin'::text]))
-);;
+);

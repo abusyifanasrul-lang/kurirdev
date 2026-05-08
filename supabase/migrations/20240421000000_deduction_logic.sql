@@ -4,17 +4,14 @@
 -- 1. Update Settings Table
 ALTER TABLE public.settings 
 ADD COLUMN IF NOT EXISTS commission_type VARCHAR(50) DEFAULT 'percentage' CHECK (commission_type IN ('percentage', 'flat'));
-
 -- 2. Update Orders Table for audit/financial consistency
 ALTER TABLE public.orders
 ADD COLUMN IF NOT EXISTS applied_commission_type VARCHAR(50),
 ADD COLUMN IF NOT EXISTS applied_admin_fee BIGINT;
-
 -- 3. Update complete_order RPC
 -- Explicitly drop old signatures to prevent overloading conflicts
 DROP FUNCTION IF EXISTS public.complete_order(uuid, uuid, text, text, integer, integer);
 DROP FUNCTION IF EXISTS public.complete_order(uuid, uuid, text, text, integer, integer, text);
-
 -- We replace the function to handle different calculation models
 CREATE OR REPLACE FUNCTION public.complete_order(
   p_order_id UUID, 
@@ -99,7 +96,6 @@ BEGIN
 
 END;
 $$;
-
 -- 4. Update mark_order_paid RPC
 -- Now uses applied_admin_fee for consistent deduction
 CREATE OR REPLACE FUNCTION public.mark_order_paid(

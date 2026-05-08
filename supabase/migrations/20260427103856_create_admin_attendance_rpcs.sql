@@ -54,7 +54,6 @@ BEGIN
   RETURN jsonb_build_object('success', true, 'fine_amount', v_fine_amount);
 END;
 $$;
-
 -- RPC: Admin maafkan keterlambatan (excused)
 CREATE OR REPLACE FUNCTION public.excuse_attendance(
   p_attendance_id UUID,
@@ -82,7 +81,6 @@ BEGIN
   RETURN jsonb_build_object('success', true);
 END;
 $$;
-
 -- RPC: Reset late_fine_active semua kurir (dipanggil awal hari / awal shift)
 CREATE OR REPLACE FUNCTION public.reset_daily_fine_flags()
 RETURNS void
@@ -92,4 +90,4 @@ BEGIN
   UPDATE profiles SET late_fine_active = false
   WHERE role = 'courier' AND late_fine_active = true;
 END;
-$$;;
+$$;

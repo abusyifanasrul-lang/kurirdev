@@ -42,7 +42,6 @@ BEGIN
     AND NOT (p.day_off = TRIM(TO_CHAR(p_date, 'Day')));
 END;
 $$;
-
 -- 2. Update record_courier_checkin
 CREATE OR REPLACE FUNCTION public.record_courier_checkin(p_courier_id UUID)
 RETURNS JSONB
@@ -116,7 +115,6 @@ BEGIN
   );
 END;
 $$;
-
 -- 3. Update process_shift_alpha
 CREATE OR REPLACE FUNCTION public.process_shift_alpha()
 RETURNS JSONB
@@ -197,4 +195,4 @@ BEGIN
 
   RETURN jsonb_build_object('alpha_count', v_alpha_count, 'processed_at', NOW());
 END;
-$$;;
+$$;
