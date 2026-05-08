@@ -1,3 +1,5 @@
+﻿<!-- ARCHIVED: 2026-05-09 | REASON: Moved to docs/ during reorganization -->
+
 # KurirDev — Dokumentasi Teknis Lengkap
 ### Sistem Manajemen Kurir: Antrian, Shift, Denda & GPS STAY
 
@@ -1631,3 +1633,4 @@ radius_m                 INT     DEFAULT 10  -- ✅ RENAMED from stay_radius_met
 ```sql
 SELECT proname, prosrc FROM pg_proc WHERE proname = '[nama_fungsi]';
 ```
+

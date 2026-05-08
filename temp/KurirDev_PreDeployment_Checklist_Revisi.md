@@ -1,3 +1,5 @@
+﻿<!-- ARCHIVED: 2026-05-09 | REASON: Moved to docs/ during reorganization -->
+
 # KurirDev — Checklist Pre-Deployment (Revisi)
 ### Daftar Lengkap Pekerjaan yang Harus Diselesaikan Sebelum & Setelah Go-Live
 
@@ -608,3 +610,4 @@ SELALU lakukan:
 ```sql
 SELECT proname, prosrc FROM pg_proc WHERE proname = '[nama_fungsi]';
 ```
+
