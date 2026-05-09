@@ -20,6 +20,7 @@ import { Order } from '@/types';
 import { getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
 
 import { AttendanceWidget } from '@/components/courier/AttendanceWidget';
+import { ShiftScheduleWidget } from '@/components/courier/ShiftScheduleWidget';
 import { DebugPanel } from '@/components/courier/DebugPanel';
 
 const ONBOARDING_KEY = 'courier_permissions_onboarded';
@@ -203,6 +204,11 @@ export function CourierDashboard() {
           courierId={user.id} 
           lateFineActive={lateFineActive} 
         />
+      )}
+
+      {/* Shift Schedule Widget */}
+      {user?.id && (
+        <ShiftScheduleWidget courierId={user.id} />
       )}
 
       {/* Unpaid Warning Card — If any */}
