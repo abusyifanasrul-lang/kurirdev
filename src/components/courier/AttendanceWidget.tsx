@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
-import { AlertCircle, CheckCircle2, ChevronRight } from 'lucide-react';
+import { AlertCircle, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { cn } from '@/utils/cn';
 import { useAttendanceStore } from '@/stores/useAttendanceStore';
 
 interface AttendanceWidgetProps {
@@ -19,56 +18,36 @@ export function AttendanceWidget({ courierId, lateFineActive }: AttendanceWidget
     }
   }, [courierId, fetchTodayLog]);
 
+  // Don't show loading state - just hide widget if no data yet
   if (isLoading && !todayLog) {
-    return (
-      <div className="animate-pulse bg-white/50 backdrop-blur-md rounded-2xl p-3 h-16 border border-gray-100" />
-    );
+    return null;
   }
 
+  // Don't show widget if no shift today
   if (!todayLog) {
-    return (
-      <button
-        onClick={() => navigate('/courier/profile', { state: { activeTab: 'attendance' } })}
-        className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-3 flex items-center justify-between hover:bg-gray-100 transition-colors active:scale-[0.98]"
-      >
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-gray-200 flex items-center justify-center flex-shrink-0">
-            <AlertCircle className="h-4 w-4 text-gray-500" />
-          </div>
-          <div className="text-left">
-            <p className="text-xs font-bold text-gray-600">Belum mulai shift</p>
-          </div>
-        </div>
-        <ChevronRight className="h-4 w-4 text-gray-400" />
-      </button>
-    );
+    return null;
   }
 
+  // Only show widget if courier is late
   const isLate = todayLog.status === 'late' || todayLog.status === 'late_minor' || todayLog.status === 'late_major' || lateFineActive;
-  const StatusIcon = isLate ? AlertCircle : CheckCircle2;
-  const iconColor = isLate ? 'text-red-600' : 'text-emerald-600';
-  const iconBg = isLate ? 'bg-red-50' : 'bg-emerald-50';
+  
+  // Hide widget if courier is on time
+  if (!isLate) {
+    return null;
+  }
 
   return (
     <button
       onClick={() => navigate('/courier/profile', { state: { activeTab: 'attendance' } })}
-      className={cn(
-        "w-full rounded-2xl p-3 flex items-center justify-between transition-all active:scale-[0.98] border",
-        isLate 
-          ? "bg-red-50/50 border-red-200 hover:bg-red-50" 
-          : "bg-emerald-50/50 border-emerald-200 hover:bg-emerald-50"
-      )}
+      className="w-full bg-red-50/50 border border-red-200 hover:bg-red-50 rounded-2xl p-3 flex items-center justify-between transition-all active:scale-[0.98]"
     >
       <div className="flex items-center gap-2.5 min-w-0">
-        <div className={cn(
-          "w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0",
-          iconBg
-        )}>
-          <StatusIcon className={cn("h-4 w-4", iconColor)} />
+        <div className="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0">
+          <AlertCircle className="h-4 w-4 text-red-600" />
         </div>
         <div className="text-left min-w-0">
           <p className="text-xs font-bold text-gray-900 truncate">
-            {todayLog.shift_name || 'Shift Aktif'} • {isLate ? 'Terlambat' : 'Tepat Waktu'} {isLate && todayLog.late_minutes > 0 && `${todayLog.late_minutes} menit`}
+            {todayLog.shift_name || 'Shift Aktif'} • Terlambat {todayLog.late_minutes > 0 && `${todayLog.late_minutes} menit`}
           </p>
         </div>
       </div>
