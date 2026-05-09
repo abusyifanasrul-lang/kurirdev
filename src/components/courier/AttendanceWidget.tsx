@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { AlertCircle, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAttendanceStore } from '@/stores/useAttendanceStore';
@@ -11,12 +11,41 @@ interface AttendanceWidgetProps {
 export function AttendanceWidget({ courierId, lateFineActive }: AttendanceWidgetProps) {
   const navigate = useNavigate();
   const { todayLog, isLoading, fetchTodayLog } = useAttendanceStore();
+  const [isInShift, setIsInShift] = useState(false);
 
   useEffect(() => {
     if (courierId) {
       fetchTodayLog(courierId);
     }
   }, [courierId, fetchTodayLog]);
+
+  // Check if currently in shift time
+  useEffect(() => {
+    if (!todayLog?.shift_start || !todayLog?.shift_end) {
+      setIsInShift(false);
+      return;
+    }
+
+    const checkShiftTime = () => {
+      const now = new Date();
+      const currentTime = now.getHours() * 60 + now.getMinutes(); // minutes since midnight
+
+      // Parse shift times
+      const [startHour, startMin] = todayLog.shift_start.split(':').map(Number);
+      const [endHour, endMin] = todayLog.shift_end.split(':').map(Number);
+      const shiftStart = startHour * 60 + startMin;
+      const shiftEnd = endHour * 60 + endMin;
+
+      // Check if currently in shift
+      const inShift = currentTime >= shiftStart && currentTime < shiftEnd;
+      setIsInShift(inShift);
+    };
+
+    checkShiftTime();
+    const interval = setInterval(checkShiftTime, 60000); // Check every minute
+
+    return () => clearInterval(interval);
+  }, [todayLog?.shift_start, todayLog?.shift_end]);
 
   // Don't show loading state - just hide widget if no data yet
   if (isLoading && !todayLog) {
@@ -25,6 +54,11 @@ export function AttendanceWidget({ courierId, lateFineActive }: AttendanceWidget
 
   // Don't show widget if no shift today
   if (!todayLog) {
+    return null;
+  }
+
+  // CRITICAL: Only show widget if shift is currently active
+  if (!isInShift) {
     return null;
   }
 
