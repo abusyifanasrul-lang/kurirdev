@@ -32,7 +32,7 @@ interface AdminAttendanceStore {
   isLoading: boolean;
   fetchTodayLogs: () => Promise<void>;
   fetchMissingCouriers: () => Promise<void>;
-  applyFine: (attendanceId: string, fineType: 'per_order' | 'flat_major', adminId: string) => Promise<void>;
+  applyFine: (attendanceId: string, fineType: 'per_order' | 'flat_major', adminId: string, notes?: string) => Promise<void>;
   excuseLate: (attendanceId: string, adminId: string, notes?: string) => Promise<void>;
   subscribeToday: () => (() => void);
 }
@@ -94,11 +94,12 @@ export const useAdminAttendanceStore = create<AdminAttendanceStore>((set, get) =
     }
   },
 
-  applyFine: async (attendanceId, fineType, adminId) => {
+  applyFine: async (attendanceId, fineType, adminId, notes) => {
     const { error } = await supabase.rpc('apply_attendance_fine', {
       p_attendance_id: attendanceId,
       p_fine_type: fineType,
       p_admin_id: adminId,
+      p_notes: notes ?? null,
     });
     if (!error) await get().fetchTodayLogs();
   },

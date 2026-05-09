@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Clock, Search, Filter, AlertCircle, CheckCircle2, UserMinus, AlertTriangle, Bell } from 'lucide-react';
+import { Clock, Search, Filter, AlertCircle, CheckCircle2, UserMinus, AlertTriangle, Bell, X } from 'lucide-react';
 import { useAdminAttendanceStore } from '@/stores/useAdminAttendanceStore';
 import { useShiftStore } from '@/stores/useShiftStore';
 import { format } from 'date-fns';
 import { cn } from '@/utils/cn';
 import { Badge } from '@/components/ui/Badge';
+import { Modal } from '@/components/ui/Modal';
 import { formatCurrency } from '@/utils/formatter';
 import { useAuth } from '@/context/AuthContext';
 
@@ -40,6 +41,11 @@ export function AttendanceMonitoring() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedShift, setSelectedShift] = useState<string>('all');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  
+  // Fine dialog state
+  const [showFineDialog, setShowFineDialog] = useState(false);
+  const [selectedLog, setSelectedLog] = useState<AdminAttendanceLog | null>(null);
+  const [fineNotes, setFineNotes] = useState('');
 
   useEffect(() => {
     fetchTodayLogs();
@@ -70,8 +76,17 @@ export function AttendanceMonitoring() {
   const handleApplyFine = async (log: AdminAttendanceLog, fineType: 'per_order' | 'flat_major') => {
     if (!user) return;
     setActionLoading(log.id);
-    await applyFine(log.id, fineType, user.id);
+    await applyFine(log.id, fineType, user.id, fineNotes || undefined);
     setActionLoading(null);
+    setShowFineDialog(false);
+    setFineNotes('');
+    setSelectedLog(null);
+  };
+
+  const openFineDialog = (log: AdminAttendanceLog) => {
+    setSelectedLog(log);
+    setFineNotes('');
+    setShowFineDialog(true);
   };
 
   const handleExcuse = async (log: AdminAttendanceLog) => {
@@ -365,9 +380,7 @@ export function AttendanceMonitoring() {
                       {needsAdminAction(log) ? (
                         <div className="flex gap-2 flex-wrap">
                           <button
-                            onClick={() => handleApplyFine(log, 
-                              log.late_minutes >= 60 ? 'flat_major' : 'per_order'
-                            )}
+                            onClick={() => openFineDialog(log)}
                             disabled={actionLoading === log.id}
                             className="px-3 py-1.5 text-[10px] font-black bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 shadow-sm shadow-red-200"
                           >
@@ -396,6 +409,88 @@ export function AttendanceMonitoring() {
           </table>
         </div>
       </div>
+
+      {/* Fine Dialog Modal */}
+      <Modal
+        isOpen={showFineDialog}
+        onClose={() => {
+          setShowFineDialog(false);
+          setSelectedLog(null);
+          setFineNotes('');
+        }}
+        title="Apply Denda Keterlambatan"
+        size="md"
+      >
+        {selectedLog && (
+          <div className="space-y-4">
+            {/* Courier Info */}
+            <div className="bg-gray-50 rounded-xl p-4">
+              <p className="text-sm font-bold text-gray-600 mb-2">Kurir</p>
+              <p className="text-lg font-black text-gray-900">{selectedLog.courier_name}</p>
+              <p className="text-sm text-gray-500 mt-1">
+                Terlambat <span className="font-bold text-red-600">{selectedLog.late_minutes} menit</span>
+              </p>
+            </div>
+
+            {/* Fine Type (Auto-selected based on late_minutes) */}
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+              <p className="text-sm font-bold text-amber-800 mb-2">Jenis Denda</p>
+              {selectedLog.late_minutes >= 60 ? (
+                <div>
+                  <p className="text-lg font-black text-red-600">Flat Major (≥60 menit)</p>
+                  <p className="text-sm text-gray-600 mt-1">Denda: Rp 30,000 (langsung ke settlement)</p>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-lg font-black text-amber-600">Per Order (&lt;60 menit)</p>
+                  <p className="text-sm text-gray-600 mt-1">Denda: Rp 1,000 per orderan</p>
+                </div>
+              )}
+            </div>
+
+            {/* Notes Input */}
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">
+                Catatan / Alasan <span className="text-gray-400 font-normal">(opsional)</span>
+              </label>
+              <textarea
+                value={fineNotes}
+                onChange={(e) => setFineNotes(e.target.value)}
+                placeholder="Contoh: Terlambat tanpa pemberitahuan, tidak ada alasan yang jelas..."
+                rows={4}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm resize-none"
+              />
+              <p className="text-xs text-gray-500 mt-2">
+                Catatan ini akan tersimpan dan dapat dilihat oleh kurir di riwayat kehadiran
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => {
+                  setShowFineDialog(false);
+                  setSelectedLog(null);
+                  setFineNotes('');
+                }}
+                className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition"
+              >
+                Batal
+              </button>
+              <button
+                onClick={() => handleApplyFine(
+                  selectedLog,
+                  selectedLog.late_minutes >= 60 ? 'flat_major' : 'per_order'
+                )}
+                disabled={actionLoading === selectedLog.id}
+                className="flex-1 px-4 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition disabled:opacity-50"
+              >
+                {actionLoading === selectedLog.id ? 'Memproses...' : 'Konfirmasi Denda'}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
