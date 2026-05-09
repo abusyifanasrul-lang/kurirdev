@@ -97,55 +97,52 @@ export function ShiftScheduleWidget({ courierId }: ShiftScheduleWidgetProps) {
 
   return (
     <div className={cn(
-      "bg-white rounded-2xl xs:rounded-3xl p-4 mini:p-5 shadow-sm border transition-all",
+      "bg-white rounded-2xl xs:rounded-3xl px-4 mini:px-5 py-3 mini:py-3.5 shadow-sm border transition-all",
       isInShift 
         ? "border-emerald-200 bg-gradient-to-br from-emerald-50 to-white" 
         : "border-gray-100"
     )}>
-      <div className="flex items-center justify-between gap-3">
-        {/* Left: Shift Info */}
-        <div className="flex items-center gap-3 min-w-0">
+      <div className="flex items-center justify-between gap-4">
+        {/* Left: Shift Time */}
+        <div className="flex items-center gap-2.5 min-w-0">
           <div className={cn(
-            "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 border",
+            "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
             isInShift 
-              ? "bg-emerald-100 text-emerald-600 border-emerald-200" 
-              : "bg-gray-50 text-gray-400 border-gray-100"
+              ? "bg-emerald-100 text-emerald-600" 
+              : "bg-gray-50 text-gray-400"
           )}>
-            <Calendar className="h-5 w-5" />
+            <Calendar className="h-4 w-4" />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] uppercase font-black text-gray-400 tracking-[0.15em] mb-0.5">
+            <p className="text-[9px] uppercase font-black text-gray-400 tracking-[0.15em] leading-none mb-1">
               Jadwal Shift
             </p>
-            <p className="text-sm font-black text-gray-900 leading-tight">
-              {shiftInfo.name}
-            </p>
-            <p className="text-xs font-bold text-gray-500 mt-0.5">
+            <p className="text-sm font-black text-gray-900 leading-none">
               {shiftInfo.start_time} - {shiftInfo.end_time}
             </p>
           </div>
         </div>
 
-        {/* Right: Status or Countdown */}
-        <div className="flex-shrink-0">
+        {/* Right: Countdown or Status */}
+        <div className="flex-shrink-0 text-right">
           {isInShift ? (
-            <div className="px-3 py-1.5 rounded-xl bg-emerald-100 border border-emerald-200">
-              <p className="text-[10px] font-black text-emerald-700 uppercase tracking-wider whitespace-nowrap">
+            <div className="px-3 py-1 rounded-lg bg-emerald-100">
+              <p className="text-[9px] font-black text-emerald-700 uppercase tracking-wider whitespace-nowrap leading-none">
                 Sedang Shift
               </p>
             </div>
           ) : countdown ? (
-            <div className="text-right">
-              <div className="flex items-center gap-1.5 justify-end mb-0.5">
+            <>
+              <div className="flex items-center gap-1 justify-end mb-0.5">
                 <Clock className="h-3 w-3 text-orange-500" />
-                <p className="text-xs font-black text-orange-600 tabular-nums">
+                <p className="text-xs font-black text-orange-600 tabular-nums leading-none">
                   {countdown}
                 </p>
               </div>
-              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tight">
+              <p className="text-[8px] font-bold text-gray-400 uppercase tracking-tight leading-none">
                 Menuju Shift
               </p>
-            </div>
+            </>
           ) : null}
         </div>
       </div>
