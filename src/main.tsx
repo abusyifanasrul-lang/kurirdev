@@ -29,21 +29,29 @@ window.addEventListener('unhandledrejection', (event) => {
   }
 });
 
-// Setup push notification listener on the SW
+// Register Service Worker for PWA and Push Notifications
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.ready.then(() => {
-    navigator.serviceWorker.addEventListener("message", (event) => {
-      if (event.data && event.data.type === "PUSH_NOTIFICATION") {
-        // Play alert sound for foreground notifications
-        const audio = new Audio("/alert.mp3");
-        audio.volume = 1.0;
-        audio.play().catch((err) =>
-          console.error("Error playing audio:", err)
-        );
-        console.log("Foreground notification received:", event.data.payload);
-      }
+  navigator.serviceWorker
+    .register("/sw.js", { scope: "/" })
+    .then((registration) => {
+      console.log("✅ Service Worker registered:", registration.scope);
+      
+      // Setup push notification listener
+      navigator.serviceWorker.addEventListener("message", (event) => {
+        if (event.data && event.data.type === "PUSH_NOTIFICATION") {
+          // Play alert sound for foreground notifications
+          const audio = new Audio("/alert.mp3");
+          audio.volume = 1.0;
+          audio.play().catch((err) =>
+            console.error("Error playing audio:", err)
+          );
+          console.log("Foreground notification received:", event.data.payload);
+        }
+      });
+    })
+    .catch((error) => {
+      console.error("❌ Service Worker registration failed:", error);
     });
-  });
 }
 import { clearAllCache } from './lib/orderCache';
 
