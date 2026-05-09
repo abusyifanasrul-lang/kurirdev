@@ -44,6 +44,13 @@ const statusConfig = {
     bg: 'bg-emerald-50',
     border: 'border-emerald-200'
   },
+  late: {
+    label: 'Terlambat',
+    icon: Clock,
+    color: 'text-amber-600',
+    bg: 'bg-amber-50',
+    border: 'border-amber-200'
+  },
   late_minor: {
     label: 'Terlambat Ringan',
     icon: Clock,
@@ -336,7 +343,13 @@ export function CourierAttendanceHistory() {
         ) : (
           <div className="space-y-3">
             {attendanceRecords.map((record) => {
-              const config = statusConfig[record.status];
+              const config = statusConfig[record.status as keyof typeof statusConfig] || {
+                label: record.status || 'Unknown',
+                icon: Clock,
+                color: 'text-gray-600',
+                bg: 'bg-gray-50',
+                border: 'border-gray-200'
+              };
               const isExpanded = expandedRows.has(record.id);
               const hasFine = record.fine_type !== null && record.flat_fine_status !== 'cancelled';
               const fineAmount = (record.fine_type === 'flat_major' || record.fine_type === 'flat_alpha') 
