@@ -46,8 +46,6 @@ export function CourierDashboard() {
   const [selectedOffReason, setSelectedOffReason] = useState('');
   const [customOffReason, setCustomOffReason] = useState('');
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
-  const [showShiftEndModal, setShowShiftEndModal] = useState(false);
-  const [shiftEndMessage, setShiftEndMessage] = useState('');
 
   const courierStatus = (liveUser as any)?.courier_status ?? (isOnline ? 'on' : 'off');
 
@@ -192,24 +190,7 @@ export function CourierDashboard() {
     }
   };
 
-  const handleRecordShiftEnd = async () => {
-    if (!user?.id || isUpdatingStatus) return;
-    
-    setIsUpdatingStatus(true);
-    try {
-      const { recordShiftEnd } = useCourierStore.getState();
-      const result = await recordShiftEnd(user.id);
-      
-      if (result.success) {
-        setShiftEndMessage(result.warning_message || 'Shift selesai dicatat!');
-        setShowShiftEndModal(true);
-      }
-    } catch (err: any) {
-      alert(err.message || 'Gagal mencatat selesai shift');
-    } finally {
-      setIsUpdatingStatus(false);
-    }
-  };
+
 
   return (
     <div className="space-y-6 p-1">
@@ -307,18 +288,6 @@ export function CourierDashboard() {
               OFF
             </button>
           </div>
-        )}
-
-        {/* Selesai Shift Button - Only show when courier is ON or OFF (not suspended) */}
-        {!isSuspended && courierStatus !== 'stay' && (
-          <button
-            onClick={handleRecordShiftEnd}
-            disabled={isUpdatingStatus}
-            className="w-full mt-3 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-purple-700 text-white text-[10px] font-black border border-purple-500 shadow-lg shadow-purple-100 active:scale-95 transition-all disabled:opacity-50 uppercase tracking-widest"
-          >
-            <Clock className="h-4 w-4" />
-            {isUpdatingStatus ? "..." : "Selesai Shift"}
-          </button>
         )}
       </div>
 
@@ -479,32 +448,7 @@ export function CourierDashboard() {
         />
       )}
 
-      {/* Shift End Confirmation Modal */}
-      {showShiftEndModal && (
-        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-xl flex items-center justify-center z-[100] px-5 animate-in fade-in duration-300">
-          <div className="bg-white rounded-3xl sx:rounded-[2.5rem] p-5 mini:p-7 w-full max-w-sm space-y-5 xs:space-y-6 animate-in zoom-in-95 duration-300 border border-white/20 shadow-2xl">
-            <div className="text-center">
-              <div className="w-14 h-14 bg-purple-50 text-purple-500 rounded-3xl flex items-center justify-center mx-auto mb-4 border border-purple-100">
-                <CheckCircle className="h-7 w-7" />
-              </div>
-              <h3 className="font-black text-xl text-gray-900 tracking-tight">Shift Selesai!</h3>
-              <p className="text-xs text-gray-600 font-medium mt-3 leading-relaxed">
-                {shiftEndMessage}
-              </p>
-              <p className="text-[10px] text-gray-400 font-medium mt-3 leading-relaxed">
-                Anda masih bisa ON lagi untuk order privat (out-of-shift).
-              </p>
-            </div>
-            
-            <button
-              onClick={() => setShowShiftEndModal(false)}
-              className="w-full py-4 bg-purple-600 text-white rounded-2xl text-[10px] font-black shadow-xl shadow-purple-100 active:scale-95 transition-all uppercase tracking-widest"
-            >
-              Mengerti
-            </button>
-          </div>
-        </div>
-      )}
+
 
       {/* Debug Panel - Floating Button */}
       <DebugPanel />
