@@ -395,13 +395,27 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
   },
 
   addNotification: async (data) => {
-    await (supabase.from('notifications') as any).insert({
+    const { data: inserted, error } = await supabase.from('notifications').insert({
       ...data,
       is_read: false,
       sent_at: new Date().toISOString(),
       type: data.type || 'manual_alert',
-      fcm_status: data.fcm_status || 'pending'
-    })
+      fcm_status: 'pending'
+    }).select().single()
+    
+    if (error) {
+      console.error('[NotifStore] Insert error:', error)
+      throw error
+    }
+    
+    // Optimistically add to local state (realtime will also update, but this is faster)
+    if (inserted) {
+      set((state) => ({
+        notifications: [inserted as Notification, ...state.notifications].sort((a, b) =>
+          new Date(b.sent_at || 0).getTime() - new Date(a.sent_at || 0).getTime()
+        )
+      }))
+    }
   },
 
   markAsRead: async (id) => {
