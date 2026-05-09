@@ -923,7 +923,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   },
 
   settleOrder: async (orderId, userId, userName) => {
-    const { error } = await (supabase.rpc as any)('mark_order_paid', { 
+    const { error } = await (supabase.rpc as any)('settle_order', { 
       p_order_id: orderId,
       p_admin_id: userId,
       p_admin_name: userName

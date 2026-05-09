@@ -303,6 +303,8 @@ export function AttendanceMonitoring() {
                 <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Kurir</th>
                 <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Shift</th>
                 <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Check In</th>
+                <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Selesai Shift</th>
+                <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Durasi</th>
                 <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Status</th>
                 <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Keterangan</th>
                 <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Denda</th>
@@ -313,14 +315,14 @@ export function AttendanceMonitoring() {
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="animate-pulse">
-                    <td colSpan={7} className="px-6 py-8">
+                    <td colSpan={9} className="px-6 py-8">
                       <div className="h-4 bg-gray-100 rounded-full w-full" />
                     </td>
                   </tr>
                 ))
               ) : filteredLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-20 text-center">
+                  <td colSpan={9} className="px-6 py-20 text-center">
                     <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-gray-100">
                       <UserMinus className="h-8 w-8 text-gray-300" />
                     </div>
@@ -328,82 +330,121 @@ export function AttendanceMonitoring() {
                   </td>
                 </tr>
               ) : (
-                filteredLogs.map((log) => (
-                  <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="px-6 py-5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-2xl bg-gray-900 text-white flex items-center justify-center font-black text-sm">
-                          {log.courier_name?.charAt(0)}
+                filteredLogs.map((log) => {
+                  // Calculate duration if both check-in and shift-end are recorded
+                  const duration = log.first_online_at && log.last_online_at
+                    ? Math.round((new Date(log.last_online_at).getTime() - new Date(log.first_online_at).getTime()) / (1000 * 60))
+                    : null;
+                  
+                  // Determine shift status based on duration
+                  const getShiftStatus = () => {
+                    if (!duration) return null;
+                    const hours = duration / 60;
+                    if (hours < 6.4) return { label: 'SELESAI AWAL', color: 'text-amber-600' }; // < 80% of 8 hours
+                    if (hours > 9.6) return { label: 'OVERTIME', color: 'text-blue-600' }; // > 120% of 8 hours
+                    return { label: 'NORMAL', color: 'text-emerald-600' };
+                  };
+                  
+                  const shiftStatus = getShiftStatus();
+                  
+                  return (
+                    <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="px-6 py-5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-2xl bg-gray-900 text-white flex items-center justify-center font-black text-sm">
+                            {log.courier_name?.charAt(0)}
+                          </div>
+                          <p className="font-black text-gray-900 tracking-tight">{log.courier_name}</p>
                         </div>
-                        <p className="font-black text-gray-900 tracking-tight">{log.courier_name}</p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-5">
-                      <Badge variant="secondary" className="font-bold text-[10px] uppercase tracking-wider">
-                        {log.shift_name}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-5 font-bold text-gray-600 tabular-nums">
-                      {log.first_online_at ? format(new Date(log.first_online_at), 'HH:mm') : '--:--'}
-                    </td>
-                    <td className="px-6 py-5">
-                      {getStatusBadge(log.status)}
-                    </td>
-                    <td className="px-6 py-5">
-                      {log.late_minutes > 0 ? (
-                        <span className="text-xs font-bold text-red-500">
-                          Terlambat {log.late_minutes} Menit
-                        </span>
-                      ) : (
-                        <span className="text-xs font-medium text-gray-400">-</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-5">
-                      {log.fine_type === 'per_order' && (
-                        <div>
+                      </td>
+                      <td className="px-6 py-5">
+                        <Badge variant="secondary" className="font-bold text-[10px] uppercase tracking-wider">
+                          {log.shift_name}
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-5 font-bold text-gray-600 tabular-nums">
+                        {log.first_online_at ? format(new Date(log.first_online_at), 'HH:mm') : '--:--'}
+                      </td>
+                      <td className="px-6 py-5 font-bold text-gray-600 tabular-nums">
+                        {log.last_online_at ? format(new Date(log.last_online_at), 'HH:mm') : (
+                          <span className="text-gray-300">--:--</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-5">
+                        {duration ? (
+                          <div>
+                            <p className="font-bold text-gray-900 tabular-nums">
+                              {Math.floor(duration / 60)}j {duration % 60}m
+                            </p>
+                            {shiftStatus && (
+                              <p className={cn("text-[10px] font-bold", shiftStatus.color)}>
+                                {shiftStatus.label}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs font-medium text-gray-400">-</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-5">
+                        {getStatusBadge(log.status)}
+                      </td>
+                      <td className="px-6 py-5">
+                        {log.late_minutes > 0 ? (
+                          <span className="text-xs font-bold text-red-500">
+                            Terlambat {log.late_minutes} Menit
+                          </span>
+                        ) : (
+                          <span className="text-xs font-medium text-gray-400">-</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-5">
+                        {log.fine_type === 'per_order' && (
+                          <div>
+                            <p className="text-sm font-black text-red-600">
+                              Rp {log.fine_per_order.toLocaleString('id')}/order
+                            </p>
+                            <p className="text-[10px] text-gray-400">dipotong per orderan</p>
+                          </div>
+                        )}
+                        {log.fine_type === 'flat_major' && (
                           <p className="text-sm font-black text-red-600">
-                            Rp {log.fine_per_order.toLocaleString('id')}/order
+                            {formatCurrency(log.flat_fine)}
                           </p>
-                          <p className="text-[10px] text-gray-400">dipotong per orderan</p>
-                        </div>
-                      )}
-                      {log.fine_type === 'flat_major' && (
-                        <p className="text-sm font-black text-red-600">
-                          {formatCurrency(log.flat_fine)}
-                        </p>
-                      )}
-                      {!log.fine_type && (
-                        <p className="text-sm text-gray-300">-</p>
-                      )}
-                    </td>
-                    <td className="px-6 py-5">
-                      {needsAdminAction(log) ? (
-                        <div className="flex gap-2 flex-wrap">
-                          <button
-                            onClick={() => openFineDialog(log)}
-                            disabled={actionLoading === log.id}
-                            className="px-3 py-1.5 text-[10px] font-black bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 shadow-sm shadow-red-200"
-                          >
-                            {actionLoading === log.id ? '...' : 'APPLY DENDA'}
-                          </button>
-                          <button
-                            onClick={() => handleExcuse(log)}
-                            disabled={actionLoading === log.id}
-                            className="px-3 py-1.5 text-[10px] font-black bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition disabled:opacity-50"
-                          >
-                            MAAFKAN
-                          </button>
-                        </div>
-                      ) : log.status === 'excused' ? (
-                        <span className="text-[10px] font-black text-emerald-600 tracking-widest uppercase">DIMAAFKAN</span>
-                      ) : log.fine_type ? (
-                        <span className="text-[10px] font-black text-red-500 tracking-widest uppercase">DENDA AKTIF</span>
-                      ) : (
-                        <span className="text-[10px] text-gray-300">-</span>
-                      )}
-                    </td>
-                  </tr>
-                ))
+                        )}
+                        {!log.fine_type && (
+                          <p className="text-sm text-gray-300">-</p>
+                        )}
+                      </td>
+                      <td className="px-6 py-5">
+                        {needsAdminAction(log) ? (
+                          <div className="flex gap-2 flex-wrap">
+                            <button
+                              onClick={() => openFineDialog(log)}
+                              disabled={actionLoading === log.id}
+                              className="px-3 py-1.5 text-[10px] font-black bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 shadow-sm shadow-red-200"
+                            >
+                              {actionLoading === log.id ? '...' : 'APPLY DENDA'}
+                            </button>
+                            <button
+                              onClick={() => handleExcuse(log)}
+                              disabled={actionLoading === log.id}
+                              className="px-3 py-1.5 text-[10px] font-black bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition disabled:opacity-50"
+                            >
+                              MAAFKAN
+                            </button>
+                          </div>
+                        ) : log.status === 'excused' ? (
+                          <span className="text-[10px] font-black text-emerald-600 tracking-widest uppercase">DIMAAFKAN</span>
+                        ) : log.fine_type ? (
+                          <span className="text-[10px] font-black text-red-500 tracking-widest uppercase">DENDA AKTIF</span>
+                        ) : (
+                          <span className="text-[10px] text-gray-300">-</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
