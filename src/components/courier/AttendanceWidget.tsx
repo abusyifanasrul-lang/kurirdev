@@ -28,7 +28,7 @@ export function AttendanceWidget({ courierId, lateFineActive }: AttendanceWidget
   if (!todayLog) {
     return (
       <button
-        onClick={() => navigate('/courier/profile')}
+        onClick={() => navigate('/courier/profile', { state: { activeTab: 'attendance' } })}
         className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-3 flex items-center justify-between hover:bg-gray-100 transition-colors active:scale-[0.98]"
       >
         <div className="flex items-center gap-2.5">
@@ -51,7 +51,7 @@ export function AttendanceWidget({ courierId, lateFineActive }: AttendanceWidget
 
   return (
     <button
-      onClick={() => navigate('/courier/profile')}
+      onClick={() => navigate('/courier/profile', { state: { activeTab: 'attendance' } })}
       className={cn(
         "w-full rounded-2xl p-3 flex items-center justify-between transition-all active:scale-[0.98] border",
         isLate 

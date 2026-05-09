@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { requestFCMPermission } from '@/lib/fcm';
@@ -111,14 +111,15 @@ const statusConfig = {
 
 export function CourierProfile() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout } = useAuth();
   const { couriers } = useCourierStore();
   const { users } = useUserStore();
   const { user: currentUser } = useSessionStore();
   const { permissions, checkPermissions, requestNotification, requestBackgroundLocation, requestCamera, openSettings } = usePermissions();
 
-  // Tab state
-  const [activeTab, setActiveTab] = useState<Tab>('profile');
+  // Tab state - check location state for initial tab
+  const [activeTab, setActiveTab] = useState<Tab>((location.state as any)?.activeTab || 'profile');
 
   // Attendance state
   const [attendanceRecords, setAttendanceRecords] = useState<ShiftAttendance[]>([]);
