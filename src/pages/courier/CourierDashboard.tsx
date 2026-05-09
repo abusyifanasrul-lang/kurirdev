@@ -408,7 +408,7 @@ export function CourierDashboard() {
               <div className="w-14 h-14 bg-red-50 text-red-500 rounded-3xl flex items-center justify-center mx-auto mb-4 border border-red-100">
                 <Clock className="h-7 w-7" />
               </div>
-              <h3 className="font-black text-xl text-gray-900 tracking-tight">Istirahat Sejenak?</h3>
+              <h3 className="font-black text-xl text-gray-900 tracking-tight">Mau Offline?</h3>
               <p className="text-xs text-gray-500 font-medium mt-1">Pilih alasan kamu ingin offline.</p>
             </div>
             
