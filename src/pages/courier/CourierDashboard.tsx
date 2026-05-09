@@ -79,6 +79,20 @@ export function CourierDashboard() {
   useEffect(() => {
     if (!user?.id) return;
     const unsubscribe = subscribeProfile(user.id);
+    
+    // Request FCM permission for push notifications
+    const initFCM = async () => {
+      try {
+        const { requestFCMPermission } = await import('@/lib/fcm');
+        await requestFCMPermission(user.id);
+        console.log('[CourierDashboard] FCM permission requested');
+      } catch (err) {
+        console.error('[CourierDashboard] Failed to request FCM permission:', err);
+      }
+    };
+    
+    initFCM();
+    
     return () => unsubscribe();
   }, [user?.id, subscribeProfile]);
 
