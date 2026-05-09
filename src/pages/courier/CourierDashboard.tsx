@@ -97,9 +97,8 @@ export function CourierDashboard() {
   }, [user?.id, subscribeProfile]);
 
   const OFF_REASONS = [
-    { value: 'Makan', label: '🍽️ Makan' },
-    { value: 'BAB/BAK', label: '🚽 BAB/BAK' },
-    { value: 'Isi Bensin', label: '⛽ Isi Bensin' },
+    { value: 'Shift Selesai', label: '✅ Shift Selesai' },
+    { value: 'Istirahat', label: '☕ Istirahat' },
     { value: 'Masalah Kendaraan', label: '🔧 Masalah Kendaraan' },
     { value: 'Lainnya', label: '📝 Lainnya' },
   ];
