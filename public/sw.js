@@ -104,105 +104,88 @@ self.addEventListener('activate', (event) => {
 });
 
 
-import { precacheAndRoute, createHandlerBoundToURL } from 'workbox-precaching';
-import { registerRoute, NavigationRoute } from 'workbox-routing';
-import { CacheFirst, NetworkFirst, StaleWhileRevalidate } from 'workbox-strategies';
-import { ExpirationPlugin } from 'workbox-expiration';
-import { CacheableResponsePlugin } from 'workbox-cacheable-response';
+// Load Workbox from CDN using importScripts (Service Worker compatible)
+importScripts('https://storage.googleapis.com/workbox-cdn/releases/7.0.0/workbox-sw.js');
 
-// Precache injected assets
-precacheAndRoute(self.__WB_MANIFEST);
+// Initialize Workbox
+if (workbox) {
+  console.log('[sw.js] Workbox loaded successfully');
 
-// SPA Fallback: Ensure navigating to /courier or /admin serves index.html
-try {
-  const handler = createHandlerBoundToURL('/index.html');
-  const navigationRoute = new NavigationRoute(handler, {
-    denylist: [
-      new RegExp('/api/'), // Exclude APIs
-      new RegExp('/_/') // Exclude internal paths
-    ],
-  });
-  registerRoute(navigationRoute);
-} catch (e) {
-  console.log('[sw.js] NavigationRoute error:', e);
+  // Configure Workbox
+  workbox.setConfig({ debug: false });
+
+  // 1. Google Fonts Cache (CacheFirst)
+  workbox.routing.registerRoute(
+    ({url}) => url.origin === 'https://fonts.googleapis.com' || url.origin === 'https://fonts.gstatic.com',
+    new workbox.strategies.CacheFirst({
+      cacheName: 'google-fonts',
+      plugins: [
+        new workbox.expiration.ExpirationPlugin({
+          maxEntries: 20,
+          maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
+        }),
+        new workbox.cacheableResponse.CacheableResponsePlugin({
+          statuses: [0, 200],
+        }),
+      ],
+    })
+  );
+
+  // 2. Images Cache (CacheFirst)
+  workbox.routing.registerRoute(
+    ({request}) => request.destination === 'image',
+    new workbox.strategies.CacheFirst({
+      cacheName: 'images-cache',
+      plugins: [
+        new workbox.expiration.ExpirationPlugin({
+          maxEntries: 60,
+          maxAgeSeconds: 30 * 24 * 60 * 60, // 30 Days
+        }),
+      ],
+    })
+  );
+
+  // 3. Audio / Media Cache (CacheFirst)
+  workbox.routing.registerRoute(
+    ({request}) => request.destination === 'audio' || request.destination === 'video',
+    new workbox.strategies.CacheFirst({
+      cacheName: 'media-cache',
+      plugins: [
+        new workbox.expiration.ExpirationPlugin({
+          maxEntries: 10,
+          maxAgeSeconds: 30 * 24 * 60 * 60, // 30 Days
+        }),
+      ],
+    })
+  );
+
+  // 4. API / External Services (NetworkFirst)
+  workbox.routing.registerRoute(
+    ({request, url}) => {
+      // Bypass navigation requests and static assets
+      if (['document', 'script', 'style', 'image', 'font'].includes(request.destination)) {
+        return false;
+      }
+      // Match only specific external API requests
+      return url.origin.includes('supabase.co');
+    },
+    new workbox.strategies.NetworkFirst({
+      cacheName: 'api-cache',
+      plugins: [
+        new workbox.expiration.ExpirationPlugin({
+          maxEntries: 100,
+          maxAgeSeconds: 60 * 60 * 24, // 1 Day
+        }),
+        new workbox.cacheableResponse.CacheableResponsePlugin({
+          statuses: [0, 200],
+        }),
+      ],
+      networkTimeoutSeconds: 5,
+    })
+  );
+} else {
+  console.error('[sw.js] Workbox failed to load');
 }
-
-// 1. Google Fonts Cache (CacheFirst)
-registerRoute(
-  ({url}) => url.origin === 'https://fonts.googleapis.com' || url.origin === 'https://fonts.gstatic.com',
-  new CacheFirst({
-    cacheName: 'google-fonts',
-    plugins: [
-      new ExpirationPlugin({
-        maxEntries: 20,
-        maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
-      }),
-      new CacheableResponsePlugin({
-        statuses: [0, 200],
-      }),
-    ],
-  })
-);
-
-// 2. Images Cache (CacheFirst)
-registerRoute(
-  ({request}) => request.destination === 'image',
-  new CacheFirst({
-    cacheName: 'images-cache',
-    plugins: [
-      new ExpirationPlugin({
-        maxEntries: 60,
-        maxAgeSeconds: 30 * 24 * 60 * 60, // 30 Days
-      }),
-    ],
-  })
-);
-
-// 3. Audio / Media Cache (CacheFirst)
-registerRoute(
-  ({request}) => request.destination === 'audio' || request.destination === 'video',
-  new CacheFirst({
-    cacheName: 'media-cache',
-    plugins: [
-      new ExpirationPlugin({
-        maxEntries: 10,
-        maxAgeSeconds: 30 * 24 * 60 * 60, // 30 Days
-      }),
-    ],
-  })
-);
-
-// Static Assets - Handled by precacheAndRoute(self.__WB_MANIFEST)
-// No need for redundant StaleWhileRevalidate for JS/CSS as it can lead to 
-// caching 404/HTML responses when chunks change between deployments.
-
-
-// 5. API / External Services (NetworkFirst)
-registerRoute(
-  ({request, url}) => {
-    // Bypass navigation requests and static assets
-    if (['document', 'script', 'style', 'image', 'font'].includes(request.destination)) {
-      return false;
-    }
-    // Match only specific external API requests
-    return url.origin.includes('supabase.co');
-  },
-  new NetworkFirst({
-    cacheName: 'api-cache',
-    plugins: [
-      new ExpirationPlugin({
-        maxEntries: 100,
-        maxAgeSeconds: 60 * 60 * 24, // 1 Day
-      }),
-      new CacheableResponsePlugin({
-        statuses: [0, 200],
-      }),
-    ],
-    networkTimeoutSeconds: 5,
-  })
-);
-
-// Activate and cleanup handled above
 
 
 // For update banner to know when to skipWaiting
