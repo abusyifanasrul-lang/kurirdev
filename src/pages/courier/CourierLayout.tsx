@@ -1,6 +1,6 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
-import { Home, Package, DollarSign, User, LogOut, Bell } from 'lucide-react';
+import { Home, Package, DollarSign, User, LogOut, Bell, Calendar } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/context/AuthContext';
 import { useOrderStore } from '@/stores/useOrderStore';
@@ -48,6 +48,7 @@ export function CourierLayout() {
   const navItems = [
     { path: '/courier', icon: Home, label: 'Home', end: true },
     { path: '/courier/orders', icon: Package, label: 'Orders' },
+    { path: '/courier/attendance-history', icon: Calendar, label: 'Kehadiran' },
     { path: '/courier/notifications', icon: Bell, label: 'Notifs' },
     { path: '/courier/earnings', icon: DollarSign, label: 'Earnings' },
     { path: '/courier/profile', icon: User, label: 'Profile' },

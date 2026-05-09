@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { Clock, AlertCircle, CheckCircle2, MinusCircle } from 'lucide-react';
+import { Clock, AlertCircle, CheckCircle2, MinusCircle, History } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '@/utils/cn';
 import { useAttendanceStore } from '@/stores/useAttendanceStore';
 import { formatCurrency } from '@/utils/formatter';
@@ -10,6 +11,7 @@ interface AttendanceWidgetProps {
 }
 
 export function AttendanceWidget({ courierId, lateFineActive }: AttendanceWidgetProps) {
+  const navigate = useNavigate();
   const { todayLog, isLoading, fetchTodayLog } = useAttendanceStore();
 
   useEffect(() => {
@@ -104,6 +106,15 @@ export function AttendanceWidget({ courierId, lateFineActive }: AttendanceWidget
           <span className="font-black text-red-600">{todayLog.late_minutes} Menit</span>
         </div>
       )}
+
+      {/* View History Button */}
+      <button
+        onClick={() => navigate('/courier/attendance-history')}
+        className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gray-50 hover:bg-gray-100 border border-gray-200 text-[10px] font-black text-gray-600 uppercase tracking-widest transition-all active:scale-95"
+      >
+        <History className="w-4 h-4" />
+        Lihat Riwayat Kehadiran
+      </button>
     </div>
   );
 }
