@@ -74,7 +74,7 @@ const CourierOrderDetail = lazy(() => fetchWithRetry(() => import('@/pages/couri
 const CourierEarnings = lazy(() => fetchWithRetry(() => import('@/pages/courier/CourierEarnings').then(m => ({ default: m.CourierEarnings }))));
 const CourierProfile = lazy(() => fetchWithRetry(() => import('@/pages/courier/CourierProfile').then(m => ({ default: m.CourierProfile }))));
 const CourierNotifications = lazy(() => fetchWithRetry(() => import('@/pages/courier/CourierNotifications').then(m => ({ default: m.CourierNotifications }))));
-const CourierAttendanceHistory = lazy(() => fetchWithRetry(() => import('@/pages/courier/CourierAttendanceHistory').then(m => ({ default: m.CourierAttendanceHistory }))));
+
 
 // All admin sub-roles
 const ADMIN_ROLES: UserRole[] = ['admin', 'admin_kurir', 'owner', 'finance'];
@@ -380,7 +380,6 @@ export function App() {
                   <Route path="notifications" element={<CourierNotifications />} />
                   <Route path="earnings" element={<CourierEarnings />} />
                   <Route path="profile" element={<CourierProfile />} />
-                  <Route path="attendance-history" element={<CourierAttendanceHistory />} />
                 </Route>
 
                 {/* Fallback */}

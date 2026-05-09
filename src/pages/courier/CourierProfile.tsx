@@ -17,7 +17,8 @@ import {
   Hash,
   MapPin,
   Camera as CameraIcon,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  Clock
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/context/AuthContext';
@@ -202,6 +203,25 @@ export function CourierProfile() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Attendance History Section */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <button
+          onClick={() => navigate('/courier/attendance-history')}
+          className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
+              <Clock className="h-5 w-5 text-blue-600" />
+            </div>
+            <div className="text-left">
+              <p className="font-semibold text-gray-900">Riwayat Kehadiran</p>
+              <p className="text-sm text-gray-500">Lihat histori shift dan denda</p>
+            </div>
+          </div>
+          <ChevronRight className="h-5 w-4 text-gray-400" />
+        </button>
       </div>
 
       {/* Menu Sections */}
