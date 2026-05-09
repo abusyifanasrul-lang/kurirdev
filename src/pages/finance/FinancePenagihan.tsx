@@ -19,6 +19,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
+import { supabase } from '@/lib/supabaseClient';
 import { getOrdersForWeek, getAllUnpaidOrdersLocal } from '@/lib/orderCache';
 import { calcAdminEarning, calcCourierEarning } from '@/lib/calcEarning';
 import { formatCurrency } from '@/utils/formatter';
@@ -40,6 +41,41 @@ interface AttendanceLog {
   shift_end?: string;
 }
 
+interface FlatFine {
+  attendance_id: string;
+  date: string;
+  fine_type: 'flat_major' | 'flat_alpha';
+  amount: number;
+  status: 'unpaid' | 'paid' | 'cancelled';
+  late_minutes: number;
+  shift_status: string;
+  notes?: string;
+  resolved_by?: string;
+  resolved_at?: string;
+}
+
+interface PerOrderFine {
+  order_id: string;
+  order_number: string;
+  date: string;
+  amount: number;
+  payment_status: 'unpaid' | 'paid';
+  completed_at: string;
+  customer_name?: string;
+  destination_address?: string;
+}
+
+interface CompleteFineData {
+  flat_fines: FlatFine[];
+  per_order_fines: PerOrderFine[];
+  total_flat_fines: number;
+  total_per_order_fines: number;
+  grand_total: number;
+  date_from: string;
+  date_to: string;
+  courier_id: string;
+}
+
 type FilterType = 'unpaid' | 'paid' | 'all';
 
 export function FinancePenagihan() {
@@ -52,6 +88,7 @@ export function FinancePenagihan() {
 
   const couriers = users.filter(u => u.role === 'courier');
   const [localOrders, setLocalOrders] = useState<Order[]>([]);
+  const [courierFinesMap, setCourierFinesMap] = useState<Map<string, CompleteFineData>>(new Map());
   const [filter, setFilter] = useState<FilterType>('unpaid');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedCourier, setExpandedCourier] = useState<string | null>(null);
@@ -69,6 +106,46 @@ export function FinancePenagihan() {
     const u = users.find(x => x.id === id);
     return u ? u.name : 'Staf Terhapus';
   };
+
+  // Fetch complete fine data for a courier using the new RPC function
+  const fetchCourierFines = async (courierId: string): Promise<CompleteFineData | null> => {
+    try {
+      // Get date range: last 90 days to cover recent unpaid fines
+      const dateTo = new Date();
+      const dateFrom = new Date();
+      dateFrom.setDate(dateFrom.getDate() - 90);
+
+      const { data, error } = await supabase.rpc('get_courier_fines_complete', {
+        p_courier_id: courierId,
+        p_date_from: dateFrom.toISOString().split('T')[0],
+        p_date_to: dateTo.toISOString().split('T')[0]
+      });
+
+      if (error) {
+        console.error('Error fetching courier fines:', error);
+        return null;
+      }
+
+      return data as CompleteFineData;
+    } catch (err) {
+      console.error('Error in fetchCourierFines:', err);
+      return null;
+    }
+  };
+
+  // Fetch complete fine data for all couriers
+  const fetchAllCourierFines = useCallback(async () => {
+    const finesMap = new Map<string, CompleteFineData>();
+    
+    for (const courier of couriers) {
+      const fineData = await fetchCourierFines(courier.id);
+      if (fineData) {
+        finesMap.set(courier.id, fineData);
+      }
+    }
+    
+    setCourierFinesMap(finesMap);
+  }, [couriers]);
 
   const getAdminEarning = (order: Order) => {
     // Prioritaskan snapshot yang tersimpan di database saat order selesai
@@ -97,7 +174,9 @@ export function FinancePenagihan() {
     unpaidOrders.forEach(o => map.set(o.id, o));
     setLocalOrders(Array.from(map.values()));
     fetchUnpaidAttendance();
-  }, [fetchUnpaidAttendance]);
+    // Fetch complete fine data for all couriers
+    await fetchAllCourierFines();
+  }, [fetchUnpaidAttendance, fetchAllCourierFines]);
 
   useEffect(() => {
     loadLocalOrders();
@@ -125,17 +204,22 @@ export function FinancePenagihan() {
       courierVehicle?: any;
       totalEarning: number;
       totalFines: number;
+      totalFlatFines: number;
+      totalPerOrderFines: number;
       unpaidOrders: Order[];
       paidOrders: Order[];
       unpaidFines: AttendanceLog[];
+      flatFines: FlatFine[];
+      perOrderFines: PerOrderFine[];
       lastSettlement: string | null;
     }> = [];
 
     for (const courier of couriers) {
       const courierOrders = deliveredOrders.filter(o => o.courier_id === courier.id);
       const courierFines = unpaidAttendance.filter(a => a.courier_id === courier.id);
+      const completeFineData = courierFinesMap.get(courier.id);
       
-      if (courierOrders.length === 0 && courierFines.length === 0) continue; 
+      if (courierOrders.length === 0 && courierFines.length === 0 && !completeFineData) continue; 
 
       const unpaid = courierOrders.filter(o => o.payment_status === 'unpaid');
       const paid = courierOrders.filter(o => o.payment_status === 'paid');
@@ -144,7 +228,10 @@ export function FinancePenagihan() {
         sum + getAdminEarning(o), 0
       );
       
-      const totalFines = courierFines.reduce((sum, f) => sum + f.flat_fine, 0);
+      // Use complete fine data if available, otherwise fall back to old method
+      const totalFlatFines = completeFineData?.total_flat_fines || courierFines.reduce((sum, f) => sum + f.flat_fine, 0);
+      const totalPerOrderFines = completeFineData?.total_per_order_fines || 0;
+      const totalFines = totalFlatFines + totalPerOrderFines;
 
       result.push({
         courierId: courier.id,
@@ -152,6 +239,8 @@ export function FinancePenagihan() {
         courierVehicle: courier.vehicle_type,
         totalEarning,
         totalFines,
+        totalFlatFines,
+        totalPerOrderFines,
         unpaidOrders: unpaid.sort((a, b) =>
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         ),
@@ -159,6 +248,8 @@ export function FinancePenagihan() {
           new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
         ).slice(0, 5),
         unpaidFines: courierFines,
+        flatFines: completeFineData?.flat_fines.filter(f => f.status === 'unpaid') || [],
+        perOrderFines: completeFineData?.per_order_fines.filter(f => f.payment_status === 'unpaid') || [],
         lastSettlement: paid.length > 0 ? paid[0].updated_at : null,
       });
     }
@@ -182,6 +273,8 @@ export function FinancePenagihan() {
           courierName: '📦 Kurir Terhapus / Unknown',
           totalEarning,
           totalFines: 0,
+          totalFlatFines: 0,
+          totalPerOrderFines: 0,
           unpaidOrders: unpaid.sort((a, b) =>
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           ),
@@ -189,13 +282,15 @@ export function FinancePenagihan() {
             new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
           ).slice(0, 5),
           unpaidFines: [],
+          flatFines: [],
+          perOrderFines: [],
           lastSettlement: null
         });
       }
     }
 
     return result.sort((a, b) => b.totalEarning - a.totalEarning);
-  }, [deliveredOrders, couriers, earningSettings]);
+  }, [deliveredOrders, couriers, earningSettings, courierFinesMap, unpaidAttendance]);
 
   // 2. Filtered summary for table display
   const courierSummary = useMemo(() => {
@@ -523,7 +618,7 @@ export function FinancePenagihan() {
 
                           {courier.unpaidFines.length > 0 && (
                             <div className="mt-4">
-                              <h4 className="text-sm font-semibold text-gray-700 mb-3">Denda Kehadiran</h4>
+                              <h4 className="text-sm font-semibold text-gray-700 mb-3">Denda Kehadiran (Flat Fines)</h4>
                               <div className="space-y-2">
                                 {courier.unpaidFines.map((fine) => (
                                   <div key={fine.id} className="flex items-center justify-between p-3 bg-red-50 border border-red-100 rounded-lg">
@@ -542,6 +637,34 @@ export function FinancePenagihan() {
                                     </p>
                                   </div>
                                 ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {courier.perOrderFines.length > 0 && (
+                            <div className="mt-4">
+                              <h4 className="text-sm font-semibold text-gray-700 mb-3">Denda Per-Order</h4>
+                              <div className="space-y-2">
+                                {courier.perOrderFines.map((fine) => (
+                                  <div key={fine.order_id} className="flex items-center justify-between p-3 bg-orange-50 border border-orange-100 rounded-lg">
+                                    <div>
+                                      <p className="text-sm font-medium text-gray-900">
+                                        {fine.order_number}
+                                      </p>
+                                      <p className="text-xs text-gray-500">
+                                        {formatLocal(fine.date, 'dd MMM yyyy')} • {fine.customer_name || 'Customer'}
+                                      </p>
+                                    </div>
+                                    <p className="text-sm font-bold text-orange-600">
+                                      {formatCurrency(fine.amount)}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded-lg">
+                                <p className="text-xs text-orange-700 font-medium">
+                                  Total Denda Per-Order: {formatCurrency(courier.totalPerOrderFines)}
+                                </p>
                               </div>
                             </div>
                           )}
