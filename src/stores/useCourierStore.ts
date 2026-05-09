@@ -13,6 +13,7 @@ interface CourierState {
   getAvailableCouriers: () => Courier[]
   setCourierOffline: (courierId: string, reason: string) => Promise<void>
   setCourierOnline: (courierId: string, status: 'on' | 'stay') => Promise<void>
+  recordShiftEnd: (courierId: string) => Promise<{ success: boolean; warning_message?: string; status?: string }>
   setCourierStay: (courierId: string, qrToken: string) => Promise<{ success: boolean; basecamp_id: string | null }>
   reset: () => void
 }
@@ -70,6 +71,25 @@ export const useCourierStore = create<CourierState>()((_set, get) => ({
     } catch (err) {
       console.warn('[setCourierOnline] Failed to record checkin:', err)
       // jika gagal, admin bisa input manual
+    }
+  },
+
+  recordShiftEnd: async (courierId) => {
+    try {
+      const { data, error } = await supabase.rpc('record_shift_end', {
+        p_courier_id: courierId
+      })
+      
+      if (error) throw error
+      
+      return {
+        success: true,
+        warning_message: data?.warning_message,
+        status: data?.status
+      }
+    } catch (err: any) {
+      console.error('[recordShiftEnd] Failed:', err)
+      throw new Error(err.message || 'Gagal mencatat selesai shift')
     }
   },
 
