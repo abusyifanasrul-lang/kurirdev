@@ -33,13 +33,13 @@ export const useAttendanceStore = create<AttendanceStore>((set, get) => ({
 
   fetchTodayLog: async (courierId) => {
     set({ isLoading: true });
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    
     const { data, error } = await supabase
       .from('shift_attendance')
       .select('*, shifts(*)')
       .eq('courier_id', courierId)
-      .is('last_online_at', null)
-      .order('date', { ascending: false })
-      .limit(1)
+      .eq('date', today)  // ✅ Only get today's attendance
       .single();
 
     if (!error && data) {
