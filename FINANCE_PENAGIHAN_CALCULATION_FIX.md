@@ -155,6 +155,14 @@ Verification: 3,000 (admin) + 7,000 (courier) = 10,000 (total_fee) ✓
    - Changed `totalFines` to only include `totalFlatFines`
    - Updated display to show "Total Denda Flat" for clarity
 
+3. **supabase/migrations/20260510120000_fix_get_courier_fines_complete_filter.sql**
+   - Fixed `get_courier_fines_complete` function to exclude per_order fine records from flat_fines array
+   - Changed filter from `fine_type IS NOT NULL` to `fine_type IN ('flat_major', 'flat_alpha')`
+   - Ensures 3 jenis fine are properly separated:
+     - Per-Order Fine (Rp 1,000/order) → per_order_fines array
+     - Flat Major Fine (Rp 30,000) → flat_fines array
+     - Flat Alpha Fine (Rp 50,000) → flat_fines array
+
 ## Impact on Other Pages
 
 All other pages already use `calcAdminEarning()` from `calcEarning.ts`:
