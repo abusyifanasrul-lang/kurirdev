@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabaseClient';
+import { getLocalTodayRange } from '@/utils/date';
 
 interface AdminAttendanceLog {
   id: string;
@@ -44,15 +45,17 @@ export const useAdminAttendanceStore = create<AdminAttendanceStore>((set, get) =
 
   fetchTodayLogs: async () => {
     // Step 5: Reset harian late_fine_active
+    const { start } = getLocalTodayRange();
+    const todayStr = start.toISOString().split('T')[0];
+    
     const lastReset = localStorage.getItem('last_fine_reset');
-    const todayStr = new Date().toISOString().split('T')[0];
     if (lastReset !== todayStr) {
       await supabase.rpc('reset_daily_fine_flags');
       localStorage.setItem('last_fine_reset', todayStr);
     }
 
     set({ isLoading: true });
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayStr;
     
     const { data, error } = await supabase
       .from('shift_attendance')
@@ -87,7 +90,8 @@ export const useAdminAttendanceStore = create<AdminAttendanceStore>((set, get) =
   },
 
   fetchMissingCouriers: async () => {
-    const today = new Date().toISOString().split('T')[0];
+    const { start } = getLocalTodayRange();
+    const today = start.toISOString().split('T')[0];
     const { data, error } = await supabase.rpc('get_missing_couriers', { p_date: today });
     if (!error && data) {
       set({ missingCouriers: data });
@@ -114,7 +118,8 @@ export const useAdminAttendanceStore = create<AdminAttendanceStore>((set, get) =
   },
 
   subscribeToday: () => {
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const { start } = getLocalTodayRange();
+    const today = start.toISOString().split('T')[0]; // YYYY-MM-DD
     const channel = supabase
       .channel('attendance-today')
       .on('postgres_changes', {

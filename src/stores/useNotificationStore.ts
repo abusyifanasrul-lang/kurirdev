@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { RealtimeChannel } from '@supabase/supabase-js'
 import { Notification } from '@/types'
 import { cacheNotifications, getCachedNotifications, markNotificationReadLocal } from '@/lib/orderCache'
+import { getLocalNow } from '@/utils/date'
 
 let notifResyncTime = 0
 const notifChannels = new Map<string, RealtimeChannel>()
@@ -398,7 +399,7 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
     const { data: inserted, error } = await supabase.from('notifications').insert({
       ...data,
       is_read: false,
-      sent_at: new Date().toISOString(),
+      sent_at: getLocalNow().toISOString(),
       type: data.type || 'manual_alert',
       fcm_status: 'pending'
     }).select().single()

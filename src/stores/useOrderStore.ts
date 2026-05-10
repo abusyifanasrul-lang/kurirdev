@@ -6,6 +6,7 @@ import { useToastStore } from '@/stores/useToastStore'
 import { Order, OrderStatus, OrderStatusHistory } from '@/types'
 // orderCache functions are now dynamically imported inside methods to defer Dexie loading
 import { useSettingsStore } from '@/stores/useSettingsStore'
+import { getLocalNow, getLocalTodayRange } from '@/utils/date'
 // import { logger } from '@/lib/logger'
 
 let orderResyncTime = 0
@@ -92,7 +93,10 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   fetchOrdersByCourier: async (courierId: string) => {
     set({ isFetchingCourierOrders: true })
     try {
-      const sevenDaysAgo = new Date(new Date().setHours(0, 0, 0, 0) - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const { start } = getLocalTodayRange();
+      const sevenDaysAgo = new Date(start);
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const sevenDaysAgoStr = sevenDaysAgo.toISOString();
       
       const { data: allOrders, error } = await supabase
         .from('orders')
@@ -316,8 +320,11 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
 
       // 2.b INTELLIGENT GAP-FILL (Finalized Orders: Delivered/Cancelled)
       const isWeeklyNeeded = needsWeeklySync(courierId);
-      const startOfTodayStr = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
-      const sixDaysAgoStr = new Date(new Date().setHours(0, 0, 0, 0) - 6 * 24 * 60 * 60 * 1000).toISOString();
+      const { start } = getLocalTodayRange();
+      const startOfTodayStr = start.toISOString();
+      const sixDaysAgo = new Date(start);
+      sixDaysAgo.setDate(sixDaysAgo.getDate() - 6);
+      const sixDaysAgoStr = sixDaysAgo.toISOString();
       
       const fetchStart = isWeeklyNeeded ? sixDaysAgoStr : startOfTodayStr;
       
@@ -754,7 +761,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
             applied_commission_rate: commission_rate, 
             applied_commission_threshold: commission_threshold,
             applied_commission_type: commission_type,
-            actual_delivery_time: new Date().toISOString() 
+            actual_delivery_time: getLocalNow().toISOString() 
           }
           
           // Optimistic local state update for delivered case
@@ -770,14 +777,14 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
         } else {
           const updates: Partial<Order> = {
             status,
-            updated_at: new Date().toISOString()
+            updated_at: getLocalNow().toISOString()
           }
           if (status === 'picked_up' && !order.actual_pickup_time) {
-            updates.actual_pickup_time = new Date().toISOString()
+            updates.actual_pickup_time = getLocalNow().toISOString()
           }
           if (status === 'cancelled') {
             updates.is_waiting = false
-            updates.cancelled_at = new Date().toISOString()
+            updates.cancelled_at = getLocalNow().toISOString()
             updates.cancellation_reason = notes || ''
             updates.cancelled_by = userId
             updates.canceller_name = userName
@@ -831,8 +838,8 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     const { error } = await (supabase.from('orders') as any).update({
       cancellation_reason: reason,
       cancel_reason_type: cancelReasonType ?? null,
-      cancelled_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      cancelled_at: getLocalNow().toISOString(),
+      updated_at: getLocalNow().toISOString(),
       is_waiting: false
     }).eq('id', orderId)
     if (error) throw error
@@ -845,11 +852,11 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
         if (rpcError) throw rpcError
         const { payment_status, ...restUpdates } = updates as any
         if (Object.keys(restUpdates).length > 0) {
-           await (supabase.from('orders') as any).update({ ...restUpdates, updated_at: new Date().toISOString() }).eq('id', orderId)
+           await (supabase.from('orders') as any).update({ ...restUpdates, updated_at: getLocalNow().toISOString() }).eq('id', orderId)
         }
         import('@/lib/orderCache').then(({ markAsPaidInLocalDB }) => markAsPaidInLocalDB(orderId, '').catch(err => console.error('Confirm payment error:', err)))
      } else {
-       const finalUpdates = { ...updates, updated_at: new Date().toISOString() };
+       const finalUpdates = { ...updates, updated_at: getLocalNow().toISOString() };
        if (updates.status === 'cancelled' || updates.status === 'delivered') {
          (finalUpdates as any).is_waiting = false;
        }
@@ -894,7 +901,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
       total_biaya_titik,
       beban,
       total_biaya_beban,
-      updated_at: new Date().toISOString()
+      updated_at: getLocalNow().toISOString()
     }).eq('id', orderId)
   },
 
@@ -908,7 +915,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     await (supabase.from('orders') as any).update({
       item_name: itemName,
       item_price: itemPrice,
-      updated_at: new Date().toISOString()
+      updated_at: getLocalNow().toISOString()
     }).eq('id', orderId);
   },
 
@@ -919,7 +926,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
       currentOrder: state.currentOrder?.id === orderId ? { ...state.currentOrder, [field]: value } : state.currentOrder
     }));
 
-    await (supabase.from('orders') as any).update({ [field]: value, updated_at: new Date().toISOString() }).eq('id', orderId)
+    await (supabase.from('orders') as any).update({ [field]: value, updated_at: getLocalNow().toISOString() }).eq('id', orderId)
   },
 
   settleOrder: async (orderId, userId, userName) => {

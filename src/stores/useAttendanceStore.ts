@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabaseClient';
+import { getLocalTodayRange } from '@/utils/date';
 
 interface AttendanceLog {
   id: string;
@@ -33,7 +34,8 @@ export const useAttendanceStore = create<AttendanceStore>((set, get) => ({
 
   fetchTodayLog: async (courierId) => {
     set({ isLoading: true });
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const { start } = getLocalTodayRange();
+    const today = start.toISOString().split('T')[0]; // YYYY-MM-DD
     
     const { data, error } = await supabase
       .from('shift_attendance')
