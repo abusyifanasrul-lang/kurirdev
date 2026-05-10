@@ -64,11 +64,17 @@ export const useCourierStore = create<CourierState>()((_set, get) => ({
 
     // Catat kehadiran (silent fail — tidak blocking)
     try {
-      await supabase.rpc('record_courier_checkin', {
+      console.log('[setCourierOnline] Calling record_courier_checkin for courier:', courierId);
+      const { data, error } = await supabase.rpc('record_courier_checkin', {
         p_courier_id: courierId
       })
+      if (error) {
+        console.error('[setCourierOnline] RPC error:', error);
+      } else {
+        console.log('[setCourierOnline] Check-in recorded successfully:', data);
+      }
     } catch (err) {
-      console.warn('[setCourierOnline] Failed to record checkin:', err)
+      console.error('[setCourierOnline] Failed to record checkin:', err)
       // jika gagal, admin bisa input manual
     }
   },
