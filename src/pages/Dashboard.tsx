@@ -211,6 +211,14 @@ export function Dashboard() {
 
       <div className="p-4 lg:p-8 space-y-6 lg:space-y-8">
 
+        {/* WELCOME MESSAGE */}
+        <div className="bg-gradient-to-r from-teal-500 to-emerald-600 rounded-xl p-6 text-white shadow-lg">
+          <h2 className="text-2xl font-bold mb-2">👋 Selamat Datang!</h2>
+          <p className="text-teal-50">
+            Selamat datang di KurirMe Dashboard. Semoga hari Anda menyenangkan!
+          </p>
+        </div>
+
         {/* Customer Address Change Request Panel */}
         {pendingChangeRequests.length > 0 && canApprove && (
           <div className="flex items-center justify-between gap-4 p-4 bg-purple-50 border border-purple-300 rounded-xl animate-in fade-in slide-in-from-top-2">
