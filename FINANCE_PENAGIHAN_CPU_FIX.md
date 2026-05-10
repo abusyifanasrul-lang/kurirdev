@@ -1,9 +1,106 @@
 # Finance Penagihan CPU Performance Fix
 
 ## Problem
-When opening the Finance Penagihan page, CPU usage spikes to 60-80% and the computer becomes laggy after ~5 minutes. The issue is specifically triggered when opening the Penagihan/Setoran page.
+When opening the Finance Penagihan page, Chrome **freezes completely** and CPU usage spikes to 80-100%. The browser becomes unresponsive and only Task Manager can close it. This is caused by an **infinite loop** in the component's useEffect hooks.
 
-## Root Cause Analysis
+## Root Cause Analysis - CRITICAL BUG FOUND
+
+### **INFINITE LOOP IN useEffect DEPENDENCIES** 🔴
+
+**Location:** `src/pages/finance/FinancePenagihan.tsx` (lines 177-195)
+
+**The Infinite Loop:**
+```typescript
+// Step 1: fetchAllCourierFines depends on couriers
+const fetchAllCourierFines = useCallback(async () => {
+  // ... RPC calls that update courierFinesMap state
+}, [couriers]);  // ← Recreated when couriers change
+
+// Step 2: loadLocalOrders depends on fetchAllCourierFines
+const loadLocalOrders = useCallback(async () => {
+  // ...
+  await fetchAllCourierFines();  // ← Calls function that updates state
+}, [fetchUnpaidAttendance, fetchAllCourierFines]);  // ← Recreated when fetchAllCourierFines changes
+
+// Step 3: useEffect depends on loadLocalOrders
+useEffect(() => {
+  loadLocalOrders();  // ← Runs when loadLocalOrders changes
+}, [loadLocalOrders]);  // ← Runs when loadLocalOrders is recreated
+```
+
+**The Loop:**
+1. Component mounts → `useEffect` runs → `loadLocalOrders()` executes
+2. `loadLocalOrders()` calls `fetchAllCourierFines()`
+3. `fetchAllCourierFines()` updates `courierFinesMap` state via `setCourierFinesMap()`
+4. State update triggers re-render
+5. `fetchAllCourierFines` is recreated (depends on `couriers`)
+6. `loadLocalOrders` is recreated (depends on `fetchAllCourierFines`)
+7. `useEffect` detects `loadLocalOrders` changed → **runs again**
+8. **INFINITE LOOP** ♾️ → CPU 80-100% → Chrome freezes
+
+**Why This Causes Complete Freeze:**
+- Loop runs **continuously** without any delay
+- Each iteration makes RPC calls to database
+- Each iteration updates state and triggers re-render
+- React can't batch updates fast enough
+- Main thread is completely blocked
+- Browser becomes unresponsive
+
+---
+
+## Solution - Break the Infinite Loop
+
+### **Fix: Separate useEffect Hooks and Remove Circular Dependencies**
+
+```typescript
+// BEFORE (INFINITE LOOP):
+const loadLocalOrders = useCallback(async () => {
+  // ...
+  await fetchAllCourierFines();  // ← Causes state update
+}, [fetchUnpaidAttendance, fetchAllCourierFines]);  // ← Circular dependency
+
+useEffect(() => {
+  loadLocalOrders();
+}, [loadLocalOrders]);  // ← Runs every time loadLocalOrders changes
+
+// AFTER (FIXED):
+// 1. Remove fetchAllCourierFines from loadLocalOrders
+const loadLocalOrders = useCallback(async () => {
+  const [recentOrders, unpaidOrders] = await Promise.all([
+    getOrdersForWeek(),
+    getAllUnpaidOrdersLocal()
+  ]);
+  const map = new Map<string, Order>();
+  recentOrders.forEach(o => map.set(o.id, o));
+  unpaidOrders.forEach(o => map.set(o.id, o));
+  setLocalOrders(Array.from(map.values()));
+  fetchUnpaidAttendance();
+  // ← fetchAllCourierFines() REMOVED from here
+}, [fetchUnpaidAttendance]);  // ← No longer depends on fetchAllCourierFines
+
+// 2. Keep existing useEffect for loadLocalOrders
+useEffect(() => {
+  loadLocalOrders();
+  window.addEventListener('indexeddb-synced', loadLocalOrders);
+  return () => window.removeEventListener('indexeddb-synced', loadLocalOrders);
+}, [loadLocalOrders]);
+
+// 3. Create SEPARATE useEffect for fetchAllCourierFines
+useEffect(() => {
+  if (couriers.length > 0) {
+    fetchAllCourierFines();
+  }
+}, [couriers.length]);  // ← Only runs when NUMBER of couriers changes, not the array reference
+```
+
+**Why This Works:**
+1. `loadLocalOrders` no longer calls `fetchAllCourierFines()`
+2. `loadLocalOrders` no longer depends on `fetchAllCourierFines`
+3. `useEffect` for `loadLocalOrders` only runs when `fetchUnpaidAttendance` changes (rarely)
+4. `fetchAllCourierFines` runs in its own `useEffect` only when courier count changes
+5. **No circular dependency** = **No infinite loop** ✅
+
+---
 
 ### Investigation Process
 1. Analyzed `FinancePenagihan.tsx` for performance bottlenecks

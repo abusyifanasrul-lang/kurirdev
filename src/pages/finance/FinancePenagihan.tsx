@@ -173,6 +173,8 @@ export function FinancePenagihan() {
     return calcAdminEarning(order, earningSettings);
   }, [earningSettings]);
 
+  // CRITICAL FIX: Remove dependencies to prevent infinite loop
+  // fetchAllCourierFines will be called separately in its own useEffect
   const loadLocalOrders = useCallback(async () => {
     const [recentOrders, unpaidOrders] = await Promise.all([
       getOrdersForWeek(),
@@ -183,15 +185,21 @@ export function FinancePenagihan() {
     unpaidOrders.forEach(o => map.set(o.id, o));
     setLocalOrders(Array.from(map.values()));
     fetchUnpaidAttendance();
-    // Fetch complete fine data for all couriers
-    await fetchAllCourierFines();
-  }, [fetchUnpaidAttendance, fetchAllCourierFines]);
+  }, [fetchUnpaidAttendance]);
 
+  // CRITICAL FIX: Separate useEffect for initial load only
   useEffect(() => {
     loadLocalOrders();
     window.addEventListener('indexeddb-synced', loadLocalOrders);
     return () => window.removeEventListener('indexeddb-synced', loadLocalOrders);
   }, [loadLocalOrders]);
+
+  // CRITICAL FIX: Fetch courier fines separately, only when couriers change
+  useEffect(() => {
+    if (couriers.length > 0) {
+      fetchAllCourierFines();
+    }
+  }, [couriers.length]); // Only re-run when number of couriers changes
 
   const allOrders = useMemo(() => {
     const map = new Map<string, Order>();
