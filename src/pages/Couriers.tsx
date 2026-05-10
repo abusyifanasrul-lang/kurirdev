@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, lazy, Suspense } from 'react';
-import { Plus, Eye, EyeOff, ToggleLeft, ToggleRight, TrendingUp, Package, DollarSign, Phone, Mail, Award, Hash, Search, QrCode, RefreshCw, AlertCircle, Clock, Calendar } from 'lucide-react';
+import { Plus, Eye, EyeOff, ToggleLeft, ToggleRight, TrendingUp, Package, DollarSign, Phone, Mail, Award, Hash, Search, QrCode, RefreshCw, AlertCircle, Clock, Calendar, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { Header } from '@/components/layout/Header';
 import { Card, StatCard } from '@/components/ui/Card';
@@ -59,13 +59,75 @@ export function Couriers() {
   const [showQRModal, setShowQRModal] = useState(false);
   const [courierAttendance, setCourierAttendance] = useState<any[]>([]);
   const [isUpdatingShift, setIsUpdatingShift] = useState(false);
+  const [sortField, setSortField] = useState<string>('id');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   const filteredCouriers = useMemo(() => {
-    return couriers.filter(c => 
+    const filtered = couriers.filter(c => 
       c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
       c.phone?.includes(searchQuery)
     );
-  }, [couriers, searchQuery]);
+
+    // Apply sorting
+    return filtered.sort((a, b) => {
+      let aVal: any;
+      let bVal: any;
+
+      switch (sortField) {
+        case 'name':
+          aVal = a.name.toLowerCase();
+          bVal = b.name.toLowerCase();
+          break;
+        case 'shift':
+          aVal = shifts.find(s => s.id === a.shift_id)?.name || '';
+          bVal = shifts.find(s => s.id === b.shift_id)?.name || '';
+          break;
+        case 'is_active':
+          aVal = a.is_active ? 1 : 0;
+          bVal = b.is_active ? 1 : 0;
+          break;
+        case 'active_orders':
+          aVal = allOrders.filter(o => o.courier_id === a.id && !['delivered', 'cancelled'].includes(o.status)).length;
+          bVal = allOrders.filter(o => o.courier_id === b.id && !['delivered', 'cancelled'].includes(o.status)).length;
+          break;
+        case 'completed':
+          aVal = allOrders.filter(o => o.courier_id === a.id && o.status === 'delivered').length;
+          bVal = allOrders.filter(o => o.courier_id === b.id && o.status === 'delivered').length;
+          break;
+        case 'admin_earning':
+          aVal = allOrders.filter(o => o.courier_id === a.id && o.status === 'delivered').reduce((sum, o) => sum + calcAdminEarning(o, earningSettings), 0);
+          bVal = allOrders.filter(o => o.courier_id === b.id && o.status === 'delivered').reduce((sum, o) => sum + calcAdminEarning(o, earningSettings), 0);
+          break;
+        case 'courier_earning':
+          aVal = allOrders.filter(o => o.courier_id === a.id && o.status === 'delivered').reduce((sum, o) => sum + calcCourierEarning(o, earningSettings), 0);
+          bVal = allOrders.filter(o => o.courier_id === b.id && o.status === 'delivered').reduce((sum, o) => sum + calcCourierEarning(o, earningSettings), 0);
+          break;
+        default: // 'id'
+          aVal = a.id;
+          bVal = b.id;
+      }
+
+      if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [couriers, searchQuery, sortField, sortOrder, shifts, allOrders, earningSettings]);
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+  };
+
+  const getSortIcon = (field: string) => {
+    if (sortField !== field) return <ArrowUpDown className="h-3 w-3 ml-1 text-gray-400" />;
+    return sortOrder === 'asc' ? 
+      <ChevronUp className="h-3 w-3 ml-1 text-teal-600" /> : 
+      <ChevronDown className="h-3 w-3 ml-1 text-teal-600" />;
+  };
 
   useEffect(() => {
     const loadWeek = async () => {
@@ -337,15 +399,64 @@ export function Couriers() {
           <Table>
             <TableHead>
               <TableRow>
-                <TableHeader>Name</TableHeader>
-                <TableHeader>Shift</TableHeader>
-                <TableHeader>Status</TableHeader>
-                <TableHeader>Active</TableHeader>
-                <TableHeader>Completed (7H)</TableHeader>
+                <TableHeader 
+                  className="cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => handleSort('name')}
+                >
+                  <div className="flex items-center">
+                    Name {getSortIcon('name')}
+                  </div>
+                </TableHeader>
+                <TableHeader 
+                  className="cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => handleSort('shift')}
+                >
+                  <div className="flex items-center">
+                    Shift {getSortIcon('shift')}
+                  </div>
+                </TableHeader>
+                <TableHeader 
+                  className="cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => handleSort('is_active')}
+                >
+                  <div className="flex items-center">
+                    Status {getSortIcon('is_active')}
+                  </div>
+                </TableHeader>
+                <TableHeader 
+                  className="cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => handleSort('active_orders')}
+                >
+                  <div className="flex items-center">
+                    Active {getSortIcon('active_orders')}
+                  </div>
+                </TableHeader>
+                <TableHeader 
+                  className="cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => handleSort('completed')}
+                >
+                  <div className="flex items-center">
+                    Completed (7H) {getSortIcon('completed')}
+                  </div>
+                </TableHeader>
                 {isFinance && (
                   <>
-                    <TableHeader>Setoran Admin (20%)</TableHeader>
-                    <TableHeader>Hak Kurir (80%)</TableHeader>
+                    <TableHeader 
+                      className="cursor-pointer hover:bg-gray-100 transition-colors"
+                      onClick={() => handleSort('admin_earning')}
+                    >
+                      <div className="flex items-center">
+                        Setoran Admin (20%) {getSortIcon('admin_earning')}
+                      </div>
+                    </TableHeader>
+                    <TableHeader 
+                      className="cursor-pointer hover:bg-gray-100 transition-colors"
+                      onClick={() => handleSort('courier_earning')}
+                    >
+                      <div className="flex items-center">
+                        Hak Kurir (80%) {getSortIcon('courier_earning')}
+                      </div>
+                    </TableHeader>
                   </>
                 )}
                 <TableHeader>Action</TableHeader>

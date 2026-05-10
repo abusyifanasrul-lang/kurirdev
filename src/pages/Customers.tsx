@@ -3,7 +3,7 @@ import { useCustomerStore } from '@/stores/useCustomerStore';
 import { localDB } from '@/lib/orderCache';
 import { useAuth } from '@/context/AuthContext';
 import { useToastStore } from '@/stores/useToastStore';
-import { Users, Check, X, Clock, Phone, MapPin, Plus, Trash2, Edit2, Save, Package, Calendar, AlertCircle, Search } from 'lucide-react';
+import { Users, Check, X, Clock, Phone, MapPin, Plus, Trash2, Edit2, Save, Package, Calendar, AlertCircle, Search, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import { Customer } from '@/types';
 import { Modal } from '@/components/ui/Modal';
 import { Header } from '@/components/layout/Header';
@@ -19,6 +19,8 @@ export const Customers: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [sortField, setSortField] = useState<string>('id');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const ITEMS_PER_PAGE = 25;
   
   const { 
@@ -53,12 +55,55 @@ export const Customers: React.FC = () => {
     c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     c.phone.includes(searchQuery)
   ).sort((a, b) => {
-    // Priority: Customers with pending requests first, then by order count
-    const aHasPending = requestsByCustomer[a.id] ? 1 : 0;
-    const bHasPending = requestsByCustomer[b.id] ? 1 : 0;
-    if (aHasPending !== bHasPending) return bHasPending - aHasPending;
-    return (b.order_count || 0) - (a.order_count || 0);
+    let aVal: any;
+    let bVal: any;
+
+    switch (sortField) {
+      case 'name':
+        aVal = a.name.toLowerCase();
+        bVal = b.name.toLowerCase();
+        break;
+      case 'phone':
+        aVal = a.phone;
+        bVal = b.phone;
+        break;
+      case 'order_count':
+        aVal = a.order_count || 0;
+        bVal = b.order_count || 0;
+        break;
+      case 'addresses':
+        aVal = a.addresses.length;
+        bVal = b.addresses.length;
+        break;
+      case 'created_at':
+        aVal = new Date(a.created_at).getTime();
+        bVal = new Date(b.created_at).getTime();
+        break;
+      default: // 'id'
+        aVal = a.id;
+        bVal = b.id;
+    }
+
+    if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+    return 0;
   });
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+  };
+
+  const getSortIcon = (field: string) => {
+    if (sortField !== field) return <ArrowUpDown className="h-3 w-3 ml-1 text-gray-400" />;
+    return sortOrder === 'asc' ? 
+      <ChevronUp className="h-3 w-3 ml-1 text-emerald-600" /> : 
+      <ChevronDown className="h-3 w-3 ml-1 text-emerald-600" />;
+  };
 
   const totalPages = Math.ceil(filteredCustomers.length / ITEMS_PER_PAGE);
   const paginatedCustomers = filteredCustomers.slice(
@@ -102,11 +147,46 @@ export const Customers: React.FC = () => {
               <table className="w-full text-left border-collapse min-w-[600px]">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-100">
-                    <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-widest pl-6">Pelanggan</th>
-                    <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-widest">Kontak</th>
-                    <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-widest text-center">Total Order</th>
-                    <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-widest text-center">Jml Alamat</th>
-                    <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-widest text-right pr-6">Bergabung</th>
+                    <th 
+                      className="p-4 text-xs font-bold text-gray-500 uppercase tracking-widest pl-6 cursor-pointer hover:bg-gray-100 transition-colors"
+                      onClick={() => handleSort('name')}
+                    >
+                      <div className="flex items-center">
+                        Pelanggan {getSortIcon('name')}
+                      </div>
+                    </th>
+                    <th 
+                      className="p-4 text-xs font-bold text-gray-500 uppercase tracking-widest cursor-pointer hover:bg-gray-100 transition-colors"
+                      onClick={() => handleSort('phone')}
+                    >
+                      <div className="flex items-center">
+                        Kontak {getSortIcon('phone')}
+                      </div>
+                    </th>
+                    <th 
+                      className="p-4 text-xs font-bold text-gray-500 uppercase tracking-widest text-center cursor-pointer hover:bg-gray-100 transition-colors"
+                      onClick={() => handleSort('order_count')}
+                    >
+                      <div className="flex items-center justify-center">
+                        Total Order {getSortIcon('order_count')}
+                      </div>
+                    </th>
+                    <th 
+                      className="p-4 text-xs font-bold text-gray-500 uppercase tracking-widest text-center cursor-pointer hover:bg-gray-100 transition-colors"
+                      onClick={() => handleSort('addresses')}
+                    >
+                      <div className="flex items-center justify-center">
+                        Jml Alamat {getSortIcon('addresses')}
+                      </div>
+                    </th>
+                    <th 
+                      className="p-4 text-xs font-bold text-gray-500 uppercase tracking-widest text-right pr-6 cursor-pointer hover:bg-gray-100 transition-colors"
+                      onClick={() => handleSort('created_at')}
+                    >
+                      <div className="flex items-center justify-end">
+                        Bergabung {getSortIcon('created_at')}
+                      </div>
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
