@@ -89,6 +89,7 @@ export function FinancePenagihan() {
   const couriers = users.filter(u => u.role === 'courier');
   const [localOrders, setLocalOrders] = useState<Order[]>([]);
   const [courierFinesMap, setCourierFinesMap] = useState<Map<string, CompleteFineData>>(new Map());
+  const [finesLoading, setFinesLoading] = useState(true);
   const [filter, setFilter] = useState<FilterType>('unpaid');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedCourier, setExpandedCourier] = useState<string | null>(null);
@@ -135,6 +136,7 @@ export function FinancePenagihan() {
 
   // Fetch complete fine data for all couriers
   const fetchAllCourierFines = useCallback(async () => {
+    setFinesLoading(true);
     const finesMap = new Map<string, CompleteFineData>();
     
     for (const courier of couriers) {
@@ -145,20 +147,12 @@ export function FinancePenagihan() {
     }
     
     setCourierFinesMap(finesMap);
+    setFinesLoading(false);
   }, [couriers]);
 
   const getAdminEarning = (order: Order) => {
-    // Prioritaskan snapshot yang tersimpan di database saat order selesai
-    if (order.applied_admin_fee !== undefined && order.applied_admin_fee !== null) {
-      // applied_admin_fee sudah berisi admin fee yang benar
-      return order.applied_admin_fee;
-    } else {
-      // Fallback ke kalkulasi live hanya jika snapshot tidak ada
-      // (untuk order lama sebelum kolom applied_admin_fee ada)
-      // Gunakan calculateAdminFee untuk mendapatkan hanya bagian admin fee
-      const adminFee = calculateAdminFee(order.total_fee, earningSettings);
-      return adminFee;
-    }
+    // Use calcAdminEarning for consistency - includes commission + per-order fine
+    return calcAdminEarning(order, earningSettings);
   };
 
   const loadLocalOrders = useCallback(async () => {
@@ -222,13 +216,28 @@ export function FinancePenagihan() {
       const paid = courierOrders.filter(o => o.payment_status === 'paid');
 
       const totalEarning = unpaid.reduce((sum, o) =>
-        sum + getAdminEarning(o), 0
+        sum + getAdminEarning(o), 0  // This now includes per-order fines
       );
       
       // Use complete fine data if available, otherwise fall back to old method
+      // totalFlatFines should ONLY include flat fines, not per-order fines
       const totalFlatFines = completeFineData?.total_flat_fines || courierFines.reduce((sum, f) => sum + f.flat_fine, 0);
       const totalPerOrderFines = completeFineData?.total_per_order_fines || 0;
-      const totalFines = totalFlatFines + totalPerOrderFines;
+      // totalFines should ONLY be flat fines since per-order fines are already in totalEarning
+      const totalFines = totalFlatFines;
+
+      // Debug log for Galang specifically
+      if (courier.name.toLowerCase().includes('galang')) {
+        console.log('🔍 DEBUG Galang fines:', {
+          courierId: courier.id,
+          courierName: courier.name,
+          completeFineData,
+          totalFlatFines,
+          totalPerOrderFines,
+          totalFines,
+          totalEarning
+        });
+      }
 
       result.push({
         courierId: courier.id,
@@ -437,7 +446,14 @@ export function FinancePenagihan() {
 
         {/* Courier Cards */}
         <div className="space-y-4">
-          {courierSummary.length === 0 ? (
+          {finesLoading ? (
+            <Card>
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600 mx-auto mb-3"></div>
+                <p className="text-gray-600 font-medium">Memuat data denda...</p>
+              </div>
+            </Card>
+          ) : courierSummary.length === 0 ? (
             <Card>
               <div className="text-center py-8">
                 <CheckCircle className="h-12 w-12 text-green-400 mx-auto mb-3" />
@@ -499,13 +515,13 @@ export function FinancePenagihan() {
                             )}
                           </p>
                           {(() => {
-                            const relevantOrders = courier.unpaidOrders.some(o => selectedOrders.has(o.id))
-                              ? courier.unpaidOrders.filter(o => selectedOrders.has(o.id))
-                              : courier.unpaidOrders;
-                            const totalFine = relevantOrders.reduce((sum, o) => sum + ((o as any).fine_deducted || 0), 0) + courier.totalFines;
+                            // Per-order fines are already included in getAdminEarning()
+                            // Only show flat fines here
+                            const totalFine = courier.totalFlatFines;
+                            
                             return totalFine > 0 ? (
                               <p className="text-[10px] text-red-600 font-medium">
-                                Total Denda: {formatCurrency(totalFine)}
+                                Total Denda Flat: {formatCurrency(totalFine)}
                               </p>
                             ) : null;
                           })()}
