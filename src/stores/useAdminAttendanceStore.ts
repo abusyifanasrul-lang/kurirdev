@@ -132,6 +132,9 @@ export const useAdminAttendanceStore = create<AdminAttendanceStore>((set, get) =
     const month = String(start.getMonth() + 1).padStart(2, '0');
     const day = String(start.getDate()).padStart(2, '0');
     const today = `${year}-${month}-${day}`; // YYYY-MM-DD in local timezone
+    
+    console.log('[AdminAttendance] Setting up realtime subscription for date:', today);
+    
     const channel = supabase
       .channel('attendance-today')
       .on('postgres_changes', {
@@ -139,14 +142,18 @@ export const useAdminAttendanceStore = create<AdminAttendanceStore>((set, get) =
         schema: 'public',
         table: 'shift_attendance',
         filter: `date=eq.${today}`,  // ✅ hanya trigger untuk hari ini
-      }, () => {
+      }, (payload) => {
+        console.log('[AdminAttendance] Realtime event received:', payload);
         // Saat ada perubahan attendance, refresh keduanya
         get().fetchTodayLogs();
         get().fetchMissingCouriers();
       })
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[AdminAttendance] Subscription status:', status);
+      });
 
     return () => {
+      console.log('[AdminAttendance] Cleaning up subscription');
       supabase.removeChannel(channel);
     };
   },
