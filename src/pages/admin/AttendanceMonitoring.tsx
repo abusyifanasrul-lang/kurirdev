@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Clock, Search, Filter, AlertCircle, CheckCircle2, UserMinus, AlertTriangle, Bell, X } from 'lucide-react';
+import { Clock, Search, Filter, AlertCircle, CheckCircle2, UserMinus, AlertTriangle, Bell, X, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import { useAdminAttendanceStore } from '@/stores/useAdminAttendanceStore';
 import { useShiftStore } from '@/stores/useShiftStore';
 import { format } from 'date-fns';
@@ -41,6 +41,8 @@ export function AttendanceMonitoring() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedShift, setSelectedShift] = useState<string>('all');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [sortField, setSortField] = useState<string>('id');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   
   // Fine dialog state
   const [showFineDialog, setShowFineDialog] = useState(false);
@@ -103,7 +105,74 @@ export function AttendanceMonitoring() {
     const matchesSearch = log.courier_name?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesShift = selectedShift === 'all' || log.shift_id === selectedShift;
     return matchesSearch && matchesShift;
+  }).sort((a, b) => {
+    let aVal: any;
+    let bVal: any;
+
+    switch (sortField) {
+      case 'courier_name':
+        aVal = a.courier_name?.toLowerCase() || '';
+        bVal = b.courier_name?.toLowerCase() || '';
+        break;
+      case 'shift_name':
+        aVal = a.shift_name?.toLowerCase() || '';
+        bVal = b.shift_name?.toLowerCase() || '';
+        break;
+      case 'first_online_at':
+        aVal = a.first_online_at ? new Date(a.first_online_at).getTime() : 0;
+        bVal = b.first_online_at ? new Date(b.first_online_at).getTime() : 0;
+        break;
+      case 'last_online_at':
+        aVal = a.last_online_at ? new Date(a.last_online_at).getTime() : 0;
+        bVal = b.last_online_at ? new Date(b.last_online_at).getTime() : 0;
+        break;
+      case 'duration':
+        const aDuration = a.first_online_at && a.last_online_at
+          ? Math.round((new Date(a.last_online_at).getTime() - new Date(a.first_online_at).getTime()) / (1000 * 60))
+          : 0;
+        const bDuration = b.first_online_at && b.last_online_at
+          ? Math.round((new Date(b.last_online_at).getTime() - new Date(b.first_online_at).getTime()) / (1000 * 60))
+          : 0;
+        aVal = aDuration;
+        bVal = bDuration;
+        break;
+      case 'status':
+        aVal = a.status;
+        bVal = b.status;
+        break;
+      case 'late_minutes':
+        aVal = a.late_minutes;
+        bVal = b.late_minutes;
+        break;
+      case 'fine':
+        aVal = a.fine_type === 'per_order' ? a.fine_per_order : a.flat_fine;
+        bVal = b.fine_type === 'per_order' ? b.fine_per_order : b.flat_fine;
+        break;
+      default: // 'id'
+        aVal = a.id;
+        bVal = b.id;
+    }
+
+    if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+    return 0;
   });
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+  };
+
+  const getSortIcon = (field: string) => {
+    if (sortField !== field) return <ArrowUpDown className="h-3 w-3 ml-1 text-gray-400" />;
+    return sortOrder === 'asc' ? 
+      <ChevronUp className="h-3 w-3 ml-1 text-emerald-600" /> : 
+      <ChevronDown className="h-3 w-3 ml-1 text-emerald-600" />;
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -300,14 +369,70 @@ export function AttendanceMonitoring() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-50/50 border-b border-gray-100">
-                <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Kurir</th>
-                <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Shift</th>
-                <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Check In</th>
-                <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Selesai Shift</th>
-                <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Durasi</th>
-                <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Status</th>
-                <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Keterangan</th>
-                <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Denda</th>
+                <th 
+                  className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => handleSort('courier_name')}
+                >
+                  <div className="flex items-center">
+                    Kurir {getSortIcon('courier_name')}
+                  </div>
+                </th>
+                <th 
+                  className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => handleSort('shift_name')}
+                >
+                  <div className="flex items-center">
+                    Shift {getSortIcon('shift_name')}
+                  </div>
+                </th>
+                <th 
+                  className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => handleSort('first_online_at')}
+                >
+                  <div className="flex items-center">
+                    Check In {getSortIcon('first_online_at')}
+                  </div>
+                </th>
+                <th 
+                  className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => handleSort('last_online_at')}
+                >
+                  <div className="flex items-center">
+                    Selesai Shift {getSortIcon('last_online_at')}
+                  </div>
+                </th>
+                <th 
+                  className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => handleSort('duration')}
+                >
+                  <div className="flex items-center">
+                    Durasi {getSortIcon('duration')}
+                  </div>
+                </th>
+                <th 
+                  className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => handleSort('status')}
+                >
+                  <div className="flex items-center">
+                    Status {getSortIcon('status')}
+                  </div>
+                </th>
+                <th 
+                  className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => handleSort('late_minutes')}
+                >
+                  <div className="flex items-center">
+                    Keterangan {getSortIcon('late_minutes')}
+                  </div>
+                </th>
+                <th 
+                  className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => handleSort('fine')}
+                >
+                  <div className="flex items-center">
+                    Denda {getSortIcon('fine')}
+                  </div>
+                </th>
                 <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Aksi</th>
               </tr>
             </thead>

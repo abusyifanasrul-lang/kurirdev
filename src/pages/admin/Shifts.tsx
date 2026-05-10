@@ -17,7 +17,8 @@ import {
   X,
   UserPlus,
   RefreshCw,
-  Trash2
+  Trash2,
+  ArrowUpDown
 } from 'lucide-react';
 import { useShiftStore } from '@/stores/useShiftStore';
 import { useUserStore } from '@/stores/useUserStore';
@@ -79,6 +80,8 @@ export default function Shifts() {
   const [shiftSwaps, setShiftSwaps] = useState<ShiftSwap[]>([]);
   const [isLoadingSwaps, setIsLoadingSwaps] = useState(false);
   const [isSubmittingSwap, setIsSubmittingSwap] = useState(false);
+  const [sortField, setSortField] = useState<string>('id');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   const couriers = useMemo(() => {
     const filtered = users.filter(u => u.role === 'courier');
@@ -98,6 +101,63 @@ export default function Shifts() {
     fetchShifts();
     fetchUsers();
   }, [fetchShifts, fetchUsers]);
+
+  const sortedShifts = useMemo(() => {
+    return [...shifts].sort((a, b) => {
+      let aVal: any;
+      let bVal: any;
+
+      switch (sortField) {
+        case 'name':
+          aVal = a.name.toLowerCase();
+          bVal = b.name.toLowerCase();
+          break;
+        case 'start_time':
+          aVal = a.start_time;
+          bVal = b.start_time;
+          break;
+        case 'end_time':
+          aVal = a.end_time;
+          bVal = b.end_time;
+          break;
+        case 'is_overnight':
+          aVal = a.is_overnight ? 1 : 0;
+          bVal = b.is_overnight ? 1 : 0;
+          break;
+        case 'is_active':
+          aVal = a.is_active ? 1 : 0;
+          bVal = b.is_active ? 1 : 0;
+          break;
+        case 'courier_count':
+          aVal = getCouriersByShift(a.id).length;
+          bVal = getCouriersByShift(b.id).length;
+          break;
+        default: // 'id'
+          aVal = a.id;
+          bVal = b.id;
+      }
+
+      if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [shifts, sortField, sortOrder, couriers]);
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+  };
+
+  const getSortIcon = (field: string) => {
+    if (sortField !== field) return <ArrowUpDown className="h-3 w-3 ml-1 text-gray-400" />;
+    return sortOrder === 'asc' ? 
+      <ChevronUp className="h-3 w-3 ml-1 text-emerald-600" /> : 
+      <ChevronDown className="h-3 w-3 ml-1 text-emerald-600" />;
+  };
 
   const handleUnassignCourier = async (courierId: string, courierName: string) => {
     const loadingToast = addToast(`Melepas ${courierName} dari shift...`, 'loading', 0);
@@ -630,12 +690,54 @@ export default function Shifts() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-50/50">
-                <th className="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100">Nama Shift</th>
-                <th className="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 text-center">Waktu Mulai</th>
-                <th className="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 text-center">Waktu Selesai</th>
-                <th className="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 text-center">Tipe</th>
-                <th className="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 text-center">Status</th>
-                <th className="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 text-center">Kurir</th>
+                <th 
+                  className="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => handleSort('name')}
+                >
+                  <div className="flex items-center">
+                    Nama Shift {getSortIcon('name')}
+                  </div>
+                </th>
+                <th 
+                  className="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 text-center cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => handleSort('start_time')}
+                >
+                  <div className="flex items-center justify-center">
+                    Waktu Mulai {getSortIcon('start_time')}
+                  </div>
+                </th>
+                <th 
+                  className="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 text-center cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => handleSort('end_time')}
+                >
+                  <div className="flex items-center justify-center">
+                    Waktu Selesai {getSortIcon('end_time')}
+                  </div>
+                </th>
+                <th 
+                  className="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 text-center cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => handleSort('is_overnight')}
+                >
+                  <div className="flex items-center justify-center">
+                    Tipe {getSortIcon('is_overnight')}
+                  </div>
+                </th>
+                <th 
+                  className="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 text-center cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => handleSort('is_active')}
+                >
+                  <div className="flex items-center justify-center">
+                    Status {getSortIcon('is_active')}
+                  </div>
+                </th>
+                <th 
+                  className="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 text-center cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => handleSort('courier_count')}
+                >
+                  <div className="flex items-center justify-center">
+                    Kurir {getSortIcon('courier_count')}
+                  </div>
+                </th>
                 <th className="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 text-right">Aksi</th>
               </tr>
             </thead>
@@ -656,7 +758,7 @@ export default function Shifts() {
                   </td>
                 </tr>
               ) : (
-                shifts.map((shift) => {
+                sortedShifts.map((shift) => {
                   const shiftCouriers = getCouriersByShift(shift.id);
                   const isExpanded = expandedShiftId === shift.id;
                   

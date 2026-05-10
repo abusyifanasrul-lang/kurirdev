@@ -62,6 +62,28 @@ export function Couriers() {
   const [sortField, setSortField] = useState<string>('id');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
+  useEffect(() => {
+    const loadWeek = async () => {
+      const dbOrders = await getOrdersForWeek()
+      setWeekOrders(dbOrders)
+    }
+    loadWeek()
+    window.addEventListener('indexeddb-synced', loadWeek)
+    return () => window.removeEventListener('indexeddb-synced', loadWeek)
+  }, [])
+  useEffect(() => {
+    fetchInitialOrders();
+    fetchShifts();
+  }, [fetchInitialOrders, fetchShifts]);
+
+  const allOrders = useMemo(() => {
+    const map = new Map<string, Order>()
+    weekOrders.forEach(o => map.set(o.id, o))
+    orders.forEach(o => map.set(o.id, o))
+    activeOrdersByCourier.forEach(o => map.set(o.id, o))
+    return Array.from(map.values())
+  }, [weekOrders, orders, activeOrdersByCourier])
+
   const filteredCouriers = useMemo(() => {
     const filtered = couriers.filter(c => 
       c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -128,26 +150,6 @@ export function Couriers() {
       <ChevronUp className="h-3 w-3 ml-1 text-teal-600" /> : 
       <ChevronDown className="h-3 w-3 ml-1 text-teal-600" />;
   };
-
-  useEffect(() => {
-    const loadWeek = async () => {
-      const dbOrders = await getOrdersForWeek()
-      setWeekOrders(dbOrders)
-    }
-    loadWeek()
-    window.addEventListener('indexeddb-synced', loadWeek)
-    return () => window.removeEventListener('indexeddb-synced', loadWeek)
-  }, [])
-  useEffect(() => {
-    fetchInitialOrders();
-    fetchShifts();
-  }, [fetchInitialOrders, fetchShifts]);
-
-  const allOrders = useMemo(() => {
-    const map = new Map<string, Order>()
-    weekOrders.forEach(o => map.set(o.id, o))
-    orders.forEach(o => map.set(o.id, o))
-    activeOrdersByCourier.forEach(o => map.set(o.id, o))
     return Array.from(map.values())
   }, [weekOrders, orders, activeOrdersByCourier])
 
