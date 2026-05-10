@@ -36,30 +36,6 @@ if ("serviceWorker" in navigator) {
     .then((registration) => {
       console.log("✅ Service Worker registered:", registration.scope);
       
-      // CRITICAL FIX: Check for updates periodically
-      // Check immediately on registration
-      registration.update().catch(err => console.error("Initial SW update check failed:", err));
-      
-      // Check for updates every 60 seconds
-      setInterval(() => {
-        registration.update().catch(err => console.error("Periodic SW update check failed:", err));
-      }, 60 * 1000); // Check every 60 seconds
-      
-      // CRITICAL FIX: Listen for updates
-      registration.addEventListener('updatefound', () => {
-        const newWorker = registration.installing;
-        console.log("🔄 Service Worker update found!");
-        
-        if (newWorker) {
-          newWorker.addEventListener('statechange', () => {
-            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              console.log("✅ New Service Worker installed and waiting!");
-              // The PWAUpdateBanner component will detect this via reg.waiting
-            }
-          });
-        }
-      });
-      
       // Setup push notification listener
       navigator.serviceWorker.addEventListener("message", (event) => {
         if (event.data && event.data.type === "PUSH_NOTIFICATION") {

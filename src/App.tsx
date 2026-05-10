@@ -126,40 +126,23 @@ function PWAUpdateBanner() {
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
 
-    // CRITICAL FIX: Poll for waiting worker periodically
-    const checkForWaitingWorker = () => {
-      navigator.serviceWorker.ready.then(reg => {
-        if (reg.waiting && !waitingWorker) {
-          console.log("🔄 Detected waiting service worker!");
-          setWaitingWorker(reg.waiting);
-        }
-      }).catch(err => console.error("SW ready check failed:", err));
-    };
-
-    // Check immediately
-    checkForWaitingWorker();
-
-    // Check every 5 seconds for waiting worker
-    const pollInterval = setInterval(checkForWaitingWorker, 5000);
-
-    // Also listen for updatefound events
     navigator.serviceWorker.ready.then(reg => {
       reg.addEventListener('updatefound', () => {
         const newWorker = reg.installing;
-        console.log("🔄 Update found event triggered!");
         if (newWorker) {
           newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              console.log("✅ New worker installed, setting waitingWorker!");
               setWaitingWorker(newWorker);
             }
           });
         }
       });
-    }).catch(err => console.error("SW ready check failed:", err));
 
-    return () => clearInterval(pollInterval);
-  }, [waitingWorker]);
+      if (reg.waiting) {
+        setWaitingWorker(reg.waiting);
+      }
+    }).catch(err => console.error("SW ready Check failed:", err));
+  }, []);
 
   useEffect(() => {
     if (!waitingWorker) return;
