@@ -54,10 +54,10 @@ export function AttendanceMonitoring() {
     fetchMissingCouriers();
     fetchShifts();
 
-    // Refresh setiap 60 detik untuk update minutes_late
+    // Refresh setiap 10 detik untuk update minutes_late secara realtime
     const interval = setInterval(() => {
       fetchMissingCouriers();
-    }, 60_000);
+    }, 10_000);
 
     const unsubscribe = subscribeToday();
 
