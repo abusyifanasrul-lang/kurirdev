@@ -21,6 +21,7 @@ import { getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
 
 import { AttendanceWidget } from '@/components/courier/AttendanceWidget';
 import { ShiftScheduleWidget } from '@/components/courier/ShiftScheduleWidget';
+import { ShiftStatusWidget } from '@/components/courier/ShiftStatusWidget';
 import { DebugPanel } from '@/components/courier/DebugPanel';
 
 const ONBOARDING_KEY = 'courier_permissions_onboarded';
@@ -211,17 +212,12 @@ export function CourierDashboard() {
       {/* Permission Onboarding (First time only, Native only) */}
       {showOnboarding && <PermissionOnboarding onComplete={handleOnboardingComplete} />}
 
-      {/* Attendance Status Widget */}
+      {/* Merged Shift Status Widget (replaces both AttendanceWidget and ShiftScheduleWidget) */}
       {user?.id && (
-        <AttendanceWidget 
+        <ShiftStatusWidget 
           courierId={user.id} 
           lateFineActive={lateFineActive} 
         />
-      )}
-
-      {/* Shift Schedule Widget */}
-      {user?.id && (
-        <ShiftScheduleWidget courierId={user.id} />
       )}
 
       {/* Unpaid Warning Card — If any */}
