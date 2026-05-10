@@ -86,7 +86,7 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  const CACHE_VERSION = 'v1.0.11'; // CRITICAL FIX: Added active update checking + detailed logging
+  const CACHE_VERSION = 'v1.0.12'; // CRITICAL FIX: Disabled VitePWA auto-registration to avoid conflict
   const CACHE_NAME = `kurirdev-${CACHE_VERSION}`;
 
   console.log(`🔄 [SW] Activating with cache version: ${CACHE_VERSION}`);
@@ -100,7 +100,8 @@ self.addEventListener('activate', (event) => {
           keys.filter(key => {
             const shouldDelete = (key.startsWith('kurirdev-') && key !== CACHE_NAME) ||
               key === 'static-resources' ||
-              key === 'html-cache';
+              key === 'html-cache' ||
+              key.startsWith('workbox-'); // Clean up Workbox caches too
             if (shouldDelete) {
               console.log(`🗑️ [SW] Deleting old cache: ${key}`);
             }

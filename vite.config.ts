@@ -14,10 +14,11 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: "autoUpdate",
+      registerType: "prompt", // CRITICAL FIX: Changed from "autoUpdate" to "prompt" to avoid conflict with manual registration
       strategies: "injectManifest",
       srcDir: "public",
       filename: "sw.js",
+      injectRegister: false, // CRITICAL FIX: Disable auto-injection, we handle registration manually in main.tsx
 
       manifest: {
         id: "/",
