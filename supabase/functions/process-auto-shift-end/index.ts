@@ -3,6 +3,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getCurrentTime } from '../_shared/timezone.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -21,20 +22,11 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Get operational timezone from settings
-    const { data: settings } = await supabase
-      .from('settings')
-      .select('operational_timezone')
-      .eq('id', 'global')
-      .single()
+    // Get current time in operational timezone
+    const timeData = await getCurrentTime(supabase)
+    const { current_time, timezone } = timeData
 
-    const timezone = settings?.operational_timezone || 'Asia/Makassar'
-    
-    // Get current time
-    const now = new Date()
-    const currentTime = now.toTimeString().slice(0, 8) // HH:MM:SS
-
-    console.log(`[Auto Shift End] Processing at ${currentTime} (${timezone})`)
+    console.log(`[Auto Shift End] Processing at ${current_time} (${timezone})`)
 
     // Get all active shifts
     const { data: shifts, error: shiftsError } = await supabase
@@ -57,7 +49,7 @@ serve(async (req) => {
       
       // Check if this shift ended in the last 1 minute
       const timeDiff = Math.abs(
-        new Date(`1970-01-01T${currentTime}`).getTime() - 
+        new Date(`1970-01-01T${current_time}`).getTime() - 
         new Date(`1970-01-01T${shiftEndTime}`).getTime()
       ) / 1000 / 60 // difference in minutes
 
@@ -107,7 +99,7 @@ serve(async (req) => {
       JSON.stringify({ 
         success: true,
         message: 'Auto shift end processing completed',
-        timestamp: now.toISOString(),
+        timestamp: timeData.current_timestamp.toISOString(),
         timezone: timezone,
         processed: processedCount,
         success: successCount,

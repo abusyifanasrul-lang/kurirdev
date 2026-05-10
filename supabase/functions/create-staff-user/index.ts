@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getCurrentTime } from '../_shared/timezone.ts'
 
 // CORS Headers
 const corsHeaders = {
@@ -132,13 +133,16 @@ serve(async (req) => {
 
     // 5. Create Profile (Upsert)
     console.log('Step 6: Syncing profile to DB for:', email)
+    // Get current time in operational timezone
+    const timeData = await getCurrentTime(supabaseAdmin)
+
     const profileData = { 
       id: newUserId, 
       role, 
       name, 
       email,
       phone: phone || null,
-      updated_at: new Date().toISOString(),
+      updated_at: timeData.current_timestamp.toISOString(),
       is_active: true,
       queue_position: 0
     }

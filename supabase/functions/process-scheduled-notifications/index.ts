@@ -3,6 +3,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getCurrentTime } from '../_shared/timezone.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -21,8 +22,11 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
+    // Get current time in operational timezone
+    const timeData = await getCurrentTime(supabase)
+    const now = timeData.current_timestamp.toISOString()
+
     // Get all scheduled notifications that are due and not sent yet
-    const now = new Date().toISOString()
     const { data: scheduledNotifs, error: fetchError } = await supabase
       .from('scheduled_notifications')
       .select('*')
@@ -86,7 +90,7 @@ serve(async (req) => {
           .from('scheduled_notifications')
           .update({ 
             sent: true, 
-            sent_at: new Date().toISOString() 
+            sent_at: timeData.current_timestamp.toISOString() 
           })
           .eq('id', schedNotif.id)
 
