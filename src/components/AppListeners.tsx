@@ -102,6 +102,7 @@ export const AppListeners = () => {
     const cleanups: Array<() => void> = []
 
     // waitForStatus sengaja di dalam useEffect agar capture flag 'active' yang bersifat lokal
+    // OPTIMIZED: Increased polling interval from 150ms to 500ms to reduce CPU usage
     const waitForStatus = (storeGetter: () => any, channelId: string, timeout = 8000) => {
       return new Promise((resolve) => {
         const start = Date.now()
@@ -112,7 +113,7 @@ export const AppListeners = () => {
             clearInterval(check)
             resolve(status || 'timeout')
           }
-        }, 150)
+        }, 500) // CHANGED: 150ms → 500ms (reduce CPU usage by 70%)
       })
     }
 
@@ -508,8 +509,14 @@ export const AppListeners = () => {
     // ---
     // Health check: setiap 3 menit, HANYA recovery (bukan gap fill)
     // Gap fill diurus oleh visibility/focus handler
+    // CRITICAL FIX: Tambahkan guard untuk mencegah health check saat tab tidak aktif
     // ---
     const healthCheck = async () => {
+      // Skip health check if tab is not visible (prevent CPU waste)
+      if (document.visibilityState !== 'visible') {
+        console.log('⏸️ [Health] Skipping check - tab not visible')
+        return
+      }
       if (!navigator.onLine) return
       const dead = getChannelsNeedingRecovery()
       if (dead.length > 0) {

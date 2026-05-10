@@ -65,6 +65,7 @@ export function ShiftStatusWidget({ courierId, lateFineActive }: ShiftStatusWidg
   }, [courierId, fetchTodayLog, subscribeAttendance]);
 
   // Update countdown and shift status in real-time
+  // OPTIMIZED: Only update when tab is visible to reduce CPU usage
   useEffect(() => {
     if (!shiftInfo) return;
 
@@ -118,9 +119,47 @@ export function ShiftStatusWidget({ courierId, lateFineActive }: ShiftStatusWidg
     updateStatus();
     
     // Update every second for real-time countdown
-    const interval = setInterval(updateStatus, 1000);
+    // CRITICAL FIX: Pause updates when tab is not visible
+    let interval: NodeJS.Timeout | null = null;
+    
+    const startInterval = () => {
+      if (interval) return; // Already running
+      interval = setInterval(() => {
+        // Double-check visibility before updating
+        if (document.visibilityState === 'visible') {
+          updateStatus();
+        }
+      }, 1000);
+    };
+    
+    const stopInterval = () => {
+      if (interval) {
+        clearInterval(interval);
+        interval = null;
+      }
+    };
+    
+    // Start interval if tab is visible
+    if (document.visibilityState === 'visible') {
+      startInterval();
+    }
+    
+    // Handle visibility changes
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        updateStatus(); // Update immediately when tab becomes visible
+        startInterval();
+      } else {
+        stopInterval();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    return () => clearInterval(interval);
+    return () => {
+      stopInterval();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [shiftInfo]);
 
   // Don't show loading state - just hide widget if no data yet
