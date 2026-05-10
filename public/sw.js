@@ -81,7 +81,8 @@ self.addEventListener('notificationclick', (event) => {
 })
 
 self.addEventListener('install', (event) => {
-  console.log('🔧 [SW] Installing new service worker...');
+  const BUILD_VERSION = '1778449117182'; // Injected by build script
+  console.log(`🔧 [SW] Installing new service worker... Build: ${BUILD_VERSION}`);
   self.skipWaiting();
 });
 

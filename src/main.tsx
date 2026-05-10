@@ -32,7 +32,10 @@ window.addEventListener('unhandledrejection', (event) => {
 // Register Service Worker for PWA and Push Notifications
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker
-    .register("/sw.js", { scope: "/" })
+    .register("/sw.js", { 
+      scope: "/",
+      updateViaCache: "none" // CRITICAL: Force browser to always check network for sw.js updates
+    })
     .then((registration) => {
       console.log("✅ Service Worker registered:", registration.scope);
       

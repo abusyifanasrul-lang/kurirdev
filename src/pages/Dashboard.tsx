@@ -211,21 +211,6 @@ export function Dashboard() {
 
       <div className="p-4 lg:p-8 space-y-6 lg:space-y-8">
 
-        {/* WELCOME MESSAGE - TEST AUTO UPDATE */}
-        <div className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl p-8 text-white shadow-2xl border-8 border-blue-400 animate-bounce">
-          <h2 className="text-4xl font-black mb-3">✅ VITEPWA CONFLICT FIXED v1.0.12 ✅</h2>
-          <p className="text-green-50 text-xl font-bold mb-2">
-            BANNER HIJAU BOUNCING = VitePWA auto-registration DISABLED!
-          </p>
-          <p className="text-sm text-green-100 mt-3 bg-green-800/70 p-3 rounded font-mono">
-            ✅ VitePWA registerType: "prompt" (was: "autoUpdate")<br/>
-            ✅ VitePWA injectRegister: false (no conflict)<br/>
-            ✅ Manual registration in main.tsx now works<br/>
-            ✅ Cache version: v1.0.12<br/>
-            📊 Popup HARUS muncul di Vercel sekarang!
-          </p>
-        </div>
-
         {/* Customer Address Change Request Panel */}
         {pendingChangeRequests.length > 0 && canApprove && (
           <div className="flex items-center justify-between gap-4 p-4 bg-purple-50 border border-purple-300 rounded-xl animate-in fade-in slide-in-from-top-2">
