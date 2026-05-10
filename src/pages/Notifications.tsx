@@ -5,7 +5,7 @@ import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Textarea } from '@/components/ui/Textarea';
 import { Badge } from '@/components/ui/Badge';
 import { useAuth } from '@/context/AuthContext';
@@ -125,11 +125,11 @@ export function Notifications() {
             )}
 
             <div className="space-y-4">
-              <Select
+              <SearchableSelect
                 label="Select Courier"
                 options={activeCouriers.map((c) => ({ value: c.id, label: c.name }))}
                 value={selectedCourierId}
-                onChange={(e) => setSelectedCourierId(e.target.value)}
+                onChange={(value) => setSelectedCourierId(value)}
                 placeholder="Choose a courier"
               />
 

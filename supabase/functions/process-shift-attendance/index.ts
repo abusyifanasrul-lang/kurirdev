@@ -32,18 +32,27 @@ serve(async (req) => {
 
     const timezone = settings?.operational_timezone || 'Asia/Makassar'
     
-    // Get current time (server time, will be converted in queries)
-    const now = new Date()
-    const currentTime = now.toTimeString().slice(0, 8) // HH:MM:SS
-    const currentDate = now.toISOString().split('T')[0] // YYYY-MM-DD
-    
-    // Get day name for day_off checking
-    const { data: dayNameData } = await supabase.rpc('execute_sql', {
-      query: `SELECT TRIM(TO_CHAR(CURRENT_DATE, 'Day')) as day_name`
+    // Get current time in operational timezone using PostgreSQL
+    const { data: timeData } = await supabase.rpc('execute_sql', {
+      query: `
+        SELECT 
+          (NOW() AT TIME ZONE '${timezone}')::date as current_date,
+          (NOW() AT TIME ZONE '${timezone}')::time as current_time,
+          NOW() AT TIME ZONE '${timezone}' as current_timestamp,
+          TRIM(TO_CHAR(NOW() AT TIME ZONE '${timezone}', 'Day')) as day_name
+      `
     })
-    const currentDayName = dayNameData?.[0]?.day_name || 'Monday'
 
-    console.log(`Processing attendance at ${currentTime} (${timezone})`)
+    if (!timeData || timeData.length === 0) {
+      throw new Error('Failed to get current time from database')
+    }
+
+    const currentDate = timeData[0].current_date // YYYY-MM-DD in operational timezone
+    const currentTime = timeData[0].current_time.slice(0, 8) // HH:MM:SS in operational timezone
+    const currentTimestamp = new Date(timeData[0].current_timestamp) // Full timestamp in operational timezone
+    const currentDayName = timeData[0].day_name
+
+    console.log(`Processing attendance at ${currentTime} on ${currentDate} (${timezone})`)
 
     // Check if today is a holiday
     const { data: holiday } = await supabase
@@ -132,7 +141,7 @@ serve(async (req) => {
 
           // Determine status based on is_online
           const status = courier.is_online ? 'on_time' : 'late'
-          const firstOnlineAt = courier.is_online ? now.toISOString() : null
+          const firstOnlineAt = courier.is_online ? currentTimestamp.toISOString() : null
 
           // Create attendance record
           const { error: insertError } = await supabase
@@ -172,8 +181,9 @@ serve(async (req) => {
 
       // Calculate late minutes for each late courier
       for (const record of lateRecords || []) {
+        // Build shift start datetime in operational timezone
         const shiftStartDateTime = new Date(`${currentDate}T${shiftStartTime}`)
-        const lateMinutes = Math.floor((now.getTime() - shiftStartDateTime.getTime()) / 1000 / 60)
+        const lateMinutes = Math.floor((currentTimestamp.getTime() - shiftStartDateTime.getTime()) / 1000 / 60)
 
         if (lateMinutes > 0 && lateMinutes !== record.late_minutes) {
           const { error: updateError } = await supabase
@@ -195,7 +205,7 @@ serve(async (req) => {
       JSON.stringify({ 
         success: true,
         message: 'Attendance processing completed',
-        timestamp: now.toISOString(),
+        timestamp: currentTimestamp.toISOString(),
         timezone: timezone,
         records_created: recordsCreated,
         records_updated: recordsUpdated

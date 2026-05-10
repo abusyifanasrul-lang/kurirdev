@@ -1,5 +1,4 @@
 import { getToken, onMessage, getMessaging, type Messaging } from 'firebase/messaging'
-import { deleteInstallations, getInstallations } from 'firebase/installations'
 import app from './firebase'
 import { Capacitor } from '@capacitor/core'
 import { PushNotifications } from '@capacitor/push-notifications'
@@ -18,6 +17,7 @@ const messaging = _messaging
 
 /**
  * Clear all stale Firebase data from IndexedDB.
+ * Only clears IndexedDB caches, skips Firebase Installations API to avoid conflicts.
  */
 async function clearStaleFirebaseData(): Promise<void> {
   if (Capacitor.isNativePlatform()) return // Native handled by FCM SDK directly
@@ -34,11 +34,8 @@ async function clearStaleFirebaseData(): Promise<void> {
           indexedDB.deleteDatabase(dbInfo.name)
         }
       }
+      console.log('✅ Stale Firebase IndexedDB data cleared')
     }
-
-    const installations = getInstallations(app)
-    await deleteInstallations(installations)
-    console.log('✅ Stale Web Firebase data cleared')
   } catch (error) {
     console.warn('⚠️ Could not clear stale data:', error)
   }
