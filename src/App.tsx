@@ -163,7 +163,7 @@ function PWAUpdateBanner() {
     }
 
     setShowBanner(true);
-  }, [waitingWorker, isAuthenticated, user, orders]);
+  }, [waitingWorker, isAuthenticated, user, activeOrdersByCourier]); // FIXED: Changed 'orders' to 'activeOrdersByCourier'
 
   const handleUpdate = () => {
     if (waitingWorker) {
