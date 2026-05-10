@@ -81,9 +81,10 @@ self.addEventListener('notificationclick', (event) => {
 })
 
 self.addEventListener('install', (event) => {
-  const BUILD_VERSION = '1778449117182'; // Injected by build script
+  const BUILD_VERSION = '__BUILD_VERSION__'; // ✅ FIX BUG #2: Placeholder HARUS selalu ada di template
   console.log(`🔧 [SW] Installing new service worker... Build: ${BUILD_VERSION}`);
-  self.skipWaiting();
+  // ✅ FIX BUG #1: HAPUS self.skipWaiting() dari sini!
+  // SW harus tunggu user konfirmasi via banner, bukan skip otomatis
 });
 
 self.addEventListener('activate', (event) => {
@@ -120,12 +121,21 @@ self.addEventListener('activate', (event) => {
 // Load Workbox from CDN using importScripts (Service Worker compatible)
 importScripts('https://storage.googleapis.com/workbox-cdn/releases/7.0.0/workbox-sw.js');
 
+// ✅ FIX BUG #3: Tambah self.__WB_MANIFEST untuk VitePWA injectManifest
+const WB_MANIFEST = self.__WB_MANIFEST || [];
+
 // Initialize Workbox
 if (workbox) {
   console.log('[sw.js] Workbox loaded successfully');
 
   // Configure Workbox
   workbox.setConfig({ debug: false });
+
+  // Precache assets dari manifest (diinjeksi VitePWA saat build)
+  if (WB_MANIFEST && WB_MANIFEST.length > 0) {
+    console.log(`📦 [SW] Precaching ${WB_MANIFEST.length} assets from manifest`);
+    workbox.precaching.precacheAndRoute(WB_MANIFEST);
+  }
 
   // CRITICAL FIX: Use NetworkFirst for HTML/JS/CSS to enable auto-updates
   // This ensures browser checks network first, detects new versions, and triggers update banner
@@ -226,9 +236,10 @@ if (workbox) {
 }
 
 
-// For update banner to know when to skipWaiting
+// ✅ FIX BUG #1: skipWaiting HANYA dari pesan banner (setelah user klik "Update Sekarang")
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
+    console.log('⚡ [SW] SKIP_WAITING received from banner, activating new SW...');
     self.skipWaiting();
   }
 });

@@ -123,10 +123,13 @@ function PWAUpdateBanner() {
   const [showBanner, setShowBanner] = useState(false);
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
 
+  // ✅ FIX BUG #4 & #5: Setup listener hanya sekali, cleanup di return useEffect
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
 
     console.log("🔍 [PWAUpdateBanner] Setting up update detection...");
+
+    let checkInterval: ReturnType<typeof setInterval>;
 
     navigator.serviceWorker.ready.then(reg => {
       console.log("✅ [PWAUpdateBanner] Service Worker ready, checking for updates...");
@@ -135,35 +138,40 @@ function PWAUpdateBanner() {
       if (reg.waiting) {
         console.log("⚠️ [PWAUpdateBanner] Found waiting worker immediately!");
         setWaitingWorker(reg.waiting);
+        return; // Sudah ada waiting worker, tidak perlu setup listener
       }
       
       // Listen for new updates
       reg.addEventListener('updatefound', () => {
         console.log("🔔 [PWAUpdateBanner] Update found! New worker installing...");
         const newWorker = reg.installing;
-        if (newWorker) {
-          newWorker.addEventListener('statechange', () => {
-            console.log(`📊 [PWAUpdateBanner] Worker state changed to: ${newWorker.state}`);
-            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              console.log("✅ [PWAUpdateBanner] New worker installed and ready!");
-              setWaitingWorker(newWorker);
-            }
-          });
-        }
+        if (!newWorker) return;
+        
+        newWorker.addEventListener('statechange', () => {
+          console.log(`📊 [PWAUpdateBanner] Worker state changed to: ${newWorker.state}`);
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            console.log("✅ [PWAUpdateBanner] New worker installed and ready!");
+            setWaitingWorker(newWorker);
+          }
+        });
       });
       
-      // CRITICAL FIX: Periodically check for waiting worker
-      // This catches updates that might have been missed
-      const checkInterval = setInterval(() => {
-        if (reg.waiting && !waitingWorker) {
-          console.log("🔄 [PWAUpdateBanner] Periodic check found waiting worker!");
-          setWaitingWorker(reg.waiting);
+      // ✅ FIX BUG #4: checkInterval pakai ref, bukan closure atas waitingWorker
+      checkInterval = setInterval(() => {
+        if (reg.waiting) {
+          setWaitingWorker(prev => prev ?? reg.waiting); // Hanya set jika belum ada
         }
       }, 5000); // Check every 5 seconds
-      
-      return () => clearInterval(checkInterval);
     }).catch(err => console.error("❌ [PWAUpdateBanner] SW ready check failed:", err));
-  }, [waitingWorker]);
+
+    // ✅ FIX BUG #4: cleanup langsung di return useEffect, bukan di dalam .then()
+    return () => {
+      if (checkInterval) {
+        clearInterval(checkInterval);
+        console.log("🧹 [PWAUpdateBanner] Cleanup: cleared check interval");
+      }
+    };
+  }, []); // ✅ FIX BUG #5: dependency array kosong — hanya setup sekali
 
   useEffect(() => {
     if (!waitingWorker) return;
