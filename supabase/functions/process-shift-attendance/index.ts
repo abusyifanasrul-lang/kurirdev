@@ -182,8 +182,18 @@ serve(async (req) => {
       // Calculate late minutes for each late courier
       for (const record of lateRecords || []) {
         // Build shift start datetime in operational timezone
-        const shiftStartDateTime = new Date(`${currentDate}T${shiftStartTime}`)
-        const lateMinutes = Math.floor((currentTimestamp.getTime() - shiftStartDateTime.getTime()) / 1000 / 60)
+        // IMPORTANT: We need to construct the datetime properly in the operational timezone
+        // Using PostgreSQL to do the calculation to avoid timezone issues
+        const { data: calcData } = await supabase.rpc('execute_sql', {
+          query: `
+            SELECT EXTRACT(EPOCH FROM (
+              NOW() AT TIME ZONE '${timezone}' - 
+              ('${currentDate} ${shiftStartTime}'::timestamp AT TIME ZONE '${timezone}')
+            )) / 60 AS late_minutes
+          `
+        })
+
+        const lateMinutes = calcData && calcData[0] ? Math.floor(calcData[0].late_minutes) : 0
 
         if (lateMinutes > 0 && lateMinutes !== record.late_minutes) {
           const { error: updateError } = await supabase
