@@ -46,7 +46,11 @@ export const useAdminAttendanceStore = create<AdminAttendanceStore>((set, get) =
   fetchTodayLogs: async () => {
     // Step 5: Reset harian late_fine_active
     const { start } = getLocalTodayRange();
-    const todayStr = start.toISOString().split('T')[0];
+    // Format date in local timezone without converting to UTC
+    const year = start.getFullYear();
+    const month = String(start.getMonth() + 1).padStart(2, '0');
+    const day = String(start.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${day}`; // YYYY-MM-DD in local timezone
     
     const lastReset = localStorage.getItem('last_fine_reset');
     if (lastReset !== todayStr) {
@@ -91,7 +95,11 @@ export const useAdminAttendanceStore = create<AdminAttendanceStore>((set, get) =
 
   fetchMissingCouriers: async () => {
     const { start } = getLocalTodayRange();
-    const today = start.toISOString().split('T')[0];
+    // Format date in local timezone without converting to UTC
+    const year = start.getFullYear();
+    const month = String(start.getMonth() + 1).padStart(2, '0');
+    const day = String(start.getDate()).padStart(2, '0');
+    const today = `${year}-${month}-${day}`; // YYYY-MM-DD in local timezone
     const { data, error } = await supabase.rpc('get_missing_couriers', { p_date: today });
     if (!error && data) {
       set({ missingCouriers: data });
@@ -119,7 +127,11 @@ export const useAdminAttendanceStore = create<AdminAttendanceStore>((set, get) =
 
   subscribeToday: () => {
     const { start } = getLocalTodayRange();
-    const today = start.toISOString().split('T')[0]; // YYYY-MM-DD
+    // Format date in local timezone without converting to UTC
+    const year = start.getFullYear();
+    const month = String(start.getMonth() + 1).padStart(2, '0');
+    const day = String(start.getDate()).padStart(2, '0');
+    const today = `${year}-${month}-${day}`; // YYYY-MM-DD in local timezone
     const channel = supabase
       .channel('attendance-today')
       .on('postgres_changes', {

@@ -35,7 +35,11 @@ export const useAttendanceStore = create<AttendanceStore>((set, get) => ({
   fetchTodayLog: async (courierId) => {
     set({ isLoading: true });
     const { start } = getLocalTodayRange();
-    const today = start.toISOString().split('T')[0]; // YYYY-MM-DD
+    // Format date in local timezone without converting to UTC
+    const year = start.getFullYear();
+    const month = String(start.getMonth() + 1).padStart(2, '0');
+    const day = String(start.getDate()).padStart(2, '0');
+    const today = `${year}-${month}-${day}`; // YYYY-MM-DD in local timezone
     
     const { data, error } = await supabase
       .from('shift_attendance')
