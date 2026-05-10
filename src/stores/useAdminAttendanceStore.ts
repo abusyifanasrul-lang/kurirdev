@@ -132,29 +132,33 @@ export const useAdminAttendanceStore = create<AdminAttendanceStore>((set, get) =
       // Get today's date in local timezone using standardized utility
       const today = getTodayLocal();
       
+      // Use unique channel name with timestamp to avoid conflicts
+      const channelName = `attendance-today-${Date.now()}`;
+      
       console.log('[AdminAttendance] Setting up realtime subscription for date:', today);
+      console.log('[AdminAttendance] Channel name:', channelName);
       
       const channel = supabase
-        .channel('attendance-today-v3')  // Changed channel name again
+        .channel(channelName)
         .on('postgres_changes', {
           event: '*',
           schema: 'public',
           table: 'shift_attendance',
           // ✅ REMOVED filter - will filter in callback instead
         }, (payload) => {
-          console.log('[AdminAttendance] Realtime event received:', payload);
+          console.log('[AdminAttendance] 🔥 Realtime event received:', payload);
           
           // Filter by date in callback
           const recordDate = (payload.new as any)?.date || (payload.old as any)?.date;
           console.log('[AdminAttendance] Record date:', recordDate, 'Expected:', today);
           
           if (recordDate === today) {
-            console.log('[AdminAttendance] Date matches - refreshing data');
+            console.log('[AdminAttendance] ✅ Date matches - refreshing data');
             // Saat ada perubahan attendance, refresh keduanya
             get().fetchTodayLogs();
             get().fetchMissingCouriers();
           } else {
-            console.log('[AdminAttendance] Date mismatch - ignoring event');
+            console.log('[AdminAttendance] ⏭️ Date mismatch - ignoring event');
           }
         })
         .subscribe((status) => {
@@ -163,11 +167,13 @@ export const useAdminAttendanceStore = create<AdminAttendanceStore>((set, get) =
             console.log('[AdminAttendance] ✅ Successfully subscribed to realtime updates');
           } else if (status === 'CHANNEL_ERROR') {
             console.error('[AdminAttendance] ❌ Subscription error');
+          } else if (status === 'CLOSED') {
+            console.warn('[AdminAttendance] ⚠️ Subscription closed');
           }
         });
 
       return () => {
-        console.log('[AdminAttendance] Cleaning up subscription');
+        console.log('[AdminAttendance] 🧹 Cleaning up subscription');
         supabase.removeChannel(channel);
       };
     } catch (error) {
