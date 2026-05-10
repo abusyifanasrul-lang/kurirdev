@@ -21,7 +21,7 @@ import { useUserStore } from '@/stores/useUserStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { supabase } from '@/lib/supabaseClient';
 import { getOrdersForWeek, getAllUnpaidOrdersLocal } from '@/lib/orderCache';
-import { calcAdminEarning, calcCourierEarning } from '@/lib/calcEarning';
+import { calcAdminEarning, calcCourierEarning, calculateAdminFee } from '@/lib/calcEarning';
 import { formatCurrency } from '@/utils/formatter';
 import { cn } from '@/utils/cn';
 import type { Order } from '@/types';
@@ -149,19 +149,16 @@ export function FinancePenagihan() {
 
   const getAdminEarning = (order: Order) => {
     // Prioritaskan snapshot yang tersimpan di database saat order selesai
-    let baseEarning = 0;
     if (order.applied_admin_fee !== undefined && order.applied_admin_fee !== null) {
-      baseEarning = order.applied_admin_fee;
+      // applied_admin_fee sudah berisi admin fee yang benar
+      return order.applied_admin_fee;
     } else {
       // Fallback ke kalkulasi live hanya jika snapshot tidak ada
       // (untuk order lama sebelum kolom applied_admin_fee ada)
-      baseEarning = calcAdminEarning(order, earningSettings);
+      // Gunakan calculateAdminFee untuk mendapatkan hanya bagian admin fee
+      const adminFee = calculateAdminFee(order.total_fee, earningSettings);
+      return adminFee;
     }
-
-    // Setoran Admin = Admin Fee + Denda (jika ada)
-    // Denda per order (fine_deducted) adalah uang yang seharusnya milik kurir
-    // tapi dipotong ke admin karena keterlambatan.
-    return baseEarning + (order.fine_deducted || 0);
   };
 
   const loadLocalOrders = useCallback(async () => {
