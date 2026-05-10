@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabaseClient';
-import { getLocalTodayRange } from '@/utils/date';
+import { getLocalTodayRange, getTodayLocal } from '@/utils/date';
 
 interface AdminAttendanceLog {
   id: string;
@@ -44,24 +44,19 @@ export const useAdminAttendanceStore = create<AdminAttendanceStore>((set, get) =
   isLoading: false,
 
   fetchTodayLogs: async () => {
+    // Get today's date in local timezone using standardized utility
+    const today = getTodayLocal();
+    
+    console.log('[AdminAttendance] Fetching logs for date:', today);
+    
     // Step 5: Reset harian late_fine_active
-    const { start } = getLocalTodayRange();
-    // Format date in local timezone without converting to UTC
-    const year = start.getFullYear();
-    const month = String(start.getMonth() + 1).padStart(2, '0');
-    const day = String(start.getDate()).padStart(2, '0');
-    const todayStr = `${year}-${month}-${day}`; // YYYY-MM-DD in local timezone
-    
-    console.log('[AdminAttendance] Fetching logs for date:', todayStr);
-    
     const lastReset = localStorage.getItem('last_fine_reset');
-    if (lastReset !== todayStr) {
+    if (lastReset !== today) {
       await supabase.rpc('reset_daily_fine_flags');
-      localStorage.setItem('last_fine_reset', todayStr);
+      localStorage.setItem('last_fine_reset', today);
     }
 
     set({ isLoading: true });
-    const today = todayStr;
     
     const { data, error } = await supabase
       .from('shift_attendance')
@@ -99,12 +94,8 @@ export const useAdminAttendanceStore = create<AdminAttendanceStore>((set, get) =
   },
 
   fetchMissingCouriers: async () => {
-    const { start } = getLocalTodayRange();
-    // Format date in local timezone without converting to UTC
-    const year = start.getFullYear();
-    const month = String(start.getMonth() + 1).padStart(2, '0');
-    const day = String(start.getDate()).padStart(2, '0');
-    const today = `${year}-${month}-${day}`; // YYYY-MM-DD in local timezone
+    // Get today's date in local timezone using standardized utility
+    const today = getTodayLocal();
     
     console.log('[AdminAttendance] Fetching missing couriers for date:', today);
     
@@ -137,12 +128,8 @@ export const useAdminAttendanceStore = create<AdminAttendanceStore>((set, get) =
   },
 
   subscribeToday: () => {
-    const { start } = getLocalTodayRange();
-    // Format date in local timezone without converting to UTC
-    const year = start.getFullYear();
-    const month = String(start.getMonth() + 1).padStart(2, '0');
-    const day = String(start.getDate()).padStart(2, '0');
-    const today = `${year}-${month}-${day}`; // YYYY-MM-DD in local timezone
+    // Get today's date in local timezone using standardized utility
+    const today = getTodayLocal();
     
     console.log('[AdminAttendance] Setting up realtime subscription for date:', today);
     

@@ -68,13 +68,40 @@ export function isLocalToday(date: Date | string | number): boolean {
 
 /**
  * Returns a new Date object representing the current "wall-clock" time locally.
- * WARNING: Use primarily for display and relative calculations (e.g. start of day).
+ * Uses Intl.DateTimeFormat for consistent timezone handling (same as backend).
+ * 
+ * IMPORTANT: This approach matches the backend SQL:
+ * `v_now_local := NOW() AT TIME ZONE v_timezone`
  */
 export function getLocalNow(): Date {
   const now = new Date();
   const tz = getTimezone();
-  const localStr = now.toLocaleString('en-US', { timeZone: tz });
-  return new Date(localStr);
+  
+  // Use Intl.DateTimeFormat for reliable timezone conversion
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+  
+  const parts = formatter.formatToParts(now);
+  const map: Record<string, string> = {};
+  parts.forEach(p => (map[p.type] = p.value));
+  
+  // Construct Date object with local timezone values
+  return new Date(
+    parseInt(map.year),
+    parseInt(map.month) - 1,
+    parseInt(map.day),
+    parseInt(map.hour),
+    parseInt(map.minute),
+    parseInt(map.second)
+  );
 }
 
 /**
@@ -91,6 +118,27 @@ export function getLocalTodayRange() {
   end.setHours(23, 59, 59, 999);
   
   return { start, end };
+}
+
+/**
+ * Formats a Date object to YYYY-MM-DD string in local timezone.
+ * This matches the backend SQL: `(v_now_local AT TIME ZONE v_timezone)::DATE`
+ * 
+ * CRITICAL: Use this for all date comparisons with database DATE columns.
+ */
+export function formatDateLocal(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Returns today's date as YYYY-MM-DD string in local timezone.
+ * Convenience wrapper for formatDateLocal(getLocalNow()).
+ */
+export function getTodayLocal(): string {
+  return formatDateLocal(getLocalNow());
 }
 
 /**
