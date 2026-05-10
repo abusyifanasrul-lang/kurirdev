@@ -80,27 +80,37 @@ self.addEventListener('notificationclick', (event) => {
   )
 })
 
-self.addEventListener('install', () => {
-  self.skipWaiting()
-})
+self.addEventListener('install', (event) => {
+  console.log('🔧 [SW] Installing new service worker...');
+  self.skipWaiting();
+});
 
 self.addEventListener('activate', (event) => {
-  const CACHE_VERSION = 'v1.0.10'; // CRITICAL FIX: Changed cache strategy to NetworkFirst for HTML/JS/CSS
+  const CACHE_VERSION = 'v1.0.11'; // CRITICAL FIX: Added active update checking + detailed logging
   const CACHE_NAME = `kurirdev-${CACHE_VERSION}`;
+
+  console.log(`🔄 [SW] Activating with cache version: ${CACHE_VERSION}`);
 
   event.waitUntil(
     Promise.all([
       clients.claim(),
-      caches.keys().then(keys => 
-        Promise.all(
-          keys.filter(key => 
-            (key.startsWith('kurirdev-') && key !== CACHE_NAME) ||
-            key === 'static-resources' || // Clean up old cache
-            key === 'html-cache' // Clean up if exists from previous version
-          ).map(key => caches.delete(key))
-        )
-      )
-    ])
+      caches.keys().then(keys => {
+        console.log(`🗑️ [SW] Found ${keys.length} cache(s), cleaning old ones...`);
+        return Promise.all(
+          keys.filter(key => {
+            const shouldDelete = (key.startsWith('kurirdev-') && key !== CACHE_NAME) ||
+              key === 'static-resources' ||
+              key === 'html-cache';
+            if (shouldDelete) {
+              console.log(`🗑️ [SW] Deleting old cache: ${key}`);
+            }
+            return shouldDelete;
+          }).map(key => caches.delete(key))
+        );
+      })
+    ]).then(() => {
+      console.log(`✅ [SW] Activation complete with ${CACHE_VERSION}`);
+    })
   );
 });
 

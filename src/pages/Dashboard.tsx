@@ -212,15 +212,17 @@ export function Dashboard() {
       <div className="p-4 lg:p-8 space-y-6 lg:space-y-8">
 
         {/* WELCOME MESSAGE - TEST AUTO UPDATE */}
-        <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl p-6 text-white shadow-lg border-4 border-yellow-400">
-          <h2 className="text-3xl font-bold mb-2">🚀 AUTO-UPDATE BERHASIL!</h2>
-          <p className="text-purple-50 text-lg font-semibold">
-            Jika Anda melihat banner UNGU ini, berarti auto-update sudah berfungsi dengan baik!
+        <div className="bg-gradient-to-r from-red-600 to-orange-600 rounded-xl p-8 text-white shadow-2xl border-8 border-yellow-300 animate-pulse">
+          <h2 className="text-4xl font-black mb-3">🔥 UPDATE DETECTION TEST v1.0.11 🔥</h2>
+          <p className="text-red-50 text-xl font-bold mb-2">
+            BANNER MERAH INI MEMBUKTIKAN AUTO-UPDATE BERHASIL!
           </p>
-          <p className="text-xs text-purple-100 mt-3 bg-purple-800/50 p-2 rounded">
-            ✅ Cache strategy diperbaiki: NetworkFirst untuk HTML/JS/CSS<br/>
-            ✅ Browser sekarang akan selalu cek versi terbaru dari server<br/>
-            ✅ Update banner akan muncul otomatis saat ada perubahan
+          <p className="text-sm text-red-100 mt-3 bg-red-800/70 p-3 rounded font-mono">
+            ✅ Active update checking: registration.update() every 60s<br/>
+            ✅ Periodic waiting worker check: every 5s<br/>
+            ✅ Detailed console logging enabled<br/>
+            ✅ Cache version: v1.0.11<br/>
+            📊 Buka Console (F12) untuk melihat log detail
           </p>
         </div>
 

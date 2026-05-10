@@ -36,6 +36,21 @@ if ("serviceWorker" in navigator) {
     .then((registration) => {
       console.log("✅ Service Worker registered:", registration.scope);
       
+      // CRITICAL FIX: Check for updates every 60 seconds
+      // This ensures browser actively checks for new SW versions
+      setInterval(() => {
+        registration.update().then(() => {
+          console.log("🔄 Checked for service worker updates");
+        }).catch(err => {
+          console.error("❌ Update check failed:", err);
+        });
+      }, 60000); // Check every 60 seconds
+      
+      // Also check immediately on page load
+      registration.update().catch(err => {
+        console.error("❌ Initial update check failed:", err);
+      });
+      
       // Setup push notification listener
       navigator.serviceWorker.addEventListener("message", (event) => {
         if (event.data && event.data.type === "PUSH_NOTIFICATION") {

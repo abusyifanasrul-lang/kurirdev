@@ -126,31 +126,57 @@ function PWAUpdateBanner() {
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
 
+    console.log("🔍 [PWAUpdateBanner] Setting up update detection...");
+
     navigator.serviceWorker.ready.then(reg => {
+      console.log("✅ [PWAUpdateBanner] Service Worker ready, checking for updates...");
+      
+      // Check immediately if there's already a waiting worker
+      if (reg.waiting) {
+        console.log("⚠️ [PWAUpdateBanner] Found waiting worker immediately!");
+        setWaitingWorker(reg.waiting);
+      }
+      
+      // Listen for new updates
       reg.addEventListener('updatefound', () => {
+        console.log("🔔 [PWAUpdateBanner] Update found! New worker installing...");
         const newWorker = reg.installing;
         if (newWorker) {
           newWorker.addEventListener('statechange', () => {
+            console.log(`📊 [PWAUpdateBanner] Worker state changed to: ${newWorker.state}`);
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              console.log("✅ [PWAUpdateBanner] New worker installed and ready!");
               setWaitingWorker(newWorker);
             }
           });
         }
       });
-
-      if (reg.waiting) {
-        setWaitingWorker(reg.waiting);
-      }
-    }).catch(err => console.error("SW ready Check failed:", err));
-  }, []);
+      
+      // CRITICAL FIX: Periodically check for waiting worker
+      // This catches updates that might have been missed
+      const checkInterval = setInterval(() => {
+        if (reg.waiting && !waitingWorker) {
+          console.log("🔄 [PWAUpdateBanner] Periodic check found waiting worker!");
+          setWaitingWorker(reg.waiting);
+        }
+      }, 5000); // Check every 5 seconds
+      
+      return () => clearInterval(checkInterval);
+    }).catch(err => console.error("❌ [PWAUpdateBanner] SW ready check failed:", err));
+  }, [waitingWorker]);
 
   useEffect(() => {
     if (!waitingWorker) return;
 
+    console.log("🎯 [PWAUpdateBanner] Waiting worker detected, checking if should show banner...");
+
     const dismissedAt = localStorage.getItem('pwa_update_dismissed');
     if (dismissedAt) {
       const hoursAgo = (Date.now() - Number(dismissedAt)) / (1000 * 60 * 60);
-      if (hoursAgo < 6) return;
+      if (hoursAgo < 6) {
+        console.log(`⏰ [PWAUpdateBanner] Banner dismissed ${hoursAgo.toFixed(1)}h ago, waiting...`);
+        return;
+      }
     }
 
     if (isAuthenticated && user?.role === 'courier') {
@@ -158,14 +184,17 @@ function PWAUpdateBanner() {
         (o: any) => o.status === 'picked_up' || o.status === 'in_transit'
       );
       if (activeOrders.length > 0) {
+        console.log(`📦 [PWAUpdateBanner] Courier has ${activeOrders.length} active orders, delaying banner...`);
         return;
       }
     }
 
+    console.log("✅ [PWAUpdateBanner] Showing update banner!");
     setShowBanner(true);
-  }, [waitingWorker, isAuthenticated, user, activeOrdersByCourier]); // FIXED: Changed 'orders' to 'activeOrdersByCourier'
+  }, [waitingWorker, isAuthenticated, user, activeOrdersByCourier]);
 
   const handleUpdate = () => {
+    console.log("🔄 [PWAUpdateBanner] User clicked update, reloading...");
     if (waitingWorker) {
       waitingWorker.postMessage({ type: 'SKIP_WAITING' });
     }
@@ -177,6 +206,7 @@ function PWAUpdateBanner() {
   };
 
   const handleDismiss = () => {
+    console.log("❌ [PWAUpdateBanner] User dismissed banner");
     setShowBanner(false);
     localStorage.setItem('pwa_update_dismissed', String(Date.now()));
   };
