@@ -57,16 +57,17 @@ export function AttendanceWidget({ courierId, lateFineActive }: AttendanceWidget
     return null;
   }
 
-  // CRITICAL: Only show widget if shift is currently active
-  if (!isInShift) {
+  // CRITICAL: Show widget if courier is late OR has active fine
+  // Don't hide widget just because shift ended - fine might still be active
+  if (!isInShift && !lateFineActive) {
     return null;
   }
 
-  // Only show widget if courier is late
+  // Only show widget if courier is late OR has active fine
   const isLate = todayLog.status === 'late' || todayLog.status === 'late_minor' || todayLog.status === 'late_major' || lateFineActive;
   
-  // Hide widget if courier is on time
-  if (!isLate) {
+  // Hide widget if courier is on time and no active fine
+  if (!isLate && !lateFineActive) {
     return null;
   }
 
