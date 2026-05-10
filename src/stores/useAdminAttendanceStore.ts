@@ -52,6 +52,8 @@ export const useAdminAttendanceStore = create<AdminAttendanceStore>((set, get) =
     const day = String(start.getDate()).padStart(2, '0');
     const todayStr = `${year}-${month}-${day}`; // YYYY-MM-DD in local timezone
     
+    console.log('[AdminAttendance] Fetching logs for date:', todayStr);
+    
     const lastReset = localStorage.getItem('last_fine_reset');
     if (lastReset !== todayStr) {
       await supabase.rpc('reset_daily_fine_flags');
@@ -72,6 +74,7 @@ export const useAdminAttendanceStore = create<AdminAttendanceStore>((set, get) =
       .order('first_online_at', { ascending: false });
 
     if (!error && data) {
+      console.log('[AdminAttendance] Fetched logs:', data.length, 'records');
       set({
         logs: data.map((log: any) => ({
           id: log.id,
@@ -89,6 +92,8 @@ export const useAdminAttendanceStore = create<AdminAttendanceStore>((set, get) =
           shift_start_time: log.shifts?.start_time,
         }))
       });
+    } else if (error) {
+      console.error('[AdminAttendance] Error fetching logs:', error);
     }
     set({ isLoading: false });
   },
@@ -100,9 +105,15 @@ export const useAdminAttendanceStore = create<AdminAttendanceStore>((set, get) =
     const month = String(start.getMonth() + 1).padStart(2, '0');
     const day = String(start.getDate()).padStart(2, '0');
     const today = `${year}-${month}-${day}`; // YYYY-MM-DD in local timezone
+    
+    console.log('[AdminAttendance] Fetching missing couriers for date:', today);
+    
     const { data, error } = await supabase.rpc('get_missing_couriers', { p_date: today });
     if (!error && data) {
+      console.log('[AdminAttendance] Missing couriers:', data.length);
       set({ missingCouriers: data });
+    } else if (error) {
+      console.error('[AdminAttendance] Error fetching missing couriers:', error);
     }
   },
 
