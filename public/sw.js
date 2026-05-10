@@ -85,7 +85,7 @@ self.addEventListener('install', () => {
 })
 
 self.addEventListener('activate', (event) => {
-  const CACHE_VERSION = 'v1.0.8'; // INCREMENTED: Force cache clear for table sorting fix
+  const CACHE_VERSION = 'v1.0.9'; // INCREMENTED: Test auto-update with welcome message
   const CACHE_NAME = `kurirdev-${CACHE_VERSION}`;
 
   event.waitUntil(
