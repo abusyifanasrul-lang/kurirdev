@@ -23,7 +23,7 @@ interface MissingCourier {
   courier_name: string;
   shift_id: string;
   shift_name: string;
-  shift_start_time: string;
+  shift_start_time: string;  // TIME type from database
   minutes_late: number;
 }
 
