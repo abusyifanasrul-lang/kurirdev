@@ -150,8 +150,6 @@ export function Couriers() {
       <ChevronUp className="h-3 w-3 ml-1 text-teal-600" /> : 
       <ChevronDown className="h-3 w-3 ml-1 text-teal-600" />;
   };
-    return Array.from(map.values())
-  }, [weekOrders, orders, activeOrdersByCourier])
 
   useEffect(() => {
     if (couriers.length === 0) return
