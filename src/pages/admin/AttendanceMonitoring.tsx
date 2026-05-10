@@ -65,7 +65,7 @@ export function AttendanceMonitoring() {
       clearInterval(interval);
       unsubscribe();
     };
-  }, [fetchTodayLogs, fetchMissingCouriers, fetchShifts, subscribeToday]);
+  }, []); // ✅ Empty deps - only run once on mount
 
   // Pisahkan berdasarkan tingkat urgensi dan filter shift:
   const filteredMissing = missingCouriers.filter(c => 

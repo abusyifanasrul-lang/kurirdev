@@ -128,46 +128,51 @@ export const useAdminAttendanceStore = create<AdminAttendanceStore>((set, get) =
   },
 
   subscribeToday: () => {
-    // Get today's date in local timezone using standardized utility
-    const today = getTodayLocal();
-    
-    console.log('[AdminAttendance] Setting up realtime subscription for date:', today);
-    
-    const channel = supabase
-      .channel('attendance-today-v2')  // Changed channel name to force reconnect
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'shift_attendance',
-        // ✅ REMOVED filter - will filter in callback instead
-      }, (payload) => {
-        console.log('[AdminAttendance] Realtime event received:', payload);
-        
-        // Filter by date in callback
-        const recordDate = (payload.new as any)?.date || (payload.old as any)?.date;
-        console.log('[AdminAttendance] Record date:', recordDate, 'Expected:', today);
-        
-        if (recordDate === today) {
-          console.log('[AdminAttendance] Date matches - refreshing data');
-          // Saat ada perubahan attendance, refresh keduanya
-          get().fetchTodayLogs();
-          get().fetchMissingCouriers();
-        } else {
-          console.log('[AdminAttendance] Date mismatch - ignoring event');
-        }
-      })
-      .subscribe((status) => {
-        console.log('[AdminAttendance] Subscription status:', status);
-        if (status === 'SUBSCRIBED') {
-          console.log('[AdminAttendance] ✅ Successfully subscribed to realtime updates');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('[AdminAttendance] ❌ Subscription error');
-        }
-      });
+    try {
+      // Get today's date in local timezone using standardized utility
+      const today = getTodayLocal();
+      
+      console.log('[AdminAttendance] Setting up realtime subscription for date:', today);
+      
+      const channel = supabase
+        .channel('attendance-today-v3')  // Changed channel name again
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'shift_attendance',
+          // ✅ REMOVED filter - will filter in callback instead
+        }, (payload) => {
+          console.log('[AdminAttendance] Realtime event received:', payload);
+          
+          // Filter by date in callback
+          const recordDate = (payload.new as any)?.date || (payload.old as any)?.date;
+          console.log('[AdminAttendance] Record date:', recordDate, 'Expected:', today);
+          
+          if (recordDate === today) {
+            console.log('[AdminAttendance] Date matches - refreshing data');
+            // Saat ada perubahan attendance, refresh keduanya
+            get().fetchTodayLogs();
+            get().fetchMissingCouriers();
+          } else {
+            console.log('[AdminAttendance] Date mismatch - ignoring event');
+          }
+        })
+        .subscribe((status) => {
+          console.log('[AdminAttendance] Subscription status:', status);
+          if (status === 'SUBSCRIBED') {
+            console.log('[AdminAttendance] ✅ Successfully subscribed to realtime updates');
+          } else if (status === 'CHANNEL_ERROR') {
+            console.error('[AdminAttendance] ❌ Subscription error');
+          }
+        });
 
-    return () => {
-      console.log('[AdminAttendance] Cleaning up subscription');
-      supabase.removeChannel(channel);
-    };
+      return () => {
+        console.log('[AdminAttendance] Cleaning up subscription');
+        supabase.removeChannel(channel);
+      };
+    } catch (error) {
+      console.error('[AdminAttendance] Error setting up subscription:', error);
+      return () => {}; // Return empty cleanup function
+    }
   },
 }));
