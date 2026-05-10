@@ -160,6 +160,20 @@ serve(async (req) => {
             continue
           }
 
+          // If courier is late, set late_fine_active = true
+          if (status === 'late') {
+            const { error: profileUpdateError } = await supabase
+              .from('profiles')
+              .update({ late_fine_active: true })
+              .eq('id', courier.id)
+
+            if (profileUpdateError) {
+              console.error(`Error setting late_fine_active for ${courier.name}:`, profileUpdateError)
+            } else {
+              console.log(`✅ Set late_fine_active = true for ${courier.name}`)
+            }
+          }
+
           recordsCreated++
           console.log(`✅ Created ${status} attendance record for ${courier.name}`)
         }
@@ -204,6 +218,18 @@ serve(async (req) => {
           if (updateError) {
             console.error(`Error updating late_minutes for record ${record.id}:`, updateError)
             continue
+          }
+
+          // Also set late_fine_active = true for the courier
+          const { error: profileUpdateError } = await supabase
+            .from('profiles')
+            .update({ late_fine_active: true })
+            .eq('id', record.courier_id)
+
+          if (profileUpdateError) {
+            console.error(`Error setting late_fine_active for courier ${record.courier_id}:`, profileUpdateError)
+          } else {
+            console.log(`✅ Set late_fine_active = true for courier with ${lateMinutes} late minutes`)
           }
 
           recordsUpdated++

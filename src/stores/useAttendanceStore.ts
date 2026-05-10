@@ -25,6 +25,7 @@ interface AttendanceStore {
   fetchUnpaidAttendance: () => Promise<void>;
   fetchCourierAttendance: (courierId: string, limit?: number) => Promise<AttendanceLog[]>;
   settleAttendance: (id: string, adminId: string) => Promise<void>;
+  subscribeAttendance: (courierId: string) => () => void;
 }
 
 export const useAttendanceStore = create<AttendanceStore>((set, get) => ({
@@ -102,5 +103,42 @@ export const useAttendanceStore = create<AttendanceStore>((set, get) => ({
     if (!error) {
       await get().fetchUnpaidAttendance();
     }
+  },
+
+  subscribeAttendance: (courierId) => {
+    const { start } = getLocalTodayRange();
+    const year = start.getFullYear();
+    const month = String(start.getMonth() + 1).padStart(2, '0');
+    const day = String(start.getDate()).padStart(2, '0');
+    const today = `${year}-${month}-${day}`;
+
+    console.log('[AttendanceStore] Subscribing to attendance changes for courier:', courierId);
+
+    const subscription = supabase
+      .channel(`attendance_${courierId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to INSERT, UPDATE, DELETE
+          schema: 'public',
+          table: 'shift_attendance',
+          filter: `courier_id=eq.${courierId}`
+        },
+        (payload) => {
+          console.log('[AttendanceStore] Attendance change detected:', payload);
+          
+          // Re-fetch today's log when attendance changes
+          get().fetchTodayLog(courierId);
+        }
+      )
+      .subscribe((status) => {
+        console.log('[AttendanceStore] Subscription status:', status);
+      });
+
+    // Return unsubscribe function
+    return () => {
+      console.log('[AttendanceStore] Unsubscribing from attendance changes');
+      supabase.removeChannel(subscription);
+    };
   }
 }));

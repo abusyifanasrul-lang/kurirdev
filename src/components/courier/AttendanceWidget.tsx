@@ -10,14 +10,21 @@ interface AttendanceWidgetProps {
 
 export function AttendanceWidget({ courierId, lateFineActive }: AttendanceWidgetProps) {
   const navigate = useNavigate();
-  const { todayLog, isLoading, fetchTodayLog } = useAttendanceStore();
+  const { todayLog, isLoading, fetchTodayLog, subscribeAttendance } = useAttendanceStore();
   const [isInShift, setIsInShift] = useState(false);
 
   useEffect(() => {
     if (courierId) {
       fetchTodayLog(courierId);
+      
+      // Subscribe to realtime attendance changes
+      const unsubscribe = subscribeAttendance(courierId);
+      
+      return () => {
+        unsubscribe();
+      };
     }
-  }, [courierId, fetchTodayLog]);
+  }, [courierId, fetchTodayLog, subscribeAttendance]);
 
   // Check if currently in shift time
   useEffect(() => {
