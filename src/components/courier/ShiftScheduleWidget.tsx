@@ -44,51 +44,61 @@ export function ShiftScheduleWidget({ courierId }: ShiftScheduleWidgetProps) {
     fetchShiftInfo();
   }, [courierId]);
 
-  // Update countdown every second
+  // Update countdown in real-time
   useEffect(() => {
     if (!shiftInfo) return;
 
     const updateCountdown = () => {
       const now = new Date();
-      const currentTime = now.getHours() * 60 + now.getMinutes(); // minutes since midnight
+      const currentHour = now.getHours();
+      const currentMin = now.getMinutes();
+      const currentSec = now.getSeconds();
+      const currentTimeInSeconds = currentHour * 3600 + currentMin * 60 + currentSec;
 
       // Parse shift times
       const [startHour, startMin] = shiftInfo.start_time.split(':').map(Number);
       const [endHour, endMin] = shiftInfo.end_time.split(':').map(Number);
-      const shiftStart = startHour * 60 + startMin;
-      const shiftEnd = endHour * 60 + endMin;
+      const shiftStartInSeconds = startHour * 3600 + startMin * 60;
+      const shiftEndInSeconds = endHour * 3600 + endMin * 60;
 
       // Check if currently in shift
-      if (currentTime >= shiftStart && currentTime < shiftEnd) {
+      if (currentTimeInSeconds >= shiftStartInSeconds && currentTimeInSeconds < shiftEndInSeconds) {
         setIsInShift(true);
         setCountdown('');
       } else {
         setIsInShift(false);
 
-        // Calculate time until next shift start
-        let minutesUntilShift: number;
+        // Calculate seconds until next shift start
+        let secondsUntilShift: number;
         
-        if (currentTime < shiftStart) {
+        if (currentTimeInSeconds < shiftStartInSeconds) {
           // Shift is later today
-          minutesUntilShift = shiftStart - currentTime;
+          secondsUntilShift = shiftStartInSeconds - currentTimeInSeconds;
         } else {
           // Shift is tomorrow
-          minutesUntilShift = (24 * 60) - currentTime + shiftStart;
+          secondsUntilShift = (24 * 3600) - currentTimeInSeconds + shiftStartInSeconds;
         }
 
-        const hours = Math.floor(minutesUntilShift / 60);
-        const minutes = minutesUntilShift % 60;
+        const hours = Math.floor(secondsUntilShift / 3600);
+        const minutes = Math.floor((secondsUntilShift % 3600) / 60);
+        const seconds = secondsUntilShift % 60;
 
+        // Format countdown based on time remaining
         if (hours > 0) {
           setCountdown(`${hours}j ${minutes}m`);
+        } else if (minutes > 0) {
+          setCountdown(`${minutes}m ${seconds}d`);
         } else {
-          setCountdown(`${minutes}m`);
+          setCountdown(`${seconds}d`);
         }
       }
     };
 
+    // Initial update
     updateCountdown();
-    const interval = setInterval(updateCountdown, 60000); // Update every minute
+    
+    // Update every second for real-time countdown
+    const interval = setInterval(updateCountdown, 1000);
 
     return () => clearInterval(interval);
   }, [shiftInfo]);
