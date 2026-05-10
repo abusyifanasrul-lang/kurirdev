@@ -212,13 +212,15 @@ export function Dashboard() {
       <div className="p-4 lg:p-8 space-y-6 lg:space-y-8">
 
         {/* WELCOME MESSAGE - TEST AUTO UPDATE */}
-        <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-xl p-6 text-white shadow-lg">
-          <h2 className="text-2xl font-bold mb-2">🎉 Selamat Datang!</h2>
-          <p className="text-emerald-50">
-            Selamat datang di KurirMe Dashboard. Semoga hari Anda menyenangkan!
+        <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl p-6 text-white shadow-lg border-4 border-yellow-400">
+          <h2 className="text-3xl font-bold mb-2">🚀 AUTO-UPDATE BERHASIL!</h2>
+          <p className="text-purple-50 text-lg font-semibold">
+            Jika Anda melihat banner UNGU ini, berarti auto-update sudah berfungsi dengan baik!
           </p>
-          <p className="text-xs text-emerald-100 mt-2">
-            ✅ Auto-update test: Jika Anda melihat pesan ini, berarti auto-update berhasil!
+          <p className="text-xs text-purple-100 mt-3 bg-purple-800/50 p-2 rounded">
+            ✅ Cache strategy diperbaiki: NetworkFirst untuk HTML/JS/CSS<br/>
+            ✅ Browser sekarang akan selalu cek versi terbaru dari server<br/>
+            ✅ Update banner akan muncul otomatis saat ada perubahan
           </p>
         </div>
 

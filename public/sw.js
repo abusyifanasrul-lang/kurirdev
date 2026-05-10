@@ -85,7 +85,7 @@ self.addEventListener('install', () => {
 })
 
 self.addEventListener('activate', (event) => {
-  const CACHE_VERSION = 'v1.0.9'; // INCREMENTED: Test auto-update with welcome message
+  const CACHE_VERSION = 'v1.0.10'; // CRITICAL FIX: Changed cache strategy to NetworkFirst for HTML/JS/CSS
   const CACHE_NAME = `kurirdev-${CACHE_VERSION}`;
 
   event.waitUntil(
@@ -95,7 +95,8 @@ self.addEventListener('activate', (event) => {
         Promise.all(
           keys.filter(key => 
             (key.startsWith('kurirdev-') && key !== CACHE_NAME) ||
-            key === 'static-resources' // Clean up the old problematic cache
+            key === 'static-resources' || // Clean up old cache
+            key === 'html-cache' // Clean up if exists from previous version
           ).map(key => caches.delete(key))
         )
       )
@@ -114,7 +115,39 @@ if (workbox) {
   // Configure Workbox
   workbox.setConfig({ debug: false });
 
-  // 1. Google Fonts Cache (CacheFirst)
+  // CRITICAL FIX: Use NetworkFirst for HTML/JS/CSS to enable auto-updates
+  // This ensures browser checks network first, detects new versions, and triggers update banner
+  
+  // 1. HTML Documents (NetworkFirst) - MUST check network to detect updates
+  workbox.routing.registerRoute(
+    ({request}) => request.destination === 'document',
+    new workbox.strategies.NetworkFirst({
+      cacheName: 'html-cache',
+      plugins: [
+        new workbox.expiration.ExpirationPlugin({
+          maxEntries: 10,
+          maxAgeSeconds: 60 * 60 * 24, // 1 day
+        }),
+      ],
+      networkTimeoutSeconds: 3,
+    })
+  );
+
+  // 2. JavaScript & CSS (StaleWhileRevalidate) - Serve cache but update in background
+  workbox.routing.registerRoute(
+    ({request}) => request.destination === 'script' || request.destination === 'style',
+    new workbox.strategies.StaleWhileRevalidate({
+      cacheName: 'static-resources',
+      plugins: [
+        new workbox.expiration.ExpirationPlugin({
+          maxEntries: 60,
+          maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days
+        }),
+      ],
+    })
+  );
+
+  // 3. Google Fonts Cache (CacheFirst)
   workbox.routing.registerRoute(
     ({url}) => url.origin === 'https://fonts.googleapis.com' || url.origin === 'https://fonts.gstatic.com',
     new workbox.strategies.CacheFirst({
@@ -131,7 +164,7 @@ if (workbox) {
     })
   );
 
-  // 2. Images Cache (CacheFirst)
+  // 4. Images Cache (CacheFirst)
   workbox.routing.registerRoute(
     ({request}) => request.destination === 'image',
     new workbox.strategies.CacheFirst({
@@ -145,7 +178,7 @@ if (workbox) {
     })
   );
 
-  // 3. Audio / Media Cache (CacheFirst)
+  // 5. Audio / Media Cache (CacheFirst)
   workbox.routing.registerRoute(
     ({request}) => request.destination === 'audio' || request.destination === 'video',
     new workbox.strategies.CacheFirst({
@@ -159,16 +192,9 @@ if (workbox) {
     })
   );
 
-  // 4. API / External Services (NetworkFirst)
+  // 6. API / External Services (NetworkFirst)
   workbox.routing.registerRoute(
-    ({request, url}) => {
-      // Bypass navigation requests and static assets
-      if (['document', 'script', 'style', 'image', 'font'].includes(request.destination)) {
-        return false;
-      }
-      // Match only specific external API requests
-      return url.origin.includes('supabase.co');
-    },
+    ({url}) => url.origin.includes('supabase.co'),
     new workbox.strategies.NetworkFirst({
       cacheName: 'api-cache',
       plugins: [
