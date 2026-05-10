@@ -62,7 +62,10 @@ v_start_minute := LPAD(EXTRACT(MINUTE FROM v_start_utc)::TEXT, 2, '0');
 
 ## Deployment
 
-Migration applied: `fix_cron_timezone_conversion`
+Migrations applied:
+1. `fix_cron_timezone_conversion` - Fixed timezone conversion in sync_shift_cron_jobs()
+2. `fix_reminder_functions_column_name` - Fixed column name: full_name → name
+3. `fix_reminder_functions_null_day_off` - Fixed NULL day_off handling
 
 ```sql
 SELECT public.sync_shift_cron_jobs();
@@ -70,6 +73,12 @@ SELECT public.sync_shift_cron_jobs();
 ```
 
 All 24 cron jobs (6 shifts × 4 jobs each) successfully updated with correct UTC schedules.
+
+### Additional Fixes
+
+**Column Name Error**: Reminder functions were using `full_name` column which doesn't exist in `profiles` table. Fixed to use `name` column.
+
+**NULL day_off Bug**: Condition `day_off != 'Sunday'` returns NULL when `day_off` is NULL, causing couriers without day_off to be excluded. Fixed with: `(day_off IS NULL OR day_off != TO_CHAR(CURRENT_DATE, 'Day'))`
 
 ## Testing
 
