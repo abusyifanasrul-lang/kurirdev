@@ -138,7 +138,7 @@ export const useUserStore = create<UserState>()((set, get) => ({
   },
   
   fetchProfile: async (id: string) => {
-    const { data: profile, error } = await supabase.from('profiles').select('*').eq('id', id).single()
+    const { data: profile, error } = await supabase.from('profiles').select('*').eq('id', id).maybeSingle()
     if (error || !profile) return
     
     const user = mapProfileToUser(profile)

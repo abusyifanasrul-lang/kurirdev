@@ -262,9 +262,15 @@ export const useSettingsStore = create<SettingsStore>()(
       },
 
       fetchSettings: async () => {
-        const { data, error } = await supabase.from('settings').select('*').single() as { data: any, error: any }
-        if (error || !data) {
+        const { data, error } = await supabase.from('settings').select('*').maybeSingle() as { data: any, error: any }
+        
+        if (error) {
           console.error('[SettingsStore] fetchSettings error:', error);
+          return;
+        }
+        
+        if (!data) {
+          console.warn('[SettingsStore] No settings found in database, using defaults');
           return;
         }
         
