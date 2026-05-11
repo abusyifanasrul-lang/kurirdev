@@ -125,6 +125,12 @@ export function Settings() {
   const syncSettingsToServer = async () => {
     try {
       const state = useSettingsStore.getState();
+      console.log('[Settings] Syncing to server:', {
+        commission_type: state.commission_type,
+        commission_rate: state.commission_rate,
+        commission_threshold: state.commission_threshold
+      });
+      
       const { error } = await (supabase
         .from('settings') as any)
         .update({
@@ -142,9 +148,15 @@ export function Settings() {
         } as any)
         .eq('id', 'global');
         
-      if (error) throw error;
+      if (error) {
+        console.error('[Settings] Sync error:', error);
+        throw error;
+      }
+      
+      console.log('[Settings] Sync successful');
     } catch (err) {
       console.error('Failed to sync settings to Supabase:', err);
+      throw err; // Re-throw to show error to user
     }
   };
 
@@ -191,9 +203,15 @@ export function Settings() {
   };
 
   const handleSaveBusinessSettings = async (data: any) => {
-    updateSettings(data);
-    await syncSettingsToServer();
-    showMessage('success', 'Pengaturan bisnis berhasil disimpan!');
+    try {
+      console.log('[Settings] Saving business settings:', data);
+      updateSettings(data);
+      await syncSettingsToServer();
+      showMessage('success', 'Pengaturan bisnis berhasil disimpan!');
+    } catch (err) {
+      console.error('[Settings] Failed to save:', err);
+      showMessage('error', 'Gagal menyimpan pengaturan. Silakan coba lagi.');
+    }
   };
 
   const handleResync = async () => {
