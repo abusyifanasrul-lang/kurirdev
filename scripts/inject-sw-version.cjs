@@ -34,6 +34,12 @@ if (!fs.existsSync(templatePath)) {
   process.exit(1);
 }
 
+// ✅ CRITICAL FIX: Delete existing sw.js to ensure fresh generation
+if (fs.existsSync(outputPath)) {
+  console.log(`🗑️  [inject-sw-version] Deleting existing sw.js to force regeneration...`);
+  fs.unlinkSync(outputPath);
+}
+
 // Read template
 let swContent = fs.readFileSync(templatePath, 'utf8');
 
@@ -50,4 +56,5 @@ if (originalContent === swContent) {
 } else {
   console.log(`✅ [inject-sw-version] Successfully wrote sw.js with version: ${version}`);
   console.log(`✅ [inject-sw-version] Output path: ${outputPath}`);
+  console.log(`✅ [inject-sw-version] File size: ${fs.statSync(outputPath).size} bytes`);
 }
