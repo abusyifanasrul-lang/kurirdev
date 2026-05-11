@@ -263,7 +263,17 @@ export const useSettingsStore = create<SettingsStore>()(
 
       fetchSettings: async () => {
         const { data, error } = await supabase.from('settings').select('*').single() as { data: any, error: any }
-        if (error || !data) return
+        if (error || !data) {
+          console.error('[SettingsStore] fetchSettings error:', error);
+          return;
+        }
+        
+        console.log('[SettingsStore] Fetched from DB:', {
+          commission_type: data.commission_type,
+          commission_rate: data.commission_rate,
+          commission_threshold: data.commission_threshold
+        });
+        
         set((state) => ({
           ...state,
           commission_rate: data.commission_rate,
@@ -278,6 +288,10 @@ export const useSettingsStore = create<SettingsStore>()(
           fine_alpha_amount: data.fine_alpha_amount ?? 50000,
           billing_start_day: data.billing_start_day ?? 1
         }))
+        
+        console.log('[SettingsStore] State updated to:', {
+          commission_type: useSettingsStore.getState().commission_type
+        });
       },
 
       subscribeSettings: () => {
