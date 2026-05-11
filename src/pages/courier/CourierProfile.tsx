@@ -655,15 +655,12 @@ export function CourierProfile() {
                 if (permissions.location === 'prompt') {
                   await requestBackgroundLocation();
                   await checkPermissions();
-                } else if (permissions.location === 'denied') {
+                } else {
+                  // Always open settings for granted/denied to allow re-check or manage
                   await openSettings();
                 }
               }}
-              disabled={permissions.location === 'granted'}
-              className={cn(
-                "w-full flex items-center justify-between p-4 transition-colors text-left",
-                permissions.location === 'granted' ? "cursor-default" : "hover:bg-gray-50 active:bg-gray-100"
-              )}
+              className="w-full flex items-center justify-between p-4 transition-colors text-left hover:bg-gray-50 active:bg-gray-100"
             >
               <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
@@ -684,22 +681,15 @@ export function CourierProfile() {
                     {permissions.location === 'granted' ? '✅ Diizinkan' :
                      permissions.location === 'denied' ? '❌ Diblokir' : '⚠️ Belum diizinkan'}
                   </p>
-                  {permissions.location === 'prompt' && (
-                    <p className="text-xs text-gray-500 mt-0.5">Ketuk untuk mengaktifkan</p>
-                  )}
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {permissions.location === 'granted' ? 'Ketuk untuk buka pengaturan' : 'Ketuk untuk mengaktifkan'}
+                  </p>
                 </div>
               </div>
-              {permissions.location === 'denied' && (
-                <div className="flex items-center gap-1 text-xs font-semibold text-red-600 bg-red-50 px-3 py-1.5 rounded-full">
-                  <SettingsIcon className="h-3 w-3" />
-                  Buka
-                </div>
-              )}
-              {permissions.location === 'prompt' && (
-                <div className="flex items-center gap-1 text-xs font-semibold text-yellow-600 bg-yellow-50 px-3 py-1.5 rounded-full">
-                  Izinkan
-                </div>
-              )}
+              <div className="flex items-center gap-1 text-xs font-semibold text-gray-600 bg-gray-50 px-3 py-1.5 rounded-full">
+                <SettingsIcon className="h-3 w-3" />
+                {permissions.location === 'prompt' ? 'Izinkan' : 'Buka'}
+              </div>
             </button>
 
             {permissions.location === 'denied' && (
