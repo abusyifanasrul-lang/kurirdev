@@ -427,6 +427,11 @@ export function CourierEarnings() {
                             <div className="flex flex-col">
                               <span className="text-[9px] text-gray-400 font-bold uppercase tracking-mobile mb-0.5">Standard Fee</span>
                               <span className="text-xs font-bold text-gray-900 whitespace-nowrap">{formatCurrency(order.total_fee || 0)}</span>
+                              {(order as any).fine_deducted > 0 && (
+                                <span className="text-[9px] text-red-600 font-bold mt-0.5">
+                                  Denda: -{formatCurrency((order as any).fine_deducted)}
+                                </span>
+                              )}
                             </div>
                             {courierEarning > 0 && (
                               <div className="text-right flex flex-col items-end">

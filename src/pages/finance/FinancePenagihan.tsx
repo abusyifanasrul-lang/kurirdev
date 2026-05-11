@@ -640,6 +640,9 @@ export function FinancePenagihan() {
                                       <TableCell>{formatCurrency(order.total_fee)}</TableCell>
                                       <TableCell className="font-medium text-amber-700">
                                         {formatCurrency(getAdminEarning(order))}
+                                        {(order as any).fine_deducted > 0 && (
+                                          <span className="text-[10px] text-gray-500 ml-1">(include denda)</span>
+                                        )}
                                       </TableCell>
                                       <TableCell className="font-medium text-red-600">
                                         {(order as any).fine_deducted > 0 
