@@ -54,10 +54,17 @@ export function AttendanceMonitoring() {
     fetchMissingCouriers();
     fetchShifts();
 
-    // Realtime subscription only - no polling
+    // Check for missing couriers every 60 seconds
+    // This updates the warning panel when shifts start
+    const missingCheckInterval = setInterval(() => {
+      fetchMissingCouriers();
+    }, 60_000); // 60 seconds
+
+    // Realtime subscription for attendance records
     const unsubscribe = subscribeToday();
 
     return () => {
+      clearInterval(missingCheckInterval);
       unsubscribe();
     };
   }, []); // ✅ Empty deps - only run once on mount
