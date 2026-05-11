@@ -156,12 +156,18 @@ function PWAUpdateBanner() {
         });
       });
       
-      // ✅ FIX BUG #4: checkInterval pakai ref, bukan closure atas waitingWorker
+      // ✅ FIX: Panggil reg.update() secara periodik untuk check update dari server
       checkInterval = setInterval(() => {
+        console.log("🔄 [PWAUpdateBanner] Checking for updates...");
+        reg.update().catch(err => console.error("❌ [PWAUpdateBanner] Update check failed:", err));
+        
         if (reg.waiting) {
           setWaitingWorker(prev => prev ?? reg.waiting); // Hanya set jika belum ada
         }
-      }, 5000); // Check every 5 seconds
+      }, 60000); // Check every 60 seconds (1 minute)
+      
+      // Check immediately on mount
+      reg.update().catch(err => console.error("❌ [PWAUpdateBanner] Initial update check failed:", err));
     }).catch(err => console.error("❌ [PWAUpdateBanner] SW ready check failed:", err));
 
     // ✅ FIX BUG #4: cleanup langsung di return useEffect, bukan di dalam .then()
