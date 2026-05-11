@@ -131,6 +131,7 @@ export const useAdminAttendanceStore = create<AdminAttendanceStore>((set, get) =
       
       console.log('[AdminAttendance] Setting up realtime subscription for date:', today);
       console.log('[AdminAttendance] Channel name:', channelName);
+      console.log('[AdminAttendance] Timestamp:', new Date().toISOString());
       
       const channel = supabase
         .channel(channelName)
@@ -140,6 +141,8 @@ export const useAdminAttendanceStore = create<AdminAttendanceStore>((set, get) =
           table: 'shift_attendance',
         }, (payload) => {
           console.log('[AdminAttendance] 🔥 Realtime event received:', payload);
+          console.log('[AdminAttendance] Event type:', payload.eventType);
+          console.log('[AdminAttendance] Timestamp:', new Date().toISOString());
           
           // Filter by date in callback
           const recordDate = (payload.new as any)?.date || (payload.old as any)?.date;
@@ -154,10 +157,15 @@ export const useAdminAttendanceStore = create<AdminAttendanceStore>((set, get) =
             console.log('[AdminAttendance] ⏭️ Date mismatch - ignoring event');
           }
         })
-        .subscribe((status) => {
+        .subscribe((status, err) => {
           console.log('[AdminAttendance] Subscription status:', status);
+          console.log('[AdminAttendance] Timestamp:', new Date().toISOString());
+          if (err) {
+            console.error('[AdminAttendance] Subscription error:', err);
+          }
           if (status === 'SUBSCRIBED') {
             console.log('[AdminAttendance] ✅ Successfully subscribed to realtime updates');
+            console.log('[AdminAttendance] Listening for changes on shift_attendance table');
           } else if (status === 'CHANNEL_ERROR') {
             console.error('[AdminAttendance] ❌ Subscription error');
           } else if (status === 'CLOSED') {
@@ -167,6 +175,7 @@ export const useAdminAttendanceStore = create<AdminAttendanceStore>((set, get) =
 
       return () => {
         console.log('[AdminAttendance] 🧹 Cleaning up subscription');
+        console.log('[AdminAttendance] Timestamp:', new Date().toISOString());
         supabase.removeChannel(channel);
       };
     } catch (error) {
