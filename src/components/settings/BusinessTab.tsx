@@ -67,35 +67,94 @@ export function BusinessTab(props: BusinessTabProps) {
     <div className="space-y-4">
       <Card className="border-none shadow-sm bg-white overflow-hidden">
         {/* Header & Segmented Control */}
-        <div className="p-5 border-b border-gray-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-bold text-gray-900">Komisi & Bagi Hasil</h2>
-            <p className="text-xs text-gray-500">Atur porsi pendapatan antara kurir dan sistem.</p>
+        <div className="p-5 border-b border-gray-50 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">Komisi & Bagi Hasil</h2>
+              <p className="text-xs text-gray-500">Atur porsi pendapatan antara kurir dan sistem.</p>
+            </div>
+            
+            <div className="bg-gray-100 p-1 rounded-xl flex w-fit h-fit self-start sm:self-center">
+              <button
+                onClick={() => setForm(prev => ({ ...prev, commission_type: 'percentage' }))}
+                className={`relative flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+                  form.commission_type === 'percentage' 
+                  ? 'bg-white text-teal-700 shadow-md' 
+                  : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <Percent className="w-3.5 h-3.5" />
+                Persentase
+                {form.commission_type === 'percentage' && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-emerald-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+                    AKTIF
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => setForm(prev => ({ ...prev, commission_type: 'flat' }))}
+                className={`relative flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+                  form.commission_type === 'flat' 
+                  ? 'bg-white text-teal-700 shadow-md' 
+                  : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <Wallet className="w-3.5 h-3.5" />
+                Sesuai Ribuan
+                {form.commission_type === 'flat' && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-emerald-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+                    AKTIF
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
-          
-          <div className="bg-gray-100 p-1 rounded-xl flex w-fit h-fit self-start sm:self-center">
-            <button
-              onClick={() => setForm(prev => ({ ...prev, commission_type: 'percentage' }))}
-              className={`flex items-center gap-2 px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${
+
+          {/* Active Mode Indicator */}
+          <div className={`flex items-start gap-3 p-3 rounded-xl border-2 ${
+            form.commission_type === 'percentage' 
+            ? 'bg-teal-50 border-teal-200' 
+            : 'bg-amber-50 border-amber-200'
+          }`}>
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+              form.commission_type === 'percentage' 
+              ? 'bg-teal-100 text-teal-600' 
+              : 'bg-amber-100 text-amber-600'
+            }`}>
+              {form.commission_type === 'percentage' ? (
+                <Percent className="w-4 h-4" />
+              ) : (
+                <Wallet className="w-4 h-4" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className={`text-xs font-black uppercase tracking-wider mb-1 ${
                 form.commission_type === 'percentage' 
-                ? 'bg-white text-teal-700 shadow-sm' 
-                : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <Percent className="w-3.5 h-3.5" />
-              Persentase
-            </button>
-            <button
-              onClick={() => setForm(prev => ({ ...prev, commission_type: 'flat' }))}
-              className={`flex items-center gap-2 px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                form.commission_type === 'flat' 
-                ? 'bg-white text-teal-700 shadow-sm' 
-                : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <Wallet className="w-3.5 h-3.5" />
-              Sesuai Ribuan
-            </button>
+                ? 'text-teal-700' 
+                : 'text-amber-700'
+              }`}>
+                Mode Aktif: {form.commission_type === 'percentage' ? 'Persentase' : 'Potong Sesuai Ribuan'}
+              </p>
+              <p className={`text-[11px] leading-relaxed ${
+                form.commission_type === 'percentage' 
+                ? 'text-teal-600' 
+                : 'text-amber-600'
+              }`}>
+                {form.commission_type === 'percentage' ? (
+                  <>
+                    Kurir mendapat <strong>{form.commission_rate}%</strong> dari ongkir, 
+                    Admin mendapat <strong>{100 - form.commission_rate}%</strong>. 
+                    Ongkir ≤ {formatCurrency(form.commission_threshold)} tidak dipotong.
+                  </>
+                ) : (
+                  <>
+                    Admin potong <strong>Rp 1.000 per Rp 10.000</strong> dari ongkir. 
+                    Ongkir ≤ {formatCurrency(form.commission_threshold)} tidak dipotong. 
+                    Contoh: Ongkir Rp 15.000 → Potong Rp 1.000.
+                  </>
+                )}
+              </p>
+            </div>
           </div>
         </div>
 
