@@ -123,61 +123,92 @@ function PWAUpdateBanner() {
   const [showBanner, setShowBanner] = useState(false);
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
 
-  // ✅ FIX BUG #4 & #5: Setup listener hanya sekali, cleanup di return useEffect
+  // ✅ FIX: Gunakan ref untuk menyimpan registration agar tidak re-create listener
+  const regRef = useRef<ServiceWorkerRegistration | null>(null);
+
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
 
+    let checkInterval: ReturnType<typeof setInterval>;
+    let mounted = true;
+
     console.log("🔍 [PWAUpdateBanner] Setting up update detection...");
 
-    let checkInterval: ReturnType<typeof setInterval>;
-
     navigator.serviceWorker.ready.then(reg => {
+      if (!mounted) return;
+      regRef.current = reg;
+
       console.log("✅ [PWAUpdateBanner] Service Worker ready, checking for updates...");
-      
-      // Check immediately if there's already a waiting worker
+
+      const trySetWaiting = (worker: ServiceWorker | null) => {
+        if (worker && mounted) {
+          setWaitingWorker(worker);
+        }
+      };
+
+      // Cek jika sudah ada waiting worker saat komponen mount
       if (reg.waiting) {
         console.log("⚠️ [PWAUpdateBanner] Found waiting worker immediately!");
-        setWaitingWorker(reg.waiting);
+        trySetWaiting(reg.waiting);
         return; // Sudah ada waiting worker, tidak perlu setup listener
       }
-      
-      // Listen for new updates
-      reg.addEventListener('updatefound', () => {
+
+      // Cek juga yang sedang installing (mungkin belum selesai)
+      if (reg.installing) {
+        reg.installing.addEventListener('statechange', function(this: ServiceWorker) {
+          console.log(`📊 [PWAUpdateBanner] Installing worker state: ${this.state}`);
+          if (this.state === 'installed' && navigator.serviceWorker.controller) {
+            console.log("✅ [PWAUpdateBanner] Installing worker now installed!");
+            trySetWaiting(this);
+          }
+        });
+      }
+
+      const handleUpdateFound = () => {
         console.log("🔔 [PWAUpdateBanner] Update found! New worker installing...");
         const newWorker = reg.installing;
         if (!newWorker) return;
         
-        newWorker.addEventListener('statechange', () => {
-          console.log(`📊 [PWAUpdateBanner] Worker state changed to: ${newWorker.state}`);
-          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+        newWorker.addEventListener('statechange', function(this: ServiceWorker) {
+          console.log(`📊 [PWAUpdateBanner] New worker state: ${this.state}`);
+          if (this.state === 'installed' && navigator.serviceWorker.controller) {
             console.log("✅ [PWAUpdateBanner] New worker installed and ready!");
-            setWaitingWorker(newWorker);
+            trySetWaiting(this);
           }
         });
-      });
-      
-      // ✅ FIX: Panggil reg.update() secara periodik untuk check update dari server
+      };
+
+      reg.addEventListener('updatefound', handleUpdateFound);
+
+      // Polling backup + periodic update check
       checkInterval = setInterval(() => {
-        console.log("🔄 [PWAUpdateBanner] Checking for updates...");
+        console.log("🔄 [PWAUpdateBanner] Periodic update check...");
         reg.update().catch(err => console.error("❌ [PWAUpdateBanner] Update check failed:", err));
         
-        if (reg.waiting) {
-          setWaitingWorker(prev => prev ?? reg.waiting); // Hanya set jika belum ada
+        if (reg.waiting && !regRef.current?.installing) {
+          trySetWaiting(reg.waiting);
         }
-      }, 60000); // Check every 60 seconds (1 minute)
-      
+      }, 60000); // Check every 60 seconds
+
       // Check immediately on mount
       reg.update().catch(err => console.error("❌ [PWAUpdateBanner] Initial update check failed:", err));
+
+      // ✅ FIX: cleanup LANGSUNG di return, bukan di dalam .then()
+      return () => {
+        reg.removeEventListener('updatefound', handleUpdateFound);
+        clearInterval(checkInterval);
+        console.log("🧹 [PWAUpdateBanner] Cleanup: removed listener and cleared interval");
+      };
     }).catch(err => console.error("❌ [PWAUpdateBanner] SW ready check failed:", err));
 
-    // ✅ FIX BUG #4: cleanup langsung di return useEffect, bukan di dalam .then()
+    // ✅ FIX: cleanup untuk async case (komponen unmount sebelum .then() resolve)
     return () => {
+      mounted = false;
       if (checkInterval) {
         clearInterval(checkInterval);
-        console.log("🧹 [PWAUpdateBanner] Cleanup: cleared check interval");
       }
     };
-  }, []); // ✅ FIX BUG #5: dependency array kosong — hanya setup sekali
+  }, []); // ✅ FIX: dependency array KOSONG — hanya setup sekali
 
   useEffect(() => {
     if (!waitingWorker) return;
@@ -186,11 +217,20 @@ function PWAUpdateBanner() {
 
     const dismissedAt = localStorage.getItem('pwa_update_dismissed');
     if (dismissedAt) {
-      const hoursAgo = (Date.now() - Number(dismissedAt)) / (1000 * 60 * 60);
-      if (hoursAgo < 6) {
-        console.log(`⏰ [PWAUpdateBanner] Banner dismissed ${hoursAgo.toFixed(1)}h ago, waiting...`);
-        return;
+      // ✅ FIX: Simpan juga SW URL yang dismissed, bukan hanya waktu
+      // Dengan begitu SW baru dari deploy berbeda tetap akan muncul
+      const dismissedSW = localStorage.getItem('pwa_update_dismissed_sw');
+      if (dismissedSW === waitingWorker.scriptURL) {
+        const hoursAgo = (Date.now() - Number(dismissedAt)) / (1000 * 60 * 60);
+        if (hoursAgo < 6) {
+          console.log(`⏰ [PWAUpdateBanner] Same SW dismissed ${hoursAgo.toFixed(1)}h ago, waiting...`);
+          return;
+        }
       }
+      // SW berbeda (deploy baru) → hapus dismiss lama, tampilkan banner
+      console.log("🆕 [PWAUpdateBanner] New SW detected, clearing old dismiss");
+      localStorage.removeItem('pwa_update_dismissed');
+      localStorage.removeItem('pwa_update_dismissed_sw');
     }
 
     if (isAuthenticated && user?.role === 'courier') {
@@ -213,16 +253,23 @@ function PWAUpdateBanner() {
       waitingWorker.postMessage({ type: 'SKIP_WAITING' });
     }
     setShowBanner(false);
+    setWaitingWorker(null);
     localStorage.removeItem('pwa_update_dismissed');
+    localStorage.removeItem('pwa_update_dismissed_sw');
     setTimeout(() => {
       window.location.reload();
-    }, 500);
+    }, 300);
   };
 
   const handleDismiss = () => {
     console.log("❌ [PWAUpdateBanner] User dismissed banner");
     setShowBanner(false);
+    // ✅ FIX: Simpan scriptURL SW yang di-dismiss agar deploy baru tetap muncul
     localStorage.setItem('pwa_update_dismissed', String(Date.now()));
+    if (waitingWorker) {
+      localStorage.setItem('pwa_update_dismissed_sw', waitingWorker.scriptURL);
+      console.log(`📝 [PWAUpdateBanner] Dismissed SW: ${waitingWorker.scriptURL}`);
+    }
   };
 
   if (!showBanner) return null;
