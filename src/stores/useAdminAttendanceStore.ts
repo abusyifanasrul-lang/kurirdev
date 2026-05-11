@@ -47,8 +47,6 @@ export const useAdminAttendanceStore = create<AdminAttendanceStore>((set, get) =
     // Get today's date in local timezone using standardized utility
     const today = getTodayLocal();
     
-    console.log('[AdminAttendance] Fetching logs for date:', today);
-    
     // Step 5: Reset harian late_fine_active
     const lastReset = localStorage.getItem('last_fine_reset');
     if (lastReset !== today) {
@@ -69,7 +67,6 @@ export const useAdminAttendanceStore = create<AdminAttendanceStore>((set, get) =
       .order('first_online_at', { ascending: false });
 
     if (!error && data) {
-      console.log('[AdminAttendance] Fetched logs:', data.length, 'records');
       set({
         logs: data.map((log: any) => ({
           id: log.id,
@@ -97,11 +94,8 @@ export const useAdminAttendanceStore = create<AdminAttendanceStore>((set, get) =
     // Get today's date in local timezone using standardized utility
     const today = getTodayLocal();
     
-    console.log('[AdminAttendance] Fetching missing couriers for date:', today);
-    
     const { data, error } = await supabase.rpc('get_missing_couriers', { p_date: today });
     if (!error && data) {
-      console.log('[AdminAttendance] Missing couriers:', data.length);
       set({ missingCouriers: data });
     } else if (error) {
       console.error('[AdminAttendance] Error fetching missing couriers:', error);

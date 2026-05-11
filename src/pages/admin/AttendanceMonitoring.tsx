@@ -54,17 +54,10 @@ export function AttendanceMonitoring() {
     fetchMissingCouriers();
     fetchShifts();
 
-    // Refresh setiap 5 detik untuk update minutes_late secara realtime
-    // Also refresh logs to catch new check-ins faster
-    const interval = setInterval(() => {
-      fetchMissingCouriers();
-      fetchTodayLogs();
-    }, 5_000);
-
+    // Realtime subscription only - no polling
     const unsubscribe = subscribeToday();
 
     return () => {
-      clearInterval(interval);
       unsubscribe();
     };
   }, []); // ✅ Empty deps - only run once on mount
