@@ -237,6 +237,52 @@ serve(async (req) => {
       }
     }
 
+    // ============================================================================
+    // AUTO-ALPHA DETECTION: Mark couriers as alpha when shift ends
+    // ============================================================================
+    
+    // Check if any shift is ending now (within 1 minute window)
+    for (const shift of shifts || []) {
+      const shiftEndTime = shift.end_time.slice(0, 8) // HH:MM:SS
+      
+      // Calculate shift end datetime
+      let shiftEndDatetime = new Date(`${currentDate}T${shiftEndTime}`)
+      
+      // Handle overnight shifts
+      if (shift.is_overnight) {
+        shiftEndDatetime = new Date(shiftEndDatetime.getTime() + 24 * 60 * 60 * 1000)
+      }
+      
+      // Check if shift is ending now (within 1 minute window)
+      const endTimeDiff = Math.abs(
+        currentTimestamp.getTime() - shiftEndDatetime.getTime()
+      ) / 1000 / 60 // difference in minutes
+
+      if (endTimeDiff <= 1) {
+        console.log(`Shift ${shift.name} is ending now at ${shiftEndTime}. Processing alpha detection...`)
+
+        // Mark couriers who never checked in as alpha
+        const { data: alphaData, error: alphaError } = await supabase
+          .from('shift_attendance')
+          .update({ 
+            status: 'alpha',
+            late_minutes: Math.floor((shiftEndDatetime.getTime() - new Date(`${currentDate}T${shift.start_time}`).getTime()) / 1000 / 60)
+          })
+          .eq('date', currentDate)
+          .eq('shift_id', shift.id)
+          .is('first_online_at', null)
+          .eq('status', 'late')
+          .select('id')
+
+        if (alphaError) {
+          console.error(`Error marking alpha for shift ${shift.name}:`, alphaError)
+        } else {
+          const alphaCount = alphaData?.length || 0
+          console.log(`✅ Marked ${alphaCount} couriers as alpha for shift ${shift.name}`)
+        }
+      }
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true,

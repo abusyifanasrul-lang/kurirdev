@@ -16,11 +16,13 @@ interface BusinessTabProps {
     commission_threshold: number; 
     commission_type: 'percentage' | 'flat';
     fine_late_minor_amount?: number;
+    fine_late_minor_minutes?: number;
     fine_late_major_minutes?: number;
     fine_late_major_amount?: number;
     fine_alpha_amount?: number;
   }) => Promise<void>;
   fine_late_minor_amount?: number;
+  fine_late_minor_minutes?: number;
   fine_late_major_minutes?: number;
   fine_late_major_amount?: number;
   fine_alpha_amount?: number;
@@ -46,6 +48,7 @@ export function BusinessTab(props: BusinessTabProps) {
     commission_threshold: initialThreshold,
     commission_type: initialType || 'percentage',
     fine_late_minor_amount: props.fine_late_minor_amount ?? 1000,
+    fine_late_minor_minutes: props.fine_late_minor_minutes ?? 1,
     fine_late_major_minutes: props.fine_late_major_minutes ?? 60,
     fine_late_major_amount: props.fine_late_major_amount ?? 30000,
     fine_alpha_amount: props.fine_alpha_amount ?? 50000,
@@ -298,7 +301,7 @@ export function BusinessTab(props: BusinessTabProps) {
               <Clock className="w-3.5 h-3.5 text-amber-500" />
               Keterlambatan (Late)
             </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <Input
                 label="Denda Per Order (Minor)"
                 type="text"
@@ -309,6 +312,14 @@ export function BusinessTab(props: BusinessTabProps) {
                 }}
                 className="text-sm font-bold bg-gray-50"
                 helperText="Dipotong dari setiap order jika status terlambat aktif."
+              />
+              <Input
+                label="Ambang Batas Minor (Menit)"
+                type="number"
+                value={form.fine_late_minor_minutes}
+                onChange={e => setForm(prev => ({ ...prev, fine_late_minor_minutes: Number(e.target.value) }))}
+                className="text-sm font-bold bg-gray-50"
+                helperText="Menit minimum untuk denda minor."
               />
               <Input
                 label="Ambang Batas Major (Menit)"

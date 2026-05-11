@@ -67,6 +67,7 @@ export function Settings() {
     operational_timezone,
     courier_instructions,
     fine_late_minor_amount,
+    fine_late_minor_minutes,
     fine_late_major_minutes,
     fine_late_major_amount,
     fine_alpha_amount,
@@ -141,6 +142,7 @@ export function Settings() {
           operational_timezone: state.operational_timezone,
           courier_instructions: state.courier_instructions,
           fine_late_minor_amount: state.fine_late_minor_amount,
+          fine_late_minor_minutes: state.fine_late_minor_minutes,
           fine_late_major_minutes: state.fine_late_major_minutes,
           fine_late_major_amount: state.fine_late_major_amount,
           fine_alpha_amount: state.fine_alpha_amount,
@@ -369,6 +371,7 @@ export function Settings() {
                       commission_threshold={commission_threshold}
                       commission_type={commission_type}
                       fine_late_minor_amount={fine_late_minor_amount}
+                      fine_late_minor_minutes={fine_late_minor_minutes}
                       fine_late_major_minutes={fine_late_major_minutes}
                       fine_late_major_amount={fine_late_major_amount}
                       fine_alpha_amount={fine_alpha_amount}

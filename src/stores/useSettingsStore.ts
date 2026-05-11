@@ -37,6 +37,7 @@ interface BusinessSettings {
   operational_timezone: string
   courier_instructions: CourierInstruction[]
   fine_late_minor_amount: number
+  fine_late_minor_minutes: number
   fine_late_major_minutes: number
   fine_late_major_amount: number
   fine_alpha_amount: number
@@ -84,6 +85,7 @@ export const useSettingsStore = create<SettingsStore>()(
       operational_timezone: 'Asia/Jakarta',
       courier_instructions: DEFAULT_INSTRUCTIONS,
       fine_late_minor_amount: 1000,
+      fine_late_minor_minutes: 1,
       fine_late_major_minutes: 60,
       fine_late_major_amount: 30000,
       fine_alpha_amount: 50000,
@@ -289,6 +291,7 @@ export const useSettingsStore = create<SettingsStore>()(
           operational_timezone: data.operational_timezone || 'Asia/Jakarta',
           courier_instructions: data.courier_instructions || DEFAULT_INSTRUCTIONS,
           fine_late_minor_amount: data.fine_late_minor_amount ?? 1000,
+          fine_late_minor_minutes: data.fine_late_minor_minutes ?? 1,
           fine_late_major_minutes: data.fine_late_major_minutes ?? 60,
           fine_late_major_amount: data.fine_late_major_amount ?? 30000,
           fine_alpha_amount: data.fine_alpha_amount ?? 50000,
