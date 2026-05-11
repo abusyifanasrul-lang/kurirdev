@@ -90,6 +90,7 @@ export function FinancePenagihan() {
   const [localOrders, setLocalOrders] = useState<Order[]>([]);
   const [courierFinesMap, setCourierFinesMap] = useState<Map<string, CompleteFineData>>(new Map());
   const [finesLoading, setFinesLoading] = useState(true);
+  const [finesAccessDenied, setFinesAccessDenied] = useState(false);
   const [filter, setFilter] = useState<FilterType>('unpaid');
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -132,19 +133,27 @@ export function FinancePenagihan() {
       });
 
       if (error) {
-        console.error('Error fetching courier fines:', error);
+        // P0001 = custom Postgres exception; typically means unauthorized role
+        if (error.code === 'P0001' || error.message?.includes('Unauthorized')) {
+          setFinesAccessDenied(true); // Stop all future retries
+        }
         return null;
       }
 
       return data as CompleteFineData;
     } catch (err) {
-      console.error('Error in fetchCourierFines:', err);
       return null;
     }
   };
 
   // Fetch complete fine data for all couriers IN PARALLEL (CRITICAL FIX)
   const fetchAllCourierFines = useCallback(async () => {
+    // Only admin/manager roles can access fine data — skip if already denied
+    if (finesAccessDenied || !user || !['admin', 'manager'].includes(user.role)) {
+      setFinesLoading(false);
+      return;
+    }
+
     setFinesLoading(true);
     const finesMap = new Map<string, CompleteFineData>();
     
@@ -165,7 +174,7 @@ export function FinancePenagihan() {
     
     setCourierFinesMap(finesMap);
     setFinesLoading(false);
-  }, [couriers]);
+  }, [couriers, finesAccessDenied, user]);
 
   // PERFORMANCE FIX: Memoize getAdminEarning to prevent recalculation
   const getAdminEarning = useCallback((order: Order) => {
@@ -251,19 +260,6 @@ export function FinancePenagihan() {
       const totalPerOrderFines = completeFineData?.total_per_order_fines || 0;
       // totalFines should ONLY be flat fines since per-order fines are already in totalEarning
       const totalFines = totalFlatFines;
-
-      // Debug log for Galang specifically
-      if (courier.name.toLowerCase().includes('galang')) {
-        console.log('🔍 DEBUG Galang fines:', {
-          courierId: courier.id,
-          courierName: courier.name,
-          completeFineData,
-          totalFlatFines,
-          totalPerOrderFines,
-          totalFines,
-          totalEarning
-        });
-      }
 
       result.push({
         courierId: courier.id,
