@@ -31,7 +31,14 @@ export const calculateAdminFee = (totalFee: number, settings: EarningSettings): 
 }
 
 export const calcCourierEarning = (order: Order, settings: EarningSettings): number => {
-  const adminFee = calculateAdminFee(order.total_fee, settings)
+  // Prioritize order's applied commission fields (snapshot from when order was created)
+  const effectiveSettings: EarningSettings = {
+    commission_rate: order.applied_commission_rate ?? settings.commission_rate,
+    commission_threshold: order.applied_commission_threshold ?? settings.commission_threshold,
+    commission_type: order.applied_commission_type ?? settings.commission_type
+  }
+  
+  const adminFee = calculateAdminFee(order.total_fee, effectiveSettings)
   const courierBaseShare = order.total_fee - adminFee
   const fine = (order as any).fine_deducted || 0
   
@@ -39,7 +46,14 @@ export const calcCourierEarning = (order: Order, settings: EarningSettings): num
 }
 
 export const calcAdminEarning = (order: Order, settings: EarningSettings): number => {
-  const adminFee = calculateAdminFee(order.total_fee, settings)
+  // Prioritize order's applied commission fields (snapshot from when order was created)
+  const effectiveSettings: EarningSettings = {
+    commission_rate: order.applied_commission_rate ?? settings.commission_rate,
+    commission_threshold: order.applied_commission_threshold ?? settings.commission_threshold,
+    commission_type: order.applied_commission_type ?? settings.commission_type
+  }
+  
+  const adminFee = calculateAdminFee(order.total_fee, effectiveSettings)
   const fine = (order as any).fine_deducted || 0
   return adminFee + fine
 }

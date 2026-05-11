@@ -130,8 +130,8 @@ export function CourierDashboard() {
       // 2. Unpaid Warnings (Optimized)
       const unpaid = await stats.getUnpaidOrdersByCourier(user.id);
       const unpaidEarnings = unpaid.reduce((sum, o) => {
-        const type = o.applied_commission_type ?? commission_type
-        return sum + calcAdminEarning(o, { commission_rate, commission_threshold, commission_type: type })
+        // calcAdminEarning now automatically uses order's applied_commission_* fields
+        return sum + calcAdminEarning(o, { commission_rate, commission_threshold, commission_type })
       }, 0);
       
       setUnpaidStats({ count: unpaid.length, earnings: unpaidEarnings });
