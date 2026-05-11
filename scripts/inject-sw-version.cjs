@@ -4,13 +4,24 @@
 
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
-// Get version from Vercel env or fallback to timestamp
-const version = process.env.VERCEL_GIT_COMMIT_SHA || 
-                process.env.VERCEL_GIT_COMMIT_REF || 
-                Date.now().toString();
+// Get version from multiple sources (priority order)
+let version = process.env.VERCEL_GIT_COMMIT_SHA;
+
+if (!version) {
+  console.log('⚠️  [inject-sw-version] VERCEL_GIT_COMMIT_SHA not found, trying local git...');
+  try {
+    version = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
+    console.log(`✅ [inject-sw-version] Got version from local git: ${version}`);
+  } catch (err) {
+    console.warn('⚠️  [inject-sw-version] Git not available, using timestamp');
+    version = Date.now().toString();
+  }
+}
 
 console.log(`🔧 [inject-sw-version] Injecting version: ${version}`);
+console.log(`🔧 [inject-sw-version] Environment: ${process.env.VERCEL ? 'Vercel' : 'Local'}`);
 
 // ✅ FIX: Baca dari TEMPLATE, tulis ke public/sw.js
 // Template tidak pernah dimodifikasi → placeholder selalu ada
@@ -38,4 +49,5 @@ if (originalContent === swContent) {
   process.exit(1);
 } else {
   console.log(`✅ [inject-sw-version] Successfully wrote sw.js with version: ${version}`);
+  console.log(`✅ [inject-sw-version] Output path: ${outputPath}`);
 }
