@@ -126,13 +126,25 @@ export function FinancePenagihan() {
       const dateFrom = new Date();
       dateFrom.setDate(dateFrom.getDate() - 90);
 
-      const { data, error } = await supabase.rpc('get_courier_fines_complete', {
+      const params = {
         p_courier_id: courierId,
         p_date_from: dateFrom.toISOString().split('T')[0],
         p_date_to: dateTo.toISOString().split('T')[0]
-      });
+      };
+
+      console.log('[FinancePenagihan] Calling RPC with params:', params);
+
+      const { data, error } = await supabase.rpc('get_courier_fines_complete', params);
 
       if (error) {
+        console.error('[FinancePenagihan] RPC error:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          params
+        });
+        
         // P0001 = custom Postgres exception; typically means unauthorized role
         if (error.code === 'P0001' || error.message?.includes('Unauthorized')) {
           setFinesAccessDenied(true); // Stop all future retries
@@ -142,6 +154,7 @@ export function FinancePenagihan() {
 
       return data as CompleteFineData;
     } catch (err) {
+      console.error('[FinancePenagihan] Unexpected error:', err);
       return null;
     }
   };
