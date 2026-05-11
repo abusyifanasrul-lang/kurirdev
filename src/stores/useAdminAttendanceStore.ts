@@ -132,8 +132,8 @@ export const useAdminAttendanceStore = create<AdminAttendanceStore>((set, get) =
       // Get today's date in local timezone using standardized utility
       const today = getTodayLocal();
       
-      // Use unique channel name with timestamp to avoid conflicts
-      const channelName = `attendance-today-${Date.now()}`;
+      // Use STATIC channel name (like settings store) instead of unique timestamp
+      const channelName = 'attendance-today';
       
       console.log('[AdminAttendance] Setting up realtime subscription for date:', today);
       console.log('[AdminAttendance] Channel name:', channelName);
@@ -144,7 +144,6 @@ export const useAdminAttendanceStore = create<AdminAttendanceStore>((set, get) =
           event: '*',
           schema: 'public',
           table: 'shift_attendance',
-          // ✅ REMOVED filter - will filter in callback instead
         }, (payload) => {
           console.log('[AdminAttendance] 🔥 Realtime event received:', payload);
           
