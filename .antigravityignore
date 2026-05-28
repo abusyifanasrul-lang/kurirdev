@@ -1,0 +1,50 @@
+# ============================================================
+# .antigravityignore — Graphify exclusion rules
+# Mirip .gitignore — satu path per baris, glob patterns.
+# ============================================================
+
+# --- Build Artifacts (PENYEBAB GOD NODE PALSU) ---
+# Bundled JS dari Capacitor Android — ini yang mencemari graf
+android/app/src/main/assets/
+dist/
+
+# --- Dependencies ---
+node_modules/
+
+# --- Graphify Output Itself ---
+graphify-out/
+
+# --- Backup & Temp Files ---
+*.bak
+temp/
+scratch/
+
+# --- Test Output & Logs ---
+test_output.txt
+tsc_output_utf8.txt
+typescript_errors.log
+
+# --- Build Info ---
+tsconfig.tsbuildinfo
+
+# --- Android Build Caches ---
+android/.gradle/
+android/app/build/
+android/build/
+
+# --- Asset Files (bukan kode) ---
+*.pdf
+*.jpeg
+*.jpg
+*.png
+*.svg
+*.zip
+src/pages.zip
+src.zip
+
+# --- Docs & Markdown Reports (bukan source code) ---
+*.md
+!README.md
+
+# --- Supabase Edge Function Vendor Caches ---
+supabase/functions/**/deno.lock

@@ -1,18 +1,59 @@
-import { create } from 'zustand'
+/**
+ * useOrderStore.ts  —  AGGREGATOR
+ * ==========================================================================
+ * Thin Zustand store that wires together:
+ *   • State values & basic setters  (inline)
+ *   • Fetch methods                 (inline — they only read from Supabase)
+ *   • Subscription lifecycle        (from orderStoreSubscriptions.ts)
+ *   • Mutation actions              (from orderStoreActions.ts)
+ *
+ * PUBLIC API IS UNCHANGED — no external imports need to be modified.
+ *
+ * ANTI-CIRCULAR-DEP PATTERN:
+ *   The helper modules import `OrderState`, `OrderStoreSet`, `OrderStoreGet`
+ *   as TYPE-ONLY imports from this file. They never call `useOrderStore` at
+ *   runtime, so the dependency graph is strictly one-way:
+ *
+ *       useOrderStore.ts  ──(static)──►  orderStoreSubscriptions.ts
+ *       useOrderStore.ts  ──(static)──►  orderStoreActions.ts
+ *
+ *   Both helper files receive `set` / `get` as constructor parameters.
+ * ==========================================================================
+ */
+import { create, StateCreator } from 'zustand'
 import { supabase } from '@/lib/supabaseClient'
-import { RealtimeChannel } from '@supabase/supabase-js'
-import { withRetry } from '@/utils/retry'
-import { useToastStore } from '@/stores/useToastStore'
 import { Order, OrderStatus, OrderStatusHistory } from '@/types'
-// orderCache functions are now dynamically imported inside methods to defer Dexie loading
-import { useSettingsStore } from '@/stores/useSettingsStore'
-import { getLocalNow, getLocalTodayRange } from '@/utils/date'
-// import { logger } from '@/lib/logger'
+import { getLocalTodayRange } from '@/utils/date'
 
-let orderResyncTime = 0
-const orderChannels = new Map<string, RealtimeChannel>()
-const orderStates = new Map<string, string>()
-const orderRefs = new Map<string, number>()
+// STATIC imports from helper modules — no dynamic import() allowed here
+import {
+  createResyncRealtime,
+  createSubscribeOrders,
+  createUnsubscribeOrders,
+  createSubscribeOrderById,
+  createUnsubscribeOrderById,
+  createPingRealtime,
+} from './orderStoreSubscriptions'
+
+import {
+  createAddOrder,
+  createUpdateOrderStatus,
+  createCancelOrder,
+  createUpdateOrder,
+  createUpdateBiayaTambahan,
+  createUpdateItemBarang,
+  createUpdateOrderField,
+  createSettleOrder,
+  createUpdateItems,
+  createUpdateOngkir,
+  createUpdateOrderWaiting,
+} from './orderStoreActions'
+
+// ==========================================================================
+// TYPE EXPORTS — consumed by helper modules via `import type`
+// ==========================================================================
+export type OrderStoreSet = Parameters<StateCreator<OrderState>>[0]
+export type OrderStoreGet = Parameters<StateCreator<OrderState>>[1]
 
 export interface OrderState {
   orders: Order[]
@@ -68,7 +109,13 @@ export interface OrderState {
   pingRealtime: () => Promise<void>
 }
 
+// ==========================================================================
+// STORE CREATION
+// ==========================================================================
 export const useOrderStore = create<OrderState>()((set, get) => ({
+  // ------------------------------------------------------------------
+  // STATE VALUES
+  // ------------------------------------------------------------------
   orders: [],
   courierOrders: [],
   historicalOrders: [],
@@ -83,6 +130,9 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
   realtimeStatus: {},
   _resyncLock: null,
 
+  // ------------------------------------------------------------------
+  // BASIC SETTERS
+  // ------------------------------------------------------------------
   setSyncing: (orderId, isSyncing) => set((state) => {
     const next = new Set(state.isSyncingOrders)
     if (isSyncing) next.add(orderId)
@@ -90,6 +140,41 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     return { isSyncingOrders: next }
   }),
 
+  setOrders: (orders: Order[]) => {
+    set({ orders, isLoading: false })
+  },
+
+  setActiveOrdersByCourier: (orders: Order[]) => {
+    set({ activeOrdersByCourier: orders })
+  },
+
+  reset: () => set({
+    orders: [],
+    courierOrders: [],
+    historicalOrders: [],
+    statusHistory: {},
+    activeOrdersByCourier: [],
+    currentOrder: null,
+    isLoading: false,
+    realtimeStatus: {},
+  }),
+
+  // ------------------------------------------------------------------
+  // GETTERS (pure, no side effects)
+  // ------------------------------------------------------------------
+  getOrdersByCourier: (courierId) => {
+    return get().orders.filter(o => o.courier_id === courierId)
+  },
+
+  getRecentOrders: (limit = 5) => {
+    return [...get().orders]
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, limit)
+  },
+
+  // ------------------------------------------------------------------
+  // FETCH METHODS (read-only Supabase queries, kept inline for simplicity)
+  // ------------------------------------------------------------------
   fetchOrdersByCourier: async (courierId: string) => {
     set({ isFetchingCourierOrders: true })
     try {
@@ -107,7 +192,7 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
           assigner:profiles!assigned_by(name)
         `)
         .eq('courier_id', courierId)
-        .or(`and(status.in.(delivered,cancelled),created_at.gte.${sevenDaysAgo}),and(status.eq.delivered,payment_status.eq.unpaid)`)
+        .or(`and(status.in.(delivered,cancelled),created_at.gte.${sevenDaysAgoStr}),and(status.eq.delivered,payment_status.eq.unpaid)`)
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -171,46 +256,6 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     } finally {
       set({ isSyncing: false })
     }
-  },
-
-  resyncRealtime: async (filter, options) => {
-    // 1. Operation Lock: Prevent parallel resyncs (HMR friendly)
-    if (get()._resyncLock) {
-      console.log('⏳ Order store resync already in progress, skipping duplicate call.')
-      return get()._resyncLock as Promise<void>
-    }
-
-    const resyncPromise = (async () => {
-      try {
-        // 2. THROTTLE check (unless forced)
-        const now = Date.now()
-        if (!options?.force && (now - orderResyncTime < 30000)) return
-        orderResyncTime = now
-
-        if (options?.force) {
-          console.log('🔄 Forced orders resync triggered...')
-        } else {
-          console.log('🔄 Throttled orders resync triggered...')
-        }
-        
-        // 3. Gap fill via HTTP
-        await get().fetchInitialOrders(filter)
-        
-        // 4. WebSocket Recovery
-        const channelId = `orders:active`
-        if (!orderChannels.has(channelId)) {
-          console.warn(`⚠️ Channel ${channelId} not found in map — re-subscribing...`)
-          await get().subscribeOrders(filter)
-        } else {
-          console.log(`ℹ️ Channel ${channelId} exists (state: ${orderStates.get(channelId)}) — trusting Supabase auto-reconnect`)
-        }
-      } finally {
-        set({ _resyncLock: null })
-      }
-    })()
-
-    set({ _resyncLock: resyncPromise })
-    return resyncPromise
   },
 
   fetchRecentlyUpdated: async (since, filter) => {
@@ -376,666 +421,30 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
     }
   },
 
-  subscribeOrders: (filter) => {
-    const { courierId } = filter || {}
-    const channelId = courierId ? `orders:courier:${courierId}` : 'orders:global'
-    const filterStr = courierId ? `courier_id=eq.${courierId}` : undefined
-
-    // 1. ATOMIC INCREMENT & SYNC GUARD
-    const currentRef = orderRefs.get(channelId) || 0
-    orderRefs.set(channelId, currentRef + 1)
-
-    const existing = orderChannels.get(channelId)
-    // Synchronously check both joined and joining
-    if (existing && (orderStates.get(channelId) === 'joined' || orderStates.get(channelId) === 'joining')) {
-      return () => get().unsubscribeOrders(channelId)
-    }
-
-    // 2. SYNCHRONOUS JOIN STATE
-    orderStates.set(channelId, 'joining')
-
-    // 3. INTERNAL ASYNC INIT
-    ;(async () => {
-      if (existing) {
-        console.log(`♻️ Cleaning up existing channel for ${channelId}...`)
-        await supabase.removeChannel(existing)
-        orderChannels.delete(channelId)
-      }
-
-      // Safeguard: Check if we are still supposed to be joining
-      if (orderStates.get(channelId) !== 'joining') return;
-
-      const channelConfig: any = { event: '*', schema: 'public', table: 'orders' }
-      if (filterStr) channelConfig.filter = filterStr
-
-      const channel = supabase.channel(channelId)
-        .on(
-          'postgres_changes',
-          channelConfig,
-          async (payload) => {
-            const { eventType, new: newRec, old: oldRec } = payload
-            console.log(`🔔 Realtime [${channelId}] ${eventType}:`, newRec || oldRec)
-            
-            // MIRRORING ARCHITECTURE: Only finalized orders to localDB
-            if (eventType === 'UPDATE' || eventType === 'INSERT') {
-              const FINAL_STATUSES = ['delivered', 'cancelled']
-              const isFinal = FINAL_STATUSES.includes(newRec.status)
-              
-              if (isFinal) {
-                console.info(`[useOrderStore] Realtime ${eventType} mirroring to localDB: ${newRec.id}`)
-                const { moveToLocalDB } = await import('@/lib/orderCache')
-                await moveToLocalDB(newRec as unknown as Order, eventType === 'UPDATE')
-              }
-            }
-
-            set((state) => {
-              let updatedActive = [...state.activeOrdersByCourier]
-              let updatedHistory = [...state.orders]
-
-              if (eventType === 'INSERT') {
-                const order = newRec as unknown as Order
-                const isNowActive = !['delivered', 'cancelled'].includes(order.status)
-                if (isNowActive) {
-                  // Prevent duplicate inserts if already in state
-                  if (!updatedActive.some(o => o.id === order.id)) {
-                    updatedActive = [order, ...updatedActive]
-                  }
-                } else {
-                  if (!updatedHistory.some(o => o.id === order.id)) {
-                    updatedHistory = [order, ...updatedHistory]
-                  }
-                }
-              } else if (eventType === 'UPDATE') {
-                const orderId = (newRec as Order).id
-                const existingActive = updatedActive.find(o => o.id === orderId)
-                const existingHistory = updatedHistory.find(o => o.id === orderId)
-                
-                // MERGE logic: Use existing state or full row from newRec
-                let baseOrder: Order = (existingActive || existingHistory) as Order
-
-                let mergedOrder: Order
-                if (baseOrder) {
-                  mergedOrder = { ...baseOrder }
-                  Object.keys(newRec).forEach(k => { 
-                    if (newRec[k] !== undefined && newRec[k] !== null) (mergedOrder as any)[k] = newRec[k] 
-                  })
-                } else {
-                  mergedOrder = newRec as unknown as Order
-                }
-
-                const wasActive = updatedActive.some(o => o.id === mergedOrder.id)
-                const isNowActive = !['delivered', 'cancelled'].includes(mergedOrder.status)
-
-                if (wasActive && !isNowActive) {
-                  updatedActive = updatedActive.filter(o => o.id !== mergedOrder.id)
-                  if (!updatedHistory.some(o => o.id === mergedOrder.id)) {
-                    updatedHistory = [mergedOrder, ...updatedHistory]
-                  } else {
-                    updatedHistory = updatedHistory.map(o => o.id === mergedOrder.id ? mergedOrder : o)
-                  }
-                } else if (isNowActive) {
-                  const idx = updatedActive.findIndex(o => o.id === mergedOrder.id)
-                  if (idx !== -1) updatedActive[idx] = mergedOrder
-                  else updatedActive = [mergedOrder, ...updatedActive]
-                } else {
-                  const idx = updatedHistory.findIndex(o => o.id === mergedOrder.id)
-                  if (idx !== -1) updatedHistory[idx] = mergedOrder
-                }
-              } else if (eventType === 'DELETE') {
-                updatedActive = updatedActive.filter(o => o.id !== oldRec.id)
-                updatedHistory = updatedHistory.filter(o => o.id !== oldRec.id)
-                import('@/lib/orderCache').then(({ removeFromLocalDB }) => removeFromLocalDB(oldRec.id))
-              }
-
-              return { 
-                activeOrdersByCourier: updatedActive,
-                orders: updatedHistory
-              }
-            })
-          }
-        )
-        .on(
-          'broadcast',
-          { event: 'ping' },
-          () => {
-            console.log(`📡 [OrderStore] Loopback PONG received for ${channelId}`);
-            set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }));
-          }
-        )
-
-      // Set map BEFORE subscribe to lock other callers
-      orderChannels.set(channelId, channel)
-
-      channel.subscribe((status, err) => {
-        // STALE GUARD: Ignore callbacks from superseded channels
-        // This prevents the CLOSED callback of a cleaned-up channel from
-        // corrupting the state of a newly registered replacement channel.
-        if (orderChannels.get(channelId) !== channel) return
-
-        if (status === 'SUBSCRIBED') {
-          const prevState = orderStates.get(channelId)
-          const wasCleanReconnect = prevState === 'closed'
-          console.log(`✅ [OrderStore] ${channelId} ${wasCleanReconnect ? 'Reconnected (clean)' : 'Connected/Recovered'}`)
-          orderStates.set(channelId, 'joined')
-          set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
-
-          if (wasCleanReconnect) {
-            console.log(`📡 [OrderStore] ${channelId} Reconnect detected — skipping snapshot (handled by AppListeners gap-fill)`)
-          } else {
-            console.log(`📡 [OrderStore] ${channelId} First connect — fetching initial data...`)
-            get().fetchInitialOrders(filter).catch(err => console.error('Snapshot fetch error:', err))
-          }
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-          if (status === 'CLOSED' && !err) {
-             console.info(`ℹ️ [OrderStore] Realtime ${channelId} closed gracefully (superseded or unmounted).`)
-          } else {
-             console.warn(`⚠️ [OrderStore] Realtime ${channelId} ${status} — letting Supabase auto-reconnect.`, err || '')
-          }
-          
-          const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
-          orderStates.set(channelId, finalStatus)
-          set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
-          // PENTING: Jangan delete channel di sini agar auto-reconnect Supabase bekerja
-        }
-      })
-    })()
-
-    return () => get().unsubscribeOrders(channelId)
-  },
-
-  unsubscribeOrders: (channelId: string) => {
-    const currentRef = orderRefs.get(channelId) || 0
-    if (currentRef <= 1) {
-      const channel = orderChannels.get(channelId)
-      if (channel) {
-        supabase.removeChannel(channel).catch(() => {})
-        orderChannels.delete(channelId)
-        orderStates.delete(channelId)
-
-        // Cleanup health status
-        set(state => {
-          const next = { ...state.realtimeStatus }
-          delete next[channelId]
-          return { realtimeStatus: next }
-        })
-      }
-      orderRefs.set(channelId, 0)
-    } else {
-      orderRefs.set(channelId, currentRef - 1)
-    }
-  },
-
-  subscribeOrderById: (orderId: string) => {
-    // 1. Initial Load
-    const fetchCurrent = async () => {
-      const { data } = await supabase.from('orders').select(`
-        *,
-        is_waiting,
-        courier:profiles!courier_id(name, vehicle_type, plate_number),
-        assigner:profiles!assigned_by(name)
-      `).eq('id', orderId).single()
-      if (data) set({ currentOrder: data as unknown as Order })
-    }
-    fetchCurrent()
-
-    const channelId = `order:single:${orderId}`
-
-    // 1. ATOMIC INCREMENT & SYNC GUARD
-    const currentRef = orderRefs.get(channelId) || 0
-    orderRefs.set(channelId, currentRef + 1)
-
-    const existing = orderChannels.get(channelId)
-    if (existing && (orderStates.get(channelId) === 'joined' || orderStates.get(channelId) === 'joining')) {
-      return () => get().unsubscribeOrderById(orderId)
-    }
-
-    // 2. SYNCHRONOUS JOIN STATE
-    orderStates.set(channelId, 'joining')
-
-    // 3. INTERNAL ASYNC INIT
-    ;(async () => {
-      if (existing) {
-        console.log(`♻️ Cleaning up existing channel for ${channelId}...`)
-        await supabase.removeChannel(existing)
-        orderChannels.delete(channelId)
-      }
-
-      // Safeguard: Check if we are still supposed to be joining
-      if (orderStates.get(channelId) !== 'joining') return;
-
-      const channel = supabase.channel(channelId)
-
-      channel
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `id=eq.${orderId}` }, (payload) => {
-          if (payload.eventType === 'DELETE') {
-             set({ currentOrder: null })
-          } else if (payload.eventType === 'UPDATE') {
-             const existing = get().currentOrder
-             if (existing && existing.id === orderId) {
-               const merged = JSON.parse(JSON.stringify(existing))
-               Object.keys(payload.new).forEach(k => { if (payload.new[k] !== undefined) (merged as any)[k] = payload.new[k] })
-               set({ currentOrder: merged as Order })
-             } else {
-               set({ currentOrder: payload.new as unknown as Order })
-             }
-          } else {
-             set({ currentOrder: payload.new as Order })
-          }
-        })
-
-      // Set map BEFORE subscribe to allow stale guard to work correctly
-      orderChannels.set(channelId, channel)
-
-      channel.subscribe((status, err) => {
-        // STALE GUARD: Ignore callbacks from superseded channels
-        if (orderChannels.get(channelId) !== channel) return
-
-        if (status === 'SUBSCRIBED') {
-          const prevState = orderStates.get(channelId)
-          const wasCleanReconnect = prevState === 'closed'
-          console.log(`✅ [OrderStore] ${channelId} ${wasCleanReconnect ? 'Reconnected (clean)' : 'Connected/Recovered'}`)
-          orderStates.set(channelId, 'joined')
-          set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: 'joined' } }))
-
-          if (wasCleanReconnect) {
-            console.log(`📡 [OrderStore] ${channelId} Reconnect detected — skipping single fetch`)
-          } else {
-            console.log(`📡 [OrderStore] ${channelId} First connect — fetching order data...`)
-            fetchCurrent().catch(err => console.error('Single snapshot fetch error:', err))
-          }
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-          if (status === 'CLOSED' && !err) {
-            console.info(`ℹ️ [OrderStore] Realtime ${channelId} closed gracefully.`)
-          } else {
-            console.warn(`⚠️ [OrderStore] Realtime ${channelId} ${status} — letting Supabase auto-reconnect.`, err || '')
-          }
-          const finalStatus = status === 'CLOSED' ? 'closed' : 'errored'
-          orderStates.set(channelId, finalStatus)
-          set(state => ({ realtimeStatus: { ...state.realtimeStatus, [channelId]: finalStatus } }))
-          // PENTING: Jangan delete channel di sini
-        }
-      })
-    })()
-
-    return () => get().unsubscribeOrderById(orderId)
-  },
-
-  unsubscribeOrderById: (orderId: string) => {
-    const channelId = `order:single:${orderId}`
-    const currentRef = orderRefs.get(channelId) || 0
-    if (currentRef <= 1) {
-      const channel = orderChannels.get(channelId)
-      if (channel) {
-        supabase.removeChannel(channel).catch(() => {})
-        orderChannels.delete(channelId)
-        orderStates.delete(channelId)
-
-        // Cleanup health status
-        set(state => {
-          const next = { ...state.realtimeStatus }
-          delete next[channelId]
-          return { realtimeStatus: next }
-        })
-      }
-      orderRefs.set(channelId, 0)
-    } else {
-      orderRefs.set(channelId, currentRef - 1)
-    }
-  },
-
-  addOrder: async (orderData: any) => {
-    const addToast = useToastStore.getState().addToast
-    const removeToast = useToastStore.getState().removeToast
-    let retryToastId: string | undefined
-
-    try {
-      await withRetry(async () => {
-        const { data: orderNumber, error: rpcError } = await supabase.rpc('generate_order_number')
-        if (rpcError) throw rpcError
-        const finalOrderData = {
-          ...orderData,
-          order_number: orderNumber,
-        }
-        const { data, error } = await (supabase.from('orders') as any)
-          .insert(finalOrderData)
-          .select()
-          .single()
-        if (error) throw error
-        const newOrder = data as unknown as Order
-        set(state => ({ orders: [newOrder, ...state.orders] }))
-      }, {
-        onRetry: (attempt) => {
-          if (!retryToastId) {
-            retryToastId = addToast(`Koneksi tidak stabil. Mencoba kembali... (Sisa ${3 - attempt} percobaan)`, 'loading', 0)
-          } else {
-            useToastStore.getState().updateToast(retryToastId, {
-              message: `Mencoba kembali... (Sisa ${3 - attempt} percobaan)`
-            })
-          }
-        }
-      })
-    } catch (error: any) {
-      throw new Error(error.message || 'Gagal menyimpan order setelah beberapa kali mencoba. Silakan cek koneksi internet Anda.')
-    } finally {
-      if (retryToastId) removeToast(retryToastId)
-    }
-  },
-
-  updateOrderStatus: async (orderId, status, userId, userName, notes) => {
-    const isSyncing = get().isSyncingOrders.has(orderId)
-    if (isSyncing) return 
-
-    const order = get().orders.find(o => o.id === orderId)
-      || get().currentOrder
-      || get().activeOrdersByCourier.find(o => o.id === orderId)
-      
-    if (!order) return
-    if (order.status === status) return 
-
-    const setSyncing = get().setSyncing
-    const addToast = useToastStore.getState().addToast
-    const removeToast = useToastStore.getState().removeToast
-    let retryToastId: string | undefined
-
-    setSyncing(orderId, true)
-
-    try {
-      await withRetry(async () => {
-        if (status === 'delivered') {
-          const { commission_rate, commission_threshold, commission_type } = useSettingsStore.getState()
-          const { error } = await (supabase.rpc as any)('complete_order', {
-             p_order_id: orderId,
-             p_user_id: userId,
-             p_user_name: userName,
-             p_notes: notes || '',
-             p_commission_rate: commission_rate,
-             p_commission_threshold: commission_threshold,
-             p_commission_type: commission_type
-          })
-          if (error) throw error
-          
-          const updatedOrder = { 
-            ...order, 
-            status: 'delivered', 
-            is_waiting: false, 
-            applied_commission_rate: commission_rate, 
-            applied_commission_threshold: commission_threshold,
-            applied_commission_type: commission_type,
-            actual_delivery_time: getLocalNow().toISOString() 
-          }
-          
-          // Optimistic local state update for delivered case
-          set(state => ({
-            activeOrdersByCourier: state.activeOrdersByCourier.filter(o => o.id !== orderId),
-            orders: [updatedOrder as Order, ...state.orders.filter(o => o.id !== orderId)],
-            currentOrder: state.currentOrder?.id === orderId ? updatedOrder as Order : state.currentOrder
-          }))
-
-          console.info(`[useOrderStore] Manual delivered mirroring to localDB: ${orderId}`)
-          const { moveToLocalDB } = await import('@/lib/orderCache')
-          await moveToLocalDB(updatedOrder as Order).catch(err => console.error('Mirror write error:', err))
-        } else {
-          const updates: Partial<Order> = {
-            status,
-            updated_at: getLocalNow().toISOString()
-          }
-          if (status === 'picked_up' && !order.actual_pickup_time) {
-            updates.actual_pickup_time = getLocalNow().toISOString()
-          }
-          if (status === 'cancelled') {
-            updates.is_waiting = false
-            updates.cancelled_at = getLocalNow().toISOString()
-            updates.cancellation_reason = notes || ''
-            updates.cancelled_by = userId
-            updates.canceller_name = userName
-          }
-
-          const { error: updateError } = await (supabase.from('orders') as any).update(updates).eq('id', orderId)
-          if (updateError) throw updateError
-
-          await (supabase.from('tracking_logs') as any).insert({
-            order_id: orderId,
-            status,
-            changed_by: userId,
-            changed_by_name: userName,
-            notes: notes || ''
-          })
-
-          const updatedOrder = { ...order, ...updates }
-
-          if (status === 'cancelled') {
-            console.info(`[useOrderStore] Manual cancelled mirroring to localDB: ${orderId}`)
-            const { moveToLocalDB } = await import('@/lib/orderCache')
-            await moveToLocalDB(updatedOrder as Order).catch(err => console.error('Mirror write error:', err))
-          }
-
-          set(state => ({
-            orders: state.orders.map(o => o.id === orderId ? updatedOrder as Order : o),
-            activeOrdersByCourier: state.activeOrdersByCourier.map(o => o.id === orderId ? updatedOrder as Order : o),
-            currentOrder: state.currentOrder?.id === orderId ? updatedOrder as Order : state.currentOrder
-          }))
-        }
-      }, {
-        onRetry: (attempt) => {
-          if (!retryToastId) {
-            retryToastId = addToast(`Gagal sinkronasi... Mencoba kembali (${attempt}/3)`, 'loading', 0)
-          } else {
-            useToastStore.getState().updateToast(retryToastId, {
-              message: `Sinkronasi status ${status}... (${attempt}/3)`
-            })
-          }
-        }
-      })
-    } catch (error: any) {
-      addToast(`Gagal memperbarui status order: ${error.message}`, 'error', 5000)
-    } finally {
-      setSyncing(orderId, false)
-      if (retryToastId) removeToast(retryToastId)
-    }
-  },
-
-  cancelOrder: async (orderId, reason, userId, userName, cancelReasonType) => {
-    const { error } = await (supabase.from('orders') as any).update({
-      cancellation_reason: reason,
-      cancel_reason_type: cancelReasonType ?? null,
-      cancelled_at: getLocalNow().toISOString(),
-      updated_at: getLocalNow().toISOString(),
-      is_waiting: false
-    }).eq('id', orderId)
-    if (error) throw error
-    await get().updateOrderStatus(orderId, 'cancelled', userId, userName, reason)
-  },
-
-  updateOrder: async (orderId, updates) => {
-    if (updates.payment_status === 'paid') {
-        const { error: rpcError } = await (supabase.rpc as any)('mark_order_paid', { p_order_id: orderId })
-        if (rpcError) throw rpcError
-        const { payment_status, ...restUpdates } = updates as any
-        if (Object.keys(restUpdates).length > 0) {
-           await (supabase.from('orders') as any).update({ ...restUpdates, updated_at: getLocalNow().toISOString() }).eq('id', orderId)
-        }
-        import('@/lib/orderCache').then(({ markAsPaidInLocalDB }) => markAsPaidInLocalDB(orderId, '').catch(err => console.error('Confirm payment error:', err)))
-     } else {
-       const finalUpdates = { ...updates, updated_at: getLocalNow().toISOString() };
-       if (updates.status === 'cancelled' || updates.status === 'delivered') {
-         (finalUpdates as any).is_waiting = false;
-       }
-       await (supabase.from('orders') as any).update(finalUpdates).eq('id', orderId)
-    }
-    set(state => ({
-      orders: state.orders.map(o => o.id === orderId ? { ...o, ...updates } : o),
-      activeOrdersByCourier: state.activeOrdersByCourier.map(o => o.id === orderId ? { ...o, ...updates } : o),
-      currentOrder: state.currentOrder?.id === orderId ? { ...state.currentOrder, ...updates } : state.currentOrder
-    }))
-  },
-  updateBiayaTambahan: async (orderId, titik, beban) => {
-    const total_biaya_titik = titik * 3000;
-    const total_biaya_beban = beban.reduce((sum: number, b: any) => sum + b.biaya, 0);
-
-    set(state => ({
-      orders: state.orders.map(o => o.id === orderId ? { 
-        ...o, 
-        titik, 
-        total_biaya_titik, 
-        beban, 
-        total_biaya_beban 
-      } : o),
-      activeOrdersByCourier: state.activeOrdersByCourier.map(o => o.id === orderId ? { 
-        ...o, 
-        titik, 
-        total_biaya_titik, 
-        beban, 
-        total_biaya_beban 
-      } : o),
-      currentOrder: state.currentOrder?.id === orderId ? { 
-        ...state.currentOrder, 
-        titik, 
-        total_biaya_titik, 
-        beban, 
-        total_biaya_beban 
-      } : state.currentOrder
-    }));
-
-    await (supabase.from('orders') as any).update({
-      titik,
-      total_biaya_titik,
-      beban,
-      total_biaya_beban,
-      updated_at: getLocalNow().toISOString()
-    }).eq('id', orderId)
-  },
-
-  updateItemBarang: async (orderId, itemName, itemPrice) => {
-    set(state => ({
-      orders: state.orders.map(o => o.id === orderId ? { ...o, item_name: itemName, item_price: itemPrice } : o),
-      activeOrdersByCourier: state.activeOrdersByCourier.map(o => o.id === orderId ? { ...o, item_name: itemName, item_price: itemPrice } : o),
-      currentOrder: state.currentOrder?.id === orderId ? { ...state.currentOrder, item_name: itemName, item_price: itemPrice } : state.currentOrder
-    }));
-
-    await (supabase.from('orders') as any).update({
-      item_name: itemName,
-      item_price: itemPrice,
-      updated_at: getLocalNow().toISOString()
-    }).eq('id', orderId);
-  },
-
-  updateOrderField: async (orderId: string, field: string, value: any) => {
-    set(state => ({
-      orders: state.orders.map(o => o.id === orderId ? { ...o, [field]: value } : o),
-      activeOrdersByCourier: state.activeOrdersByCourier.map(o => o.id === orderId ? { ...o, [field]: value } : o),
-      currentOrder: state.currentOrder?.id === orderId ? { ...state.currentOrder, [field]: value } : state.currentOrder
-    }));
-
-    await (supabase.from('orders') as any).update({ [field]: value, updated_at: getLocalNow().toISOString() }).eq('id', orderId)
-  },
-
-  settleOrder: async (orderId, userId, userName) => {
-    const { error } = await (supabase.rpc as any)('settle_order', { 
-      p_order_id: orderId,
-      p_admin_id: userId,
-      p_admin_name: userName
-    })
-
-    if (error) throw error
-
-    await (supabase.from('tracking_logs') as any).insert({
-      order_id: orderId,
-      status: 'delivered',
-      changed_by: userId,
-      changed_by_name: userName,
-      notes: `Setoran dikonfirmasi oleh ${userName}`
-    })
-
-    set(state => ({
-      orders: state.orders.map(o => o.id === orderId ? { ...o, payment_status: 'paid', payment_confirmed_by: userId, payment_confirmed_by_name: userName } : o),
-      currentOrder: state.currentOrder?.id === orderId ? { ...state.currentOrder, payment_status: 'paid', payment_confirmed_by: userId, payment_confirmed_by_name: userName } : state.currentOrder
-    }))
-
-    const { markAsPaidInLocalDB } = await import('@/lib/orderCache')
-    await markAsPaidInLocalDB(orderId, userId, userName)
-  },
-
-  updateItems: async (orderId, items) => {
-    set(state => ({
-      orders: state.orders.map(o => o.id === orderId ? { ...o, items } : o),
-      activeOrdersByCourier: state.activeOrdersByCourier.map(o => o.id === orderId ? { ...o, items } : o),
-      currentOrder: state.currentOrder?.id === orderId ? { ...state.currentOrder, items } : state.currentOrder
-    }));
-
-    await (supabase.from('orders') as any).update({
-      items,
-      updated_at: new Date().toISOString()
-    }).eq('id', orderId);
-  },
-
-  updateOngkir: async (orderId, totalFee) => {
-    set(state => ({
-      orders: state.orders.map(o => o.id === orderId ? { ...o, total_fee: totalFee } : o),
-      activeOrdersByCourier: state.activeOrdersByCourier.map(o => o.id === orderId ? { ...o, total_fee: totalFee } : o),
-      currentOrder: state.currentOrder?.id === orderId ? { ...state.currentOrder, total_fee: totalFee } : state.currentOrder
-    }));
-
-    await (supabase.from('orders') as any).update({
-      total_fee: totalFee,
-      updated_at: new Date().toISOString()
-    }).eq('id', orderId);
-  },
-
-  updateOrderWaiting: async (orderId, isWaiting) => {
-    set(state => ({
-      orders: state.orders.map(o => o.id === orderId ? { ...o, is_waiting: isWaiting } : o),
-      activeOrdersByCourier: state.activeOrdersByCourier.map(o => o.id === orderId ? { ...o, is_waiting: isWaiting } : o),
-      currentOrder: state.currentOrder?.id === orderId ? { ...state.currentOrder, is_waiting: isWaiting } : state.currentOrder
-    }));
-
-    await (supabase.from('orders') as any).update({
-      is_waiting: isWaiting,
-      updated_at: new Date().toISOString()
-    }).eq('id', orderId);
-  },
-
-  getOrdersByCourier: (courierId) => {
-    return get().orders.filter(o => o.courier_id === courierId)
-  },
-
-  getRecentOrders: (limit = 5) => {
-    return [...get().orders]
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .slice(0, limit)
-  },
-
-  setOrders: (orders: Order[]) => {
-    set({ orders, isLoading: false })
-  },
-
-  setActiveOrdersByCourier: (orders: Order[]) => {
-    set({ activeOrdersByCourier: orders })
-  },
-
-  reset: () => set({
-    orders: [],
-    courierOrders: [],
-    historicalOrders: [],
-    statusHistory: {},
-    activeOrdersByCourier: [],
-    currentOrder: null,
-    isLoading: false,
-    realtimeStatus: {},
-  }),
-
-  pingRealtime: async () => {
-    const channels = Array.from(orderChannels.values());
-    if (channels.length === 0) return;
-    
-    console.log(`📡 [OrderStore] Sending broadcast ping to ${channels.length} channels...`);
-    await Promise.all(
-      channels.map(ch => 
-        ch.send({
-          type: 'broadcast',
-          event: 'ping',
-          payload: {}
-        })
-      )
-    );
-  }
+  // ------------------------------------------------------------------
+  // SUBSCRIPTIONS — delegated to orderStoreSubscriptions.ts
+  // Factory functions receive (set, get) to avoid circular deps.
+  // ------------------------------------------------------------------
+  resyncRealtime: createResyncRealtime(set, get),
+  subscribeOrders: createSubscribeOrders(set, get),
+  unsubscribeOrders: createUnsubscribeOrders(set, get),
+  subscribeOrderById: createSubscribeOrderById(set, get),
+  unsubscribeOrderById: createUnsubscribeOrderById(set, get),
+  pingRealtime: createPingRealtime(),
+
+  // ------------------------------------------------------------------
+  // ACTIONS — delegated to orderStoreActions.ts
+  // Factory functions receive (set, get) to avoid circular deps.
+  // ------------------------------------------------------------------
+  addOrder: createAddOrder(set, get),
+  updateOrderStatus: createUpdateOrderStatus(set, get),
+  cancelOrder: createCancelOrder(set, get),
+  updateOrder: createUpdateOrder(set, get),
+  updateBiayaTambahan: createUpdateBiayaTambahan(set, get),
+  updateItemBarang: createUpdateItemBarang(set, get),
+  updateOrderField: createUpdateOrderField(set, get),
+  settleOrder: createSettleOrder(set, get),
+  updateItems: createUpdateItems(set, get),
+  updateOngkir: createUpdateOngkir(set, get),
+  updateOrderWaiting: createUpdateOrderWaiting(set, get),
 }))

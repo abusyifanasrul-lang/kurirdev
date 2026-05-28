@@ -35,7 +35,7 @@ interface UserState {
   pingRealtime: () => Promise<void>
 }
 
-const mapProfileToUser = (profile: any, existingUser?: User): User => {
+export const mapProfileToUser = (profile: any, existingUser?: User): User => {
   const base = existingUser ? { ...existingUser } : {} as User;
 
   // Resolve merged values first so we can compute derived fields
