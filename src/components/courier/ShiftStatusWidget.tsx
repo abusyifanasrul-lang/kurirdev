@@ -172,16 +172,25 @@ export function ShiftStatusWidget({ courierId, lateFineActive }: ShiftStatusWidg
     return null;
   }
 
-  // Determine widget state and appearance
-  const isLate = todayLog?.status === 'late' || todayLog?.status === 'late_minor' || todayLog?.status === 'late_major' || lateFineActive;
+  const isLateStatus =
+    todayLog?.status === 'late' ||
+    todayLog?.status === 'late_minor' ||
+    todayLog?.status === 'late_major';
   const isExcused = todayLog?.status === 'excused';
-  
-  // Priority: Late > In Shift > Countdown
+
+  // Hide after shift ends if courier was late (fine details live in profile/earnings)
+  if (!isInShift && isLateStatus) {
+    return null;
+  }
+
+  const isLate = isLateStatus || (lateFineActive && isInShift);
+
+  // Priority: Late > Excused > In Shift > Countdown (countdown includes post-shift on-time → tomorrow)
   let widgetState: 'late' | 'excused' | 'in_shift' | 'countdown' = 'countdown';
-  
-  if (isLate && (isInShift || lateFineActive)) {
+
+  if (isLate && isInShift) {
     widgetState = 'late';
-  } else if (isExcused && (isInShift || lateFineActive)) {
+  } else if (isExcused && isInShift) {
     widgetState = 'excused';
   } else if (isInShift) {
     widgetState = 'in_shift';

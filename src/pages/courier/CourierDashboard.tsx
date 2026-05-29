@@ -19,8 +19,6 @@ import { formatCurrency, formatShortCurrency } from '@/utils/formatter';
 import { Order } from '@/types';
 import { getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
 
-import { AttendanceWidget } from '@/components/courier/AttendanceWidget';
-import { ShiftScheduleWidget } from '@/components/courier/ShiftScheduleWidget';
 import { ShiftStatusWidget } from '@/components/courier/ShiftStatusWidget';
 import { DebugPanel } from '@/components/courier/DebugPanel';
 

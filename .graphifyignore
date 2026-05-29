@@ -1,0 +1,11 @@
+# Capacitor/Vite build output — duplicates src/ as minified bundles
+android/app/src/main/assets/
+
+# Scratch / one-off scripts
+tmp/
+
+# Agent runtime (synced separately via sync_knowledge.py)
+.agent/
+
+# Graph output (avoid self-indexing)
+graphify-out/
