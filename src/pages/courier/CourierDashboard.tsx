@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useStayMonitor } from '@/hooks/useStayMonitor';
+import { useShiftWindow } from '@/hooks/useShiftWindow';
 import { useNavigate } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import { ChevronRight, AlertTriangle, DollarSign, CheckCircle, Clock, Package } from 'lucide-react';
@@ -18,6 +19,7 @@ import { calcAdminEarning } from '@/lib/calcEarning';
 import { formatCurrency, formatShortCurrency } from '@/utils/formatter';
 import { Order } from '@/types';
 import { getStatusBadgeVariant, getStatusLabel } from '@/components/ui/Badge';
+import { supabase } from '@/lib/supabaseClient';
 
 import { ShiftStatusWidget } from '@/components/courier/ShiftStatusWidget';
 import { DebugPanel } from '@/components/courier/DebugPanel';
@@ -35,6 +37,9 @@ export function CourierDashboard() {
   const { users, subscribeProfile, fetchProfile } = useUserStore();
   const { user: currentUser } = useSessionStore();
   const { commission_rate, commission_threshold, commission_type } = useSettingsStore();
+
+  // Check shift window status for context-aware ON button
+  const shiftWindow = useShiftWindow(user?.id);
 
   const liveUser = users.find(u => u.id === currentUser?.id);
   const isSuspended = liveUser?.is_active === false;
@@ -165,8 +170,36 @@ export function CourierDashboard() {
     if (!user?.id || isSuspended || isUpdatingStatus) return;
     setIsUpdatingStatus(true);
     try {
-      await setCourierOnline(user.id, 'on');
-      useSessionStore.getState().updateUser({ is_online: true, courier_status: 'on' as any });
+      // Context-aware: Check if within shift window
+      if (shiftWindow.isWithinWindow) {
+        // Within shift window: Call record_courier_checkin RPC
+        const { data, error } = await supabase.rpc('record_courier_checkin', {
+          p_courier_id: user.id
+        });
+
+        if (error) {
+          console.error('[CourierDashboard] Check-in error:', error);
+          alert(`Check-in gagal: ${error.message}`);
+          return;
+        }
+
+        if (data && !data.success) {
+          console.warn('[CourierDashboard] Check-in rejected:', data);
+          alert(data.message || 'Check-in ditolak');
+          return;
+        }
+
+        console.log('[CourierDashboard] Check-in success:', data);
+        // Update local state
+        useSessionStore.getState().updateUser({ is_online: true, courier_status: 'on' as any });
+      } else {
+        // Outside shift window: Private order mode (no check-in record)
+        await setCourierOnline(user.id, 'on');
+        useSessionStore.getState().updateUser({ is_online: true, courier_status: 'on' as any });
+      }
+    } catch (err) {
+      console.error('[CourierDashboard] handleSetOn error:', err);
+      alert('Terjadi kesalahan saat mengubah status');
     } finally {
       setIsUpdatingStatus(false);
     }
@@ -267,12 +300,19 @@ export function CourierDashboard() {
               className={cn(
                 "flex-1 flex flex-col items-center gap-1 py-3 mini:py-4 rounded-xl xs:rounded-2xl text-[9px] mini:text-[10px] font-black border transition-all active:scale-95 uppercase tracking-widest",
                 courierStatus === 'on'
-                  ? "bg-emerald-600 text-white border-emerald-600 shadow-xl shadow-emerald-100"
-                  : "bg-gray-50 text-gray-400 border-gray-100 hover:border-emerald-200"
+                  ? shiftWindow.isWithinWindow
+                    ? "bg-emerald-600 text-white border-emerald-600 shadow-xl shadow-emerald-100"
+                    : "bg-yellow-500 text-white border-yellow-500 shadow-xl shadow-yellow-100"
+                  : shiftWindow.isWithinWindow
+                    ? "bg-gray-50 text-emerald-600 border-emerald-200 hover:border-emerald-300"
+                    : "bg-gray-50 text-yellow-600 border-yellow-200 hover:border-yellow-300"
               )}
             >
               <span className="text-base mini:text-lg mb-0.5">{isUpdatingStatus && courierStatus !== 'on' ? "..." : "⚡"}</span>
-              {courierStatus === 'on' ? "Aktif" : "Bekerja"}
+              {courierStatus === 'on' 
+                ? (shiftWindow.isWithinWindow ? "Shift Aktif" : "Private Order")
+                : (shiftWindow.isWithinWindow ? "Check-in Shift" : "Ambil Private")
+              }
             </button>
             <button
               onClick={handleSetStay}
