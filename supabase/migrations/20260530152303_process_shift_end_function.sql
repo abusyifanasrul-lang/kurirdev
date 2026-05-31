@@ -55,8 +55,7 @@ BEGIN
   UPDATE shift_attendance
   SET 
     status = 'alpha',
-    late_minutes = v_shift_duration_minutes,
-    updated_at = now()
+    late_minutes = v_shift_duration_minutes
   WHERE shift_id = p_shift_id
     AND date = v_current_date
     AND status = 'late'
