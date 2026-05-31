@@ -502,7 +502,7 @@ export function Orders() {
         if (error.message?.includes('tidak tersedia')) {
           const addToast = useToastStore.getState().addToast;
           addToast('Order sudah di-assign oleh admin lain. Refresh halaman.', 'error');
-          await useOrderStore.getState().fetchOrders();
+          await useOrderStore.getState().fetchInitialOrders();
         } else {
           const addToast = useToastStore.getState().addToast;
           addToast('Gagal assign kurir. Coba lagi.', 'error');

@@ -92,29 +92,29 @@ BEGIN
   -- QUERY PER-ORDER FINES (New functionality)
   -- ========================================
   -- Query orders table for per-order fines (WHERE fine_deducted > 0)
-  -- Join with courier_id and apply date range filter on actual_delivery_time
-  -- Only include delivered orders (status = 'delivered')
+  -- Join with courier_id and apply date range filter on completed_at
+  -- Only include completed orders (status = 'completed')
   SELECT 
     COALESCE(jsonb_agg(
       jsonb_build_object(
         'order_id', o.id,
         'order_number', o.order_number,
-        'date', DATE(o.actual_delivery_time),
+        'date', DATE(o.completed_at),
         'amount', o.fine_deducted,
         'payment_status', o.payment_status,
-        'actual_delivery_time', o.actual_delivery_time,
+        'completed_at', o.completed_at,
         'customer_name', o.customer_name,
-        'customer_address', o.customer_address
+        'destination_address', o.destination_address
       )
-      ORDER BY o.actual_delivery_time DESC
+      ORDER BY o.completed_at DESC
     ), '[]'::jsonb),
     COALESCE(SUM(o.fine_deducted), 0)
   INTO v_per_order_fines, v_total_per_order_fines
   FROM orders o
   WHERE o.courier_id = p_courier_id
-    AND o.status = 'delivered'
+    AND o.status = 'completed'
     AND o.fine_deducted > 0
-    AND DATE(o.actual_delivery_time) BETWEEN p_date_from AND p_date_to;
+    AND DATE(o.completed_at) BETWEEN p_date_from AND p_date_to;
   
   -- ========================================
   -- CALCULATE GRAND TOTAL

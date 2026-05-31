@@ -22,6 +22,9 @@ DECLARE
   v_end_cron_name TEXT;
   v_start_time_local TIME;
   v_end_time_local TIME;
+  v_start_cron_schedule TEXT;
+  v_end_cron_schedule TEXT;
+  v_job_exists BOOLEAN;
 BEGIN
   -- Get operational timezone from settings
   SELECT operational_timezone INTO v_operational_tz FROM settings LIMIT 1;
@@ -41,19 +44,23 @@ BEGIN
     -- NO double conversion with AT TIME ZONE
     v_start_time_local := v_shift.start_time;
     v_end_time_local := v_shift.end_time;
+    
+    -- Convert TIME to cron format: 'minute hour * * *'
+    v_start_cron_schedule := EXTRACT(MINUTE FROM v_start_time_local)::TEXT || ' ' || EXTRACT(HOUR FROM v_start_time_local)::TEXT || ' * * *';
+    v_end_cron_schedule := EXTRACT(MINUTE FROM v_end_time_local)::TEXT || ' ' || EXTRACT(HOUR FROM v_end_time_local)::TEXT || ' * * *';
 
     IF v_shift.is_active THEN
       -- Create or update start cron job
       PERFORM cron.schedule(
         v_start_cron_name,
-        v_start_time_local::TEXT || ' * * *',  -- Run daily at shift start time
+        v_start_cron_schedule,  -- Run daily at shift start time
         format('SELECT process_shift_start(%L)', v_shift.id)
       );
       
       -- Create or update end cron job
       PERFORM cron.schedule(
         v_end_cron_name,
-        v_end_time_local::TEXT || ' * * *',  -- Run daily at shift end time
+        v_end_cron_schedule,  -- Run daily at shift end time
         format('SELECT process_shift_end(%L)', v_shift.id)
       );
       
@@ -69,9 +76,16 @@ BEGIN
         is_active = EXCLUDED.is_active,
         updated_at = now();
     ELSE
-      -- Deactivate cron jobs for inactive shifts
-      PERFORM cron.unschedule(v_start_cron_name);
-      PERFORM cron.unschedule(v_end_cron_name);
+      -- Deactivate cron jobs for inactive shifts (check if exists first)
+      SELECT EXISTS(SELECT 1 FROM cron.job WHERE jobname = v_start_cron_name) INTO v_job_exists;
+      IF v_job_exists THEN
+        PERFORM cron.unschedule(v_start_cron_name);
+      END IF;
+      
+      SELECT EXISTS(SELECT 1 FROM cron.job WHERE jobname = v_end_cron_name) INTO v_job_exists;
+      IF v_job_exists THEN
+        PERFORM cron.unschedule(v_end_cron_name);
+      END IF;
       
       UPDATE cron_jobs SET is_active = false, updated_at = now()
       WHERE shift_id = v_shift.id;
