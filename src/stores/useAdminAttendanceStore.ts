@@ -30,17 +30,24 @@ interface MissingCourier {
 interface AdminAttendanceStore {
   logs: AdminAttendanceLog[];
   missingCouriers: MissingCourier[];
+  pendingReview: AdminAttendanceLog[];
+  pendingAlpha: AdminAttendanceLog[];
   isLoading: boolean;
   fetchTodayLogs: () => Promise<void>;
   fetchMissingCouriers: () => Promise<void>;
+  fetchPendingReview: () => Promise<void>;
+  fetchPendingAlpha: () => Promise<void>;
   applyFine: (attendanceId: string, fineType: 'per_order' | 'flat_major', adminId: string, notes?: string) => Promise<void>;
   excuseLate: (attendanceId: string, adminId: string, notes?: string) => Promise<void>;
+  verifyAlpha: (attendanceId: string, adminId: string, notes?: string) => Promise<void>;
   subscribeToday: () => (() => void);
 }
 
 export const useAdminAttendanceStore = create<AdminAttendanceStore>((set, get) => ({
   logs: [],
   missingCouriers: [],
+  pendingReview: [],
+  pendingAlpha: [],
   isLoading: false,
 
   fetchTodayLogs: async () => {
@@ -102,6 +109,64 @@ export const useAdminAttendanceStore = create<AdminAttendanceStore>((set, get) =
     }
   },
 
+  fetchPendingReview: async () => {
+    set({ isLoading: true });
+    
+    const { data, error } = await supabase.rpc('get_pending_review_attendance');
+    
+    if (!error && data) {
+      set({
+        pendingReview: data.map((log: any) => ({
+          id: log.id,
+          courier_id: log.courier_id,
+          shift_id: log.shift_id,
+          first_online_at: log.first_online_at,
+          last_online_at: log.last_online_at,
+          status: log.status,
+          late_minutes: log.late_minutes ?? 0,
+          fine_type: log.fine_type,
+          fine_per_order: log.fine_per_order ?? 0,
+          flat_fine: log.flat_fine ?? 0,
+          courier_name: log.courier_name,
+          shift_name: log.shift_name,
+          shift_start_time: log.shift_start_time,
+        }))
+      });
+    } else if (error) {
+      console.error('[AdminAttendance] Error fetching pending review:', error);
+    }
+    set({ isLoading: false });
+  },
+
+  fetchPendingAlpha: async () => {
+    set({ isLoading: true });
+    
+    const { data, error } = await supabase.rpc('get_pending_alpha_attendance');
+    
+    if (!error && data) {
+      set({
+        pendingAlpha: data.map((log: any) => ({
+          id: log.id,
+          courier_id: log.courier_id,
+          shift_id: log.shift_id,
+          first_online_at: log.first_online_at,
+          last_online_at: log.last_online_at,
+          status: log.status,
+          late_minutes: log.late_minutes ?? 0,
+          fine_type: log.fine_type,
+          fine_per_order: log.fine_per_order ?? 0,
+          flat_fine: log.flat_fine ?? 0,
+          courier_name: log.courier_name,
+          shift_name: log.shift_name,
+          shift_start_time: log.shift_start_time,
+        }))
+      });
+    } else if (error) {
+      console.error('[AdminAttendance] Error fetching pending alpha:', error);
+    }
+    set({ isLoading: false });
+  },
+
   applyFine: async (attendanceId, fineType, adminId, notes) => {
     const { error } = await supabase.rpc('apply_attendance_fine', {
       p_attendance_id: attendanceId,
@@ -109,7 +174,10 @@ export const useAdminAttendanceStore = create<AdminAttendanceStore>((set, get) =
       p_admin_id: adminId,
       p_notes: notes ?? null,
     });
-    if (!error) await get().fetchTodayLogs();
+    if (!error) {
+      await get().fetchTodayLogs();
+      await get().fetchPendingReview();
+    }
   },
 
   excuseLate: async (attendanceId, adminId, notes) => {
@@ -118,7 +186,22 @@ export const useAdminAttendanceStore = create<AdminAttendanceStore>((set, get) =
       p_admin_id: adminId,
       p_notes: notes ?? null,
     });
-    if (!error) await get().fetchTodayLogs();
+    if (!error) {
+      await get().fetchTodayLogs();
+      await get().fetchPendingReview();
+    }
+  },
+
+  verifyAlpha: async (attendanceId, adminId, notes) => {
+    const { error } = await supabase.rpc('verify_alpha_attendance', {
+      p_attendance_id: attendanceId,
+      p_admin_id: adminId,
+      p_notes: notes ?? null,
+    });
+    if (!error) {
+      await get().fetchTodayLogs();
+      await get().fetchPendingAlpha();
+    }
   },
 
   subscribeToday: () => {

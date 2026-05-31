@@ -25,19 +25,27 @@ interface AdminAttendanceLog {
   shift_start_time?: string;
 }
 
+type TabType = 'today' | 'pending-review' | 'pending-alpha';
+
 export function AttendanceMonitoring() {
   const { user } = useAuth();
   const { 
     logs, 
-    missingCouriers, 
+    missingCouriers,
+    pendingReview,
+    pendingAlpha,
     isLoading, 
     fetchTodayLogs, 
-    fetchMissingCouriers, 
+    fetchMissingCouriers,
+    fetchPendingReview,
+    fetchPendingAlpha,
     subscribeToday, 
     applyFine, 
-    excuseLate 
+    excuseLate,
+    verifyAlpha
   } = useAdminAttendanceStore();
   const { shifts, fetchShifts } = useShiftStore();
+  const [activeTab, setActiveTab] = useState<TabType>('today');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedShift, setSelectedShift] = useState<string>('all');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -50,24 +58,30 @@ export function AttendanceMonitoring() {
   const [fineNotes, setFineNotes] = useState('');
 
   useEffect(() => {
-    fetchTodayLogs();
-    fetchMissingCouriers();
+    if (activeTab === 'today') {
+      fetchTodayLogs();
+      fetchMissingCouriers();
+    } else if (activeTab === 'pending-review') {
+      fetchPendingReview();
+    } else if (activeTab === 'pending-alpha') {
+      fetchPendingAlpha();
+    }
+    
     fetchShifts();
 
-    // Check for missing couriers every 60 seconds
-    // This updates the warning panel when shifts start
-    const missingCheckInterval = setInterval(() => {
+    // Check for missing couriers every 60 seconds (only for today tab)
+    const missingCheckInterval = activeTab === 'today' ? setInterval(() => {
       fetchMissingCouriers();
-    }, 60_000); // 60 seconds
+    }, 60_000) : null;
 
-    // Realtime subscription for attendance records
-    const unsubscribe = subscribeToday();
+    // Realtime subscription for attendance records (only for today tab)
+    const unsubscribe = activeTab === 'today' ? subscribeToday() : () => {};
 
     return () => {
-      clearInterval(missingCheckInterval);
+      if (missingCheckInterval) clearInterval(missingCheckInterval);
       unsubscribe();
     };
-  }, []); // ✅ Empty deps - only run once on mount
+  }, [activeTab]); // Re-run when tab changes
 
   // Pisahkan berdasarkan tingkat urgensi dan filter shift:
   const filteredMissing = missingCouriers.filter(c => 
@@ -217,6 +231,64 @@ export function AttendanceMonitoring() {
         </div>
       </div>
 
+      {/* Tab Navigation */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-2 shadow-sm">
+        <div className="flex gap-2">
+          <button
+            onClick={() => setActiveTab('today')}
+            className={cn(
+              "flex-1 px-6 py-3 rounded-xl font-black text-sm transition-all",
+              activeTab === 'today'
+                ? "bg-emerald-600 text-white shadow-lg shadow-emerald-200"
+                : "text-gray-600 hover:bg-gray-50"
+            )}
+          >
+            HARI INI
+          </button>
+          <button
+            onClick={() => setActiveTab('pending-review')}
+            className={cn(
+              "flex-1 px-6 py-3 rounded-xl font-black text-sm transition-all relative",
+              activeTab === 'pending-review'
+                ? "bg-amber-600 text-white shadow-lg shadow-amber-200"
+                : "text-gray-600 hover:bg-gray-50"
+            )}
+          >
+            PENDING REVIEW
+            {pendingReview.length > 0 && (
+              <span className={cn(
+                "absolute -top-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black",
+                activeTab === 'pending-review' ? "bg-white text-amber-600" : "bg-amber-600 text-white"
+              )}>
+                {pendingReview.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('pending-alpha')}
+            className={cn(
+              "flex-1 px-6 py-3 rounded-xl font-black text-sm transition-all relative",
+              activeTab === 'pending-alpha'
+                ? "bg-gray-600 text-white shadow-lg shadow-gray-200"
+                : "text-gray-600 hover:bg-gray-50"
+            )}
+          >
+            PENDING ALPHA
+            {pendingAlpha.length > 0 && (
+              <span className={cn(
+                "absolute -top-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black",
+                activeTab === 'pending-alpha' ? "bg-white text-gray-600" : "bg-gray-600 text-white"
+              )}>
+                {pendingAlpha.length}
+              </span>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'today' && (
+        <>
       {/* Dashboard Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-xl shadow-gray-200/40 flex items-center gap-5 group hover:scale-[1.02] transition-all duration-300">
@@ -577,6 +649,235 @@ export function AttendanceMonitoring() {
           </table>
         </div>
       </div>
+        </>
+      )}
+
+      {/* Pending Review Tab */}
+      {activeTab === 'pending-review' && (
+        <div className="space-y-6">
+          {/* Info Banner */}
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="h-5 w-5 text-amber-600" />
+              <div>
+                <p className="text-sm font-black text-amber-900">Review Keterlambatan</p>
+                <p className="text-xs text-amber-700 mt-0.5">
+                  Tinjau dan putuskan denda untuk kurir yang terlambat. Semua record dari semua tanggal ditampilkan.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Pending Review Table */}
+          <div className="bg-white rounded-[2.5rem] shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-gray-50/50 border-b border-gray-100">
+                    <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
+                      Tanggal
+                    </th>
+                    <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
+                      Kurir
+                    </th>
+                    <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
+                      Shift
+                    </th>
+                    <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
+                      Terlambat
+                    </th>
+                    <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
+                      Aksi
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {isLoading ? (
+                    Array.from({ length: 5 }).map((_, i) => (
+                      <tr key={i} className="animate-pulse">
+                        <td colSpan={5} className="px-6 py-8">
+                          <div className="h-4 bg-gray-100 rounded-full w-full" />
+                        </td>
+                      </tr>
+                    ))
+                  ) : pendingReview.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-20 text-center">
+                        <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-100">
+                          <CheckCircle2 className="h-8 w-8 text-emerald-600" />
+                        </div>
+                        <p className="text-sm font-black text-gray-400 uppercase tracking-widest">
+                          Semua keterlambatan sudah direview
+                        </p>
+                      </td>
+                    </tr>
+                  ) : (
+                    pendingReview.map((log) => (
+                      <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="px-6 py-5 font-bold text-gray-900">
+                          {format(new Date(log.first_online_at || new Date()), 'dd MMM yyyy')}
+                        </td>
+                        <td className="px-6 py-5">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-2xl bg-gray-900 text-white flex items-center justify-center font-black text-sm">
+                              {log.courier_name?.charAt(0)}
+                            </div>
+                            <p className="font-black text-gray-900 tracking-tight">{log.courier_name}</p>
+                          </div>
+                        </td>
+                        <td className="px-6 py-5">
+                          <Badge variant="secondary" className="font-bold text-[10px] uppercase tracking-wider">
+                            {log.shift_name}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-5">
+                          <span className="text-sm font-bold text-red-600">
+                            {log.late_minutes} menit
+                          </span>
+                        </td>
+                        <td className="px-6 py-5">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => openFineDialog(log)}
+                              disabled={actionLoading === log.id}
+                              className="px-3 py-1.5 text-[10px] font-black bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 shadow-sm shadow-red-200"
+                            >
+                              {actionLoading === log.id ? '...' : 'APPLY DENDA'}
+                            </button>
+                            <button
+                              onClick={() => handleExcuse(log)}
+                              disabled={actionLoading === log.id}
+                              className="px-3 py-1.5 text-[10px] font-black bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition disabled:opacity-50"
+                            >
+                              MAAFKAN
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pending Alpha Tab */}
+      {activeTab === 'pending-alpha' && (
+        <div className="space-y-6">
+          {/* Info Banner */}
+          <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="h-5 w-5 text-gray-600" />
+              <div>
+                <p className="text-sm font-black text-gray-900">Verifikasi Alpha</p>
+                <p className="text-xs text-gray-700 mt-0.5">
+                  Konfirmasi atau tolak status alpha untuk kurir yang tidak check-in sama sekali.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Pending Alpha Table */}
+          <div className="bg-white rounded-[2.5rem] shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-gray-50/50 border-b border-gray-100">
+                    <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
+                      Tanggal
+                    </th>
+                    <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
+                      Kurir
+                    </th>
+                    <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
+                      Shift
+                    </th>
+                    <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
+                      Durasi Alpha
+                    </th>
+                    <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
+                      Aksi
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {isLoading ? (
+                    Array.from({ length: 5 }).map((_, i) => (
+                      <tr key={i} className="animate-pulse">
+                        <td colSpan={5} className="px-6 py-8">
+                          <div className="h-4 bg-gray-100 rounded-full w-full" />
+                        </td>
+                      </tr>
+                    ))
+                  ) : pendingAlpha.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-20 text-center">
+                        <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-100">
+                          <CheckCircle2 className="h-8 w-8 text-emerald-600" />
+                        </div>
+                        <p className="text-sm font-black text-gray-400 uppercase tracking-widest">
+                          Semua alpha sudah diverifikasi
+                        </p>
+                      </td>
+                    </tr>
+                  ) : (
+                    pendingAlpha.map((log) => (
+                      <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="px-6 py-5 font-bold text-gray-900">
+                          {format(new Date(log.first_online_at || new Date()), 'dd MMM yyyy')}
+                        </td>
+                        <td className="px-6 py-5">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-2xl bg-gray-900 text-white flex items-center justify-center font-black text-sm">
+                              {log.courier_name?.charAt(0)}
+                            </div>
+                            <p className="font-black text-gray-900 tracking-tight">{log.courier_name}</p>
+                          </div>
+                        </td>
+                        <td className="px-6 py-5">
+                          <Badge variant="secondary" className="font-bold text-[10px] uppercase tracking-wider">
+                            {log.shift_name}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-5">
+                          <span className="text-sm font-bold text-gray-600">
+                            {log.late_minutes} menit (seluruh shift)
+                          </span>
+                        </td>
+                        <td className="px-6 py-5">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={async () => {
+                                if (!user) return;
+                                setActionLoading(log.id);
+                                await verifyAlpha(log.id, user.id);
+                                setActionLoading(null);
+                              }}
+                              disabled={actionLoading === log.id}
+                              className="px-3 py-1.5 text-[10px] font-black bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition disabled:opacity-50 shadow-sm shadow-gray-200"
+                            >
+                              {actionLoading === log.id ? '...' : 'KONFIRMASI ALPHA'}
+                            </button>
+                            <button
+                              onClick={() => handleExcuse(log)}
+                              disabled={actionLoading === log.id}
+                              className="px-3 py-1.5 text-[10px] font-black bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition disabled:opacity-50"
+                            >
+                              MAAFKAN
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Fine Dialog Modal */}
       <Modal
