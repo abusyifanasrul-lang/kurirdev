@@ -4,11 +4,11 @@ import {
   BarChart3, PieChart as PieChartIcon
 } from 'lucide-react';
 import { 
-  parseISO, startOfDay, endOfDay, subDays, isWithinInterval,
+  parseISO, isWithinInterval,
   eachDayOfInterval, format
 } from 'date-fns';
 import { 
-  getLocalNow, getLocalStartOfMonth
+  getLocalNow, getLocalStartOfMonth, getLocalTodayRange
 } from '@/utils/date';
 import { Header } from '@/components/layout/Header';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -46,12 +46,19 @@ export function FinanceAnalisa() {
   const [globalUnpaidOrders, setGlobalUnpaidOrders] = useState<Order[]>([]);
 
   const loadPeriodOrders = useCallback(async () => {
-    const now = getLocalNow();
+    const { start: todayStart, end: todayEnd } = getLocalTodayRange();
     let start: Date;
-    if (period === '7days') start = startOfDay(subDays(now, 6));
-    else if (period === '30days') start = startOfDay(subDays(now, 29));
-    else start = getLocalStartOfMonth();
-    const end = endOfDay(now);
+    
+    if (period === '7days') {
+      start = new Date(todayStart);
+      start.setDate(start.getDate() - 6);
+    } else if (period === '30days') {
+      start = new Date(todayStart);
+      start.setDate(start.getDate() - 29);
+    } else {
+      start = getLocalStartOfMonth();
+    }
+    const end = todayEnd;
 
     const [dbOrders, dbUnpaid] = await Promise.all([
       getOrdersByDateRange(start.toISOString(), end.toISOString()),
@@ -76,14 +83,20 @@ export function FinanceAnalisa() {
   }, [periodOrders, globalUnpaidOrders, orders]);
 
   const dateRange = useMemo(() => {
-    const now = getLocalNow();
+    const { start: todayStart, end: todayEnd } = getLocalTodayRange();
+    let start: Date;
+    
     if (period === '7days') {
-      return { start: startOfDay(subDays(now, 6)), end: endOfDay(now) };
+      start = new Date(todayStart);
+      start.setDate(start.getDate() - 6);
+    } else if (period === '30days') {
+      start = new Date(todayStart);
+      start.setDate(start.getDate() - 29);
+    } else {
+      start = getLocalStartOfMonth();
     }
-    if (period === '30days') {
-      return { start: startOfDay(subDays(now, 29)), end: endOfDay(now) };
-    }
-    return { start: getLocalStartOfMonth(), end: endOfDay(now) };
+    
+    return { start, end: todayEnd };
   }, [period]);
 
   // Filtered orders in range
@@ -142,8 +155,12 @@ export function FinanceAnalisa() {
   const dailyData = useMemo(() => {
     const days = eachDayOfInterval(dateRange);
     return days.map(day => {
-      const dayStart = startOfDay(day);
-      const dayEnd = endOfDay(day);
+      // Create day boundaries without timezone conversion
+      const dayStart = new Date(day);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(day);
+      dayEnd.setHours(23, 59, 59, 999);
+      
       const dayDelivered = filteredDelivered.filter(o => {
         const dateStr = o.actual_delivery_time || o.created_at;
         return isWithinInterval(parseISO(dateStr), { start: dayStart, end: dayEnd });
@@ -158,7 +175,7 @@ export function FinanceAnalisa() {
         orders: dayDelivered.length,
       };
     });
-  }, [filteredDelivered, dateRange]);
+  }, [filteredDelivered, dateRange, earningSettings]);
 
   // Top couriers by revenue
   const topCouriers = useMemo(() => {

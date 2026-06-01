@@ -1,4 +1,5 @@
-import { format, isValid, parseISO } from 'date-fns';
+import { isValid, parseISO, startOfDay, endOfDay } from 'date-fns';
+import { toZonedTime, fromZonedTime, formatInTimeZone } from 'date-fns-tz';
 import { id } from 'date-fns/locale';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 
@@ -11,7 +12,7 @@ export function getTimezone(): string {
 
 /**
  * Formats a date string or object into a local timezone-specific format.
- * Uses Intl.DateTimeFormat to ensure the timezone is correctly handled.
+ * Uses date-fns-tz to ensure the timezone is correctly handled.
  */
 export function formatLocal(
   date: Date | string | number | null | undefined,
@@ -24,34 +25,8 @@ export function formatLocal(
 
   const tz = getTimezone();
 
-  // Use Intl to get the date in the local timezone
-  const formatter = new Intl.DateTimeFormat('id-ID', {
-    timeZone: tz,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  });
-
-  const parts = formatter.formatToParts(d);
-  const map: Record<string, string> = {};
-  parts.forEach(p => (map[p.type] = p.value));
-
-  // Construct a new Date object that represents the same wall-clock time locally
-  // This is a workaround to use date-fns format while enforcing local time
-  const localDate = new Date(
-    parseInt(map.year),
-    parseInt(map.month) - 1,
-    parseInt(map.day),
-    parseInt(map.hour),
-    parseInt(map.minute),
-    parseInt(map.second)
-  );
-
-  return format(localDate, formatStr, { locale: id });
+  // Use date-fns-tz to format in the operational timezone
+  return formatInTimeZone(d, tz, formatStr, { locale: id });
 }
 
 /**
@@ -67,88 +42,82 @@ export function isLocalToday(date: Date | string | number): boolean {
 }
 
 /**
- * Returns a new Date object representing the current "wall-clock" time locally.
- * Uses Intl.DateTimeFormat for consistent timezone handling (same as backend).
+ * Returns a new Date object representing the current time in operational timezone.
+ * Uses date-fns-tz for reliable timezone conversion.
  * 
- * IMPORTANT: This approach matches the backend SQL:
- * `v_now_local := NOW() AT TIME ZONE v_timezone`
+ * IMPORTANT: This returns a Date object representing the current moment in time,
+ * converted to the operational timezone for display/calculation purposes.
  */
 export function getLocalNow(): Date {
   const now = new Date();
   const tz = getTimezone();
   
-  // Use Intl.DateTimeFormat for reliable timezone conversion
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: tz,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  });
-  
-  const parts = formatter.formatToParts(now);
-  const map: Record<string, string> = {};
-  parts.forEach(p => (map[p.type] = p.value));
-  
-  // Construct Date object with local timezone values
-  return new Date(
-    parseInt(map.year),
-    parseInt(map.month) - 1,
-    parseInt(map.day),
-    parseInt(map.hour),
-    parseInt(map.minute),
-    parseInt(map.second)
-  );
+  // Convert UTC time to operational timezone
+  return toZonedTime(now, tz);
 }
 
 /**
- * Returns the current date at the start of the day locally.
+ * Returns the current date at the start and end of the day in operational timezone.
+ * Uses date-fns-tz to ensure correct timezone handling.
  * Useful for Supabase queries and "Today" filters.
  */
 export function getLocalTodayRange() {
-  const localNow = getLocalNow();
+  const tz = getTimezone();
+  const now = new Date();
   
-  const start = new Date(localNow);
-  start.setHours(0, 0, 0, 0);
+  // Convert current UTC time to operational timezone
+  const zonedNow = toZonedTime(now, tz);
   
-  const end = new Date(localNow);
-  end.setHours(23, 59, 59, 999);
+  // Get start and end of day in the operational timezone
+  const zonedStart = startOfDay(zonedNow);
+  const zonedEnd = endOfDay(zonedNow);
+  
+  // Convert back to UTC for storage/comparison
+  const start = fromZonedTime(zonedStart, tz);
+  const end = fromZonedTime(zonedEnd, tz);
   
   return { start, end };
 }
 
 /**
- * Formats a Date object to YYYY-MM-DD string in local timezone.
- * This matches the backend SQL: `(v_now_local AT TIME ZONE v_timezone)::DATE`
+ * Formats a Date object to YYYY-MM-DD string in operational timezone.
+ * Uses date-fns-tz to ensure correct timezone handling.
  * 
  * CRITICAL: Use this for all date comparisons with database DATE columns.
  */
 export function formatDateLocal(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  const tz = getTimezone();
+  return formatInTimeZone(date, tz, 'yyyy-MM-dd');
 }
 
 /**
- * Returns today's date as YYYY-MM-DD string in local timezone.
- * Convenience wrapper for formatDateLocal(getLocalNow()).
+ * Returns today's date as YYYY-MM-DD string in operational timezone.
+ * Uses date-fns-tz to ensure correct timezone handling.
+ * Convenience wrapper for formatDateLocal(new Date()).
  */
 export function getTodayLocal(): string {
-  return formatDateLocal(getLocalNow());
+  const tz = getTimezone();
+  const now = new Date();
+  return formatInTimeZone(now, tz, 'yyyy-MM-dd');
 }
 
 /**
- * Utility to get start of month locally.
+ * Utility to get start of month in operational timezone.
+ * Uses date-fns-tz to ensure correct timezone handling.
  */
 export function getLocalStartOfMonth() {
-  const now = getLocalNow();
-  now.setDate(1);
-  now.setHours(0, 0, 0, 0);
-  return now;
+  const tz = getTimezone();
+  const now = new Date();
+  
+  // Convert to operational timezone
+  const zonedNow = toZonedTime(now, tz);
+  
+  // Set to first day of month at midnight
+  zonedNow.setDate(1);
+  zonedNow.setHours(0, 0, 0, 0);
+  
+  // Convert back to UTC
+  return fromZonedTime(zonedNow, tz);
 }
 
 /**
@@ -191,4 +160,38 @@ export function formatRelativeLocal(date: Date | string): string {
   }
   
   return formatLocal(d, 'dd MMM yyyy, HH:mm');
+}
+
+/**
+ * Get start and end of a specific day in operational timezone.
+ * Uses date-fns-tz to ensure correct timezone handling.
+ * 
+ * This utility takes a Date object and returns the boundaries (00:00:00 and 23:59:59.999)
+ * for that day in the operational timezone, returned as Date objects representing
+ * the correct UTC timestamps.
+ * 
+ * @param date - The date to get boundaries for
+ * @returns { start: Date, end: Date } - Day boundaries in operational timezone
+ * 
+ * @example
+ * const date = new Date('2026-05-31');
+ * const { start, end } = getLocalDayRange(date);
+ * // start: 2026-05-31 00:00:00 Makassar (2026-05-30 16:00:00 UTC)
+ * // end: 2026-05-31 23:59:59.999 Makassar (2026-05-31 15:59:59.999 UTC)
+ */
+export function getLocalDayRange(date: Date): { start: Date; end: Date } {
+  const tz = getTimezone();
+  
+  // Convert the date to operational timezone
+  const zonedDate = toZonedTime(date, tz);
+  
+  // Get start and end of day in operational timezone
+  const zonedStart = startOfDay(zonedDate);
+  const zonedEnd = endOfDay(zonedDate);
+  
+  // Convert back to UTC for storage/comparison
+  const start = fromZonedTime(zonedStart, tz);
+  const end = fromZonedTime(zonedEnd, tz);
+  
+  return { start, end };
 }

@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Download, Calendar, TrendingUp, DollarSign, Package, Award, Filter } from 'lucide-react';
-import { format, isWithinInterval, parseISO, startOfDay, endOfDay, eachDayOfInterval } from 'date-fns';
+import { format, isWithinInterval, parseISO, eachDayOfInterval } from 'date-fns';
 import {
   BarChart,
   Bar,
@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/Input';
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell, TableEmpty } from '@/components/ui/Table';
 import { calcAdminEarning, calcCourierEarning } from '@/lib/calcEarning';
 import { formatCurrency, formatShortCurrency } from '@/utils/formatter';
+import { getLocalDayRange } from '@/utils/date';
 
 // Stores
 import { useOrderStore } from '@/stores/useOrderStore';
@@ -78,15 +79,18 @@ export function Reports() {
   const handleFetchAndCache = async () => {
     setCacheStatus('loading')
     try {
-      const start = startOfDay(parseISO(dateRange.start))
-      const end = endOfDay(parseISO(dateRange.end))
+      const startDate = parseISO(dateRange.start)
+      const endDate = parseISO(dateRange.end)
+      const { start } = getLocalDayRange(startDate)
+      const { end } = getLocalDayRange(endDate)
+      
       await fetchOrdersByDateRange(start, end)
 
       const { useOrderStore: store } = await import('@/stores/useOrderStore')
       const freshOrders = store.getState().historicalOrders
 
       // Simpan ke IndexedDB per tanggal
-      const days = eachDayOfInterval({ start, end })
+      const days = eachDayOfInterval({ start: startDate, end: endDate })
       for (const day of days) {
         const dateStr = format(day, 'yyyy-MM-dd')
         const dayOrders = freshOrders.filter(o =>
@@ -109,8 +113,10 @@ export function Reports() {
 
   // --- Analytics Calculation ---
   const analytics = useMemo(() => {
-    const start = startOfDay(parseISO(appliedRange.start));
-    const end = endOfDay(parseISO(appliedRange.end));
+    const startDate = parseISO(appliedRange.start);
+    const endDate = parseISO(appliedRange.end);
+    const { start } = getLocalDayRange(startDate);
+    const { end } = getLocalDayRange(endDate);
 
     // 1. Filter Orders in Range
     const filteredOrders = reportOrders.filter((o) => {
@@ -159,7 +165,7 @@ export function Reports() {
 
     // 4. Charts Data
     // Group by Day
-    const days = eachDayOfInterval({ start, end });
+    const days = eachDayOfInterval({ start: startDate, end: endDate });
     const dailyData = days.map(day => {
       const dayStr = format(day, 'yyyy-MM-dd');
       const dayOrders = filteredOrders.filter(o => {

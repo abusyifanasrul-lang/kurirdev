@@ -1,4 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+
+// Mock the settings store to avoid Supabase client initialization
+vi.mock('@/stores/useSettingsStore', () => ({
+  useSettingsStore: {
+    getState: () => ({
+      operational_timezone: 'Asia/Jakarta',
+    }),
+  },
+}))
+
 import { 
   formatLocal, 
   isLocalToday, 
