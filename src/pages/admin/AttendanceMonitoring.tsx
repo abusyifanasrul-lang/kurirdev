@@ -589,7 +589,11 @@ export function AttendanceMonitoring() {
                         {getStatusBadge(log.status)}
                       </td>
                       <td className="px-6 py-5">
-                        {log.late_minutes > 0 ? (
+                        {log.status === 'alpha' ? (
+                          <span className="text-xs font-bold text-purple-600">
+                            ALPHA - Tidak Check-In
+                          </span>
+                        ) : log.late_minutes > 0 ? (
                           <span className="text-xs font-bold text-red-500">
                             Terlambat {log.late_minutes} Menit
                           </span>
@@ -897,7 +901,11 @@ export function AttendanceMonitoring() {
               <p className="text-sm font-bold text-gray-600 mb-2">Kurir</p>
               <p className="text-lg font-black text-gray-900">{selectedLog.courier_name}</p>
               <p className="text-sm text-gray-500 mt-1">
-                Terlambat <span className="font-bold text-red-600">{selectedLog.late_minutes} menit</span>
+                {selectedLog.status === 'alpha' ? (
+                  <>ALPHA - <span className="font-bold text-purple-600">Tidak Check-In (Shift {selectedLog.late_minutes} menit)</span></>
+                ) : (
+                  <>Terlambat <span className="font-bold text-red-600">{selectedLog.late_minutes} menit</span></>
+                )}
               </p>
             </div>
 

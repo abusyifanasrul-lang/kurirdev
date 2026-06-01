@@ -89,7 +89,7 @@ export function AttendanceWidget({ courierId, lateFineActive }: AttendanceWidget
         </div>
         <div className="text-left min-w-0">
           <p className="text-xs font-bold text-gray-900 truncate">
-            {todayLog.shift_name || 'Shift Aktif'} • Terlambat {todayLog.late_minutes > 0 && `${todayLog.late_minutes} menit`}
+            {todayLog.shift_name || 'Shift Aktif'} • {todayLog.status === 'alpha' ? 'ALPHA - Tidak Check-In' : `Terlambat ${todayLog.late_minutes > 0 ? `${todayLog.late_minutes} menit` : ''}`}
           </p>
         </div>
       </div>

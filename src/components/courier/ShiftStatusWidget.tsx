@@ -239,7 +239,7 @@ export function ShiftStatusWidget({ courierId, lateFineActive }: ShiftStatusWidg
     switch (widgetState) {
       case 'late':
         return {
-          title: `${todayLog?.shift_name || shiftInfo.name} • Terlambat ${todayLog?.late_minutes || 0} menit`,
+          title: `${todayLog?.shift_name || shiftInfo.name} • ${todayLog?.status === 'alpha' ? 'ALPHA - Tidak Check-In' : `Terlambat ${todayLog?.late_minutes || 0} menit`}`,
           subtitle: `${shiftInfo.start_time} - ${shiftInfo.end_time}`,
           rightContent: <ChevronRight className="h-4 w-4 text-gray-400 flex-shrink-0" />
         };
