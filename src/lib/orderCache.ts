@@ -2,20 +2,28 @@ import Dexie, { Table } from 'dexie'
 import { Order, Customer } from '@/types'
 import { calcCourierEarning } from './calcEarning'
 import { useSettingsStore } from '@/stores/useSettingsStore'
+import { getTodayLocal } from '@/utils/date'
 
 // Helper function untuk konversi UTC ke local timezone
-function getLocalDateStr(
+// Uses operational timezone (Asia/Makassar) instead of browser timezone
+export function getLocalDateStr(
   isoString: string
 ): string {
   const date = new Date(isoString)
-  const year = date.getFullYear()
-  const month = String(
-    date.getMonth() + 1
-  ).padStart(2, '0')
-  const day = String(
-    date.getDate()
-  ).padStart(2, '0')
-  return `${year}-${month}-${day}` 
+  const tz = useSettingsStore.getState()?.operational_timezone || 'Asia/Makassar'
+  
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+  
+  const parts = formatter.formatToParts(date)
+  const map: Record<string, string> = {}
+  parts.forEach(p => (map[p.type] = p.value))
+  
+  return `${map.year}-${map.month}-${map.day}`
 }
 
 // Per-user sync metadata
@@ -589,7 +597,7 @@ export async function getCourierTodayStats(
   courierId: string,
   earningSettings: { commission_rate: number; commission_threshold: number; commission_type?: 'percentage' | 'flat' }
 ): Promise<{ count: number; earnings: number }> {
-  const today = getLocalDateStr(new Date().toISOString())
+  const today = getTodayLocal()  // Use operational timezone utility
   
   const todayOrders = await localDB.orders
     .where('_date').equals(today)

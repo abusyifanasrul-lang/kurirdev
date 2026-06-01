@@ -36,8 +36,8 @@ BEGIN
   IF v_operational_tz IS NULL THEN v_operational_tz := 'Asia/Makassar'; END IF;
   
   -- Get current time
-  v_current_time := now();
-  v_current_date := (v_current_time AT TIME ZONE v_operational_tz)::DATE;
+  v_current_time := now() AT TIME ZONE v_operational_tz;
+  v_current_date := v_current_time::DATE;
   
   -- Update late_minutes for all late records today that haven't checked in yet
   FOR v_attendance IN

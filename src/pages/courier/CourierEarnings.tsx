@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { ArrowLeft, TrendingUp, DollarSign, Package, Calendar, Search, X, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { cn } from '@/utils/cn';
-import { format, parseISO, startOfDay, subDays, startOfWeek, isWithinInterval, endOfDay, isToday, isYesterday } from 'date-fns';
+import { format, parseISO, startOfDay, subDays, startOfWeek, isWithinInterval, endOfDay, isYesterday } from 'date-fns';
 import { useAuth } from '@/context/AuthContext';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { calcCourierEarning } from '@/lib/calcEarning';
@@ -11,6 +11,7 @@ import { Order } from '@/types';
 import { Badge } from '@/components/ui/Badge';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { formatCurrency, formatShortCurrency } from '@/utils/formatter';
+import { getLocalTodayRange, isLocalToday } from '@/utils/date';
 import { InvoiceTemplate } from '@/components/orders/InvoiceTemplate';
 import { shareInvoiceNative } from '@/lib/invoiceUtils';
 import { getPlatformInfo } from '@/lib/platformUtils';
@@ -136,18 +137,18 @@ export function CourierEarnings() {
   }, [filteredOrders]);
 
   const getDateLabel = (dateStr: string) => {
+    if (isLocalToday(dateStr)) return 'Hari Ini';
     const date = parseISO(dateStr);
-    if (isToday(date)) return 'Hari Ini';
     if (isYesterday(date)) return 'Kemarin';
     return format(date, 'dd MMMM yyyy');
   };
 
   const todayStats = useMemo(() => {
-    const today = startOfDay(new Date());
-    const todayEnd = endOfDay(new Date());
+    const { start, end } = getLocalTodayRange();
     const todayOrders = deliveredOrders.filter((o) => {
       const deliveryDate = o.actual_delivery_time ? parseISO(o.actual_delivery_time) : parseISO(o.created_at);
-      return isWithinInterval(deliveryDate, { start: today, end: todayEnd });
+      const deliveryTime = deliveryDate.getTime();
+      return deliveryTime >= start.getTime() && deliveryTime <= end.getTime();
     });
     return {
       orders: todayOrders.length,

@@ -38,7 +38,7 @@ BEGIN
   
   -- Get current time in operational timezone
   v_current_time := now() AT TIME ZONE v_operational_tz;
-  v_current_date := (v_current_time AT TIME ZONE v_operational_tz)::DATE;
+  v_current_date := v_current_time::DATE;
   
   -- Check if today is a holiday
   SELECT EXISTS (
