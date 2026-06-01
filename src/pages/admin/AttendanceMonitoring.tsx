@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Clock, Search, Filter, AlertCircle, CheckCircle2, UserMinus, AlertTriangle, Bell, X, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import { useAdminAttendanceStore } from '@/stores/useAdminAttendanceStore';
 import { useShiftStore } from '@/stores/useShiftStore';
-import { format } from 'date-fns';
+import { formatLocal } from '@/utils/date';
 import { cn } from '@/utils/cn';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
@@ -562,10 +562,10 @@ export function AttendanceMonitoring() {
                         </Badge>
                       </td>
                       <td className="px-6 py-5 font-bold text-gray-600 tabular-nums">
-                        {log.first_online_at ? format(new Date(log.first_online_at), 'HH:mm') : '--:--'}
+                        {log.first_online_at ? formatLocal(log.first_online_at, 'HH:mm') : '--:--'}
                       </td>
                       <td className="px-6 py-5 font-bold text-gray-600 tabular-nums">
-                        {log.last_online_at ? format(new Date(log.last_online_at), 'HH:mm') : (
+                        {log.last_online_at ? formatLocal(log.last_online_at, 'HH:mm') : (
                           <span className="text-gray-300">--:--</span>
                         )}
                       </td>
@@ -715,7 +715,7 @@ export function AttendanceMonitoring() {
                     pendingReview.map((log) => (
                       <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
                         <td className="px-6 py-5 font-bold text-gray-900">
-                          {format(new Date(log.first_online_at || new Date()), 'dd MMM yyyy')}
+                          {formatLocal(log.first_online_at || new Date(), 'dd MMM yyyy')}
                         </td>
                         <td className="px-6 py-5">
                           <div className="flex items-center gap-3">
@@ -826,7 +826,7 @@ export function AttendanceMonitoring() {
                     pendingAlpha.map((log) => (
                       <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
                         <td className="px-6 py-5 font-bold text-gray-900">
-                          {format(new Date(log.first_online_at || new Date()), 'dd MMM yyyy')}
+                          {formatLocal(log.first_online_at || new Date(), 'dd MMM yyyy')}
                         </td>
                         <td className="px-6 py-5">
                           <div className="flex items-center gap-3">
