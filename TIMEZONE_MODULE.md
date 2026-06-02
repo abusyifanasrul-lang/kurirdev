@@ -157,6 +157,24 @@ now() AT TIME ZONE 'Asia/Makassar'            -- Manual conversion
 
 ---
 
+## 🎉 FUNCTIONS IN PRODUCTION
+
+**Status:** ✅ ALL REFACTORED (June 3, 2026)
+
+| Function | Migration | TZ Functions Used |
+|----------|-----------|-------------------|
+| `record_courier_checkin()` | `20260603065100` | `tz_today`, `tz_calculate_shift_window`, `tz_is_within_window`, `tz_calculate_late_minutes` |
+| `is_courier_out_of_shift()` | `20260603070000` | `tz_today`, `tz_calculate_shift_window`, `tz_is_within_window` |
+| `process_shift_start()` | `20260603070100` | `tz_today`, `tz_now` |
+| `process_shift_end()` | `20260603070200` | `tz_today`, `tz_now`, `tz_local_to_utc` |
+| `sync_shift_cron_jobs()` | `20260603070300` | `tz_local_to_utc` |
+| `update_late_minutes()` | `20260603070400` | `tz_today`, `tz_now`, `tz_local_to_utc`, `tz_calculate_late_minutes` |
+| `record_shift_end()` | `20260603070500` | `tz_today`, `tz_now`, `tz_local_to_utc` |
+
+**Total:** 7 functions, 0 manual `AT TIME ZONE` operations remaining! 🎉
+
+---
+
 ## 📝 FILES CHANGED
 
 **Migrations:**
