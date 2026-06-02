@@ -352,7 +352,13 @@ export function Orders() {
       u.is_online === true &&
       (u as any).out_of_shift === true  // Only private order mode
     ).sort((a, b) => {
-      // Sort by name for easy selection
+      // FIFO sorting for private mode
+      const timeA = a.queue_joined_at ? new Date(a.queue_joined_at).getTime() : Infinity;
+      const timeB = b.queue_joined_at ? new Date(b.queue_joined_at).getTime() : Infinity;
+      
+      if (timeA !== timeB) return timeA - timeB;
+      
+      // Fallback: Sort by name for deterministic ordering
       return a.name.localeCompare(b.name);
     });
   }, [users]);

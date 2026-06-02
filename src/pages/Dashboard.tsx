@@ -517,25 +517,42 @@ export function Dashboard() {
                         )}
                         
                         {/* Private Order Mode Section */}
-                        {activeCouriers.filter(u => u.is_online && (u as any).out_of_shift).length > 0 && (
-                          <>
-                            <div className="border-t border-dashed border-yellow-300 my-2" />
-                            <p className="text-xs text-yellow-600 font-semibold mb-2">🟡 PRIVATE ORDER MODE</p>
-                            {activeCouriers.filter(u => u.is_online && (u as any).out_of_shift).map(courier => (
-                              <div key={courier.id} className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                                <div className="flex items-center gap-3 text-left">
-                                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-yellow-200 text-yellow-700 font-bold text-xs shrink-0">
-                                    P
-                                  </div>
-                                  <div className="min-w-0">
-                                    <p className="font-medium text-gray-900 text-sm truncate">{courier.name}</p>
-                                    <span className="text-xs text-yellow-600 font-semibold">Di luar shift (manual assign)</span>
+                        {(() => {
+                          const privateModeCouriers = activeCouriers
+                            .filter(u => u.is_online && (u as any).out_of_shift)
+                            .sort((a, b) => {
+                              // FIFO sorting for private mode
+                              const timeA = a.queue_joined_at ? new Date(a.queue_joined_at).getTime() : Infinity;
+                              const timeB = b.queue_joined_at ? new Date(b.queue_joined_at).getTime() : Infinity;
+                              
+                              if (timeA !== timeB) return timeA - timeB;
+                              
+                              // Fallback: Sort by name
+                              return a.name.localeCompare(b.name);
+                            });
+                          
+                          if (privateModeCouriers.length === 0) return null;
+                          
+                          return (
+                            <>
+                              <div className="border-t border-dashed border-yellow-300 my-2" />
+                              <p className="text-xs text-yellow-600 font-semibold mb-2">🟡 PRIVATE ORDER MODE</p>
+                              {privateModeCouriers.map(courier => (
+                                <div key={courier.id} className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                                  <div className="flex items-center gap-3 text-left">
+                                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-yellow-200 text-yellow-700 font-bold text-xs shrink-0">
+                                      P
+                                    </div>
+                                    <div className="min-w-0">
+                                      <p className="font-medium text-gray-900 text-sm truncate">{courier.name}</p>
+                                      <span className="text-xs text-yellow-600 font-semibold">Di luar shift (manual assign)</span>
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            ))}
-                          </>
-                        )}
+                              ))}
+                            </>
+                          );
+                        })()}
                       </>
                     )
                   })()}
