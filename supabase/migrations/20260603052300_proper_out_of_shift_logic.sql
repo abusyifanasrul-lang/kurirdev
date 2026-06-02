@@ -205,11 +205,23 @@ WHERE role = 'courier'
 -- Verification
 -- ============================================================================
 
+-- CRITICAL FIX: Trigger must watch courier_status changes!
+DROP TRIGGER IF EXISTS on_courier_status_change ON profiles;
+
+CREATE TRIGGER on_courier_status_change
+  BEFORE INSERT OR UPDATE OF is_active, is_online, courier_status, role ON public.profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION handle_courier_queue_sync();
+
+COMMENT ON TRIGGER on_courier_status_change ON profiles IS 
+  'Fires handle_courier_queue_sync() on courier status changes (was missing courier_status in watch list!)';
+
 DO $$
 BEGIN
   RAISE NOTICE 'Migration 20260603052300 completed successfully';
   RAISE NOTICE 'Created function: is_courier_out_of_shift(UUID)';
   RAISE NOTICE 'Updated trigger: handle_courier_queue_sync() to use proper out_of_shift logic';
+  RAISE NOTICE 'FIXED TRIGGER: Added courier_status to watch list (was missing!)';
   RAISE NOTICE 'Backfilled out_of_shift for all online couriers';
   RAISE NOTICE 'Logic: out_of_shift=true if: 1) No shift, 2) Shift inactive, 3) Outside shift time window';
   RAISE NOTICE 'Timezone: Uses operational_timezone from settings (Asia/Makassar)';
