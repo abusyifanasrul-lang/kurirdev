@@ -27,6 +27,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { useCustomerStore } from '@/stores/useCustomerStore';
 import { calcAdminEarning } from '@/lib/calcEarning';
+import { getCourierTier, sortPrivateQueue } from '@/utils/courierQueue';
 import type { Order, OrderStatus } from '@/types';
 
 const COLORS = ['#F59E0B', '#3B82F6', '#14B8A6', '#06B6D4', '#22C55E', '#EF4444'];
@@ -382,51 +383,18 @@ export function Dashboard() {
                 </div>
                 <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar text-left">
                   {(() => {
-                    const activeCouriers = users.filter(u => u.role === 'courier' && u.is_active)
-                    const onlineQueue = [...activeCouriers.filter(u => 
-                      u.is_online && !(u as any).out_of_shift  // Exclude private mode
-                    )]
+                    const activeCouriers = users.filter(u => u.role === 'courier' && u.is_active);
+                    
+                    // Use centralized utility for queue sorting
+                    const onlineQueue = activeCouriers
+                      .filter(u => u.is_online && !(u as any).out_of_shift)
                       .sort((a, b) => {
-                        const getTier = (u: any) => {
-                          // Tier 1: Cancel boost always wins
-                          if (u.is_priority_recovery) return 1;
-                          
-                          // Count active orders from the store
-                          const activeOrders = activeOrdersByCourier.filter(o => 
-                            o.courier_id === u.id && !['cancelled', 'delivered'].includes(o.status)
-                          );
-                          
-                          const hasRunningOrder = activeOrders.some(o => 
-                            ['picked_up', 'in_transit'].includes(o.status)
-                          );
-                          
-                          // Tier 2: STAY at basecamp (but not if actively delivering)
-                          if (u.courier_status === 'stay') {
-                            // STAY + actively delivering = Tier 5 (courier left basecamp, GPS lag)
-                            if (hasRunningOrder) return 5;
-                            // STAY + idle or pending = Tier 2 (physically at basecamp)
-                            return 2;
-                          }
-                          
-                          // Tier 3: ON and idle
-                          if (u.courier_status === 'on' && activeOrders.length === 0) return 3;
-                          
-                          // Tier 4: ON with ALL orders waiting (is_waiting flag = true)
-                          const waitingOnly = activeOrders.length > 0 && activeOrders.every(o => 
-                            o.is_waiting === true
-                          );
-                          if (u.courier_status === 'on' && waitingOnly) return 4;
-                          
-                          // Tier 5: ON with active running orders
-                          if (u.courier_status === 'on') return 5;
-                          
-                          return 6; // Default fallback
-                        };
-                        const tierA = getTier(a);
-                        const tierB = getTier(b);
+                        const tierA = getCourierTier(a as any, activeOrdersByCourier);
+                        const tierB = getCourierTier(b as any, activeOrdersByCourier);
+                        
                         if (tierA !== tierB) return tierA - tierB;
                         
-                        // Sub-tier sorting for Tier 2 (STAY): workload-based
+                        // Sub-tier for Tier 2 (handled in utility)
                         if (tierA === 2 && tierB === 2) {
                           const activeOrdersA = activeOrdersByCourier.filter(o => 
                             o.courier_id === a.id && !['cancelled', 'delivered'].includes(o.status)
@@ -435,12 +403,10 @@ export function Dashboard() {
                             o.courier_id === b.id && !['cancelled', 'delivered'].includes(o.status)
                           );
                           
-                          // 1. Fewer orders = higher priority
                           if (activeOrdersA.length !== activeOrdersB.length) {
                             return activeOrdersA.length - activeOrdersB.length;
                           }
                           
-                          // 2. If same count, waiting orders = higher priority
                           if (activeOrdersA.length > 0) {
                             const waitingOnlyA = activeOrdersA.every(o => o.is_waiting === true);
                             const waitingOnlyB = activeOrdersB.every(o => o.is_waiting === true);
@@ -448,7 +414,7 @@ export function Dashboard() {
                           }
                         }
                         
-                        // FIFO for same tier + same workload
+                        // FIFO
                         const timeA = (a as any).queue_joined_at
                           ? new Date((a as any).queue_joined_at).getTime()
                           : Infinity;
@@ -456,9 +422,11 @@ export function Dashboard() {
                           ? new Date((b as any).queue_joined_at).getTime()
                           : Infinity;
                         if (timeA !== timeB) return timeA - timeB;
+                        
                         return a.id.localeCompare(b.id);
-                      })
-                    const offlineCouriers = activeCouriers.filter(u => !u.is_online)
+                      });
+                    
+                    const offlineCouriers = activeCouriers.filter(u => !u.is_online);
 
                     if (activeCouriers.length === 0) return (
                       <p className="text-sm text-gray-500 text-center py-4">No couriers registered</p>
@@ -518,18 +486,9 @@ export function Dashboard() {
                         
                         {/* Private Order Mode Section */}
                         {(() => {
-                          const privateModeCouriers = activeCouriers
-                            .filter(u => u.is_online && (u as any).out_of_shift)
-                            .sort((a, b) => {
-                              // FIFO sorting for private mode
-                              const timeA = a.queue_joined_at ? new Date(a.queue_joined_at).getTime() : Infinity;
-                              const timeB = b.queue_joined_at ? new Date(b.queue_joined_at).getTime() : Infinity;
-                              
-                              if (timeA !== timeB) return timeA - timeB;
-                              
-                              // Fallback: Sort by name
-                              return a.name.localeCompare(b.name);
-                            });
+                          const privateModeCouriers = sortPrivateQueue(
+                            activeCouriers.filter(u => u.is_online && (u as any).out_of_shift) as any
+                          );
                           
                           if (privateModeCouriers.length === 0) return null;
                           
