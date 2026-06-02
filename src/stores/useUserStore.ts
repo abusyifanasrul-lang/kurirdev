@@ -83,6 +83,7 @@ export const mapProfileToUser = (profile: any, existingUser?: User): User => {
     stay_basecamp_id: profile.stay_basecamp_id !== undefined ? profile.stay_basecamp_id : (base.stay_basecamp_id ?? null),
     gps_consecutive_out: profile.gps_consecutive_out !== undefined ? profile.gps_consecutive_out : (base.gps_consecutive_out ?? 0),
     day_off: profile.day_off !== undefined ? profile.day_off : (base.day_off ?? null),
+    out_of_shift: profile.out_of_shift !== undefined ? profile.out_of_shift : (base.out_of_shift ?? false),
   };
 };
 
