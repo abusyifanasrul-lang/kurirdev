@@ -260,7 +260,13 @@ export function Orders() {
 
 
   const availableCouriers = useMemo(() => {
-    const courierList = users.filter(u => u.role === 'courier' && u.is_active === true && u.is_online === true);
+    // Filter: Only active, online couriers who are NOT in out-of-shift mode
+    const courierList = users.filter(u => 
+      u.role === 'courier' && 
+      u.is_active === true && 
+      u.is_online === true &&
+      !(u as any).out_of_shift  // Exclude private order mode couriers
+    );
     
     return courierList.sort((a, b) => {
       // Helper to determine priority tier (Lower is higher priority)
@@ -337,6 +343,19 @@ export function Orders() {
       return a.id.localeCompare(b.id);
     });
   }, [users, activeOrdersByCourier]);
+
+  // Separate list for private order mode couriers (out of shift)
+  const privateModeCouriers = useMemo(() => {
+    return users.filter(u =>
+      u.role === 'courier' &&
+      u.is_active === true &&
+      u.is_online === true &&
+      (u as any).out_of_shift === true  // Only private order mode
+    ).sort((a, b) => {
+      // Sort by name for easy selection
+      return a.name.localeCompare(b.name);
+    });
+  }, [users]);
 
   const courierWaitingOrder = (courierId: string) =>
     activeOrdersByCourier.find(o => 
@@ -872,6 +891,7 @@ export function Orders() {
         handlePrintInvoice={handlePrintInvoice}
         handleCancel={() => setIsCancelModalOpen(true)}
         availableCouriers={availableCouriers as any}
+        privateModeCouriers={privateModeCouriers as any}
         courierWaitingOrder={courierWaitingOrder}
         getCourierName={getCourierName}
         customers={customers}

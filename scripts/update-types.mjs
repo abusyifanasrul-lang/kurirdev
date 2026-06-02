@@ -1,4 +1,8 @@
-export type Json =
+import fs from 'fs';
+
+// Types from Supabase Power (generate_typescript_types)
+// Field out_of_shift sudah include di profiles table
+const types = `export type Json =
   | string
   | number
   | boolean
@@ -76,3 +80,9 @@ export type Database = {
     CompositeTypes: {}
   }
 }
+`;
+
+const targetFile = 'src/types/supabase.ts';
+fs.writeFileSync(targetFile, types, 'utf-8');
+console.log('✅ Types written to', targetFile);
+console.log('✅ Field out_of_shift: boolean | null is now in profiles table');

@@ -383,7 +383,9 @@ export function Dashboard() {
                 <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar text-left">
                   {(() => {
                     const activeCouriers = users.filter(u => u.role === 'courier' && u.is_active)
-                    const onlineQueue = [...activeCouriers.filter(u => u.is_online)]
+                    const onlineQueue = [...activeCouriers.filter(u => 
+                      u.is_online && !(u as any).out_of_shift  // Exclude private mode
+                    )]
                       .sort((a, b) => {
                         const getTier = (u: any) => {
                           // Tier 1: Cancel boost always wins
@@ -506,7 +508,28 @@ export function Dashboard() {
                                   </div>
                                   <div className="min-w-0">
                                     <p className="font-medium text-gray-600 text-sm truncate">{courier.name}</p>
-                                    <span className="text-xs text-red-500 font-semibold"> OFF</span>
+                                    <span className="text-xs text-red-500 font-semibold">🔴 OFF</span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </>
+                        )}
+                        
+                        {/* Private Order Mode Section */}
+                        {activeCouriers.filter(u => u.is_online && (u as any).out_of_shift).length > 0 && (
+                          <>
+                            <div className="border-t border-dashed border-yellow-300 my-2" />
+                            <p className="text-xs text-yellow-600 font-semibold mb-2">🟡 PRIVATE ORDER MODE</p>
+                            {activeCouriers.filter(u => u.is_online && (u as any).out_of_shift).map(courier => (
+                              <div key={courier.id} className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                                <div className="flex items-center gap-3 text-left">
+                                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-yellow-200 text-yellow-700 font-bold text-xs shrink-0">
+                                    P
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="font-medium text-gray-900 text-sm truncate">{courier.name}</p>
+                                    <span className="text-xs text-yellow-600 font-semibold">Di luar shift (manual assign)</span>
                                   </div>
                                 </div>
                               </div>

@@ -37,6 +37,7 @@ interface OrderModalProps {
   handleCancel?: () => void;
   // Helpers/Data
   availableCouriers: User[];
+  privateModeCouriers?: User[];  // NEW: Couriers in private order mode
   courierWaitingOrder: (cid: string) => Order | undefined;
   getCourierName: (cid: string | null) => string;
   // Address Management
@@ -58,6 +59,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   handlePrintInvoice,
   handleCancel,
   availableCouriers,
+  privateModeCouriers,  // NEW
   courierWaitingOrder,
   getCourierName,
   customers,
@@ -692,20 +694,44 @@ export const OrderModal: React.FC<OrderModalProps> = ({
             </div>
             
             {assignmentMode === 'manual' && (
-              <div className="animate-in fade-in slide-in-from-top-1 duration-200">
-                <Select
-                  placeholder="Pilih Kurir..."
-                  value={assignCourierId}
-                  onChange={e => setAssignCourierId(e.target.value)}
-                  className="bg-white border-teal-200"
-                  options={availableCouriers.map(c => {
-                    const waiting = courierWaitingOrder(c.id);
-                    return {
-                      value: c.id,
-                      label: waiting ? `${c.name} 📝 PENDING — ${waiting.order_number}` : `${c.name} (Online)`
-                    };
-                  })}
-                />
+              <div className="animate-in fade-in slide-in-from-top-1 duration-200 space-y-3">
+                {/* Normal Queue Couriers */}
+                <div>
+                  <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Antrian Shift Normal</label>
+                  <Select
+                    placeholder="Pilih Kurir..."
+                    value={assignCourierId}
+                    onChange={e => setAssignCourierId(e.target.value)}
+                    className="bg-white border-teal-200"
+                    options={availableCouriers.map(c => {
+                      const waiting = courierWaitingOrder(c.id);
+                      return {
+                        value: c.id,
+                        label: waiting ? `${c.name} 📝 PENDING — ${waiting.order_number}` : `${c.name} (Online)`
+                      };
+                    })}
+                  />
+                </div>
+                
+                {/* Private Order Mode Couriers */}
+                {privateModeCouriers && privateModeCouriers.length > 0 && (
+                  <div className="pt-2 border-t border-yellow-200">
+                    <label className="text-xs font-semibold text-yellow-600 mb-1.5 block">
+                      🟡 Private Order Mode (Manual Assign)
+                    </label>
+                    <p className="text-[10px] text-gray-500 mb-2">Kurir di luar jam shift</p>
+                    <Select
+                      placeholder="Pilih kurir private..."
+                      value={assignCourierId}
+                      onChange={e => setAssignCourierId(e.target.value)}
+                      className="bg-yellow-50 border-yellow-300"
+                      options={privateModeCouriers.map(c => ({
+                        value: c.id,
+                        label: `${c.name} (Private)`
+                      }))}
+                    />
+                  </div>
+                )}
               </div>
             )}
 

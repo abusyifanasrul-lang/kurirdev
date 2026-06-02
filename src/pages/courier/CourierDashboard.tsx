@@ -193,8 +193,12 @@ export function CourierDashboard() {
 
         console.log('[CourierDashboard] Check-in success:', data);
         
-        // Update local state (always set online, even if already checked-in)
-        useSessionStore.getState().updateUser({ is_online: true, courier_status: 'on' as any });
+        // Update local state (out_of_shift = false set by RPC)
+        useSessionStore.getState().updateUser({ 
+          is_online: true, 
+          courier_status: 'on' as any,
+          out_of_shift: false  // Within shift window
+        });
         
         // Log different message if already checked-in
         if (data?.already_checked_in) {
@@ -203,7 +207,24 @@ export function CourierDashboard() {
       } else {
         // Outside shift window: Private order mode (no check-in record)
         await setCourierOnline(user.id, 'on');
-        useSessionStore.getState().updateUser({ is_online: true, courier_status: 'on' as any });
+        
+        // Explicitly set out_of_shift = true for private mode
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ out_of_shift: true })
+          .eq('id', user.id);
+        
+        if (updateError) {
+          console.error('[CourierDashboard] Error setting out_of_shift flag:', updateError);
+        }
+        
+        useSessionStore.getState().updateUser({ 
+          is_online: true, 
+          courier_status: 'on' as any,
+          out_of_shift: true  // Private order mode
+        });
+        
+        console.log('[CourierDashboard] Private order mode activated');
       }
     } catch (err) {
       console.error('[CourierDashboard] handleSetOn error:', err);
