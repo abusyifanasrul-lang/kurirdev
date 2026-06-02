@@ -206,16 +206,22 @@ export function CourierDashboard() {
         }
       } else {
         // Outside shift window: Private order mode (no check-in record)
-        await setCourierOnline(user.id, 'on');
-        
-        // Explicitly set out_of_shift = true for private mode
+        // FIX: Update courier_status AND out_of_shift in single atomic operation
+        // This ensures trigger properly detects transition and sets fresh queue_joined_at
         const { error: updateError } = await supabase
           .from('profiles')
-          .update({ out_of_shift: true })
+          .update({ 
+            courier_status: 'on',
+            out_of_shift: true,
+            off_reason: '',
+            updated_at: new Date().toISOString()
+          })
           .eq('id', user.id);
         
         if (updateError) {
-          console.error('[CourierDashboard] Error setting out_of_shift flag:', updateError);
+          console.error('[CourierDashboard] Error activating private mode:', updateError);
+          alert('Gagal mengaktifkan mode private order');
+          return;
         }
         
         useSessionStore.getState().updateUser({ 
@@ -224,7 +230,7 @@ export function CourierDashboard() {
           out_of_shift: true  // Private order mode
         });
         
-        console.log('[CourierDashboard] Private order mode activated');
+        console.log('[CourierDashboard] Private order mode activated with fresh queue timestamp');
       }
     } catch (err) {
       console.error('[CourierDashboard] handleSetOn error:', err);
