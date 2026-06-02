@@ -173,8 +173,10 @@ export function CourierDashboard() {
       // Context-aware: Check if within shift window
       if (shiftWindow.isWithinWindow) {
         // Within shift window: Call record_courier_checkin RPC
+        // Set skip_duplicate_check=true to allow resume online after check-in
         const { data, error } = await supabase.rpc('record_courier_checkin', {
-          p_courier_id: user.id
+          p_courier_id: user.id,
+          p_skip_duplicate_check: true
         });
 
         if (error) {
@@ -190,8 +192,14 @@ export function CourierDashboard() {
         }
 
         console.log('[CourierDashboard] Check-in success:', data);
-        // Update local state
+        
+        // Update local state (always set online, even if already checked-in)
         useSessionStore.getState().updateUser({ is_online: true, courier_status: 'on' as any });
+        
+        // Log different message if already checked-in
+        if (data?.already_checked_in) {
+          console.log('[CourierDashboard] Already checked-in today, status set to online');
+        }
       } else {
         // Outside shift window: Private order mode (no check-in record)
         await setCourierOnline(user.id, 'on');

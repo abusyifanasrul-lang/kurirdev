@@ -3,7 +3,55 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import { App } from "./App";
 
-// Global error listener to handle dynamic import failures (e.g., stale service worker)
+// ============================================================================
+// VERSION CHECK & CACHE INVALIDATION
+// ============================================================================
+// CRITICAL FIX: Force cache clear when app version changes
+// This prevents chunk version mismatch that causes "Cannot read properties of null (reading 'useCallback')"
+const APP_VERSION = '1.0.10'; // INCREMENT ON EVERY DEPLOY
+
+const storedVersion = localStorage.getItem('app_version');
+if (storedVersion !== APP_VERSION) {
+  console.log(`🔄 App version changed: ${storedVersion} → ${APP_VERSION}`);
+  console.log('🧹 Clearing all caches and service workers...');
+  
+  // Clear all caches
+  if ('caches' in window) {
+    caches.keys().then(names => {
+      names.forEach(name => {
+        console.log(`  Deleting cache: ${name}`);
+        caches.delete(name);
+      });
+    });
+  }
+  
+  // Unregister all service workers
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(regs => {
+      regs.forEach(reg => {
+        console.log(`  Unregistering SW: ${reg.scope}`);
+        reg.unregister();
+      });
+    });
+  }
+  
+  // Update stored version
+  localStorage.setItem('app_version', APP_VERSION);
+  
+  // Clear chunk retry flag
+  localStorage.removeItem('chunk_load_retried');
+  
+  console.log('✅ Cache cleared. Reloading...');
+  
+  // Reload to get fresh chunks
+  setTimeout(() => {
+    window.location.reload();
+  }, 500);
+}
+
+// ============================================================================
+// GLOBAL ERROR HANDLERS
+// ============================================================================
 window.addEventListener('error', (event) => {
   const isChunkError = 
     event.message?.includes('Failed to fetch dynamically imported module') ||

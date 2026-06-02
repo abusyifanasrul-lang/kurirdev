@@ -88,13 +88,15 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          // React Core (Smallest footprint for initialization)
-          if (id.includes('node_modules/react/') || id.includes('node_modules/scheduler/')) {
-            return 'vendor-react-core';
+          // CRITICAL FIX: Keep React Core + React DOM in SINGLE chunk
+          // Splitting them causes race condition where useCallback is called before React is fully loaded
+          // This prevents "Cannot read properties of null (reading 'useCallback')" error
+          if (id.includes('node_modules/react') || id.includes('node_modules/scheduler')) {
+            return 'vendor-react';
           }
-          // React DOM & Router (Evaluation bridge)
-          if (id.includes('node_modules/react-dom/') || id.includes('node_modules/react-router-dom/')) {
-            return 'vendor-react-dom-bridge';
+          // React Router (separate from core React)
+          if (id.includes('node_modules/react-router-dom/')) {
+            return 'vendor-react-router';
           }
           // Core Utilities & Auth
           if (id.includes('node_modules/@supabase/') || id.includes('node_modules/axios/')) {
