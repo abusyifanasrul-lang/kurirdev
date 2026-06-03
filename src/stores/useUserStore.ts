@@ -352,6 +352,8 @@ export const useUserStore = create<UserState>()((set, get) => ({
           'postgres_changes',
           { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${id}` },
           (payload) => {
+            console.log(`🔄 [UserStore] Profile UPDATE received for ${id}:`, payload.new)
+            
             const existingUsers = get().users
             const existingUser = existingUsers.find(u => u.id === id)
             
@@ -360,6 +362,28 @@ export const useUserStore = create<UserState>()((set, get) => ({
             set(state => ({
               users: state.users.map(u => u.id === id ? updatedUser : u)
             }))
+
+            // IMPORTANT: Sync to SessionStore if this is the current user
+            // This ensures UI updates even when profile changes come from
+            // server-side operations (cron jobs, triggers, etc.)
+            try {
+              // Dynamic import to avoid circular dependency
+              import('./useSessionStore').then(({ useSessionStore }) => {
+                const currentSessionUser = useSessionStore.getState().user
+                if (currentSessionUser?.id === id) {
+                  console.log(`🔄 [UserStore] Syncing profile changes to SessionStore for user ${id}`)
+                  useSessionStore.getState().updateUser({
+                    courier_status: updatedUser.courier_status,
+                    is_online: updatedUser.is_online,
+                    queue_joined_at: updatedUser.queue_joined_at,
+                    off_reason: updatedUser.off_reason,
+                    queue_position: updatedUser.queue_position,
+                  })
+                }
+              })
+            } catch (err) {
+              console.error('[UserStore] Failed to sync to SessionStore:', err)
+            }
           }
         )
         .on(
