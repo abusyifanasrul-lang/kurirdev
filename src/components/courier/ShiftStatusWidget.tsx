@@ -22,6 +22,7 @@ export function ShiftStatusWidget({ courierId, lateFineActive }: ShiftStatusWidg
   
   const [shiftInfo, setShiftInfo] = useState<ShiftInfo | null>(null);
   const [countdown, setCountdown] = useState<string>('');
+  const [lateTimer, setLateTimer] = useState<string>(''); // NEW: Count-up timer for late couriers
   const [isInShift, setIsInShift] = useState(false);
   const [isShiftLoading, setIsShiftLoading] = useState(true);
 
@@ -86,8 +87,27 @@ export function ShiftStatusWidget({ courierId, lateFineActive }: ShiftStatusWidg
       if (currentTimeInSeconds >= shiftStartInSeconds && currentTimeInSeconds < shiftEndInSeconds) {
         setIsInShift(true);
         setCountdown('');
+        
+        // NEW: Calculate late timer if courier hasn't checked in yet
+        if (!todayLog?.first_online_at && currentTimeInSeconds > shiftStartInSeconds) {
+          const secondsLate = currentTimeInSeconds - shiftStartInSeconds;
+          const hours = Math.floor(secondsLate / 3600);
+          const minutes = Math.floor((secondsLate % 3600) / 60);
+          const seconds = secondsLate % 60;
+          
+          if (hours > 0) {
+            setLateTimer(`${hours}j ${minutes}m`);
+          } else if (minutes > 0) {
+            setLateTimer(`${minutes}m ${seconds}d`);
+          } else {
+            setLateTimer(`${seconds}d`);
+          }
+        } else {
+          setLateTimer('');
+        }
       } else {
         setIsInShift(false);
+        setLateTimer('');
 
         // Calculate seconds until next shift start
         let secondsUntilShift: number;
@@ -160,7 +180,7 @@ export function ShiftStatusWidget({ courierId, lateFineActive }: ShiftStatusWidg
       stopInterval();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [shiftInfo]);
+  }, [shiftInfo, todayLog?.first_online_at]); // Added todayLog dependency
 
   // Don't show loading state - just hide widget if no data yet
   if ((isLoading && !todayLog) || (isShiftLoading && !shiftInfo)) {
@@ -241,7 +261,22 @@ export function ShiftStatusWidget({ courierId, lateFineActive }: ShiftStatusWidg
         return {
           title: `${todayLog?.shift_name || shiftInfo.name} • ${todayLog?.status === 'alpha' ? 'ALPHA - Tidak Check-In' : `Terlambat ${todayLog?.late_minutes || 0} menit`}`,
           subtitle: `${shiftInfo.start_time} - ${shiftInfo.end_time}`,
-          rightContent: <ChevronRight className="h-4 w-4 text-gray-400 flex-shrink-0" />
+          rightContent: lateTimer ? (
+            // NEW: Show live late timer for couriers who haven't checked in
+            <div className="text-right">
+              <div className="flex items-center gap-1 justify-end mb-0.5">
+                <AlertCircle className="h-3 w-3 text-red-500" />
+                <p className="text-xs font-black text-red-600 tabular-nums leading-none">
+                  {lateTimer}
+                </p>
+              </div>
+              <p className="text-[8px] font-bold text-red-400 uppercase tracking-tight leading-none">
+                Terlambat
+              </p>
+            </div>
+          ) : (
+            <ChevronRight className="h-4 w-4 text-gray-400 flex-shrink-0" />
+          )
         };
       case 'excused':
         return {
