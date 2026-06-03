@@ -115,7 +115,7 @@ export function AttendanceMonitoring() {
   };
 
   const needsAdminAction = (log: AdminAttendanceLog) => 
-    log.status === 'late' && log.fine_type === null;
+    (log.status === 'late' || log.status === 'alpha') && log.fine_type === null;
 
   const filteredLogs = logs.filter(log => {
     const matchesSearch = log.courier_name?.toLowerCase().includes(searchTerm.toLowerCase());
